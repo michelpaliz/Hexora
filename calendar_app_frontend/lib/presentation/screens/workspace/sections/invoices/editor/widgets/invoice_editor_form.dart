@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/section_card.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'form/form_widgets/client_monthly_stats.dart';
 import 'form/form_widgets/client_picker_field.dart';
@@ -185,14 +186,13 @@ class _InvoiceEditorFormState extends State<InvoiceEditorForm> {
       children: [
         SectionCard(
           title: l.invoiceCustomerTitle,
-          trailing: TextButton(
+          trailing: HexoraButton(
             onPressed: () =>
                 setState(() => _showCustomerDetails = !_showCustomerDetails),
-            child: Text(
-              _showCustomerDetails
-                  ? l.invoiceDetailsHideCta
-                  : l.invoiceDetailsShowCta,
-            ),
+            label: _showCustomerDetails
+                ? l.invoiceDetailsHideCta
+                : l.invoiceDetailsShowCta,
+            variant: HexoraButtonVariant.ghost,
           ),
           child: ValueListenableBuilder<DateTime?>(
             valueListenable: widget.invoiceDate,

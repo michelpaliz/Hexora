@@ -1,4 +1,16 @@
+import 'dart:typed_data';
+
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
+import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
@@ -6,16 +18,18 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_workspace.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/widgets/presupuesto_pdf_preview_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/templates/presupuesto_template_editor_screen.dart';
-import 'package:hexora/presentation/screens/workspace/sections/presupuestos/views/presupuestos_view.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:intl/intl.dart';
 
 enum PresupuestoDocumentActionMode { all, drafts, issued, edit, preview }
 
-/// Screens at or above this width show the presupuesto editor as a centered
-/// dialog instead of a full-page route, so it doesn't navigate away from
-/// the dashboard it was opened from.
-const double _kPresupuestoEditorDialogBreakpoint = 900;
+const double _proposalIdentityWidth = 120;
+const double _proposalDateWidth = 104;
+const double _proposalStatusWidth = 100;
+const double _proposalDeliveryWidth = 118;
+const double _proposalBaseWidth = 116;
+const double _proposalVatWidth = 100;
+const double _proposalTotalWidth = 120;
 
 class PresupuestoDocumentActionsView extends StatefulWidget {
   const PresupuestoDocumentActionsView({
@@ -25,6 +39,7 @@ class PresupuestoDocumentActionsView extends StatefulWidget {
     this.initialSelectedBudgetId,
     this.mode = PresupuestoDocumentActionMode.drafts,
     this.api,
+    this.onCreate,
   });
 
   final String groupId;
@@ -32,21 +47,49 @@ class PresupuestoDocumentActionsView extends StatefulWidget {
   final String? initialSelectedBudgetId;
   final PresupuestoDocumentActionMode mode;
   final PresupuestosApi? api;
+  final VoidCallback? onCreate;
 
   @override
   State<PresupuestoDocumentActionsView> createState() =>
       _PresupuestoDocumentActionsViewState();
 }
-
 class _PresupuestoDocumentActionsViewState
     extends State<PresupuestoDocumentActionsView> {
   late final PresupuestosApi _api;
   late final PresupuestoDocumentWorkspace _workspace;
   final TextEditingController _search = TextEditingController();
   bool _loading = true;
+  bool _mutationBusy = false;
   String? _fileBusyId;
   String? _checkingVariablesId;
   String? _error;
+  String _statusFilter = 'all';
+  bool _newestFirst = true;
+  int _page = 0;
+  static const _pageSize = 10;
+  final Set<String> _selected = {};
+  static const _availableFinancialColumns = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.concept,
+    HexoraFinancialColumn.taxableBase,
+    HexoraFinancialColumn.vat,
+    HexoraFinancialColumn.total,
+  };
+  static const _defaultFinancialColumns = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.concept,
+    HexoraFinancialColumn.total,
+  };
+  Set<HexoraFinancialColumn> _visibleFinancialColumns =
+      Set.of(_defaultFinancialColumns);
+  Map<String, dynamic>? _editingDocument;
+  Map<String, dynamic>? _detailDocument;
+  Uint8List? _detailPdfBytes;
+  String? _detailPdfError;
+  bool _detailPdfLoading = false;
+  int _detailTabIndex = 0;
+  final ValueNotifier<DocumentViewMode?> _splitModeNotifier =
+      ValueNotifier<DocumentViewMode?>(null);
 
   @override
   void initState() {
@@ -54,6 +97,12 @@ class _PresupuestoDocumentActionsViewState
     _api = widget.api ?? PresupuestosApi();
     _workspace = PresupuestoDocumentWorkspace(api: _api);
     _search.addListener(_onSearchChanged);
+    HexoraColumnVisibilityStore.load(
+      'presupuestos_documents_v4',
+      _defaultFinancialColumns,
+    ).then((value) {
+      if (mounted) setState(() => _visibleFinancialColumns = value);
+    });
     _load();
   }
 
@@ -62,10 +111,56 @@ class _PresupuestoDocumentActionsViewState
     _search
       ..removeListener(_onSearchChanged)
       ..dispose();
+    _splitModeNotifier.dispose();
     super.dispose();
   }
 
-  void _onSearchChanged() => setState(() {});
+  Future<void> _selectDetail(Map<String, dynamic> document) async {
+    final id = presupuestoDocumentId(document);
+    if (id.isEmpty) return;
+    setState(() {
+      _detailDocument = document;
+      _detailPdfBytes = null;
+      _detailPdfError = null;
+      _detailPdfLoading = true;
+      _detailTabIndex = 0;
+    });
+    try {
+      final response = await _api.previewTemplatePdf(id);
+      final bytes = InvoiceEditorPdf.validatePdf(response);
+      if (!mounted ||
+          presupuestoDocumentId(_detailDocument ?? const {}) != id) {
+        return;
+      }
+      setState(() => _detailPdfBytes = bytes);
+    } on PresupuestosApiException catch (error) {
+      if (mounted && presupuestoDocumentId(_detailDocument ?? const {}) == id) {
+        setState(() => _detailPdfError = _friendlyPdfError(error));
+      }
+    } catch (error) {
+      if (mounted && presupuestoDocumentId(_detailDocument ?? const {}) == id) {
+        setState(() => _detailPdfError =
+            error.toString().replaceFirst('Exception: ', '').trim());
+      }
+    } finally {
+      if (mounted && presupuestoDocumentId(_detailDocument ?? const {}) == id) {
+        setState(() => _detailPdfLoading = false);
+      }
+    }
+  }
+
+  void _closeDetail() {
+    _splitModeNotifier.value = DocumentViewMode.list;
+    setState(() {
+      _detailDocument = null;
+      _detailPdfBytes = null;
+      _detailPdfError = null;
+    });
+  }
+
+  void _onSearchChanged() => setState(() {
+        _page = 0;
+      });
 
   Future<void> _load() async {
     if (mounted) {
@@ -88,7 +183,7 @@ class _PresupuestoDocumentActionsViewState
   }
 
   List<Map<String, dynamic>> get _visibleDocuments {
-    final documents = switch (widget.mode) {
+    final source = switch (widget.mode) {
       PresupuestoDocumentActionMode.all => _workspace.documents,
       PresupuestoDocumentActionMode.drafts ||
       PresupuestoDocumentActionMode.edit =>
@@ -96,6 +191,9 @@ class _PresupuestoDocumentActionsViewState
       PresupuestoDocumentActionMode.issued => _workspace.issued,
       PresupuestoDocumentActionMode.preview => _workspace.documents,
     };
+    final documents = source.where((document) =>
+        _statusFilter == 'all' ||
+        presupuestoDocumentStatus(document) == _statusFilter);
     final query = _search.text.trim().toLowerCase();
     final filtered = query.isEmpty
         ? documents.toList(growable: false)
@@ -104,6 +202,7 @@ class _PresupuestoDocumentActionsViewState
               presupuestoDocumentTitle(document),
               presupuestoDocumentClientName(document),
               _documentNumber(document),
+              ...presupuestoDocumentConcepts(document),
             ].join(' ').toLowerCase();
             return searchable.contains(query);
           }).toList(growable: false);
@@ -118,91 +217,32 @@ class _PresupuestoDocumentActionsViewState
             issued: presupuestoDocumentStatus(b) == 'issued',
           ) ??
           DateTime.fromMillisecondsSinceEpoch(0);
-      return bDate.compareTo(aDate);
+      return _newestFirst ? bDate.compareTo(aDate) : aDate.compareTo(bDate);
     });
     return filtered;
-  }
-
-  int get _sectionDocumentCount {
-    switch (widget.mode) {
-      case PresupuestoDocumentActionMode.all:
-        return _workspace.documents.length;
-      case PresupuestoDocumentActionMode.drafts:
-      case PresupuestoDocumentActionMode.edit:
-        return _workspace.drafts.length;
-      case PresupuestoDocumentActionMode.issued:
-        return _workspace.issued.length;
-      case PresupuestoDocumentActionMode.preview:
-        return _workspace.documents.length;
-    }
   }
 
   Future<void> _openEditor(Map<String, dynamic> document) async {
     final id = presupuestoDocumentId(document);
     if (id.isEmpty) return;
-    final editor = PresupuestoTemplateEditorScreen(
-      api: _api,
-      groupId: widget.groupId,
-      presupuestoId: id,
-      presupuestoNumber: _documentNumber(document),
-      initialBudget: document,
-      onDocumentSaved: _load,
-    );
-    final isWide = MediaQuery.of(context).size.width >=
-        _kPresupuestoEditorDialogBreakpoint;
-    if (isWide) {
-      await showDialog<void>(
-        context: context,
-        builder: (_) => Dialog(
-          clipBehavior: Clip.antiAlias,
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1280, maxHeight: 860),
-            child: editor,
-          ),
-        ),
-      );
-    } else {
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => editor),
-      );
-    }
-    if (mounted) await _load();
+    setState(() => _editingDocument = document);
   }
 
-  void _openHistory(Map<String, dynamic> document) {
-    final id = presupuestoDocumentId(document);
-    if (id.isEmpty) return;
-    final locale = Localizations.localeOf(context);
-    showDialog<void>(
-      context: context,
-      builder: (_) => BudgetHistoryDialog(
-        api: _api,
-        presupuestoId: id,
-        title: _documentNumber(document),
-        localeName: locale.toString(),
-        isSpanish: locale.languageCode == 'es',
-      ),
-    );
+  Future<void> _closeEditor() async {
+    setState(() => _editingDocument = null);
+    await _load();
   }
 
   Future<void> _openPdf(
     Map<String, dynamic> document, {
     required bool preview,
   }) async {
-    final pdfPrefix = Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto' : 'budget';
     final id = presupuestoDocumentId(document);
     if (id.isEmpty || _fileBusyId != null) return;
     setState(() => _fileBusyId = id);
     try {
       final number = _documentNumber(document).replaceAll('/', '-');
-      final documentSuffix = Localizations.localeOf(context).languageCode == 'es'
-          ? 'documento'
-          : 'document';
-      final fileName = '$pdfPrefix-$number-$documentSuffix.pdf';
+      final fileName = 'presupuesto-$number-documento.pdf';
       final variables = await _api.getTemplateVariables(id);
       if (!mounted ||
           !await _confirmUnresolvedVariables(
@@ -273,7 +313,7 @@ class _PresupuestoDocumentActionsViewState
   }) async {
     if (unresolved.isEmpty) return true;
     final keys = unresolved.map((key) => '[$key]').join(', ');
-    return await showDialog<bool>(
+    return await showHexoraDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Variables sin completar'),
@@ -319,7 +359,7 @@ class _PresupuestoDocumentActionsViewState
       if (mounted) setState(() => _checkingVariablesId = null);
     }
     if (!mounted) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Emitir presupuesto'),
@@ -331,7 +371,7 @@ class _PresupuestoDocumentActionsViewState
               '¿Emitir este presupuesto? Se asignará un número definitivo.',
             ),
             if (unresolved.isNotEmpty) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: HexoraTableTokens.gap),
               Text(
                 'Atención: siguen sin valor ${unresolved.map((key) => '[$key]').join(', ')}. Aparecerán entre corchetes en el PDF.',
                 style: TextStyle(
@@ -390,13 +430,98 @@ class _PresupuestoDocumentActionsViewState
     }
   }
 
+  List<Map<String, dynamic>> get _selectedDrafts => _workspace.drafts
+      .where((d) => _selected.contains(presupuestoDocumentId(d)))
+      .toList();
+
+  Future<void> _removeSelected() async {
+    final drafts = _selectedDrafts;
+    if (_mutationBusy || drafts.isEmpty) return;
+    final confirmed = await showHexoraDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Eliminar ${drafts.length} borradores'),
+        content: const Text('Se eliminarán los borradores seleccionados.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _mutationBusy = true);
+    try {
+      for (final draft in drafts) {
+        await _workspace.remove(draft);
+        _selected.remove(presupuestoDocumentId(draft));
+      }
+      await _load();
+    } finally {
+      if (mounted) setState(() => _mutationBusy = false);
+    }
+  }
+
+  Future<void> _duplicate(Map<String, dynamic> document) async {
+    if (_mutationBusy) return;
+    setState(() => _mutationBusy = true);
+    try {
+      final response =
+          await _api.getTemplateContent(presupuestoDocumentId(document));
+      final raw = response['content'];
+      if (raw is! Map || raw.isEmpty) {
+        throw Exception('No se encontró el contenido de la propuesta.');
+      }
+      final content = <String, dynamic>{
+        for (final key in const [
+          'templateId',
+          'header',
+          'watermark',
+          'title',
+          'subtitle',
+          'intro',
+          'variables',
+          'variableFields',
+          'sections',
+          'images',
+          'totals',
+          'seasonConfiguration'
+        ])
+          if (raw.containsKey(key)) key: raw[key],
+        'name': '${raw['name'] ?? presupuestoDocumentTitle(document)} (copia)',
+        if ((document['clientId'] ?? response['clientId'] ?? raw['clientId']) !=
+            null)
+          'clientId':
+              document['clientId'] ?? response['clientId'] ?? raw['clientId'],
+      };
+      await _api.createDocumentDraft(groupId: widget.groupId, content: content);
+      if (!mounted) return;
+      await _load();
+      if (mounted) {
+        showSuccessSnack(context, 'Propuesta duplicada como borrador.');
+      }
+    } catch (e) {
+      if (mounted) {
+        showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _mutationBusy = false);
+    }
+  }
+
   Future<void> _remove(Map<String, dynamic> document) async {
-    final confirmed = await showDialog<bool>(
+    if (_mutationBusy) return;
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Eliminar borrador'),
         content: Text(
-          '¿Eliminar el documento "${presupuestoDocumentTitle(document)}"?',
+          '¿Eliminar la propuesta "${presupuestoDocumentTitle(document)}"?',
         ),
         actions: [
           TextButton(
@@ -412,10 +537,10 @@ class _PresupuestoDocumentActionsViewState
       ),
     );
     if (confirmed != true || !mounted) return;
+    setState(() => _mutationBusy = true);
     try {
       await _workspace.remove(document);
       if (mounted) {
-        setState(() {});
         showSuccessSnack(context, 'Borrador eliminado.');
       }
     } on PresupuestosApiException catch (e) {
@@ -424,227 +549,766 @@ class _PresupuestoDocumentActionsViewState
       if (mounted) {
         showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
       }
+    } finally {
+      if (mounted) setState(() => _mutationBusy = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final editing = _editingDocument;
+    if (editing != null) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) _closeEditor();
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const ValueKey('back_to_proposals'),
+                onPressed: _closeEditor,
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Volver a propuestas'),
+              ),
+            ),
+            Expanded(
+              child: PresupuestoTemplateEditorScreen(
+                key: ValueKey(
+                    'inline-proposal-${presupuestoDocumentId(editing)}'),
+                api: _api,
+                groupId: widget.groupId,
+                presupuestoId: presupuestoDocumentId(editing),
+                presupuestoNumber: _documentNumber(editing),
+                initialBudget: editing,
+                onDocumentSaved: _load,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
       return _DocumentErrorState(message: _error!, onRetry: _load);
     }
     final documents = _visibleDocuments;
-    final theme = Theme.of(context);
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 22, 24, 32),
-      children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = constraints.maxWidth < 760;
-            final heading = Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    widget.mode == PresupuestoDocumentActionMode.issued
-                        ? Icons.verified_outlined
-                        : Icons.drafts_outlined,
-                    size: 22,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              _title,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 9),
-                          _DocumentPill(
-                            label: '$_sectionDocumentCount',
-                            color: theme.colorScheme.primary,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-            final tools = Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: compact ? constraints.maxWidth - 52 : 280,
-                  child: TextField(
-                    controller: _search,
-                    decoration: InputDecoration(
-                      hintText: 'Buscar documentos',
-                      prefixIcon: const Icon(Icons.search_rounded, size: 19),
-                      suffixIcon: _search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Limpiar busqueda',
-                              onPressed: _search.clear,
-                              icon: const Icon(Icons.close_rounded, size: 18),
-                            ),
-                      isDense: true,
-                      filled: true,
-                      fillColor: theme.colorScheme.surfaceContainerLowest,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(
-                          color: theme.colorScheme.outlineVariant
-                              .withValues(alpha: 0.4),
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(
-                          color: theme.colorScheme.outlineVariant
-                              .withValues(alpha: 0.4),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(
-                          color:
-                              theme.colorScheme.primary.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Tooltip(
-                  message: 'Actualizar documentos',
-                  child: IconButton.filledTonal(
-                    style: IconButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    onPressed: _load,
-                    icon: const Icon(Icons.refresh_rounded),
-                  ),
-                ),
-              ],
-            );
-            if (compact) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  heading,
-                  const SizedBox(height: 14),
-                  tools,
-                ],
-              );
-            }
-            return Row(
-              children: [
-                Expanded(child: heading),
-                const SizedBox(width: 20),
-                tools,
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 18),
-        if (documents.isEmpty)
-          _DocumentEmptyState(
-            mode: widget.mode,
-            searchQuery: _search.text.trim(),
+    final cs = Theme.of(context).colorScheme;
+    final narrow = MediaQuery.sizeOf(context).width < 760;
+    final list = narrow
+        ? ListView(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+            children: [
+              if (_selected.isEmpty)
+                _mobileFilterToolbar(context, documents)
+              else
+                _mobileSelectionToolbar(context),
+              const SizedBox(height: 8),
+              _documentTable(documents),
+            ],
           )
-        else
-          for (final document in documents) ...[
-            _DocumentRow(
-              document: document,
-              clients: widget.clients,
-              mode: widget.mode,
-              fileBusy: _fileBusyId == presupuestoDocumentId(document),
-              fileActionsDisabled: _fileBusyId != null,
-              issuing: _workspace.isIssuing(
-                    presupuestoDocumentId(document),
-                  ) ||
-                  _checkingVariablesId == presupuestoDocumentId(document),
-              onOpen: presupuestoDocumentStatus(document) == 'draft'
-                  ? () => _openEditor(document)
-                  : () => _openPdf(document, preview: true),
-              onEdit: () => _openEditor(document),
-              onHistory: () => _openHistory(document),
-              onPreview: () => _openPdf(document, preview: true),
-              onDownload: () => _openPdf(document, preview: false),
-              onIssue: () => _issue(document),
-              onDelete: () => _remove(document),
+        : ListView(
+            padding: const EdgeInsets.all(8),
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.38),
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                      child: _filterToolbar(context),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      child: _documentTable(documents),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+    return Padding(
+      padding: narrow ? EdgeInsets.zero : const EdgeInsets.all(6),
+      child: DocumentSplitView(
+        storageKey: 'proposal-documents',
+        selectionKey: _detailDocument == null
+            ? null
+            : presupuestoDocumentId(_detailDocument!),
+        modeNotifier: _splitModeNotifier,
+        list: list,
+        preview: _buildDetailPanel(documents),
+      ),
+    );
+  }
+
+  Widget _buildDetailPanel(List<Map<String, dynamic>> documents) {
+    final document = _detailDocument;
+    final cs = Theme.of(context).colorScheme;
+    if (document == null) {
+      return Center(
+        child: Text(
+          'Selecciona una propuesta',
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: cs.onSurfaceVariant),
+        ),
+      );
+    }
+    final id = presupuestoDocumentId(document);
+    final index = documents.indexWhere(
+      (item) => presupuestoDocumentId(item) == id,
+    );
+    final status = presupuestoDocumentStatus(document);
+    final issued = status == 'issued';
+    final date = _documentDate(document, issued: issued);
+    final dateLabel =
+        date == null ? '' : DateFormat('d MMM y', 'es').format(date.toLocal());
+    final amount = presupuestoDocumentAmount(document);
+    final amountLabel = amount == null
+        ? '—'
+        : NumberFormat.currency(locale: 'es_ES', symbol: '€').format(amount);
+
+    return ValueListenableBuilder<DocumentViewMode?>(
+      valueListenable: _splitModeNotifier,
+      builder: (context, mode, _) => ColoredBox(
+        color: cs.surface,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            HexoraDocumentDetailHeader(
+              title: _documentNumber(document).isEmpty
+                  ? presupuestoDocumentTitle(document)
+                  : _documentNumber(document),
+              clientName: presupuestoDocumentClientName(document),
+              statusLabel: issued ? 'Emitida' : 'Borrador',
+              statusColor: issued ? Colors.green.shade700 : cs.secondary,
+              statusIcon:
+                  issued ? Icons.task_alt_outlined : Icons.edit_note_outlined,
+              dateLabel: dateLabel,
+              trailingLabel: amountLabel,
+              onPrevious:
+                  index > 0 ? () => _selectDetail(documents[index - 1]) : null,
+              onNext: index >= 0 && index + 1 < documents.length
+                  ? () => _selectDetail(documents[index + 1])
+                  : null,
+              onExpand: null,
+              isExpanded: false,
+              onClose: _closeDetail,
+              moreActions: PopupMenuButton<String>(
+                tooltip: 'Más acciones',
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.more_horiz_rounded, size: 18),
+                onSelected: (action) {
+                  switch (action) {
+                    case 'edit':
+                      _openEditor(document);
+                    case 'download':
+                      _openPdf(document, preview: false);
+                    case 'issue':
+                      _issue(document);
+                    case 'delete':
+                      _remove(document);
+                  }
+                },
+                itemBuilder: (_) => [
+                  if (!issued)
+                    const PopupMenuItem(value: 'edit', child: Text('Editar')),
+                  const PopupMenuItem(
+                    value: 'download',
+                    child: Text('Descargar PDF'),
+                  ),
+                  if (!issued)
+                    const PopupMenuItem(value: 'issue', child: Text('Emitir')),
+                  if (!issued)
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Eliminar borrador'),
+                    ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
+            Divider(height: 1, color: cs.outlineVariant),
+            SizedBox(
+              height: 38,
+              child: Row(
+                children: [
+                  for (final tab in [(0, 'Vista previa'), (1, 'Datos')])
+                    TextButton(
+                      onPressed: () => setState(() => _detailTabIndex = tab.$1),
+                      style: TextButton.styleFrom(
+                        foregroundColor: _detailTabIndex == tab.$1
+                            ? cs.primary
+                            : cs.onSurfaceVariant,
+                      ),
+                      child: Text(tab.$2),
+                    ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _detailTabIndex == 0
+                  ? _buildDetailPreview(document)
+                  : ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        _detailValue(
+                            'Propuesta', presupuestoDocumentTitle(document)),
+                        _detailValue('Referencia', _documentNumber(document)),
+                        _detailValue(
+                            'Cliente', presupuestoDocumentClientName(document)),
+                        _detailValue('Fecha', dateLabel),
+                        _detailValue('Estado', issued ? 'Emitida' : 'Borrador'),
+                        _detailValue('Importe', amountLabel),
+                      ],
+                    ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailPreview(Map<String, dynamic> document) {
+    final cs = Theme.of(context).colorScheme;
+    if (_detailPdfLoading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2.5));
+    }
+    if ((_detailPdfError ?? '').isNotEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _detailPdfError!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: cs.error),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () => _selectDetail(document),
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    final bytes = _detailPdfBytes;
+    if (bytes == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+      child: PdfInlinePreview(bytes: bytes, height: double.infinity),
+    );
+  }
+
+  Widget _detailValue(String label, String value) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: Theme.of(context).textTheme.labelSmall),
+            const SizedBox(height: 3),
+            Text(value.trim().isEmpty ? '—' : value),
+          ],
+        ),
+      );
+
+  Widget _documentTable(List<Map<String, dynamic>> documents) {
+    final cs = Theme.of(context).colorScheme;
+    final pageCount = (documents.length / _pageSize).ceil();
+    final currentPage = pageCount == 0 ? 0 : _page.clamp(0, pageCount - 1);
+    final start = currentPage * _pageSize;
+    final visible = documents.skip(start).take(_pageSize).toList();
+    return Column(children: [
+      if (documents.isEmpty)
+        _DocumentEmptyState(mode: widget.mode, searchQuery: _search.text.trim())
+      else
+        LayoutBuilder(builder: (context, constraints) {
+          final table = constraints.maxWidth >= 1150 &&
+              MediaQuery.textScalerOf(context).scale(1) <= 1.4;
+          return Column(children: [
+            if (table)
+              Container(
+                color: cs.primary.withValues(alpha: .035),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                child: Row(children: [
+                  SizedBox(
+                    width: 36,
+                    child: Checkbox(
+                      value: visible.every(
+                          (d) => _selected.contains(presupuestoDocumentId(d))),
+                      onChanged: (value) => setState(() {
+                        for (final d in visible) {
+                          final id = presupuestoDocumentId(d);
+                          if (value == true) {
+                            _selected.add(id);
+                          } else {
+                            _selected.remove(id);
+                          }
+                        }
+                      }),
+                    ),
+                  ),
+                  SizedBox(
+                      width: _proposalIdentityWidth,
+                      child: _tableHeaderLabel(context, 'Propuesta')),
+                  if (_visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.date))
+                    const HexoraFinancialHeaderCell(
+                        label: 'Fecha', width: _proposalDateWidth),
+                  Expanded(
+                      flex: 3, child: _tableHeaderLabel(context, 'Cliente')),
+                  if (_visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.concept))
+                    Expanded(
+                        flex: 4, child: _tableHeaderLabel(context, 'Concepto')),
+                  SizedBox(
+                      width: _proposalStatusWidth,
+                      child: _tableHeaderLabel(context, 'Estado')),
+                  SizedBox(
+                      width: _proposalDeliveryWidth,
+                      child: _tableHeaderLabel(context, 'Envío')),
+                  if (_visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.taxableBase))
+                    const HexoraFinancialHeaderCell(
+                        label: 'Base imponible',
+                        width: _proposalBaseWidth,
+                        numeric: true),
+                  if (_visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.vat))
+                    const HexoraFinancialHeaderCell(
+                        label: 'IVA', width: _proposalVatWidth, numeric: true),
+                  if (_visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.total))
+                    const HexoraFinancialHeaderCell(
+                        label: 'Importe',
+                        width: _proposalTotalWidth,
+                        numeric: true),
+                  SizedBox(
+                      width: HexoraTableTokens.actionColumn,
+                      child: _tableHeaderLabel(context, 'Acciones')),
+                ]),
+              ),
+            for (final document in visible)
+              _DocumentRow(
+                document: document,
+                clients: widget.clients,
+                mode: widget.mode,
+                table: table,
+                selected: _selected.contains(presupuestoDocumentId(document)),
+                onSelect: (value) => setState(() {
+                  final id = presupuestoDocumentId(document);
+                  if (value == true) {
+                    _selected.add(id);
+                  } else {
+                    _selected.remove(id);
+                  }
+                }),
+                fileBusy: _fileBusyId == presupuestoDocumentId(document),
+                fileActionsDisabled: _fileBusyId != null,
+                issuing:
+                    _workspace.isIssuing(presupuestoDocumentId(document)) ||
+                        _checkingVariablesId == presupuestoDocumentId(document),
+                onOpen: presupuestoDocumentStatus(document) == 'draft'
+                    ? () => _openEditor(document)
+                    : () => _openPdf(document, preview: true),
+                onPreview: () => _selectDetail(document),
+                onDownload: () => _openPdf(document, preview: false),
+                onIssue: () => _issue(document),
+                onDelete: () => _remove(document),
+                onDuplicate: () => _duplicate(document),
+                mutationBusy: _mutationBusy,
+                visibleFinancialColumns: _visibleFinancialColumns,
+              ),
+          ]);
+        }),
+      if (pageCount > 1 || documents.length != _workspace.documents.length)
+        Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(children: [
+              Expanded(
+                  child: Text(
+                      'Mostrando ${documents.isEmpty ? 0 : start + 1}–${start + visible.length} de ${documents.length} propuestas',
+                      style: Theme.of(context).textTheme.bodySmall)),
+              HexoraButton.iconOnly(
+                  icon: Icons.chevron_left,
+                  tooltip: 'Página anterior',
+                  size: HexoraButtonSize.compact,
+                  onPressed: currentPage > 0
+                      ? () => setState(() => _page = currentPage - 1)
+                      : null),
+              Text('${currentPage + 1} / $pageCount'),
+              HexoraButton.iconOnly(
+                  icon: Icons.chevron_right,
+                  tooltip: 'Página siguiente',
+                  size: HexoraButtonSize.compact,
+                  onPressed: currentPage + 1 < pageCount
+                      ? () => setState(() => _page = currentPage + 1)
+                      : null),
+            ])),
+    ]);
+  }
+
+  Widget _tableHeaderLabel(
+    BuildContext context,
+    String text, {
+    TextAlign align = TextAlign.start,
+  }) {
+    return Text(
+      text,
+      textAlign: align,
+      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+    );
+  }
+
+  Widget _filterToolbar(BuildContext context) {
+    return HexoraDocumentToolbar(
+      statusTabs: _statusFilters(context),
+      searchHint: 'Buscar propuestas...',
+      searchValue: _search.text,
+      onSearchChanged: (value) {
+        if (_search.text == value) return;
+        _search.value = TextEditingValue(
+          text: value,
+          selection: TextSelection.collapsed(offset: value.length),
+        );
+      },
+      actions: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_selected.isNotEmpty) ...[
+            _bulkDeleteButton(context),
+            const SizedBox(width: HexoraTableTokens.gap),
+          ],
+          _sortButton(context),
+          const SizedBox(width: HexoraTableTokens.gap),
+          HexoraColumnVisibilityMenu(
+            moduleKey: 'presupuestos_documents_v4',
+            availableColumns: _availableFinancialColumns,
+            visibleColumns: _visibleFinancialColumns,
+            onChanged: (value) =>
+                setState(() => _visibleFinancialColumns = value),
+          ),
+          const SizedBox(width: HexoraTableTokens.gap),
+          _refreshButton(context),
+          if (widget.onCreate != null) ...[
+            const SizedBox(width: HexoraTableTokens.gap),
+            _createButton(context),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _statusFilters(BuildContext context) {
+    const values = ['all', 'draft', 'issued'];
+    return HexoraDocumentStatusTabs(
+      selectedIndex: values.indexOf(_statusFilter).clamp(0, values.length - 1),
+      onSelected: (index) => setState(() {
+        _statusFilter = values[index];
+        _page = 0;
+      }),
+      tabs: [
+        HexoraDocumentStatusTab(
+          label: 'Todas',
+          count: _workspace.documents.length,
+          icon: Icons.description_outlined,
+        ),
+        HexoraDocumentStatusTab(
+          label: 'Borradores',
+          count: _workspace.drafts.length,
+          icon: Icons.edit_note_outlined,
+        ),
+        HexoraDocumentStatusTab(
+          label: 'Emitidas',
+          count: _workspace.issued.length,
+          icon: Icons.task_alt_outlined,
+        ),
       ],
     );
   }
 
-  String get _title {
-    switch (widget.mode) {
-      case PresupuestoDocumentActionMode.all:
-        return 'Propuestas';
-      case PresupuestoDocumentActionMode.drafts:
-        return 'Borradores';
-      case PresupuestoDocumentActionMode.issued:
-        return 'Emitidos';
-      case PresupuestoDocumentActionMode.edit:
-        return 'Editar documento';
-      case PresupuestoDocumentActionMode.preview:
-        return 'Previsualizar PDF';
-    }
+  Widget _createButton(BuildContext context) => HexoraButton(
+        onPressed: widget.onCreate,
+        icon: Icons.add_rounded,
+        label: 'Nueva propuesta',
+      );
+
+  Widget _mobileFilterToolbar(
+      BuildContext context, List<Map<String, dynamic>> documents) {
+    final cs = Theme.of(context).colorScheme;
+    final filterLabel = _statusFilter == 'all'
+        ? 'Todas'
+        : _statusFilter == 'draft'
+            ? 'Borradores'
+            : 'Emitidas';
+    final count = documents.length;
+    final countLabel = count == 1 ? '1 propuesta' : '$count propuestas';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(children: [
+          Expanded(child: _mobileSearchField(context)),
+          const SizedBox(width: 6),
+          _mobileFilterButton(context),
+          const SizedBox(width: 2),
+          _refreshButton(context),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+          '$countLabel · $filterLabel',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant),
+        ),
+      ],
+    );
   }
 
-  String get _subtitle {
-    switch (widget.mode) {
-      case PresupuestoDocumentActionMode.all:
-        return 'Todas las propuestas, borradores y documentos emitidos.';
-      case PresupuestoDocumentActionMode.drafts:
-        return 'Documentos de presupuesto pendientes de emitir.';
-      case PresupuestoDocumentActionMode.issued:
-        return 'Documentos emitidos con numeracion definitiva.';
-      case PresupuestoDocumentActionMode.edit:
-        return 'Selecciona un borrador para continuar editando su contenido.';
-      case PresupuestoDocumentActionMode.preview:
-        return 'Abre el PDF generado para cualquier documento de presupuesto.';
-    }
+  Widget _mobileSearchField(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: _search,
+        onChanged: (_) => setState(() {}),
+        textInputAction: TextInputAction.search,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5),
+        decoration: InputDecoration(
+          hintText: 'Buscar propuestas...',
+          prefixIcon: const Icon(Icons.search_rounded, size: 18),
+          prefixIconConstraints: const BoxConstraints(minWidth: 36),
+          isDense: true,
+          filled: true,
+          fillColor: cs.surfaceContainerLow,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(9),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(9),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(9),
+            borderSide: BorderSide(color: cs.primary.withValues(alpha: .45)),
+          ),
+          suffixIcon: _search.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Borrar búsqueda',
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: () => setState(_search.clear),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _mobileFilterButton(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return IconButton(
+      tooltip: 'Filtros',
+      visualDensity: VisualDensity.compact,
+      onPressed: () => _showMobileFilters(context),
+      icon: const Icon(Icons.tune_rounded, size: 20),
+      style: IconButton.styleFrom(
+        backgroundColor: cs.surfaceContainerLow,
+        minimumSize: const Size(40, 40),
+      ),
+    );
+  }
+
+
+
+  void _showMobileFilters(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        Widget heading(String title) => Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 4),
+              child: Text(
+                title,
+                style: Theme.of(sheetContext)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            );
+        Widget option(String label, bool selected, VoidCallback onTap) =>
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+              onTap: onTap,
+              title: Text(label),
+              trailing: selected
+                  ? Icon(Icons.check_rounded, size: 20, color: cs.primary)
+                  : null,
+            );
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                heading('Estado'),
+                option('Todas', _statusFilter == 'all', () {
+                  setState(() => _statusFilter = 'all');
+                  Navigator.pop(sheetContext);
+                }),
+                option('Borradores', _statusFilter == 'draft', () {
+                  setState(() => _statusFilter = 'draft');
+                  Navigator.pop(sheetContext);
+                }),
+                option('Emitidas', _statusFilter == 'issued', () {
+                  setState(() => _statusFilter = 'issued');
+                  Navigator.pop(sheetContext);
+                }),
+                const SizedBox(height: 12),
+                heading('Orden'),
+                option('Fecha más reciente', _newestFirst, () {
+                  setState(() => _newestFirst = true);
+                  Navigator.pop(sheetContext);
+                }),
+                option('Fecha más antigua', !_newestFirst, () {
+                  setState(() => _newestFirst = false);
+                  Navigator.pop(sheetContext);
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _mobileSelectionToolbar(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final count = _selected.length;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: .06),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(children: [
+        Icon(Icons.checklist_rounded, size: 20, color: cs.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            count == 1 ? '1 seleccionada' : '$count seleccionadas',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Eliminar borradores',
+          visualDensity: VisualDensity.compact,
+          onPressed:
+              _mutationBusy || _selectedDrafts.isEmpty ? null : _removeSelected,
+          icon: const Icon(Icons.delete_outline, size: 20),
+        ),
+        IconButton(
+          tooltip: 'Cancelar selección',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => setState(_selected.clear),
+          icon: const Icon(Icons.close, size: 20),
+        ),
+      ]),
+    );
+  }
+
+  Widget _sortButton(BuildContext context) {
+    final theme = Theme.of(context);
+    return PopupMenuButton<bool>(
+      tooltip: 'Ordenar propuestas',
+      initialValue: _newestFirst,
+      onSelected: (value) => setState(() {
+        _newestFirst = value;
+        _page = 0;
+      }),
+      itemBuilder: (_) => const [
+        NavigationPopupMenuItem(value: true, child: Text('Fecha más reciente')),
+        NavigationPopupMenuItem(value: false, child: Text('Fecha más antigua')),
+      ],
+      child: Container(
+        height: HexoraDimensions.button + 4,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        constraints: const BoxConstraints(maxWidth: 200),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(HexoraDimensions.radius),
+          border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.swap_vert, size: 16),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                _newestFirst ? 'Más recientes' : 'Más antiguas',
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+            const Icon(Icons.expand_more, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _refreshButton(BuildContext context) {
+    return HexoraButton.iconOnly(
+      icon: Icons.refresh_rounded,
+      tooltip: 'Actualizar propuestas',
+      variant: HexoraButtonVariant.ghost,
+      size: HexoraButtonSize.compact,
+      onPressed: _load,
+    );
+  }
+
+  Widget _bulkDeleteButton(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed:
+          _mutationBusy || _selectedDrafts.isEmpty ? null : _removeSelected,
+      icon: const Icon(Icons.delete_outline, size: 18),
+      label: Text('Eliminar borradores (${_selectedDrafts.length})'),
+    );
   }
 
   String _documentNumber(Map<String, dynamic> document) {
@@ -665,12 +1329,19 @@ class _DocumentRow extends StatelessWidget {
     required this.fileActionsDisabled,
     required this.issuing,
     required this.onOpen,
-    required this.onEdit,
-    required this.onHistory,
     required this.onPreview,
     required this.onDownload,
     required this.onIssue,
     required this.onDelete,
+    required this.onDuplicate,
+    required this.mutationBusy,
+    this.table = false,
+    this.selected = false,
+    this.onSelect,
+    this.visibleFinancialColumns = const {
+      HexoraFinancialColumn.date,
+      HexoraFinancialColumn.total,
+    },
   });
 
   final Map<String, dynamic> document;
@@ -680,418 +1351,426 @@ class _DocumentRow extends StatelessWidget {
   final bool fileActionsDisabled;
   final bool issuing;
   final VoidCallback onOpen;
-  final VoidCallback onEdit;
-  final VoidCallback onHistory;
   final VoidCallback onPreview;
   final VoidCallback onDownload;
   final VoidCallback onIssue;
   final VoidCallback onDelete;
+  final VoidCallback onDuplicate;
+  final bool mutationBusy;
+  final bool table;
+  final bool selected;
+  final ValueChanged<bool?>? onSelect;
+  final Set<HexoraFinancialColumn> visibleFinancialColumns;
 
   bool get _isIssued => presupuestoDocumentStatus(document) == 'issued';
   bool get _isDraft => presupuestoDocumentStatus(document) == 'draft';
-  bool get _isSent => document['deliveryStatus'] == 'sent';
-
-  static String _initials(String source) {
-    final trimmed = source.trim();
-    if (trimmed.isEmpty) return '#';
-    final words = trimmed.split(RegExp(r'\s+'));
-    final first = words.first.characters.first.toUpperCase();
-    if (words.length == 1) return first;
-    final second = words[1].characters.first.toUpperCase();
-    return '$first$second';
+  HexoraDocumentStatus get _statusKind {
+    if (_isIssued) return HexoraDocumentStatus.issued;
+    if (_isDraft) return HexoraDocumentStatus.draft;
+    return HexoraDocumentStatus.cancelled;
   }
+
+  String get _statusLabel => _isIssued
+      ? 'Emitida'
+      : _isDraft
+          ? 'Borrador'
+          : 'Anulada';
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final date = _documentDate(document, issued: _isIssued);
-    final amount = presupuestoDocumentAmount(document);
+    final financials = presupuestoDocumentFinancials(document);
+    final amount = financials.total;
     final client = _clientName(document, clients);
-    final accent = _isIssued
-        ? Colors.green.shade700
-        : _isDraft
-            ? cs.primary
-            : cs.error;
     final title = presupuestoDocumentTitle(document);
+    final concepts = presupuestoDocumentConcepts(document);
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.045),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Material(
-        color: cs.surfaceContainerLowest,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.38),
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
+    if (table) {
+      String email = '';
+      for (final entry in clients) {
+        if (entry.id == document['clientId'] || entry.name == client) {
+          email = entry.email ?? '';
+          break;
+        }
+      }
+      Widget line(String text, {bool muted = false}) => Text(text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: HexoraTypography.body,
+              color: muted ? cs.onSurfaceVariant : cs.onSurface));
+      return Material(
+        color: cs.surface,
         child: InkWell(
-          onTap: onOpen,
-          hoverColor: accent.withValues(alpha: 0.035),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 920;
-
-                final avatar = Container(
-                  width: 44,
-                  height: 44,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.14),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    _initials(client.isNotEmpty ? client : title),
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: accent,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                );
-
-                final identity = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
+            onTap: onOpen,
+            child: Container(
+              constraints: const BoxConstraints(
+                  minHeight: HexoraTableTokens.rowMinHeight),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: HexoraTableTokens.cellPadding,
+                  vertical: HexoraTableTokens.rowPadding),
+              decoration: BoxDecoration(
+                  border: Border(
+                      bottom: BorderSide(
+                          color: cs.outlineVariant.withValues(
+                              alpha: HexoraTableTokens.separatorOpacity)))),
+              child: Row(children: [
+                SizedBox(
+                  width: 36,
+                  child: Checkbox(value: selected, onChanged: onSelect),
+                ),
+                SizedBox(
+                    width: _proposalIdentityWidth,
+                    child: Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Tooltip(
+                          message: title,
+                          child: line(
+                            _documentNumber(document).isEmpty
+                                ? 'Borrador'
+                                : _documentNumber(document),
+                          ),
+                        ))),
+                if (visibleFinancialColumns
+                    .contains(HexoraFinancialColumn.date))
+                  HexoraDateCell(value: date, width: _proposalDateWidth),
+                Expanded(
+                    flex: 3,
+                    child: Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Row(children: [
+                          Container(
+                            width: 30,
+                            height: 30,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color:
+                                  cs.primaryContainer.withValues(alpha: 0.38),
+                              shape: BoxShape.circle,
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        _DocumentPill(
-                          label: 'Documento',
-                          color: accent,
-                        ),
-                        if (_isIssued) ...[
-                          const SizedBox(width: 8),
-                          _DocumentPill(
-                            label: _documentNumber(document),
-                            color: cs.primary,
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.person_outline_rounded,
-                          size: 14,
-                          color: cs.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            client.isEmpty ? 'Sin cliente' : client,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: client.isEmpty
-                                  ? cs.error
-                                  : cs.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        _DocumentMeta(
-                          icon: _isIssued
-                              ? Icons.event_available_outlined
-                              : Icons.update_rounded,
-                          label: date == null
-                              ? 'Sin fecha'
-                              : DateFormat('d MMM y', 'es').format(date),
-                        ),
-                        if (_isDraft) ...[
-                          const SizedBox(width: 12),
-                          _DocumentMeta(
-                            icon: Icons.image_outlined,
-                            label:
-                                '${presupuestoDocumentImageCount(document)} im\u00e1genes',
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                );
-
-                final statusAndAmount = Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (amount != null)
-                      Text(
-                        NumberFormat.currency(locale: 'es_ES', symbol: '€')
-                            .format(amount),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: accent,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    const SizedBox(height: 3),
-                    _DocumentPill(
-                      label: _isIssued
-                          ? 'Emitido'
-                          : _isDraft
-                              ? 'Borrador'
-                              : 'Anulado',
-                      color: accent,
-                    ),
-                    if (_isIssued) ...[
-                      const SizedBox(height: 5),
-                      Tooltip(
-                        message: _isSent
-                            ? _sentDetails(document)
-                            : 'No consta un envío por Hexora Email o Telegram.',
-                        child: _DocumentPill(
-                          label: _isSent ? 'Enviado' : 'Envío no registrado',
-                          color: _isSent ? Colors.green.shade700 : cs.outline,
-                        ),
-                      ),
-                    ],
-                  ],
-                );
-
-                final header = compact
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              avatar,
-                              const SizedBox(width: 14),
-                              Expanded(child: identity),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          statusAndAmount,
-                        ],
-                      )
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          avatar,
-                          const SizedBox(width: 16),
-                          Expanded(child: identity),
-                          const SizedBox(width: 16),
-                          statusAndAmount,
-                          const SizedBox(width: 16),
-                          _actions(context),
-                        ],
-                      );
-
-                if (!compact) return header;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    header,
-                    const SizedBox(height: 16),
-                    Divider(
-                      height: 1,
-                      color: cs.outlineVariant.withValues(alpha: 0.18),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 10,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            _DocumentMeta(
-                              icon: _isIssued
-                                  ? Icons.event_available_outlined
-                                  : Icons.update_rounded,
-                              label: date == null
-                                  ? 'Sin fecha'
-                                  : '${_isIssued ? 'Emitido' : 'Actualizado'} ${DateFormat('d MMM y', 'es').format(date)}',
-                            ),
-                            if (_isDraft)
-                              _DocumentMeta(
-                                icon: Icons.image_outlined,
-                                label:
-                                    '${presupuestoDocumentImageCount(document)} imágenes',
+                            child: Text(
+                              _clientInitials(client),
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: cs.onPrimaryContainer,
+                                fontWeight: FontWeight.w700,
                               ),
-                          ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Tooltip(
+                                      message: client.isEmpty
+                                          ? 'Sin cliente'
+                                          : client,
+                                      child: line(client.isEmpty
+                                          ? 'Sin cliente'
+                                          : client)),
+                                  if (email.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
+                                    line(email, muted: true)
+                                  ],
+                                ]),
+                          ),
+                        ]))),
+                if (visibleFinancialColumns
+                    .contains(HexoraFinancialColumn.concept))
+                  Expanded(
+                    flex: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: _ProposalConceptCell(concepts: concepts),
+                    ),
+                  ),
+                SizedBox(
+                    width: _proposalStatusWidth,
+                    child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: HexoraStatusBadge.document(
+                          context,
+                          status: _statusKind,
+                          label: _statusLabel,
+                        ))),
+                SizedBox(
+                  width: _proposalDeliveryWidth,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _deliveryIndicator(context),
+                  ),
+                ),
+                if (visibleFinancialColumns
+                    .contains(HexoraFinancialColumn.taxableBase))
+                  HexoraFinancialCell(
+                    value: financials.taxableBase,
+                    width: _proposalBaseWidth,
+                  ),
+                if (visibleFinancialColumns.contains(HexoraFinancialColumn.vat))
+                  HexoraFinancialCell(
+                    value: financials.vat,
+                    width: _proposalVatWidth,
+                  ),
+                if (visibleFinancialColumns
+                    .contains(HexoraFinancialColumn.total))
+                  HexoraFinancialCell(
+                    value: amount,
+                    total: true,
+                    width: _proposalTotalWidth,
+                  ),
+                SizedBox(
+                    width: HexoraTableTokens.actionColumn,
+                    child: _actions(context)),
+              ]),
+            )),
+      );
+    }
+    // Compact mobile/narrow row (~64–72px). Information hierarchy: the client
+    // name leads (titles repeat across proposals, so the client distinguishes
+    // them best); the proposal title/concept and number form the secondary
+    // line next to the status badge, with the amount right-aligned. The whole
+    // row is tappable, the checkbox stays independent, and the three-dot menu
+    // keeps every action. Flexible/scale-down children keep it overflow-free on
+    // narrow phones and at large text scales. Only selected/pressed rows are
+    // highlighted — no per-row background otherwise.
+    final primaryText = client.isNotEmpty
+        ? client
+        : (title.isEmpty ? 'Propuesta' : title);
+    final descriptor = client.isNotEmpty
+        ? (title.isNotEmpty
+            ? title
+            : (concepts.isNotEmpty ? concepts.first : ''))
+        : (concepts.isNotEmpty ? concepts.first : '');
+    final secondaryParts = <String>[
+      if (descriptor.isNotEmpty) descriptor,
+      if (_documentNumber(document).isNotEmpty) _documentNumber(document),
+      if (date != null) DateFormat('d MMM y', 'es').format(date),
+    ];
+    final amountLabel = amount == null
+        ? ''
+        : NumberFormat.currency(locale: 'es_ES', symbol: '€').format(amount);
+    return Material(
+      color: selected
+          ? cs.primary.withValues(alpha: 0.06)
+          : Colors.transparent,
+      child: InkWell(
+        onTap: onOpen,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+          decoration: BoxDecoration(
+              border: Border(
+                  bottom: BorderSide(
+                      color: cs.outlineVariant.withValues(
+                          alpha: HexoraTableTokens.separatorOpacity)))),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Checkbox(
+                value: selected,
+                onChanged: onSelect,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Text(primaryText,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontSize: 14, fontWeight: FontWeight.w600)),
                         ),
-                        _actions(context),
+                        if (amountLabel.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Flexible(
+                            flex: 2,
+                            child: Text(amountLabel,
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    fontFeatures:
+                                        HexoraTypography.numericFeatures)),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  HexoraStatusBadge.document(
+                                    context,
+                                    status: _statusKind,
+                                    label: _statusLabel,
+                                  ),
+                                  if (_isIssued) ...[
+                                    const SizedBox(width: 6),
+                                    _deliveryIndicator(context, compact: true),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (secondaryParts.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              secondaryParts.join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.right,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 12, color: cs.onSurfaceVariant),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
-                );
-              },
-            ),
+                ),
+              ),
+              _actions(context),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _actions(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = Theme.of(context).colorScheme;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FilledButton.icon(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(0, 40),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          onPressed: fileActionsDisabled ? null : onDownload,
-          icon: fileBusy
-              ? const SizedBox.square(
-                  dimension: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.download_rounded, size: 19),
-          label: Text(
-            'Descargar',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: cs.onPrimary,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        PopupMenuButton<String>(
-          tooltip: 'Más acciones',
-          offset: const Offset(0, 46),
-          elevation: 8,
-          color: cs.surfaceContainerLowest,
-          surfaceTintColor: Colors.transparent,
-          constraints: const BoxConstraints(minWidth: 220),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: cs.outlineVariant.withValues(alpha: 0.45),
-            ),
-          ),
-          onSelected: (value) {
-            switch (value) {
-              case 'open':
-                onOpen();
-              case 'edit':
-                onEdit();
-              case 'history':
-                onHistory();
-              case 'preview':
-                onPreview();
-              case 'issue':
-                onIssue();
-              case 'delete':
-                onDelete();
-            }
-          },
-          itemBuilder: (context) => <PopupMenuEntry<String>>[
-            if (_isDraft)
-              PopupMenuItem<String>(
-                value: 'open',
-                child: _actionMenuItem(
-                  context,
-                  icon: Icons.edit_note_rounded,
-                  label: 'Editar documento',
-                ),
-              ),
-            if (_isIssued) ...[
-              PopupMenuItem<String>(
-                value: 'edit',
-                child: _actionMenuItem(
-                  context,
-                  icon: Icons.edit_note_rounded,
-                  label: 'Editar documento emitido',
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'history',
-                child: _actionMenuItem(
-                  context,
-                  icon: Icons.history_rounded,
-                  label: 'Historial de versiones',
-                ),
-              ),
-            ],
-            PopupMenuItem<String>(
-              value: 'preview',
-              enabled: !fileActionsDisabled,
-              child: _actionMenuItem(
-                context,
-                icon: Icons.picture_as_pdf_outlined,
-                label: 'Vista previa del PDF',
-              ),
-            ),
-            if (_isDraft)
-              PopupMenuItem<String>(
-                value: 'issue',
-                enabled: !issuing,
-                child: _actionMenuItem(
-                  context,
-                  icon: Icons.publish_rounded,
-                  label: issuing ? 'Comprobando…' : 'Emitir presupuesto',
-                  color: cs.primary,
-                ),
-              ),
-            if (_isDraft) const PopupMenuDivider(),
-            if (_isDraft)
-              PopupMenuItem<String>(
-                value: 'delete',
-                child: _actionMenuItem(
-                  context,
-                  icon: Icons.delete_outline_rounded,
-                  label: 'Eliminar borrador',
-                  color: cs.error,
-                ),
-              ),
-          ],
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.42),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.45),
-              ),
-            ),
-            child: Icon(
-              Icons.more_vert_rounded,
-              size: 20,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ],
+  Widget _deliveryIndicator(BuildContext context, {bool compact = false}) {
+    return DeliveryStatusBadge(
+      status: document['deliveryStatus']?.toString(),
+      channel: document['deliveryChannel']?.toString(),
+      sentAt: DateTime.tryParse(document['sentAt']?.toString() ?? ''),
+      deliveryError: document['deliveryError']?.toString(),
+      feminine: true,
+      notSentLabel: 'Sin enviar',
+      compact: compact,
     );
+  }
+
+  Widget _actions(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    void openPreviewPanel() {
+      DocumentWorkspaceScope.maybeOf(context)?.openPreviewDrawer();
+      onPreview();
+    }
+
+    final menu = PopupMenuButton<String>(
+      tooltip: 'Más acciones',
+      offset: const Offset(0, 46),
+      elevation: 8,
+      color: cs.surfaceContainerLowest,
+      surfaceTintColor: Colors.transparent,
+      constraints: const BoxConstraints(minWidth: 220),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: cs.outlineVariant.withValues(alpha: 0.45),
+        ),
+      ),
+      onSelected: (value) {
+        switch (value) {
+          case 'open':
+            onOpen();
+          case 'preview':
+            openPreviewPanel();
+          case 'issue':
+            onIssue();
+          case 'delete':
+            onDelete();
+          case 'download':
+            onDownload();
+          case 'duplicate':
+            onDuplicate();
+        }
+      },
+      itemBuilder: (context) => <PopupMenuEntry<String>>[
+        NavigationPopupMenuItem<String>(
+          value: 'duplicate',
+          enabled: !mutationBusy,
+          child: _actionMenuItem(context,
+              icon: Icons.copy_outlined, label: 'Duplicar como borrador'),
+        ),
+        NavigationPopupMenuItem<String>(
+          value: 'download',
+          enabled: !fileActionsDisabled,
+          child: _actionMenuItem(context,
+              icon: Icons.download_outlined, label: 'Descargar'),
+        ),
+        if (_isDraft)
+          NavigationPopupMenuItem<String>(
+            value: 'open',
+            child: _actionMenuItem(
+              context,
+              icon: Icons.edit_note_rounded,
+              label: 'Editar propuesta',
+            ),
+          ),
+        NavigationPopupMenuItem<String>(
+          value: 'preview',
+          enabled: !fileActionsDisabled,
+          child: _actionMenuItem(
+            context,
+            icon: Icons.picture_as_pdf_outlined,
+            label: 'Vista previa del PDF',
+          ),
+        ),
+        if (_isDraft)
+          NavigationPopupMenuItem<String>(
+            value: 'issue',
+            enabled: !issuing,
+            child: _actionMenuItem(
+              context,
+              icon: Icons.publish_rounded,
+              label: issuing ? 'Comprobando…' : 'Emitir propuesta',
+              color: cs.primary,
+            ),
+          ),
+        if (_isDraft) const PopupMenuDivider(),
+        if (_isDraft)
+          NavigationPopupMenuItem<String>(
+            value: 'delete',
+            enabled: !mutationBusy,
+            child: _actionMenuItem(
+              context,
+              icon: Icons.delete_outline_rounded,
+              label: 'Eliminar borrador',
+              color: cs.error,
+            ),
+          ),
+      ],
+      child: SizedBox.square(
+        dimension: HexoraDimensions.touchTarget,
+        child: Icon(Icons.more_vert_rounded,
+            size: HexoraTableTokens.icon, color: cs.onSurfaceVariant),
+      ),
+    );
+    if (!table) return menu;
+    return menu;
   }
 
   Widget _actionMenuItem(
@@ -1128,68 +1807,65 @@ class _DocumentRow extends StatelessWidget {
     final value = (source['presupuestoNumber'] ?? source['budgetNumber'] ?? '')
         .toString()
         .trim();
-    return value.isEmpty ? presupuestoDocumentId(source) : value;
+    return value;
+  }
+
+  String _clientInitials(String value) {
+    final words = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .take(2)
+        .toList(growable: false);
+    if (words.isEmpty) return '?';
+    return words.map((word) => word[0].toUpperCase()).join();
   }
 }
 
-String _sentDetails(Map<String, dynamic> document) {
-  final channel = document['deliveryChannel'] == 'telegram' ? 'Telegram' : 'Email';
-  final date = DateTime.tryParse('${document['sentAt'] ?? ''}')?.toLocal();
-  if (date == null) return 'Enviado por $channel';
-  return 'Enviado por $channel el ${DateFormat('d MMM y, HH:mm', 'es').format(date)}';
-}
+class _ProposalConceptCell extends StatelessWidget {
+  const _ProposalConceptCell({required this.concepts});
 
-class _DocumentMeta extends StatelessWidget {
-  const _DocumentMeta({
-    required this.icon,
-    required this.label,
-  });
-
-  final IconData icon;
-  final String label;
+  final List<String> concepts;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final color = cs.onSurfaceVariant;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: color),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
+    final theme = Theme.of(context);
+    if (concepts.isEmpty) {
+      return Text(
+        '—',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
         ),
-      ],
-    );
-  }
-}
-
-class _DocumentPill extends StatelessWidget {
-  const _DocumentPill({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.22)),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w800,
+      );
+    }
+    final remaining = concepts.length - 1;
+    final tooltip =
+        remaining == 0 ? concepts.first : concepts.skip(1).join('\n');
+    return Tooltip(
+      message: tooltip,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              concepts.first,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: HexoraTypography.body,
+              ),
             ),
+          ),
+          if (remaining > 0) ...[
+            const SizedBox(width: 4),
+            Text(
+              '+$remaining',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1210,13 +1886,8 @@ class _DocumentEmptyState extends StatelessWidget {
     final all = mode == PresupuestoDocumentActionMode.all;
     final searching = searchQuery.isNotEmpty;
     final cs = Theme.of(context).colorScheme;
-    return Container(
+    return Padding(
       padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 28),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
       child: Column(
         children: [
           Container(
@@ -1236,17 +1907,17 @@ class _DocumentEmptyState extends StatelessWidget {
               color: cs.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: HexoraTableTokens.gap),
           Text(
             searching
                 ? 'No hay resultados para "$searchQuery"'
                 : issued
-                    ? 'No hay documentos emitidos.'
+                    ? 'No hay propuestas emitidas.'
                     : all
                         ? 'No hay propuestas.'
                         : 'No hay borradores.',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
           ),
           const SizedBox(height: 4),

@@ -4,6 +4,34 @@ enum InvoiceSortBy { date, number }
 
 enum InvoiceSortDir { asc, desc }
 
+enum _InvoiceColumnSort {
+  number,
+  client,
+  status,
+  delivery,
+  payment,
+  date,
+  notes,
+  taxableBase,
+  vat,
+  total,
+}
+
+class _InvoiceAmountRange {
+  const _InvoiceAmountRange({this.min, this.max});
+  final num? min;
+  final num? max;
+
+  bool get active => min != null || max != null;
+
+  bool includes(num? value) {
+    if (value == null) return false;
+    if (min != null && value < min!) return false;
+    if (max != null && value > max!) return false;
+    return true;
+  }
+}
+
 enum _InvoiceHeaderAction { toggleUnpaid, toggleUnlinked, resolveLinks }
 
 class InvoiceDateFilterState {

@@ -8,7 +8,6 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
     Map<String, String>? selectedExpense,
   ) {
     final item = selectedExpense;
-    final empty = item == null || item.isEmpty;
     final suspended = _suspendBackgroundPreview;
 
     return Container(
@@ -19,8 +18,8 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Simple header only for empty / suspended states
-          if (empty || suspended)
+          // Header is only needed while the preview is temporarily paused.
+          if (suspended)
             Container(
               padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
               decoration: BoxDecoration(
@@ -64,69 +63,23 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
     ColorScheme cs,
   ) {
     return Center(
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 320),
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.28)),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              alignment: Alignment.center,
-              child: Icon(Icons.receipt_long_outlined,
-                  size: 22, color: cs.primary),
-            ),
-            const SizedBox(height: 14),
+            Icon(Icons.receipt_long_outlined,
+                size: 24, color: cs.onSurfaceVariant.withValues(alpha: 0.55)),
+            const SizedBox(height: 10),
+            Text('Selecciona una factura',
+                style: t.bodyMedium.copyWith(
+                    color: cs.onSurface, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
             Text(
-              'Selecciona una factura',
-              style: t.bodySmall.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w800,
-                fontSize: 14,
-              ),
+              'Su vista previa y detalles aparecerán aquí.',
+              textAlign: TextAlign.center,
+              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Elige un gasto de la lista para ver su factura, OCR, impuestos y detalles.',
-              style:
-                  t.bodySmall.copyWith(color: cs.onSurfaceVariant, height: 1.4),
-            ),
-            const SizedBox(height: 14),
-            for (final feat in const [
-              'Datos del proveedor',
-              'Imagen o PDF de factura',
-              'Resultado OCR',
-              'Base imponible e IVA',
-              'Categoria y estado',
-            ]) ...[
-              Row(
-                children: [
-                  Icon(Icons.check_circle_outline_rounded,
-                      size: 16, color: cs.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      feat,
-                      style: t.bodySmall.copyWith(
-                          color: cs.onSurface, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-              if (feat != 'Categoria y estado') const SizedBox(height: 8),
-            ],
           ],
         ),
       ),
@@ -158,10 +111,9 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
     Map<String, String> item,
     AppLocalizations l,
     AppTypography t,
-    ColorScheme cs,
-  ) {
-    final isLight = cs.brightness == Brightness.light;
-
+    ColorScheme cs, {
+    _ExpensePreviewTotals? previewTotals,
+  }) {
     final id = (item['id'] ?? '').toString();
     final reprocessing = _reprocessingExpenseIds.contains(id);
     final vendor = (item['vendor'] ?? '-').toString();
@@ -231,8 +183,26 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
       tax.isNotEmpty || (item['subtotal'] ?? '').isNotEmpty,
     ].where((v) => v).length;
 
-    // Total color matching summary bar
-    final totalColor = isLight ? const Color(0xFFE65100) : cs.secondary;
+    final registeredTotal = previewTotals?.storedTotal ?? _parseMoney(total);
+    final currentEditedTotal = previewTotals?.currentTotal;
+    final extractedTotal = previewTotals?.extractedTotal;
+    final previewCurrency = (previewTotals?.currency.trim().isNotEmpty ?? false)
+        ? previewTotals!.currency.trim().toUpperCase()
+        : currency.trim().toUpperCase();
+    final hasRegisteredDifference = registeredTotal != null &&
+        currentEditedTotal != null &&
+        (registeredTotal - currentEditedTotal).abs() >
+            ExpenseFormHelpers.summaryTotalsTolerance;
+    String formatPreviewAmount(double amount) {
+      final suffix = previewCurrency.isEmpty || previewCurrency == 'EUR'
+          ? '€'
+          : previewCurrency;
+      return '${ExpenseFormHelpers.formatAmount(amount)} $suffix';
+    }
+
+    final registeredTotalDisplay = registeredTotal == null
+        ? totalDisplay
+        : formatPreviewAmount(registeredTotal);
 
     // ── Preview media widget ──────────────────────────────────────
     Widget previewMedia;
@@ -401,7 +371,7 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
       children: [
         // ── Sticky KPI header ─────────────────────────────────────
         Container(
-          padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+          padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),
           decoration: BoxDecoration(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
             color: cs.surfaceContainerHighest.withValues(alpha: 0.1),
@@ -419,42 +389,74 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    child: Text(
-                      vendor,
-                      style: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 13,
-                        color: cs.onSurface,
+                    child: Tooltip(
+                      message: vendor,
+                      child: Text(
+                        vendor,
+                        style: t.bodySmall.copyWith(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          color: cs.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  if (totalDisplay.isNotEmpty)
-                    Text(
-                      [
-                        totalDisplay,
-                        if (currency.isNotEmpty) currency,
-                      ].join(' '),
-                      style: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 14,
-                        color: totalColor,
-                      ),
+                  if (registeredTotalDisplay.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Total registrado',
+                          style: t.bodySmall.copyWith(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                        Text(
+                          registeredTotalDisplay,
+                          style: t.bodySmall.copyWith(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            color: cs.onSurface,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                        if (hasRegisteredDifference)
+                          Tooltip(
+                            message: [
+                              'Registrado: ${formatPreviewAmount(registeredTotal)}',
+                              'Sin guardar: ${formatPreviewAmount(currentEditedTotal)}',
+                              if (extractedTotal != null)
+                                'Extraído por OCR: ${formatPreviewAmount(extractedTotal)}',
+                              'Diferencia: ${formatPreviewAmount((currentEditedTotal - registeredTotal).abs())}',
+                            ].join('\n'),
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.info_outline,
+                                      size: 12, color: cs.tertiary),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'Revisar diferencia',
+                                    style: t.bodySmall.copyWith(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: cs.tertiary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  if (status.isNotEmpty) ...[
-                    const SizedBox(width: 5),
-                    _StatusPill(label: status, cs: cs),
-                  ],
-                  if (expenseType != ExpenseDocumentType.standard) ...[
-                    const SizedBox(width: 5),
-                    _ExpenseTypePill(type: expenseType, cs: cs),
-                  ],
-                  if (hasZeroVat) ...[
-                    const SizedBox(width: 5),
-                    _VatZeroPill(cs: cs),
-                  ],
                 ],
               ),
               const SizedBox(height: 5),
@@ -473,6 +475,18 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (status.isNotEmpty) ...[
+                    const SizedBox(width: 5),
+                    _StatusPill(label: status, cs: cs),
+                  ],
+                  if (expenseType != ExpenseDocumentType.standard) ...[
+                    const SizedBox(width: 4),
+                    _ExpenseTypePill(type: expenseType, cs: cs),
+                  ],
+                  if (hasZeroVat) ...[
+                    const SizedBox(width: 4),
+                    _VatZeroPill(cs: cs),
+                  ],
                   const SizedBox(width: 6),
                   _OcrBadge(score: ocrScore),
                   const SizedBox(width: 4),

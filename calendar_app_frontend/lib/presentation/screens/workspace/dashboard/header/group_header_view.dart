@@ -4,6 +4,7 @@ import 'package:hexora/services/groups/event/socket/socket_manager.dart';
 import 'widgets/dashboard_presence_strip.dart';
 // lib/presentation/screens/workspace/dashboard/header/group_header_view.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/clients/client_api.dart';
@@ -17,6 +18,8 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/access/business_overview_screen.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -135,7 +138,7 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
     setState(() => _openingEditor = true);
     final rootNav = Navigator.of(context, rootNavigator: true);
 
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: rootNav.context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
@@ -167,6 +170,35 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
     } finally {
       if (mounted) setState(() => _openingEditor = false);
     }
+  }
+
+  void _openBusinessOverview() {
+    final dashboard = context.read<GroupDashboardState?>();
+    final currentUser = _ud.user;
+    final currentRole = currentUser == null
+        ? null
+        : GroupRole.fromWire(widget.group.userRoles[currentUser.id]);
+
+    void openSection(String section) {
+      Navigator.of(context).pop();
+      dashboard?.openSection(section);
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BusinessOverviewScreen(
+          group: widget.group,
+          user: currentUser,
+          role: currentRole,
+          fetchReadSas: dashboard?.fetchReadSas,
+          onOpenMembers:
+              dashboard == null ? null : () => openSection(Sections.members),
+          onOpenSettings: dashboard?.canSeeAdmin == true
+              ? () => openSection(Sections.settings)
+              : null,
+        ),
+      ),
+    );
   }
 
   Future<void> _loadMembers() async {
@@ -303,7 +335,8 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
       total: total,
       localeName: l.localeName,
       isLoading: statsLoading,
-      onTap: widget.allowEditing ? _handleEditGroup : null,
+      onTap: _openBusinessOverview,
+      onEdit: widget.allowEditing ? _handleEditGroup : null,
       clientCount: _clientCount,
       workerCount: _workerCount,
       pendingEventsCount: _pendingEventsCount,

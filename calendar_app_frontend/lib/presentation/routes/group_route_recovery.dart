@@ -90,7 +90,9 @@ class _GroupRouteRecoveryState extends State<GroupRouteRecovery> {
                 if (_loading) ...[
                   const CircularProgressIndicator(),
                   const SizedBox(height: 20),
-                  Text(isEs ? 'Recuperando tu negocio…' : 'Restoring your business…'),
+                  Text(isEs
+                      ? 'Recuperando tu negocio…'
+                      : 'Restoring your business…'),
                 ] else ...[
                   const Icon(Icons.business_outlined, size: 40),
                   const SizedBox(height: 16),
@@ -114,11 +116,14 @@ class _GroupRouteRecoveryState extends State<GroupRouteRecovery> {
                     child: Text(isEs ? 'Reintentar' : 'Retry'),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
+                    onPressed: () =>
+                        Navigator.of(context).pushNamedAndRemoveUntil(
                       AppRoutes.splashRoute,
                       (_) => false,
                     ),
-                    child: Text(isEs ? 'Elegir otro negocio' : 'Choose another business'),
+                    child: Text(isEs
+                        ? 'Elegir otro negocio'
+                        : 'Choose another business'),
                   ),
                 ],
               ],
@@ -143,7 +148,9 @@ class MissingRouteDataScreen extends StatelessWidget {
           children: [
             const Icon(Icons.link_off_outlined, size: 40),
             const SizedBox(height: 12),
-            Text(isEs ? 'No se puede restaurar esta pantalla' : 'This screen cannot be restored'),
+            Text(isEs
+                ? 'No se puede restaurar esta pantalla'
+                : 'This screen cannot be restored'),
             const SizedBox(height: 12),
             FilledButton(
               onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(

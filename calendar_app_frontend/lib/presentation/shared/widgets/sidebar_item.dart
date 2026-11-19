@@ -1,118 +1,189 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 
-/// A single nav row used in the persistent web sidebar.
-///
-/// Renders icon + label when [collapsed] is false; icon only (with tooltip)
-/// when [collapsed] is true.
-class SidebarItem extends StatefulWidget {
-  const SidebarItem({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.collapsed,
-    required this.onTap,
-    this.textStyle,
-  });
-
+/// Shared navigation destination for expanded menus and collapsed rails.
+class SidebarItem extends StatelessWidget {
+  const SidebarItem(
+      {super.key,
+      required this.icon,
+      required this.label,
+      required this.isSelected,
+      required this.collapsed,
+      required this.onTap,
+      this.textStyle,
+      this.subtitle,
+      this.count,
+      this.trailing,
+      this.primaryAction = false,
+      this.groupHeader = false,
+      this.activeAncestor = false,
+      this.rowHeight,
+      this.iconSize,
+      this.tooltipLabel});
   final IconData icon;
   final String label;
   final bool isSelected;
   final bool collapsed;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final TextStyle? textStyle;
+  final String? subtitle;
+  final int? count;
+  final Widget? trailing;
 
-  @override
-  State<SidebarItem> createState() => _SidebarItemState();
-}
+  /// Creation action ("Crear factura"): neutral text with a subtle blue icon.
+  final bool primaryAction;
 
-class _SidebarItemState extends State<SidebarItem> {
-  bool _hovering = false;
+  /// Toggle row of an expandable group ("Clientes", "Facturación").
+  final bool groupHeader;
+
+  /// Parent of the selected destination: keeps a soft fill without selection.
+  final bool activeAncestor;
+  final double? rowHeight;
+  final double? iconSize;
+  final String? tooltipLabel;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = isDark ? AppDarkColors.primary : AppColors.primary;
-    final inactiveColor =
-        isDark ? AppDarkColors.textSecondary : AppColors.textSecondary;
-
-    final fg = widget.isSelected ? activeColor : inactiveColor;
-    final showBg = widget.isSelected || _hovering;
-    final borderColor = widget.isSelected
-        ? activeColor.withValues(alpha: 0.26)
-        : (_hovering
-            ? activeColor.withValues(alpha: 0.14)
-            : Colors.transparent);
-
-    final inner = MouseRegion(
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOut,
-          height: 44,
-          decoration: BoxDecoration(
-            color: showBg
-                ? activeColor.withValues(alpha: widget.isSelected ? 0.1 : 0.06)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: borderColor, width: 1),
-          ),
-          child: Row(
-            children: [
-              // Left accent bar — visible only when selected
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                width: 3,
-                height: widget.isSelected ? 22 : 0,
-                decoration: BoxDecoration(
-                  color: activeColor,
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(3),
-                    bottomRight: Radius.circular(3),
-                  ),
-                ),
-              ),
-              SizedBox(width: widget.isSelected ? 9 : 12),
-              Icon(widget.icon, size: 20, color: fg),
-              // Label — always in tree but faded out when collapsed
-              if (!widget.collapsed) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 160),
-                    opacity: widget.collapsed ? 0 : 1,
-                    child: Text(
-                      widget.label,
-                      style: widget.textStyle?.copyWith(color: fg) ??
-                          Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: fg,
-                                fontSize: 12.3,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0,
-                              ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (widget.collapsed) {
-      return Tooltip(
-        message: widget.label,
-        preferBelow: false,
-        child: inner,
-      );
-    }
-    return inner;
+    final colors = NavigationColors(Theme.of(context).colorScheme);
+    final isCreateAction = primaryAction && !isSelected;
+    final fg = onTap == null
+        ? colors.disabled
+        : isSelected
+            ? colors.selectedForeground
+            : groupHeader
+                ? colors.groupForeground
+                : isCreateAction
+                    ? colors.createActionForeground
+                    : colors.itemForeground;
+    final iconColor =
+        isCreateAction && onTap != null ? colors.createActionIcon : fg;
+    final style = (textStyle ?? NavigationTokens.label(context)).copyWith(
+        fontSize: groupHeader
+            ? NavigationTokens.groupSize
+            : isCreateAction
+                ? NavigationTokens.createActionSize
+                : NavigationTokens.textSize,
+        color: fg,
+        fontWeight:
+            isSelected || groupHeader ? FontWeight.w600 : FontWeight.w500,
+        letterSpacing: 0);
+    final radius = BorderRadius.circular(NavigationTokens.radius);
+    final selectionDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : NavigationTokens.motion;
+    return Semantics(
+        selected: isSelected,
+        button: true,
+        enabled: onTap != null,
+        label: tooltipLabel ?? (collapsed ? label : null),
+        excludeSemantics: tooltipLabel != null,
+        child: Tooltip(
+            message: tooltipLabel ?? label,
+            child: Material(
+                animationDuration: selectionDuration,
+                color: isSelected
+                    ? colors.selectedBackground
+                    : activeAncestor
+                        ? colors.hover
+                        : Colors.transparent,
+                borderRadius: radius,
+                child: InkWell(
+                    onTap: onTap,
+                    borderRadius: radius,
+                    overlayColor:
+                        WidgetStateProperty.resolveWith(colors.overlay),
+                    child: Stack(children: [
+                      if (isSelected)
+                        PositionedDirectional(
+                            start: 0,
+                            top: 8,
+                            bottom: 8,
+                            child: Container(
+                                width: NavigationTokens.indicatorWidth,
+                                decoration: BoxDecoration(
+                                    color: colors.indicator,
+                                    borderRadius: radius))),
+                      ConstrainedBox(
+                          constraints: BoxConstraints(
+                              minHeight: rowHeight ??
+                                  NavigationTokens.rowHeight(context)),
+                          child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: collapsed
+                                      ? 8
+                                      : NavigationTokens.itemPadding,
+                                  vertical: 6),
+                              child: Row(
+                                  mainAxisAlignment: collapsed
+                                      ? MainAxisAlignment.center
+                                      : MainAxisAlignment.start,
+                                  children: [
+                                    Icon(icon,
+                                        size: iconSize ??
+                                            NavigationTokens.iconSize,
+                                        color: iconColor),
+                                    if (!collapsed) ...[
+                                      const SizedBox(
+                                        width: NavigationTokens.itemPadding,
+                                      ),
+                                      Expanded(
+                                          child: subtitle == null
+                                              ? Text(label,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: style)
+                                              : Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                      Text(label,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: style),
+                                                      const SizedBox(height: 2),
+                                                      Text(subtitle!,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: NavigationTokens
+                                                                  .label(
+                                                                      context)
+                                                              .copyWith(
+                                                                  fontSize: 11,
+                                                                  color: fg
+                                                                      .withValues(
+                                                                          alpha:
+                                                                              .72),
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w400)),
+                                                    ])),
+                                      if (count != null) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 5, vertical: 1),
+                                            decoration: BoxDecoration(
+                                                color:
+                                                    fg.withValues(alpha: .12),
+                                                borderRadius: radius),
+                                            child: Text('$count',
+                                                style: style.copyWith(
+                                                    fontSize: NavigationTokens
+                                                        .countSize,
+                                                    fontWeight:
+                                                        FontWeight.w600)))
+                                      ],
+                                      if (trailing != null) ...[
+                                        const SizedBox(width: 6),
+                                        trailing!
+                                      ],
+                                    ],
+                                  ]))),
+                    ])))));
   }
 }

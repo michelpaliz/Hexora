@@ -103,12 +103,11 @@ class Receipt {
       registeredAt: parseDate(json['registeredAt'] ?? json['createdAt']),
       pdfUrl: json['pdfUrl']?.toString(),
       notes: json['notes']?.toString(),
-      subtotal: json['subtotal'] is num
-          ? json['subtotal'] as num
-          : (totals is Map ? readNum(totals['subtotal']) : null),
-      total: json['total'] is num
-          ? json['total'] as num
-          : (totals is Map ? readNum(totals['total']) : null),
+      // Recalculated totals take precedence over legacy top-level snapshots.
+      subtotal: (totals is Map ? readNum(totals['subtotal']) : null) ??
+          readNum(json['subtotal']),
+      total: (totals is Map ? readNum(totals['total']) : null) ??
+          readNum(json['total']),
       issuerSnapshot: json['issuerSnapshot'] is Map<String, dynamic>
           ? BillingProfile.fromJson(json['issuerSnapshot'])
           : null,
@@ -150,6 +149,7 @@ class Receipt {
         if (issueDate != null)
           'issueDate': issueDate!.toUtc().toIso8601String(),
         if (notes != null && notes!.trim().isNotEmpty) 'notes': notes!.trim(),
+        if (clientSnapshot != null) 'clientSnapshot': clientSnapshot!.toJson(),
         'lines': lines.map((l) => l.toJson()).toList(),
       };
 
@@ -170,6 +170,7 @@ class Receipt {
         if (issueDate != null)
           'issueDate': issueDate!.toUtc().toIso8601String(),
         if (notes != null) 'notes': notes!.trim(),
+        if (clientSnapshot != null) 'clientSnapshot': clientSnapshot!.toJson(),
         'lines': lines.map((l) => l.toJson()).toList(),
       };
 }

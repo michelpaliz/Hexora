@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -44,40 +45,32 @@ class InvoiceActionCard extends StatelessWidget {
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: (!canIssue || issuing) ? null : onIssue,
-                icon: issuing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check_circle_outline),
-                label: Text(issuing ? l.saving : l.issueInvoice),
+              child: HexoraButton(
+                onPressed: !canIssue ? null : onIssue,
+                icon: Icons.check_circle_outline,
+                label: l.issueInvoice,
+                loading: issuing,
               ),
             ),
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
-              child: FilledButton.tonalIcon(
-                onPressed: (!canSave || saving) ? null : onSaveDraft,
-                icon: saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_outlined),
-                label: Text(saving ? l.saving : l.saveDraft),
+              child: HexoraButton(
+                onPressed: !canSave ? null : onSaveDraft,
+                icon: Icons.save_outlined,
+                label: l.saveDraft,
+                variant: HexoraButtonVariant.secondary,
+                loading: saving,
               ),
             ),
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton.icon(
+              child: HexoraButton(
                 onPressed: canPreview ? onPreviewPdf : null,
-                icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: Text(l.invoicePdfPreviewTitle),
+                icon: Icons.picture_as_pdf_outlined,
+                label: l.invoicePdfPreviewTitle,
+                variant: HexoraButtonVariant.secondary,
               ),
             ),
           ],

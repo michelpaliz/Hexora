@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/weather/day_summary.dart';
 import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
 import 'package:hexora/presentation/shared/utils/weather/weather_summary_localizer.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
-import 'package:hexora/l10n/app_localizations.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 Widget buildMonthCell({
@@ -14,6 +14,7 @@ Widget buildMonthCell({
   required DateTime? selectedDate,
   required List<Event> events,
   Map<DateTime, DaySummary>? weatherSummaries,
+  ValueChanged<Event>? onEventTap,
 }) {
   final scheme = Theme.of(context).colorScheme;
   final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -23,6 +24,11 @@ Widget buildMonthCell({
   // --- date helpers ---
   final date =
       DateTime(details.date.year, details.date.month, details.date.day);
+  final visibleMonthDate = details.visibleDates.isEmpty
+      ? date
+      : details.visibleDates[details.visibleDates.length ~/ 2];
+  final isAdjacentMonth = date.month != visibleMonthDate.month ||
+      date.year != visibleMonthDate.year;
   final normalizedForecast = weatherSummaries ?? const {};
   final weatherSummary = normalizedForecast[date];
   final now = DateTime.now();
@@ -47,12 +53,15 @@ Widget buildMonthCell({
   final dayEnd = dayStart.add(const Duration(days: 1));
   final eventsForDay = events
       .where((e) => e.startDate.isBefore(dayEnd) && e.endDate.isAfter(dayStart))
-      .toList();
+      .toList()
+    ..sort((a, b) => a.startDate.compareTo(b.startDate));
 
   // --- palette (Material 3 flavored) ---
   const baseBg = Colors.transparent;
-  final baseFg = (isPast ? typo.bodyMedium : typo.bodyLarge).color ??
-      scheme.onSurface.withValues(alpha: isPast ? 0.55 : 0.87);
+  final baseFg = isAdjacentMonth
+      ? scheme.onSurfaceVariant.withValues(alpha: 0.48)
+      : ((isPast ? typo.bodyMedium : typo.bodyLarge).color ??
+          scheme.onSurface.withValues(alpha: isPast ? 0.55 : 0.87));
 
   final selectedBg = scheme.primaryContainer; // strong but soft
   final selectedFg = scheme.onPrimaryContainer;
@@ -60,7 +69,8 @@ Widget buildMonthCell({
   final weekendBg = scheme.secondaryContainer
       .withValues(alpha: isDark ? 0.18 : 0.26); // gentle weekend tint
 
-  final todayRing = scheme.primary.withValues(alpha: 0.90); // ring around “today”
+  final todayRing =
+      scheme.primary.withValues(alpha: 0.90); // ring around “today”
   final todayFill = scheme.primary.withValues(alpha: isDark ? 0.08 : 0.10);
 
   // Busy overlay (very subtle tint if many events)
@@ -69,6 +79,9 @@ Widget buildMonthCell({
 
   // --- decide background ---
   Color bg = baseBg;
+  if (isAdjacentMonth) {
+    bg = scheme.surfaceContainerLow.withValues(alpha: isDark ? 0.28 : 0.5);
+  }
   if (isSelected) {
     bg = selectedBg;
   } else if (isToday) {
@@ -107,11 +120,6 @@ Widget buildMonthCell({
   }
 
   // --- text styles from AppTypography ---
-  final countStyle = (isSelected
-          ? typo.caption.copyWith(color: selectedFg)
-          : typo.caption.copyWith(color: baseFg.withValues(alpha: 0.70)))
-      .copyWith(fontSize: 10, fontWeight: FontWeight.w400);
-
   final dayNumberStyle = (isSelected
           ? typo.displayMedium.copyWith(color: selectedFg)
           : typo.titleLarge.copyWith(color: baseFg))
@@ -122,68 +130,103 @@ Widget buildMonthCell({
 
   return LayoutBuilder(
     builder: (context, constraints) {
-      if (MediaQuery.sizeOf(context).width < 700) {
-        final weather = weatherSummary;
-        final showWeather = weather != null &&
-            constraints.maxHeight >=
-                MediaQuery.textScalerOf(context).scale(18) + 26;
+      final isCompactCell =
+          constraints.maxWidth < 88 || constraints.maxHeight < 72;
+      if (isCompactCell) {
         return Tooltip(
           message: [
-            if (weather != null) localizeWeatherSummary(l, weather.summary),
-            if (weather != null) weatherTemperatureLabel(weather),
+            if (weatherSummary != null)
+              localizeWeatherSummary(l, weatherSummary.summary),
+            if (weatherSummary != null) weatherTemperatureLabel(weatherSummary),
             if (eventsForDay.isNotEmpty)
               '${eventsForDay.length} ${l.sectionEvents}',
           ].join(' · '),
           child: Container(
-            margin: const EdgeInsets.all(2),
-            padding: const EdgeInsets.all(3),
+            margin: const EdgeInsets.all(1),
+            padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 1),
             decoration: BoxDecoration(
               color: bg,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                  color: isSelected || isToday
-                      ? scheme.primary
-                      : scheme.outlineVariant.withValues(alpha: 0.4)),
+              borderRadius: BorderRadius.circular(6),
+              border: isSelected || isToday
+                  ? Border.all(
+                      color: scheme.primary,
+                      width: isSelected ? 1 : 0.8,
+                    )
+                  : null,
             ),
-            child:
-                Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text('${date.day}',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: isSelected ? selectedFg : baseFg,
-                      fontWeight: FontWeight.w700)),
-              if (showWeather)
-                Flexible(
-                    child: FittedBox(
+            child: LayoutBuilder(
+              builder: (context, contentConstraints) {
+                final contentHeight = contentConstraints.maxHeight;
+                final showEventIndicators =
+                    eventsForDay.isNotEmpty && contentHeight >= 15;
+                final numberHeight =
+                    (contentHeight - (showEventIndicators ? 5 : 0))
+                        .clamp(0.0, 16.0)
+                        .toDouble();
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      height: numberHeight,
+                      width: contentConstraints.maxWidth,
+                      child: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
-                            '${weather.emoji} ${weatherTemperatureLabel(weather)}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(color: scheme.onSurfaceVariant)))),
-              if (eventsForDay.isNotEmpty)
-                Container(
-                    margin: const EdgeInsets.only(top: 2),
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(
-                        color: scheme.primary, shape: BoxShape.circle)),
-            ]),
+                          '${date.day}',
+                          style:
+                              Theme.of(context).textTheme.labelLarge?.copyWith(
+                                    color: isSelected ? selectedFg : baseFg,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                        ),
+                      ),
+                    ),
+                    if (showEventIndicators) ...[
+                      const SizedBox(height: 1),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (final event in eventsForDay.take(3))
+                            Container(
+                              width: 4,
+                              height: 4,
+                              margin: const EdgeInsets.symmetric(horizontal: 1),
+                              decoration: BoxDecoration(
+                                color: event.eventColorIndex >= 0 &&
+                                        event.eventColorIndex <
+                                            ColorManager.eventColors.length
+                                    ? ColorManager
+                                        .eventColors[event.eventColorIndex]
+                                    : scheme.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
           ),
         );
       }
 
-      final isCompact = constraints.maxHeight < 56;
-      final isDenseHeight = constraints.maxHeight < 44;
-      final showDots = eventsForDay.isNotEmpty && constraints.maxHeight >= 34;
+      final isDenseHeight = constraints.maxHeight < 90;
+      final maxVisibleEvents = constraints.maxHeight >= 100
+          ? 3
+          : constraints.maxHeight >= 90
+              ? 2
+              : 1;
+      final visibleEvents = eventsForDay.take(maxVisibleEvents).toList();
+      final hiddenEventCount = eventsForDay.length - visibleEvents.length;
 
       // Slightly smaller / tighter icon if the cell is really small
-      final weatherFontSize = isCompact ? 10.5 : 12.5;
-      final tempFontSize = isCompact ? 8.0 : 9.0;
+      final weatherFontSize = isDenseHeight ? 10.5 : 12.5;
+      final tempFontSize = isDenseHeight ? 8.0 : 9.0;
       final dayFontSize = isDenseHeight ? 11.0 : 12.0;
-      final countFontSize = isDenseHeight ? 9.0 : 10.0;
-      final dotSize = isDenseHeight ? 5.0 : 6.0;
-      final dotRowHeight = isDenseHeight ? 10.0 : 12.0;
 
       return Container(
         margin: const EdgeInsets.all(2),
@@ -193,7 +236,8 @@ Widget buildMonthCell({
           border: isSelected
               ? Border.all(color: scheme.primary, width: 1)
               : Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.35), width: 0.6),
+                  color: scheme.outlineVariant.withValues(alpha: 0.35),
+                  width: 0.6),
           boxShadow: isSelected
               ? [
                   BoxShadow(
@@ -221,55 +265,86 @@ Widget buildMonthCell({
 
             // Main content (date + events)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (!isCompact && eventsForDay.isNotEmpty)
-                      Text(
-                        '${eventsForDay.length} event${eventsForDay.length > 1 ? 's' : ''}',
-                        style: countStyle.copyWith(fontSize: countFontSize),
-                        maxLines: 1,
-                        overflow: TextOverflow.fade,
-                        softWrap: false,
-                      ),
-                    Text(
-                      '${date.day}',
-                      style: dayNumberStyle.copyWith(fontSize: dayFontSize),
-                    ),
-                    if (showDots)
-                      SizedBox(
-                        height: dotRowHeight,
-                        child: Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 3,
-                          runSpacing: 2,
-                          children: eventsForDay.take(4).map((event) {
-                            final color = (event.eventColorIndex >= 0 &&
-                                    event.eventColorIndex <
-                                        ColorManager.eventColors.length)
-                                ? ColorManager
-                                    .eventColors[event.eventColorIndex]
-                                : (isDark ? Colors.white70 : Colors.black38);
-                            return Container(
-                              width: dotSize,
-                              height: dotSize,
+              padding: const EdgeInsets.fromLTRB(6, 5, 6, 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${date.day}',
+                    style: dayNumberStyle.copyWith(fontSize: dayFontSize),
+                  ),
+                  if (visibleEvents.isNotEmpty) const SizedBox(height: 3),
+                  for (final event in visibleEvents) ...[
+                    Builder(
+                      builder: (context) {
+                        final eventColor = event.eventColorIndex >= 0 &&
+                                event.eventColorIndex <
+                                    ColorManager.eventColors.length
+                            ? ColorManager.eventColors[event.eventColorIndex]
+                            : scheme.primary;
+                        return Tooltip(
+                          message: event.title,
+                          child: InkWell(
+                            onTap: onEventTap == null
+                                ? null
+                                : () => onEventTap(event),
+                            borderRadius: BorderRadius.circular(4),
+                            child: Container(
+                              width: double.infinity,
+                              height: 17,
+                              margin: const EdgeInsets.only(bottom: 2),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
                               decoration: BoxDecoration(
-                                color: color,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isDark ? Colors.black : Colors.white,
-                                  width: 0.8,
+                                color: eventColor.withValues(
+                                  alpha: isAdjacentMonth ? 0.08 : 0.14,
+                                ),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border(
+                                  left: BorderSide(
+                                    color: eventColor.withValues(
+                                      alpha: isAdjacentMonth ? 0.45 : 0.9,
+                                    ),
+                                    width: 2,
+                                  ),
                                 ),
                               ),
-                            );
-                          }).toList(),
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                event.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: typo.caption.copyWith(
+                                  fontSize: 9.5,
+                                  height: 1,
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onSurface.withValues(
+                                    alpha: isAdjacentMonth ? 0.5 : 0.86,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                  if (hiddenEventCount > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, top: 1),
+                      child: Text(
+                        '+$hiddenEventCount ${l.localeName.toLowerCase().startsWith('es') ? 'más' : 'more'}',
+                        maxLines: 1,
+                        style: typo.caption.copyWith(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.primary.withValues(
+                            alpha: isAdjacentMonth ? 0.55 : 1,
+                          ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
 

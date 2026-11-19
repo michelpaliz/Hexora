@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 class RecurringSeriesListHeader extends StatelessWidget {
@@ -26,36 +27,65 @@ class RecurringSeriesListHeader extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compactActions = constraints.maxWidth < 560;
+        return SizedBox(
+          height: 42,
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            OutlinedButton.icon(
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh),
-              label: Text(refreshLabel),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: canManage ? onCreate : null,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(createLabel),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-        ),
-      ],
+              const SizedBox(width: 8),
+              HexoraButton.iconOnly(
+                onPressed: onRefresh,
+                icon: Icons.refresh_rounded,
+                tooltip: refreshLabel,
+                variant: HexoraButtonVariant.secondary,
+                size: HexoraButtonSize.standard,
+              ),
+              const SizedBox(width: 6),
+              if (compactActions)
+                HexoraButton.iconOnly(
+                  onPressed: canManage ? onCreate : null,
+                  icon: Icons.add_rounded,
+                  tooltip: createLabel,
+                  size: HexoraButtonSize.standard,
+                )
+              else
+                HexoraButton(
+                  onPressed: canManage ? onCreate : null,
+                  icon: Icons.add_rounded,
+                  label: createLabel,
+                  size: HexoraButtonSize.standard,
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

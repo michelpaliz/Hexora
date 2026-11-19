@@ -1,4 +1,6 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:intl/intl.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
@@ -113,7 +115,7 @@ class NotificationDetailPage extends StatelessWidget {
           tooltip: es ? 'Más opciones' : 'More options',
           onSelected: (action) async {
             if (action == NotificationDetailAction.delete) {
-              final confirmed = await showDialog<bool>(
+              final confirmed = await showHexoraDialog<bool>(
                   context: context,
                   builder: (context) => AlertDialog(
                         title: Text(loc.confirmation),
@@ -133,10 +135,10 @@ class NotificationDetailPage extends StatelessWidget {
           },
           itemBuilder: (_) => [
             if (!notification.isRead)
-              PopupMenuItem(
+              NavigationPopupMenuItem(
                   value: NotificationDetailAction.markRead,
                   child: Text(es ? 'Marcar como leída' : 'Mark as read')),
-            PopupMenuItem(
+            NavigationPopupMenuItem(
                 value: NotificationDetailAction.delete,
                 child:
                     Text(es ? 'Eliminar notificación' : 'Delete notification')),

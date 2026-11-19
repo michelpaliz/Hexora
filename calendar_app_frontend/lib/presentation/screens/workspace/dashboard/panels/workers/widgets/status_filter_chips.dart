@@ -26,12 +26,14 @@ class StatusFilterChips extends StatelessWidget {
           onTap: () => onChanged(WorkerStatusFilter.all),
         ),
         _FilterChip(
-          label: l.statusActive,
+          label: l.localeName.startsWith('es') ? 'Activos' : l.statusActive,
+          dot: const Color(0xff08662f),
           selected: value == WorkerStatusFilter.active,
           onTap: () => onChanged(WorkerStatusFilter.active),
         ),
         _FilterChip(
-          label: l.statusInactive,
+          label: l.localeName.startsWith('es') ? 'Inactivos' : l.statusInactive,
+          dot: const Color(0xff9298ae),
           selected: value == WorkerStatusFilter.inactive,
           onTap: () => onChanged(WorkerStatusFilter.inactive),
         ),
@@ -44,38 +46,50 @@ class _FilterChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final Color? dot;
 
   const _FilterChip({
     required this.label,
     required this.selected,
     required this.onTap,
+    this.dot,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final bg = selected ? cs.primaryContainer : cs.surfaceContainerHighest;
-    final fg = selected ? cs.onPrimaryContainer : cs.onSurface;
+    final bg = selected
+        ? cs.primary
+        : cs.surfaceContainerHighest.withValues(alpha: .5);
+    final fg = selected ? cs.onPrimary : cs.onSurfaceVariant;
 
-    return InkWell(
+    return Material(
+      color: bg,
       borderRadius: BorderRadius.circular(999),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? cs.primary : cs.outlineVariant,
-          ),
-        ),
-        child: Text(
-          label,
-          style: t.bodySmall.copyWith(
-            fontWeight: FontWeight.w700,
-            color: fg,
-          ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            if (dot != null && !selected) ...[
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: t.bodySmall.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: fg,
+              ),
+            ),
+          ]),
         ),
       ),
     );

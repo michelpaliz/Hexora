@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:hexora/models/documents/private_document.dart';
 import 'package:hexora/services/documents/private_documents_api.dart';
@@ -15,7 +16,7 @@ class PrivateDocumentDetailDialog {
     required String groupId,
     required PrivateDocument document,
   }) async {
-    final result = await showDialog<PrivateDocumentDetailResult>(
+    final result = await showHexoraDialog<PrivateDocumentDetailResult>(
       context: context,
       builder: (_) => _PrivateDocumentDetailDialogBody(
         api: api,
@@ -251,7 +252,7 @@ class _PrivateDocumentDetailDialogBodyState
 
   Future<void> _confirmDelete() async {
     final isEs = _isEs;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Eliminar documento' : 'Delete document'),

@@ -1,13 +1,20 @@
 import 'package:hexora/presentation/shared/widgets/weather/weather_summary_card.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/models/weather/work_condition_result.dart';
 import 'package:hexora/services/weather/work_conditions_api.dart';
 import 'package:intl/intl.dart';
 
 class WorkConditionsCard extends StatefulWidget {
-  const WorkConditionsCard({super.key, required this.groupId});
+  const WorkConditionsCard({
+    super.key,
+    required this.groupId,
+    this.compact = false,
+  });
 
   final String groupId;
+  final bool compact;
 
   @override
   State<WorkConditionsCard> createState() => _WorkConditionsCardState();
@@ -18,6 +25,7 @@ class _WorkConditionsCardState extends State<WorkConditionsCard> {
   WorkConditionResult? _result;
   String? _error;
   bool _unavailable = false;
+  bool _expanded = false;
 
   @override
   void initState() {
@@ -64,6 +72,7 @@ class _WorkConditionsCardState extends State<WorkConditionsCard> {
   void _showAffected(WorkConditionResult result) {
     final es = Localizations.localeOf(context).languageCode == 'es';
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       showDragHandle: true,
       builder: (context) => SafeArea(
@@ -101,6 +110,21 @@ class _WorkConditionsCardState extends State<WorkConditionsCard> {
     final es = Localizations.localeOf(context).languageCode == 'es';
     final cs = Theme.of(context).colorScheme;
     if (_unavailable) {
+      if (widget.compact) {
+        return ListTile(
+          minTileHeight: 48,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+          leading: Icon(Icons.wb_cloudy_outlined,
+              color: cs.onSurfaceVariant, size: 20),
+          title: Text(es ? 'Condiciones de trabajo' : 'Work conditions'),
+          trailing: Text(
+            es ? 'Sin datos' : 'No data',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+          ),
+        );
+      }
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const WeatherSummaryCard(location: null),
         Padding(
@@ -118,6 +142,17 @@ class _WorkConditionsCardState extends State<WorkConditionsCard> {
       ]);
     }
     if (_error != null) {
+      if (widget.compact) {
+        return ListTile(
+          minTileHeight: 48,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+          leading: Icon(Icons.cloud_off_outlined, color: cs.error, size: 20),
+          title: Text(es ? 'Condiciones de trabajo' : 'Work conditions'),
+          trailing: IconButton(
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              onPressed: _load),
+        );
+      }
       return Card(
         child: ListTile(
           leading: const Icon(Icons.cloud_off_outlined),
@@ -132,6 +167,17 @@ class _WorkConditionsCardState extends State<WorkConditionsCard> {
     }
     final result = _result;
     if (result == null) {
+      if (widget.compact) {
+        return const SizedBox(
+          height: 48,
+          child: Center(
+            child: SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
+      }
       return const Card(
         child: Padding(
           padding: EdgeInsets.all(20),
@@ -147,6 +193,16 @@ class _WorkConditionsCardState extends State<WorkConditionsCard> {
       'caution' => es ? 'Precaución' : 'Caution',
       _ => es ? 'Buenas' : 'Good',
     };
+    if (widget.compact) {
+      return _compactSummary(
+        context,
+        result: result,
+        es: es,
+        color: color,
+        rating: rating,
+        caution: caution,
+      );
+    }
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -200,15 +256,127 @@ class _WorkConditionsCardState extends State<WorkConditionsCard> {
             ],
             if (result.affectedVisitCount > 0) ...[
               const SizedBox(height: 8),
-              TextButton.icon(
+              HexoraButton(
                 onPressed: () => _showAffected(result),
-                icon: const Icon(Icons.arrow_forward_rounded),
-                label: Text(es
+                icon: Icons.arrow_forward_rounded,
+                label: es
                     ? 'Ver ${result.affectedVisitCount} trabajos afectados'
-                    : 'View ${result.affectedVisitCount} affected jobs'),
+                    : 'View ${result.affectedVisitCount} affected jobs',
+                variant: HexoraButtonVariant.ghost,
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _compactSummary(
+    BuildContext context, {
+    required WorkConditionResult result,
+    required bool es,
+    required Color color,
+    required String rating,
+    required bool caution,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => setState(() => _expanded = !_expanded),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Column(
+            children: [
+              SizedBox(
+                height: 48,
+                child: Row(
+                  children: [
+                    Icon(
+                      caution
+                          ? Icons.warning_amber_rounded
+                          : Icons.wb_sunny_rounded,
+                      color: color,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        es ? 'Condiciones de trabajo' : 'Work conditions',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                    Text(
+                      rating,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    Icon(
+                      _expanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+              ),
+              AnimatedSize(
+                duration: HexoraMotion.duration(context, HexoraMotion.normal),
+                curve: HexoraMotion.enter,
+                child: _expanded
+                    ? Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              es
+                                  ? '${result.outdoorVisitCount} trabajos exteriores hoy'
+                                  : '${result.outdoorVisitCount} outdoor jobs today',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              result.affectedVisitCount == 0
+                                  ? (es
+                                      ? 'Sin impacto meteorológico significativo'
+                                      : 'No significant weather impact')
+                                  : (es
+                                      ? '${result.affectedVisitCount} trabajos pueden verse afectados por ${result.reasons.map((reason) => _reason(reason, es)).join(', ')}'
+                                      : '${result.affectedVisitCount} jobs may be affected by ${result.reasons.map((reason) => _reason(reason, es)).join(', ')}'),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color:
+                                        caution ? color : cs.onSurfaceVariant,
+                                  ),
+                            ),
+                            if (result.affectedVisitCount > 0)
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton(
+                                  onPressed: () => _showAffected(result),
+                                  child: Text(
+                                    es
+                                        ? 'Ver trabajos afectados'
+                                        : 'View affected jobs',
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -10,6 +10,7 @@ class RecurringSeriesCard extends StatefulWidget {
   final Map<String, dynamic> series;
   final Map<String, String> clientNamesById;
   final ValueChanged<Map<String, dynamic>> onOpen;
+  final ValueChanged<Map<String, dynamic>> onEdit;
   final ValueChanged<Map<String, dynamic>> onPreview;
   final ValueChanged<Map<String, dynamic>>? onPause;
   final ValueChanged<Map<String, dynamic>>? onResume;
@@ -17,12 +18,14 @@ class RecurringSeriesCard extends StatefulWidget {
   final ValueChanged<Map<String, dynamic>>? onSelect;
   final bool canManage;
   final bool selected;
+  final bool showActiveStatus;
 
   const RecurringSeriesCard({
     super.key,
     required this.series,
     required this.clientNamesById,
     required this.onOpen,
+    required this.onEdit,
     required this.onPreview,
     required this.onPause,
     required this.onResume,
@@ -30,6 +33,7 @@ class RecurringSeriesCard extends StatefulWidget {
     this.onSelect,
     required this.canManage,
     this.selected = false,
+    this.showActiveStatus = true,
   });
 
   @override
@@ -43,7 +47,6 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
     String status,
     bool isExpired,
     ColorScheme cs,
-    Brightness brightness,
   ) {
     if (isExpired) return cs.error;
     switch (status) {
@@ -54,9 +57,7 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
       case 'completed':
         return cs.primary;
       default:
-        return brightness == Brightness.dark
-            ? cs.secondary
-            : const Color(0xFF0F766E);
+        return cs.primary;
     }
   }
 
@@ -219,7 +220,7 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
                     ? l.recurringInvoicesStatusCompleted
                     : l.recurringInvoicesStatusActive;
 
-    final stripe = _stripeColor(status, isExpired, cs, theme.brightness);
+    final stripe = _stripeColor(status, isExpired, cs);
 
     final rawTz = (rule is Map ? rule['timezone'] : null) ?? series['timezone'];
     final timezone = rawTz?.toString();
@@ -242,6 +243,10 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
         .toString());
     final freqLabel = recurringFrequencyLabel(l, freq);
     final concepts = _conceptsFromSeries(series);
+    final compactDescription = concepts.isEmpty ? nextRunLabel : concepts.first;
+    final compactDescriptionIcon = concepts.isEmpty
+        ? Icons.event_available_outlined
+        : Icons.subject_outlined;
 
     final canPause =
         widget.canManage && widget.onPause != null && status == 'active';
@@ -283,7 +288,7 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
               // ── Main content ──────────────────────────────────────────
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                  padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -293,15 +298,15 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
                         children: [
                           // Frequency icon box
                           Container(
-                            width: 38,
-                            height: 38,
+                            width: 34,
+                            height: 34,
                             decoration: BoxDecoration(
                               color: stripe.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(9),
                             ),
                             child: Icon(
                               _freqIcon(freq),
-                              size: 18,
+                              size: 17,
                               color: stripe,
                             ),
                           ),
@@ -356,14 +361,14 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
                                       ],
                                       if (nextRunDisplay != null) ...[
                                         Icon(
-                                          Icons.event_available_outlined,
+                                          compactDescriptionIcon,
                                           size: 12,
                                           color: stripe,
                                         ),
                                         const SizedBox(width: 4),
                                         Flexible(
                                           child: Text(
-                                            nextRunLabel,
+                                            compactDescription,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: t.bodySmall.copyWith(
@@ -412,28 +417,34 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
                           const SizedBox(width: 6),
 
                           // Status pill
-                          _StatusPill(
-                            label: statusLabel,
-                            icon: _statusIcon(status, isExpired),
-                            color: stripe,
-                          ),
+                          if (status != 'active' ||
+                              isExpired ||
+                              widget.showActiveStatus)
+                            _StatusPill(
+                              label: statusLabel,
+                              icon: _statusIcon(status, isExpired),
+                              color: stripe,
+                            ),
 
                           // Edit button
                           if (widget.canManage) ...[
                             const SizedBox(width: 4),
-                            Tooltip(
-                              message: l.edit,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(8),
-                                onTap: () => widget.onOpen(series),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(6),
-                                  child: Icon(
-                                    Icons.edit_outlined,
-                                    size: 16,
-                                    color: cs.onSurfaceVariant
-                                        .withValues(alpha: 0.7),
-                                  ),
+                            IconButton(
+                              key: ValueKey(
+                                  'edit-recurring-${seriesId(series)}'),
+                              tooltip: l.edit,
+                              onPressed: () => widget.onEdit(series),
+                              icon: const Icon(Icons.edit_outlined, size: 16),
+                              color: cs.onSurfaceVariant,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints.tightFor(
+                                width: 32,
+                                height: 32,
+                              ),
+                              style: IconButton.styleFrom(
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
                             ),
@@ -455,7 +466,7 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
                       ),
 
                       // ── Expanded details ──────────────────────────────
-                      if (concepts.isNotEmpty) ...[
+                      if (_expanded && concepts.isNotEmpty) ...[
                         const SizedBox(height: 7),
                         Wrap(
                           spacing: 6,

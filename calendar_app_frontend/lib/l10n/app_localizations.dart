@@ -371,19 +371,19 @@ abstract class AppLocalizations {
   /// No description provided for @currentPassword.
   ///
   /// In en, this message translates to:
-  /// **'Insert your current password'**
+  /// **'Current password'**
   String get currentPassword;
 
   /// No description provided for @newPassword.
   ///
   /// In en, this message translates to:
-  /// **'Update your current password'**
+  /// **'New password'**
   String get newPassword;
 
   /// No description provided for @confirmPassword.
   ///
   /// In en, this message translates to:
-  /// **'Confirm password'**
+  /// **'Confirm new password'**
   String get confirmPassword;
 
   /// No description provided for @password.
@@ -457,6 +457,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New password and confirmation password do not match.'**
   String get passwordNotMatch;
+
+  /// No description provided for @newPasswordMustDiffer.
+  ///
+  /// In en, this message translates to:
+  /// **'New password must be different from the current password.'**
+  String get newPasswordMustDiffer;
 
   /// No description provided for @userNameTaken.
   ///
@@ -3020,6 +3026,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap to view all role capabilities.'**
   String get roleCardTapHint;
+
+  /// Title for the access permissions row in the business information section.
+  ///
+  /// In en, this message translates to:
+  /// **'Access permissions'**
+  String get accessPermissionsTitle;
+
+  /// Subtitle shown when the current user has full access to the business.
+  ///
+  /// In en, this message translates to:
+  /// **'Full access to the business'**
+  String get accessFullBusiness;
+
+  /// Action label that opens the role permissions details.
+  ///
+  /// In en, this message translates to:
+  /// **'View role permissions'**
+  String get viewRolePermissions;
+
+  /// Short explanation shown inside the business hours editing screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the allowed schedule for scheduling events.'**
+  String get businessHoursScheduleHint;
 
   /// Label shown before the event owner's information.
   ///
@@ -5659,7 +5689,7 @@ abstract class AppLocalizations {
   /// No description provided for @invoiceNumberLabel.
   ///
   /// In en, this message translates to:
-  /// **'Invoice number (NNN-YY)'**
+  /// **'Invoice number'**
   String get invoiceNumberLabel;
 
   /// No description provided for @invoiceNumberHelper.
@@ -6775,7 +6805,7 @@ abstract class AppLocalizations {
   /// No description provided for @clientMissingCountThisMonth.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =0{None missing} =1{1 missing this month} other{{count} missing this month}}'**
+  /// **'{count, plural, =0{All invoiced this month} =1{1 without invoice this month} other{{count} without invoice this month}}'**
   String clientMissingCountThisMonth(int count);
 
   /// No description provided for @clientInvoiceCountThisMonth.
@@ -10931,6 +10961,30 @@ abstract class AppLocalizations {
   /// **'Signature'**
   String get mailConversationSignature;
 
+  /// No description provided for @mailConversationShowQuoted.
+  ///
+  /// In en, this message translates to:
+  /// **'Show quoted content'**
+  String get mailConversationShowQuoted;
+
+  /// No description provided for @mailConversationHideQuoted.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide quoted content'**
+  String get mailConversationHideQuoted;
+
+  /// No description provided for @mailConversationViewComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'View complete message'**
+  String get mailConversationViewComplete;
+
+  /// No description provided for @mailConversationViewCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Show compact view'**
+  String get mailConversationViewCompact;
+
   /// No description provided for @mailConversationReply.
   ///
   /// In en, this message translates to:
@@ -10964,7 +11018,7 @@ abstract class AppLocalizations {
   /// Message count shown above a thread's conversation list.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, one {# message} other {# messages}}'**
+  /// **'{count, plural, one {1 message} other {{count} messages}}'**
   String mailConversationMessageCount(int count);
 
   /// No description provided for @mailLegalNoticeShow.
@@ -13118,19 +13172,19 @@ abstract class AppLocalizations {
   /// No description provided for @expenseTotalsUseSummaryLabel.
   ///
   /// In en, this message translates to:
-  /// **'Use document summary'**
+  /// **'Amount source'**
   String get expenseTotalsUseSummaryLabel;
 
   /// No description provided for @expenseTotalsSummaryMode.
   ///
   /// In en, this message translates to:
-  /// **'Totals extracted from summary'**
+  /// **'From document'**
   String get expenseTotalsSummaryMode;
 
   /// No description provided for @expenseTotalsCalculateMode.
   ///
   /// In en, this message translates to:
-  /// **'Calculate from lines'**
+  /// **'From lines'**
   String get expenseTotalsCalculateMode;
 
   /// No description provided for @expenseTotalsSummaryHelp.
@@ -14137,6 +14191,19 @@ abstract class AppLocalizations {
   /// **'Delete business'**
   String get groupSettingsDeleteGroup;
 
+  /// No description provided for @invoiceIssueChronologyError.
+  ///
+  /// In en, this message translates to:
+  /// **'This draft is dated {draftDate}, but invoice {invoiceNumber} was already issued with the later date {issuedDate}. Change the draft date before issuing it.'**
+  String invoiceIssueChronologyError(
+      Object draftDate, Object invoiceNumber, Object issuedDate);
+
+  /// No description provided for @invoiceBatchIssueStoppedAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} invoices were issued before the process stopped.'**
+  String invoiceBatchIssueStoppedAfter(Object count);
+
   /// No description provided for @agendaCompleted.
   ///
   /// In en, this message translates to:
@@ -14149,66 +14216,203 @@ abstract class AppLocalizations {
   /// **'No jobs for this day. Select another date or All.'**
   String get agendaEmptyDay;
 
-  /// Localized label for downloadsTitle.
+  /// No description provided for @downloadsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
   String get downloadsTitle;
 
-  /// Localized label for downloadsRecent.
+  /// No description provided for @downloadsRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent downloads'**
   String get downloadsRecent;
 
-  /// Localized label for downloadsViewAll.
+  /// No description provided for @downloadsViewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View all downloads'**
   String get downloadsViewAll;
 
-  /// Localized label for downloadsInvoicesZip.
+  /// No description provided for @downloadsInvoicesZip.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices'**
   String get downloadsInvoicesZip;
 
-  /// Localized label for downloadsInvoiceVatAudit.
+  /// No description provided for @downloadsInvoiceVatAudit.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice VAT audit'**
   String get downloadsInvoiceVatAudit;
 
-  /// Localized label for downloadsExpenseVatAudit.
+  /// No description provided for @downloadsExpenseVatAudit.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense VAT audit'**
   String get downloadsExpenseVatAudit;
 
-  /// Localized label for downloadsBankExpenses.
+  /// No description provided for @downloadsBankExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Bank expenses'**
   String get downloadsBankExpenses;
 
-  /// Localized label for downloadsBankTransactions.
+  /// No description provided for @downloadsBankTransactions.
+  ///
+  /// In en, this message translates to:
+  /// **'Bank transactions'**
   String get downloadsBankTransactions;
 
-  /// Localized label for downloadsInsights.
+  /// No description provided for @downloadsInsights.
+  ///
+  /// In en, this message translates to:
+  /// **'Insights report'**
   String get downloadsInsights;
 
-  /// Localized label for downloadsCustomReport.
+  /// No description provided for @downloadsCustomReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom report'**
   String get downloadsCustomReport;
 
-  /// Localized label for downloadsInvoice.
+  /// No description provided for @downloadsInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice'**
   String get downloadsInvoice;
 
-  /// Localized label for downloadsQueued.
+  /// No description provided for @downloadsQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
   String get downloadsQueued;
 
-  /// Localized label for downloadsProcessing.
+  /// No description provided for @downloadsProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing'**
   String get downloadsProcessing;
 
-  /// Localized label for downloadsReady.
+  /// No description provided for @downloadsReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
   String get downloadsReady;
 
-  /// Localized label for downloadsFailed.
+  /// No description provided for @downloadsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
   String get downloadsFailed;
 
-  /// Localized label for downloadsExpired.
+  /// No description provided for @downloadsExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
   String get downloadsExpired;
 
-  /// Localized label for downloadsRefresh.
+  /// No description provided for @downloadsRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
   String get downloadsRefresh;
 
-  /// Localized label for downloadsEmpty.
+  /// No description provided for @downloadsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No recent downloads'**
   String get downloadsEmpty;
 
-  /// Localized label for downloadsChecking.
+  /// No description provided for @downloadsChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking files…'**
   String get downloadsChecking;
 
-  /// Localized label for downloadsGeneratedFile.
+  /// No description provided for @downloadsGeneratedFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated file'**
   String get downloadsGeneratedFile;
 
+  /// No description provided for @preferencesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get preferencesTitle;
+
+  /// No description provided for @preferencesNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigation'**
+  String get preferencesNavigation;
+
+  /// No description provided for @preferencesAppearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get preferencesAppearance;
+
+  /// No description provided for @preferencesLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get preferencesLanguage;
+
+  /// No description provided for @preferencesAutomatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get preferencesAutomatic;
+
+  /// No description provided for @preferencesNavigationAutomatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get preferencesNavigationAutomatic;
+
+  /// No description provided for @preferencesNavigationAutomaticDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show labels when space is available.'**
+  String get preferencesNavigationAutomaticDescription;
+
+  /// No description provided for @preferencesNavigationIconsAndText.
+  ///
+  /// In en, this message translates to:
+  /// **'Icons and text'**
+  String get preferencesNavigationIconsAndText;
+
+  /// No description provided for @preferencesNavigationIconsAndTextDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Always show module icons and labels.'**
+  String get preferencesNavigationIconsAndTextDescription;
+
+  /// No description provided for @preferencesNavigationIconsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Icons only'**
+  String get preferencesNavigationIconsOnly;
+
+  /// No description provided for @preferencesNavigationIconsOnlyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a compact navigation with tooltips.'**
+  String get preferencesNavigationIconsOnlyDescription;
+
+  /// No description provided for @preferencesThemeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get preferencesThemeLight;
+
+  /// No description provided for @preferencesThemeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get preferencesThemeDark;
 }
 
 class _AppLocalizationsDelegate

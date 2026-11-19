@@ -58,12 +58,14 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
 
   _RecurringView _view = _RecurringView.list;
   bool _loading = true;
+  bool _refreshingSeries = false;
   String? _error;
 
   String _statusFilter = 'active';
   String? _clientFilter;
   bool _dueSoonOnly = false;
   String? _lastActionsKey;
+  bool _openingCreate = false;
 
   @override
   void dispose() {
@@ -97,6 +99,16 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
   void initState() {
     super.initState();
     _loadAll();
+  }
+
+  @override
+  void didUpdateWidget(covariant RecurringInvoicesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final seriesId = widget.initialSeriesId?.trim() ?? '';
+    if (seriesId.isEmpty || seriesId == oldWidget.initialSeriesId?.trim()) {
+      return;
+    }
+    if (!_loading) _openSeriesById(seriesId);
   }
 
   Future<void> _loadAll() async {
@@ -149,7 +161,19 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
     });
   }
 
-  void _openCreate() => setState(() => _view = _RecurringView.create);
+  /// Avoid replacing a tooltip-bearing desktop list while MouseTracker is
+  /// processing the click that opened the wizard.
+  void _openCreate() {
+    if (_openingCreate || _view != _RecurringView.list) return;
+    _openingCreate = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _openingCreate = false;
+        _view = _RecurringView.create;
+      });
+    });
+  }
 
   void _backToList() {
     setState(() {
@@ -163,7 +187,11 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
     return _series.where((s) {
       if (_statusFilter != 'all') {
         final status = (s['status'] ?? '').toString().toLowerCase();
-        if (status != _statusFilter) return false;
+        if (_statusFilter == 'inactive') {
+          if (status == 'active') return false;
+        } else if (status != _statusFilter) {
+          return false;
+        }
       }
       if (_clientFilter != null && _clientFilter!.isNotEmpty) {
         final rawClient =
@@ -184,6 +212,8 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
   }
 
   Future<void> _refreshSeries() async {
+    if (_refreshingSeries) return;
+    setState(() => _refreshingSeries = true);
     try {
       final items = await _api.list(groupId: widget.group.id);
       if (!mounted) return;
@@ -194,6 +224,8 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
       }
     } catch (_) {
       // ignore; list stays
+    } finally {
+      if (mounted) setState(() => _refreshingSeries = false);
     }
   }
 
@@ -243,6 +275,7 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
     } else {
       body = RecurringSeriesListView(
         series: _filteredSeries(),
+        totalSeriesCount: _series.length,
         clients: _clients,
         canManage: canManage,
         api: _api,
@@ -254,6 +287,7 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
         onClientFilter: (v) => setState(() => _clientFilter = v),
         onDueSoon: (v) => setState(() => _dueSoonOnly = v),
         onRefresh: _refreshSeries,
+        refreshing: _refreshingSeries,
         onCreate: canManage ? _openCreate : () {},
         onOpenSeries: _openSeries,
         onPreviewSeries: (series) => previewSeries(context, series, _api),

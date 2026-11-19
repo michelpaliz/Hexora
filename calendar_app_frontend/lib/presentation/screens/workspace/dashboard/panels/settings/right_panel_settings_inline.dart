@@ -1,16 +1,19 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/groups/invite/repository/invite_repository.dart';
+import 'package:hexora/services/groups/invite/domain/invite_domain.dart';
 import 'package:hexora/services/invoicing/billing_profile_api.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard/header/group_header_view.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_info_section.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_members_section.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_notifications_section.dart';
@@ -33,7 +36,12 @@ class SettingsInlinePanel extends StatefulWidget {
 }
 
 class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
-  String _selectedSection = 'info';
+  // The content sits a fixed 24px after the sidebar, left-aligned, and is
+  // capped (not centered) so cards never stretch across the whole screen.
+  static const double _settingsContentMaxWidth = 900;
+
+  String _selectedSection = 'sysconfig';
+  bool _menuCollapsed = false;
   late NotificationViewModel _notificationViewModel;
   late MembersVM _membersVM;
   final BillingProfileApi _billingApi = BillingProfileApi();
@@ -57,6 +65,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
       groupDomain: context.read<GroupDomain>(),
       notificationDomain: context.read<NotificationDomain>(),
       notificationService: NotificationApiClient(),
+      invitationDomain: context.read<InvitationDomain>(),
     );
     _membersVM = MembersVM(
       group: widget.group,
@@ -172,35 +181,30 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
     }
   }
 
+  void _selectSection(String section) {
+    setState(() => _selectedSection = section);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
 
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.zero,
       child: Container(
         color: isLight ? Colors.white : Colors.transparent,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            if (constraints.maxWidth < 620) {
-              return Column(
-                children: [
-                  SizedBox(
-                    height: 190,
-                    width: double.infinity,
-                    child: _buildSideMenu(context, width: double.infinity),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(child: _buildContent(context)),
-                ],
-              );
-            }
+            final forceCollapsed = constraints.maxWidth < 620;
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSideMenu(context),
-                const SizedBox(width: 12),
-                Expanded(child: _buildContent(context)),
+                _buildSideMenu(context, forceCollapsed: forceCollapsed),
+                Expanded(
+                  child: WorkspaceMainContent(
+                    child: _buildContent(context),
+                  ),
+                ),
               ],
             );
           },
@@ -209,7 +213,26 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
     );
   }
 
-  Widget _buildSideMenu(BuildContext context, {double width = 220}) {
+  Widget _buildSideMenu(
+    BuildContext context, {
+    bool forceCollapsed = false,
+  }) {
+    final collapsed = forceCollapsed || _menuCollapsed;
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    return CollapsibleSidebarShell(
+      title: es ? 'Ajustes' : 'Settings',
+      collapsed: collapsed,
+      onToggleCollapsed: forceCollapsed
+          ? null
+          : () => setState(() => _menuCollapsed = !_menuCollapsed),
+      expandTooltip: es ? 'Expandir menú' : 'Expand menu',
+      collapseTooltip: es ? 'Contraer menú' : 'Collapse menu',
+      builder: (navigationContext, layoutCollapsed) =>
+          _buildNavigation(navigationContext, layoutCollapsed),
+    );
+  }
+
+  Widget _buildNavigation(BuildContext context, bool collapsed) {
     final l = AppLocalizations.of(context)!;
     final userId = context.watch<AuthProvider>().currentUser?.id ?? '';
     final role = widget.group.userRoles[userId];
@@ -218,118 +241,114 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
         role == 'admin' ||
         role == 'co-admin';
     final cs = Theme.of(context).colorScheme;
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    return SizedBox(
-      width: width,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: isLight
-              ? Colors.white
-              : cs.surfaceContainerHighest.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isLight
-                ? Colors.transparent
-                : cs.outlineVariant.withValues(alpha: 0.35),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      color: cs.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!collapsed) ...[
                     _buildSectionHeader(
                       context,
                       icon: Icons.layers_outlined,
                       label: 'GENERAL',
                     ),
                     const SizedBox(height: 4),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.info_outline_rounded,
-                      label: l.groupInfo,
-                      selected: _selectedSection == 'info',
-                      onTap: () => setState(() => _selectedSection = 'info'),
-                    ),
+                  ],
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.info_outline_rounded,
+                    label: l.groupInfo,
+                    selected: _selectedSection == 'info',
+                    collapsed: collapsed,
+                    onTap: () => _selectSection('info'),
+                  ),
+                  const SizedBox(height: 4),
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.group_outlined,
+                    label: l.membersTitle,
+                    selected: _selectedSection == 'members',
+                    collapsed: collapsed,
+                    onTap: () => _selectSection('members'),
+                  ),
+                  const SizedBox(height: 4),
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.mark_email_unread_outlined,
+                    label: l.notifications,
+                    selected: _selectedSection == 'notifications',
+                    collapsed: collapsed,
+                    onTap: () => _selectSection('notifications'),
+                  ),
+                  if (canManageDocuments) ...[
                     const SizedBox(height: 4),
                     _buildMenuItem(
                       context,
-                      icon: Icons.group_outlined,
-                      label: l.membersTitle,
-                      selected: _selectedSection == 'members',
-                      onTap: () => setState(() => _selectedSection = 'members'),
+                      icon: Icons.folder_copy_outlined,
+                      label: 'Documentos del negocio',
+                      selected: _selectedSection == 'documents',
+                      collapsed: collapsed,
+                      onTap: () => _selectSection('documents'),
                     ),
-                    const SizedBox(height: 4),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.mark_email_unread_outlined,
-                      label: l.notifications,
-                      selected: _selectedSection == 'notifications',
-                      onTap: () =>
-                          setState(() => _selectedSection = 'notifications'),
-                    ),
-                    if (canManageDocuments) ...[
-                      const SizedBox(height: 4),
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.folder_copy_outlined,
-                        label: 'Documentos del negocio',
-                        selected: _selectedSection == 'documents',
-                        onTap: () =>
-                            setState(() => _selectedSection = 'documents'),
-                      ),
-                    ],
-                    const SizedBox(height: 18),
+                  ],
+                  SizedBox(height: collapsed ? 8 : 18),
+                  if (!collapsed) ...[
                     _buildSectionHeader(
                       context,
                       icon: Icons.request_quote_outlined,
                       label: 'FACTURACI\u00d3N',
                     ),
                     const SizedBox(height: 4),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.receipt_long_rounded,
-                      label: l.billingProfileTitle,
-                      selected: _selectedSection == 'billing',
-                      onTap: () {
-                        if (_selectedSection != 'billing') _loadBillingProfile();
-                        setState(() => _selectedSection = 'billing');
-                      },
-                    ),
-                    const SizedBox(height: 18),
+                  ],
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.receipt_long_rounded,
+                    label: l.billingProfileTitle,
+                    selected: _selectedSection == 'billing',
+                    collapsed: collapsed,
+                    onTap: () {
+                      if (_selectedSection != 'billing') _loadBillingProfile();
+                      _selectSection('billing');
+                    },
+                  ),
+                  SizedBox(height: collapsed ? 8 : 18),
+                  if (!collapsed) ...[
                     _buildSectionHeader(
                       context,
                       icon: Icons.settings_suggest_outlined,
                       label: 'SISTEMA',
                     ),
                     const SizedBox(height: 4),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.tune_rounded,
-                      label: l.systemConfigMenuLabel,
-                      selected: _selectedSection == 'sysconfig',
-                      onTap: () =>
-                          setState(() => _selectedSection = 'sysconfig'),
-                    ),
-                    const SizedBox(height: 4),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.folder_open_outlined,
-                      label: 'Historial de archivos',
-                      selected: _selectedSection == 'files',
-                      onTap: () => setState(() => _selectedSection = 'files'),
-                    ),
                   ],
-                ),
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.tune_rounded,
+                    label: l.systemConfigMenuLabel,
+                    selected: _selectedSection == 'sysconfig',
+                    collapsed: collapsed,
+                    onTap: () => _selectSection('sysconfig'),
+                  ),
+                  const SizedBox(height: 4),
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.folder_open_outlined,
+                    label: 'Historial de archivos',
+                    selected: _selectedSection == 'files',
+                    collapsed: collapsed,
+                    onTap: () => _selectSection('files'),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -340,7 +359,6 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
     required String label,
   }) {
     final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
@@ -348,7 +366,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
         children: [
           Icon(
             icon,
-            size: 13,
+            size: NavigationTokens.iconSize,
             color: cs.onSurfaceVariant.withValues(alpha: 0.62),
           ),
           const SizedBox(width: 7),
@@ -357,11 +375,8 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: t.bodySmall.copyWith(
-                color: cs.onSurfaceVariant.withValues(alpha: 0.68),
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.9,
+              style: NavigationTokens.section(context).copyWith(
+                color: NavigationColors(cs).sectionForeground,
               ),
             ),
           ),
@@ -375,109 +390,39 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
     required IconData icon,
     required String label,
     required bool selected,
+    required bool collapsed,
     required VoidCallback onTap,
   }) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final fg = selected ? cs.primary : cs.onSurfaceVariant;
-    final bg = selected
-        ? (isLight
-            ? cs.primary.withValues(alpha: 0.08)
-            : cs.primaryContainer.withValues(alpha: 0.44))
-        : Colors.transparent;
-    final borderColor =
-        selected ? cs.primary.withValues(alpha: 0.22) : Colors.transparent;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(13),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOut,
-        constraints: const BoxConstraints(minHeight: 40),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: borderColor),
-        ),
-        child: Row(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              width: 3,
-              height: selected ? 20 : 18,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: selected ? cs.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-            Container(
-              width: 27,
-              height: 27,
-              decoration: BoxDecoration(
-                color: isLight
-                    ? (selected
-                        ? cs.primary.withValues(alpha: 0.08)
-                        : Colors.transparent)
-                    : (selected
-                        ? cs.primary.withValues(alpha: 0.12)
-                        : cs.surfaceContainerHighest.withValues(alpha: 0.45)),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(icon, size: 15, color: fg),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                style: t.bodySmall.copyWith(
-                  color: selected ? cs.onSurface : fg,
-                  fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return SidebarItem(
+        icon: icon,
+        label: label,
+        isSelected: selected,
+        collapsed: collapsed,
+        onTap: onTap);
   }
 
   Widget _buildContent(BuildContext context) {
+    final Widget content;
     if (_selectedSection == 'billing' || _selectedSection == 'documents') {
-      return _buildSectionContent(context);
+      content = _buildSectionContent(context);
+    } else {
+      content = SingleChildScrollView(
+        padding: const EdgeInsets.all(12),
+        child: _buildSectionContent(context),
+      );
     }
-
-    // Show group header only for info section and only on non-web platforms
-    final showGroupHeader = _selectedSection == 'info' && !kIsWeb;
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (showGroupHeader) ...[
-            Card(
-              elevation: 0,
-              clipBehavior: Clip.antiAlias,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
-              ),
-              child: GroupHeaderView(group: widget.group, onEditGroup: () {}),
-            ),
-            const SizedBox(height: 20),
-          ],
-          _buildSectionContent(context),
-        ],
-      ),
-    );
+    return _frameContent(content);
   }
+
+  /// Pins every settings section to the sidebar's left edge and caps its width,
+  /// replacing the per-section centering so content starts right after the gap.
+  Widget _frameContent(Widget child) => Align(
+        alignment: Alignment.topLeft,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: _settingsContentMaxWidth),
+          child: child,
+        ),
+      );
 
   Widget _buildSectionContent(BuildContext context) {
     switch (_selectedSection) {

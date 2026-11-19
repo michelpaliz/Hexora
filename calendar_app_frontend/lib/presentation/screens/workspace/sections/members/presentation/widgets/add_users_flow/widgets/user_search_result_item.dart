@@ -6,6 +6,7 @@ class UserSearchResultItem extends StatelessWidget {
   final bool isMember;
   final bool isPending;
   final VoidCallback? onAdd;
+  final VoidCallback? onRemove;
 
   const UserSearchResultItem({
     super.key,
@@ -13,6 +14,7 @@ class UserSearchResultItem extends StatelessWidget {
     this.isMember = false,
     this.isPending = false,
     this.onAdd,
+    this.onRemove,
   });
 
   @override
@@ -24,16 +26,22 @@ class UserSearchResultItem extends StatelessWidget {
     Color? badgeFg;
 
     if (isMember) {
-      badgeLabel = 'Member';
+      badgeLabel = 'Miembro';
       badgeBg = cs.secondaryContainer;
       badgeFg = cs.onSecondaryContainer;
     } else if (isPending) {
-      badgeLabel = 'Selected';
+      badgeLabel = 'Seleccionado';
       badgeBg = cs.tertiaryContainer;
       badgeFg = cs.onTertiaryContainer;
     }
 
     return ListTile(
+      leading: Checkbox(
+        value: isPending,
+        onChanged: isMember
+            ? null
+            : (_) => isPending ? onRemove?.call() : onAdd?.call(),
+      ),
       title: Text('@$username',
           style: const TextStyle(fontWeight: FontWeight.w600)),
       trailing: isMember || isPending
@@ -53,8 +61,8 @@ class UserSearchResultItem extends StatelessWidget {
               onPressed: onAdd, // enabled
             ),
       // prevent taps from doing anything if disabled
-      onTap: (isMember || isPending) ? null : onAdd,
-      enabled: !(isMember || isPending),
+      onTap: isMember ? null : (isPending ? onRemove : onAdd),
+      enabled: !isMember,
     );
   }
 }

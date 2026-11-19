@@ -1,8 +1,11 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:async';
 import 'dart:typed_data';
-import 'dart:ui' show PointerDeviceKind;
+import 'dart:ui' show FontFeature, PointerDeviceKind;
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/form_sections/expense_document_totals_fields.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/form_sections/provider_picker.dart';
@@ -14,7 +17,10 @@ import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/e
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_models.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/operations/form_helpers.dart';
 import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
-import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_wizard_navigation.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/jobs/vat_ocr_reprocess_job_store.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -27,6 +33,7 @@ part 'recent_uploads/recent_uploads_editor_section.dart';
 part 'recent_uploads/recent_uploads_mobile_section.dart';
 part 'recent_uploads/recent_uploads_item_widgets.dart';
 part 'recent_uploads/recent_uploads_preview_section.dart';
+part 'recent_uploads/recent_uploads_table_section.dart';
 
 enum _ExpenseListSortOption {
   newest,
@@ -35,6 +42,12 @@ enum _ExpenseListSortOption {
   amountLowToHigh,
   vendorAz,
   vendorZa,
+  invoiceAz,
+  invoiceZa,
+  baseHighToLow,
+  baseLowToHigh,
+  vatHighToLow,
+  vatLowToHigh,
 }
 
 enum _ExpenseFileTypeFilter { all, pdf, image, other }
@@ -67,6 +80,7 @@ class _ExpenseToolbarDragScrollBehavior extends MaterialScrollBehavior {
 
 class ExpenseRecentUploadsTab extends StatefulWidget {
   final List<Map<String, String>> recentUploads;
+  final bool loadingRecentUploads;
   final Future<void> Function(String id) onDeleteExpense;
   final Map<String, String>? selectedExpense;
   final ValueChanged<Map<String, String>> onSelectExpense;
@@ -75,10 +89,12 @@ class ExpenseRecentUploadsTab extends StatefulWidget {
   final bool previewLoading;
   final String? previewError;
   final String groupId;
+  final bool canDeleteExpenses;
 
   const ExpenseRecentUploadsTab({
     super.key,
     required this.recentUploads,
+    this.loadingRecentUploads = false,
     required this.onDeleteExpense,
     required this.selectedExpense,
     required this.onSelectExpense,
@@ -87,6 +103,7 @@ class ExpenseRecentUploadsTab extends StatefulWidget {
     required this.previewLoading,
     required this.previewError,
     required this.groupId,
+    this.canDeleteExpenses = true,
   });
 
   @override
@@ -108,8 +125,26 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   bool _showOnlyDuplicateInvoiceIds = false;
   bool _showOnlyPotentialDuplicates = false;
   bool _showOnlyZeroVat = false;
+  bool _advancedFiltersOpen = false;
+  Set<String> _vendorColumnFilters = <String>{};
+  String _invoiceColumnQuery = '';
+  DateTimeRange? _dateColumnRange;
+  double? _baseColumnMin;
+  double? _baseColumnMax;
+  double? _vatColumnMin;
+  double? _vatColumnMax;
+  double? _totalColumnMin;
+  double? _totalColumnMax;
+  Set<String> _vatColumnStates = <String>{};
+  Set<HexoraFinancialColumn> _visibleFinancialColumns = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.taxableBase,
+    HexoraFinancialColumn.vat,
+    HexoraFinancialColumn.total,
+  };
   int _mobilePanelIndex = 0;
   int _editorPanelIndex = 0;
+  double _editorFormFraction = 0.47;
   StateSetter? _editorRouteSetState;
   bool _suspendBackgroundPreview = false;
   String _searchQuery = '';
@@ -123,12 +158,18 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   final Map<int, bool> _summaryLoading = {};
   final Map<String, Uint8List> _pdfPreviewCache = {};
   final Map<String, Future<Uint8List?>> _pdfPreviewInflight = {};
+  final ValueNotifier<_ExpensePreviewTotals?> _editorPreviewTotals =
+      ValueNotifier<_ExpensePreviewTotals?>(null);
+  final ValueNotifier<bool> _editorDirty = ValueNotifier<bool>(false);
   final Set<String> _reprocessingExpenseIds = <String>{};
+  final Set<String> _deletingExpenseIds = <String>{};
   bool _bulkReprocessingVat = false;
   Map<String, dynamic>? _bulkReprocessJob;
   Timer? _bulkReprocessPollTimer;
   Timer? _searchDebounce;
   int _summaryRequestVersion = 0;
+  int _columnFilterFeedbackVersion = 0;
+  final ValueNotifier<bool> _columnFilterBusy = ValueNotifier(false);
 
   @override
   void initState() {
@@ -144,8 +185,17 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     _ensureLoaded(_tabs.index + 1);
     _scheduleAutoEditIfNeeded();
     _resumeBulkReprocessJob();
+    _restoreExpenseColumns();
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _syncToolbarScrollState());
+  }
+
+  Future<void> _restoreExpenseColumns() async {
+    final columns = await HexoraColumnVisibilityStore.load(
+      'expenses',
+      _visibleFinancialColumns,
+    );
+    if (mounted) setState(() => _visibleFinancialColumns = columns);
   }
 
   @override
@@ -173,6 +223,9 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   void dispose() {
     _bulkReprocessPollTimer?.cancel();
     _searchDebounce?.cancel();
+    _columnFilterBusy.dispose();
+    _editorPreviewTotals.dispose();
+    _editorDirty.dispose();
     _tabs.dispose();
     _searchController.dispose();
     _desktopToolbarScrollController.removeListener(_syncToolbarScrollState);
@@ -277,13 +330,14 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         search: _searchQuery,
         fileType: _selectedFileType.name,
         zeroVat: _showOnlyZeroVat,
-        expenseIds:
-            (_showOnlyDuplicateInvoiceIds || _showOnlyPotentialDuplicates)
-                ? _visibleUploads
-                    .map((item) => (item['id'] ?? '').trim())
-                    .where((id) => id.isNotEmpty)
-                    .toList(growable: false)
-                : null,
+        expenseIds: (_showOnlyDuplicateInvoiceIds ||
+                _showOnlyPotentialDuplicates ||
+                _hasActiveExpenseColumnFilters)
+            ? _visibleUploads
+                .map((item) => (item['id'] ?? '').trim())
+                .where((id) => id.isNotEmpty)
+                .toList(growable: false)
+            : null,
       );
       if (!mounted || requestVersion != _summaryRequestVersion) return;
       setState(() => _summary[quarter] = items);
@@ -385,6 +439,35 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     return currency.isEmpty ? 'EUR' : currency;
   }
 
+  /// The totals endpoint is authoritative. This only reads optional
+  /// adjustment aggregates when the API sends them; it never infers a
+  /// retention or credit note from a difference between totals.
+  List<({String label, double value})> _summaryAdjustments(
+    Map<String, dynamic>? summary,
+    bool isSpanish,
+  ) {
+    const keys = <(String, String, String)>[
+      ('discountTotal', 'Discount', 'Descuento'),
+      ('withholdingTotal', 'Withholding', 'Retención'),
+      ('retentionTotal', 'Withholding', 'Retención'),
+      ('creditNoteTotal', 'Credit notes', 'Abonos'),
+      ('adjustmentsTotal', 'Adjustments', 'Ajustes'),
+    ];
+    return [
+      for (final entry in keys)
+        if (summary?.containsKey(entry.$1) == true)
+          (
+            label: isSpanish ? entry.$3 : entry.$2,
+            value: _summaryNum(summary, entry.$1)
+          ),
+    ].where((entry) => entry.value.abs() >= .005).toList(growable: false);
+  }
+
+  double _summaryResidual(Map<String, dynamic>? summary) =>
+      _summaryNum(summary, 'total') -
+      _summaryNum(summary, 'subtotal') -
+      _summaryNum(summary, 'taxTotal');
+
   String _normalizedInvoiceId(Map<String, String> item) {
     return (item['invoice'] ?? '').trim().toLowerCase();
   }
@@ -441,6 +524,26 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     return taxNum != null && taxNum.abs() < 0.0001;
   }
 
+  String _expenseVatState(Map<String, String> item) {
+    if (_hasDuplicateInvoiceId(item) || _hasPotentialDuplicateSignature(item)) {
+      return 'review';
+    }
+    final status = (item['status'] ?? '').toLowerCase();
+    if (status.contains('error') ||
+        status.contains('failed') ||
+        status.contains('fall')) {
+      return 'error';
+    }
+    if (_hasZeroVat(item)) return 'zero';
+    if (status.contains('pending') ||
+        status.contains('process') ||
+        status.contains('proces')) {
+      return 'processing';
+    }
+    if ((item['file'] ?? '').trim().isEmpty) return 'missingDocument';
+    return 'verified';
+  }
+
   static bool _itemMatchesFileType(
       Map<String, String> item, _ExpenseFileTypeFilter type) {
     if (type == _ExpenseFileTypeFilter.all) return true;
@@ -482,6 +585,43 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         return false;
       }
       if (_showOnlyZeroVat && !_hasZeroVat(item)) return false;
+      final vendor = (item['vendor'] ?? '').trim();
+      if (_vendorColumnFilters.isNotEmpty &&
+          !_vendorColumnFilters.contains(vendor)) {
+        return false;
+      }
+      final invoiceQuery = _invoiceColumnQuery.toLowerCase().trim();
+      if (invoiceQuery.isNotEmpty &&
+          !(item['invoice'] ?? '').toLowerCase().contains(invoiceQuery)) {
+        return false;
+      }
+      final itemDate = _expenseDate(item);
+      if (_dateColumnRange != null &&
+          (itemDate == null ||
+              itemDate.isBefore(_dateColumnRange!.start) ||
+              itemDate.isAfter(DateTime(
+                _dateColumnRange!.end.year,
+                _dateColumnRange!.end.month,
+                _dateColumnRange!.end.day,
+                23,
+                59,
+                59,
+              )))) {
+        return false;
+      }
+      final total = _expenseAmount(item);
+      final vat = _expenseVat(item);
+      final base = _expenseBase(item);
+      if (_baseColumnMin != null && base < _baseColumnMin!) return false;
+      if (_baseColumnMax != null && base > _baseColumnMax!) return false;
+      if (_vatColumnMin != null && vat < _vatColumnMin!) return false;
+      if (_vatColumnMax != null && vat > _vatColumnMax!) return false;
+      if (_totalColumnMin != null && total < _totalColumnMin!) return false;
+      if (_totalColumnMax != null && total > _totalColumnMax!) return false;
+      if (_vatColumnStates.isNotEmpty &&
+          !_vatColumnStates.contains(_expenseVatState(item))) {
+        return false;
+      }
       if (q.isNotEmpty) {
         final vendor = (item['vendor'] ?? '').toLowerCase();
         final invoice = (item['invoice'] ?? '').toLowerCase();
@@ -608,10 +748,15 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     }
   }
 
-  void _reloadActiveSummary() {
+  Future<void> _reloadActiveSummary() {
+    if (widget.groupId.trim().isEmpty) return Future<void>.value();
     final key = _selectedQuarterFilter ?? 0;
     _summary.remove(key);
-    _loadSummary(key);
+    return _loadSummary(key);
+  }
+
+  void _updateExpenseColumnFilters(VoidCallback change) {
+    setState(change);
   }
 
   void _onSearchChanged(String value) {
@@ -635,6 +780,162 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     if (isMobile && _mobilePanelIndex != 1) {
       setState(() => _mobilePanelIndex = 1);
     }
+  }
+
+  Future<void> _confirmDeleteExpense(Map<String, String> item) async {
+    final id = (item['id'] ?? '').trim();
+    if (id.isEmpty ||
+        !widget.canDeleteExpenses ||
+        _deletingExpenseIds.contains(id)) {
+      return;
+    }
+    final isSpanish =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+    final vendor = (item['vendor'] ?? '').trim();
+    final invoice = (item['invoice'] ?? '').trim();
+    final currency = (item['currency'] ?? '').trim();
+    final total = _formatAmountOrText(item['total'] ?? '');
+    String? deleteError;
+
+    await showHexoraDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final deleting = _deletingExpenseIds.contains(id);
+
+          Future<void> delete() async {
+            if (_deletingExpenseIds.contains(id)) return;
+            setState(() => _deletingExpenseIds.add(id));
+            setDialogState(() => deleteError = null);
+            try {
+              await widget.onDeleteExpense(id);
+              if (!mounted || !dialogContext.mounted) return;
+              Navigator.of(dialogContext).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    isSpanish
+                        ? 'Gasto eliminado correctamente.'
+                        : 'Expense deleted successfully.',
+                  ),
+                ),
+              );
+            } catch (_) {
+              if (!mounted || !dialogContext.mounted) return;
+              setState(() => _deletingExpenseIds.remove(id));
+              setDialogState(() {
+                deleteError = isSpanish
+                    ? 'No se pudo eliminar el gasto. Puede estar vinculado a registros contables o fiscales protegidos.'
+                    : 'The expense could not be deleted. It may be linked to protected accounting or tax records.';
+              });
+            }
+          }
+
+          return AlertDialog(
+            icon: Icon(Icons.delete_outline_rounded,
+                color: Theme.of(dialogContext).colorScheme.error),
+            title: Text(isSpanish ? 'Eliminar gasto' : 'Delete expense'),
+            content: SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isSpanish
+                          ? 'Esta acción eliminará el gasto y su documento asociado. No se puede deshacer.'
+                          : 'This will delete the expense and its associated document. This action cannot be undone.',
+                    ),
+                    const SizedBox(height: 14),
+                    _deleteExpenseDetail(
+                      dialogContext,
+                      isSpanish ? 'Proveedor' : 'Supplier',
+                      vendor.isEmpty
+                          ? (isSpanish ? 'Sin proveedor' : 'No supplier')
+                          : vendor,
+                    ),
+                    if (invoice.isNotEmpty)
+                      _deleteExpenseDetail(
+                        dialogContext,
+                        isSpanish ? 'Nº factura' : 'Invoice no.',
+                        invoice,
+                      ),
+                    _deleteExpenseDetail(
+                      dialogContext,
+                      'Total',
+                      [total, currency]
+                          .where((value) => value.isNotEmpty)
+                          .join(' '),
+                    ),
+                    if (deleteError != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        deleteError!,
+                        style: TextStyle(
+                          color: Theme.of(dialogContext).colorScheme.error,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              HexoraButton(
+                label: isSpanish ? 'Cancelar' : 'Cancel',
+                variant: HexoraButtonVariant.secondary,
+                onPressed:
+                    deleting ? null : () => Navigator.of(dialogContext).pop(),
+              ),
+              HexoraButton(
+                label: MediaQuery.textScalerOf(dialogContext).scale(14) > 20
+                    ? (isSpanish ? 'Eliminar' : 'Delete')
+                    : (isSpanish ? 'Eliminar gasto' : 'Delete expense'),
+                variant: HexoraButtonVariant.danger,
+                loading: deleting,
+                onPressed: deleting ? null : delete,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (mounted && _deletingExpenseIds.contains(id)) {
+      setState(() => _deletingExpenseIds.remove(id));
+    }
+  }
+
+  Widget _deleteExpenseDetail(
+    BuildContext context,
+    String label,
+    String value,
+  ) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 92,
+            child: Text(
+              label,
+              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _scheduleAutoEditIfNeeded() {
@@ -690,6 +991,18 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           return _compareByVendor(a, b, descending: false);
         case _ExpenseListSortOption.vendorZa:
           return _compareByVendor(a, b, descending: true);
+        case _ExpenseListSortOption.invoiceAz:
+          return _compareByText(a, b, 'invoice');
+        case _ExpenseListSortOption.invoiceZa:
+          return _compareByText(a, b, 'invoice', descending: true);
+        case _ExpenseListSortOption.baseHighToLow:
+          return _compareNumeric(a, b, _expenseBase, descending: true);
+        case _ExpenseListSortOption.baseLowToHigh:
+          return _compareNumeric(a, b, _expenseBase);
+        case _ExpenseListSortOption.vatHighToLow:
+          return _compareNumeric(a, b, _expenseVat, descending: true);
+        case _ExpenseListSortOption.vatLowToHigh:
+          return _compareNumeric(a, b, _expenseVat);
         case _ExpenseListSortOption.newest:
           return _compareByNewestFirst(a, b);
       }
@@ -743,6 +1056,27 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     return _compareStable(a, b);
   }
 
+  int _compareByText(
+    Map<String, String> a,
+    Map<String, String> b,
+    String key, {
+    bool descending = false,
+  }) {
+    final result =
+        (a[key] ?? '').toLowerCase().compareTo((b[key] ?? '').toLowerCase());
+    return descending ? -result : result;
+  }
+
+  int _compareNumeric(
+    Map<String, String> a,
+    Map<String, String> b,
+    double Function(Map<String, String>) value, {
+    bool descending = false,
+  }) {
+    final result = value(a).compareTo(value(b));
+    return descending ? -result : result;
+  }
+
   int _compareDates(DateTime? a, DateTime? b) {
     if (a == null && b == null) return 0;
     if (a == null) return 1;
@@ -758,6 +1092,14 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 
   double _expenseAmount(Map<String, String> item) {
     return _parseMoney((item['total'] ?? '').trim()) ?? 0;
+  }
+
+  double _expenseVat(Map<String, String> item) =>
+      _parseMoney((item['tax'] ?? '').trim()) ?? 0;
+
+  double _expenseBase(Map<String, String> item) {
+    final subtotal = _parseMoney((item['subtotal'] ?? '').trim());
+    return subtotal ?? _expenseAmount(item) - _expenseVat(item);
   }
 
   String _expenseVendor(Map<String, String> item) {
@@ -789,6 +1131,18 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         return 'A-Z';
       case _ExpenseListSortOption.vendorZa:
         return 'Z-A';
+      case _ExpenseListSortOption.invoiceAz:
+        return isSpanish ? 'Factura A-Z' : 'Invoice A-Z';
+      case _ExpenseListSortOption.invoiceZa:
+        return isSpanish ? 'Factura Z-A' : 'Invoice Z-A';
+      case _ExpenseListSortOption.baseHighToLow:
+        return 'Base ↓';
+      case _ExpenseListSortOption.baseLowToHigh:
+        return 'Base ↑';
+      case _ExpenseListSortOption.vatHighToLow:
+        return 'IVA ↓';
+      case _ExpenseListSortOption.vatLowToHigh:
+        return 'IVA ↑';
     }
   }
 
@@ -807,29 +1161,6 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                       (widget.selectedExpense?['id'] ?? '').trim(),
               orElse: () => null,
             );
-
-    if (widget.recentUploads.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 36,
-              color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l.expenseUploadEmptyList,
-              style: t.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -860,57 +1191,23 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           }
           return _buildMobileExpenseList(l, t, cs, visibleUploads);
         }
-        final isWide = constraints.maxWidth >= 1100;
         final base = _editingExpense == null
-            ? (isWide
-                ? Row(
-                    children: [
-                      Expanded(
-                        flex: 14,
-                        child: _buildListSection(
-                          l,
-                          t,
-                          cs,
-                          visibleUploads,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        flex: 8,
-                        child: _buildPreviewPanel(
-                          l,
-                          t,
-                          cs,
-                          selectedVisibleExpense,
-                        ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      _buildMobilePanelTabs(t, cs),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: IndexedStack(
-                          index: _mobilePanelIndex,
-                          children: [
-                            _buildListSection(
-                              l,
-                              t,
-                              cs,
-                              visibleUploads,
-                            ),
-                            _buildPreviewPanel(
-                              l,
-                              t,
-                              cs,
-                              selectedVisibleExpense,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ))
+            ? DocumentSplitView(
+                storageKey: 'expenses_workspace_v1',
+                selectionKey: selectedVisibleExpense?['id'],
+                initialListFraction: 0.60,
+                minListWidth: 520,
+                minPreviewWidth: 340,
+                splitBreakpoint: 1100,
+                drawerBreakpoint: 760,
+                list: _buildListSection(l, t, cs, visibleUploads),
+                preview: _buildPreviewPanel(
+                  l,
+                  t,
+                  cs,
+                  selectedVisibleExpense,
+                ),
+              )
             : _buildListSection(l, t, cs, visibleUploads);
         return Stack(
           children: [
@@ -943,6 +1240,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       _editingExpense = item;
       _editorPanelIndex = 0;
     });
+    _editorPreviewTotals.value = null;
+    _editorDirty.value = false;
 
     if (!mounted || MediaQuery.sizeOf(context).width >= 760) return;
 
@@ -963,7 +1262,6 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                   AppLocalizations.of(routeContext)!,
                   AppTypography.of(routeContext),
                   Theme.of(routeContext).colorScheme,
-                  scrim: false,
                   showHeaderTab: false,
                 ),
               ),
@@ -985,6 +1283,14 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     _editorRouteSetState?.call(() {});
   }
 
+  void _setEditorFormFraction(double value) {
+    final next = value.clamp(0.38, 0.64).toDouble();
+    if ((_editorFormFraction - next).abs() < 0.001) return;
+    setState(() => _editorFormFraction = next);
+  }
+
+  // Kept for the editor's legacy tablet route while that flow is migrated.
+  // ignore: unused_element
   Widget _buildMobilePanelTabs(AppTypography t, ColorScheme cs) {
     Widget tab({
       required int index,
@@ -1056,8 +1362,40 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   }
 
   void _closeExpenseEditor() {
+    unawaited(_closeExpenseEditorIfAllowed());
+  }
+
+  Future<void> _closeExpenseEditorIfAllowed() async {
+    if (_editorDirty.value) {
+      final isEs = Localizations.localeOf(context).languageCode == 'es';
+      final discard = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: Text(isEs ? 'Cambios sin guardar' : 'Unsaved changes'),
+              content: Text(
+                isEs
+                    ? 'Hay cambios pendientes en este gasto. ¿Quieres descartarlos?'
+                    : 'This expense has pending changes. Do you want to discard them?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: Text(isEs ? 'Seguir editando' : 'Keep editing'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(isEs ? 'Descartar cambios' : 'Discard changes'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!discard || !mounted) return;
+    }
+    _editorDirty.value = false;
     final wasPushedAsRoute = _editorPushedAsRoute;
     setState(() => _editingExpense = null);
+    _editorPreviewTotals.value = null;
     if (wasPushedAsRoute && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
@@ -1070,6 +1408,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       widget.recentUploads[idx] = updated;
     }
     widget.onSelectExpense(updated);
+    _editorDirty.value = false;
     _closeExpenseEditor();
     _reloadRecentUploadsAfterEdit(selectedId: id);
   }
@@ -1167,6 +1506,17 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         apply: false,
       );
       if (!mounted) return;
+      final changes = preview['changes'];
+      final suggested = preview['suggested'];
+      final hasSuggestions = changes is List
+          ? changes.isNotEmpty
+          : suggested is Map && suggested.isNotEmpty;
+      if (!hasSuggestions) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sin cambios sugeridos.')),
+        );
+        return;
+      }
       final previewItem = await _resolveDuplicatePreviewItem(item);
       if (!mounted) return;
       final applied = await _showOcrReprocessReviewDialog(
@@ -1180,7 +1530,13 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_ocrReprocessErrorMessage(error))),
+        SnackBar(
+          content: Text(_ocrReprocessErrorMessage(error)),
+          action: SnackBarAction(
+            label: 'Reintentar',
+            onPressed: () => unawaited(_reprocessExpense(item)),
+          ),
+        ),
       );
     } finally {
       if (mounted) {
@@ -1320,7 +1676,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       setState(() => _suspendBackgroundPreview = true);
     }
     try {
-      return await showDialog<bool>(
+      return await showHexoraDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (dialogContext) => _OcrReprocessReviewDialog(
@@ -1493,6 +1849,84 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 
   // ── List Section ──
 
+  bool get _hasActiveExpenseFilters =>
+      _searchQuery.isNotEmpty ||
+      _selectedQuarterFilter != null ||
+      _selectedYearFilter != null ||
+      _selectedFileType != _ExpenseFileTypeFilter.all ||
+      _showOnlyDuplicateInvoiceIds ||
+      _showOnlyPotentialDuplicates ||
+      _showOnlyZeroVat ||
+      _hasActiveExpenseColumnFilters;
+
+  bool get _hasActiveExpenseColumnFilters =>
+      _vendorColumnFilters.isNotEmpty ||
+      _invoiceColumnQuery.trim().isNotEmpty ||
+      _dateColumnRange != null ||
+      _baseColumnMin != null ||
+      _baseColumnMax != null ||
+      _vatColumnMin != null ||
+      _vatColumnMax != null ||
+      _totalColumnMin != null ||
+      _totalColumnMax != null ||
+      _vatColumnStates.isNotEmpty;
+
+  int get _activeAdvancedExpenseFilterCount =>
+      (_selectedFileType == _ExpenseFileTypeFilter.all ? 0 : 1) +
+      (_showOnlyDuplicateInvoiceIds ? 1 : 0) +
+      (_showOnlyPotentialDuplicates ? 1 : 0) +
+      (_showOnlyZeroVat ? 1 : 0) +
+      (_hasActiveExpenseColumnFilters ? 1 : 0);
+
+  void _resetAdvancedExpenseFilters() {
+    _columnFilterFeedbackVersion++;
+    _columnFilterBusy.value = false;
+    setState(() {
+      _selectedFileType = _ExpenseFileTypeFilter.all;
+      _showOnlyDuplicateInvoiceIds = false;
+      _showOnlyPotentialDuplicates = false;
+      _showOnlyZeroVat = false;
+      _vendorColumnFilters = <String>{};
+      _invoiceColumnQuery = '';
+      _dateColumnRange = null;
+      _baseColumnMin = null;
+      _baseColumnMax = null;
+      _vatColumnMin = null;
+      _vatColumnMax = null;
+      _totalColumnMin = null;
+      _totalColumnMax = null;
+      _vatColumnStates = <String>{};
+    });
+    _reloadActiveSummary();
+  }
+
+  void _resetExpenseFilters() {
+    _searchDebounce?.cancel();
+    _columnFilterFeedbackVersion++;
+    _columnFilterBusy.value = false;
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _selectedQuarterFilter = null;
+      _selectedYearFilter = null;
+      _selectedFileType = _ExpenseFileTypeFilter.all;
+      _showOnlyDuplicateInvoiceIds = false;
+      _showOnlyPotentialDuplicates = false;
+      _showOnlyZeroVat = false;
+      _vendorColumnFilters = <String>{};
+      _invoiceColumnQuery = '';
+      _dateColumnRange = null;
+      _baseColumnMin = null;
+      _baseColumnMax = null;
+      _vatColumnMin = null;
+      _vatColumnMax = null;
+      _totalColumnMin = null;
+      _totalColumnMax = null;
+      _vatColumnStates = <String>{};
+    });
+    _reloadActiveSummary();
+  }
+
   Widget _buildListSection(
     AppLocalizations l,
     AppTypography t,
@@ -1502,38 +1936,34 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     final isSpanish =
         Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
 
-    return Column(
-      children: [
-        _buildCompactListToolbar(l, t, cs, isSpanish),
-        const SizedBox(height: 8),
-        _buildExpenseResultsAmountStrip(t, cs, isSpanish),
-        const SizedBox(height: 8),
-        Expanded(
-          child: visibleUploads.isEmpty
+    return Builder(builder: (listContext) {
+      final mode = DocumentWorkspaceScope.maybeOf(listContext)?.mode;
+      final useFullTable = mode == DocumentViewMode.list;
+      final results = widget.loadingRecentUploads &&
+              widget.recentUploads.isEmpty
+          ? _buildLoadingExpensesState(t, cs, isSpanish)
+          : visibleUploads.isEmpty
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.filter_alt_off_outlined,
+                        widget.recentUploads.isEmpty
+                            ? Icons.receipt_long_outlined
+                            : Icons.filter_alt_off_outlined,
                         size: 28,
                         color: cs.onSurfaceVariant.withValues(alpha: 0.4),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        (_selectedQuarterFilter != null ||
-                                _selectedYearFilter != null ||
-                                _selectedFileType !=
-                                    _ExpenseFileTypeFilter.all ||
-                                _showOnlyDuplicateInvoiceIds ||
-                                _showOnlyPotentialDuplicates ||
-                                _showOnlyZeroVat)
+                        widget.recentUploads.isNotEmpty &&
+                                _hasActiveExpenseFilters
                             ? (isSpanish
                                 ? 'No hay gastos que coincidan con los filtros'
                                 : 'No expenses match the current filters')
                             : (isSpanish
-                                ? 'No hay gastos en este trimestre'
-                                : 'No expenses in this quarter'),
+                                ? 'Todavía no hay gastos'
+                                : 'No expenses yet'),
                         style: t.bodySmall.copyWith(
                           fontWeight: FontWeight.w700,
                           color: cs.onSurface,
@@ -1541,41 +1971,365 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        (_selectedQuarterFilter != null ||
-                                _selectedYearFilter != null ||
-                                _selectedFileType !=
-                                    _ExpenseFileTypeFilter.all ||
-                                _showOnlyDuplicateInvoiceIds ||
-                                _showOnlyPotentialDuplicates ||
-                                _showOnlyZeroVat)
+                        widget.recentUploads.isNotEmpty &&
+                                _hasActiveExpenseFilters
                             ? (isSpanish
                                 ? 'Prueba con otros filtros o vuelve a Todos.'
                                 : 'Try other filters or switch back to All.')
                             : (isSpanish
-                                ? 'Prueba con otro trimestre o vuelve a Todos.'
-                                : 'Try another quarter or switch back to All.'),
+                                ? 'Los gastos registrados aparecerán aquí.'
+                                : 'Registered expenses will appear here.'),
                         style: t.bodySmall.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
                         textAlign: TextAlign.center,
                       ),
+                      if (widget.recentUploads.isNotEmpty &&
+                          _hasActiveExpenseFilters) ...[
+                        const SizedBox(height: 10),
+                        TextButton.icon(
+                          onPressed: _resetExpenseFilters,
+                          icon: const Icon(
+                            Icons.filter_alt_off_outlined,
+                            size: 16,
+                          ),
+                          label: Text(
+                            isSpanish ? 'Restablecer filtros' : 'Reset filters',
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 )
-              : ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  itemCount: visibleUploads.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 4),
-                  itemBuilder: (_, index) => _buildExpenseCard(
-                    visibleUploads[index],
-                    l,
-                    t,
-                    cs,
-                    index,
-                  ),
-                ),
+              : useFullTable
+                  ? _buildExpenseTable(visibleUploads, l, t, cs, isSpanish)
+                  : ListView.separated(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      itemCount: visibleUploads.length,
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: cs.outlineVariant.withValues(alpha: .28),
+                      ),
+                      itemBuilder: (_, index) => _buildExpenseSplitRow(
+                        visibleUploads[index],
+                        l,
+                        t,
+                        cs,
+                        isSpanish,
+                      ),
+                    );
+      return Column(children: [
+        _buildCompactListToolbar(l, t, cs, isSpanish),
+        const SizedBox(height: 8),
+        _buildExpenseResultsAmountStrip(t, cs, isSpanish),
+        const SizedBox(height: 8),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) => _buildExpenseResultsWorkspace(
+              results: results,
+              t: t,
+              cs: cs,
+              isSpanish: isSpanish,
+              availableWidth: constraints.maxWidth,
+            ),
+          ),
+        ),
+      ]);
+    });
+  }
+
+  Widget _buildExpenseResultsWorkspace({
+    required Widget results,
+    required AppTypography t,
+    required ColorScheme cs,
+    required bool isSpanish,
+    required double availableWidth,
+  }) {
+    if (!_advancedFiltersOpen) return results;
+    const panelWidth = 216.0;
+    final panel = _buildAdvancedExpenseFilters(t, cs, isSpanish);
+    if (availableWidth >= 820) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(width: panelWidth, child: panel),
+          VerticalDivider(
+            width: 10,
+            thickness: 1,
+            color: cs.outlineVariant.withValues(alpha: .35),
+          ),
+          Expanded(child: results),
+        ],
+      );
+    }
+    return Stack(
+      children: [
+        Positioned.fill(child: results),
+        PositionedDirectional(
+          top: 0,
+          bottom: 0,
+          start: 0,
+          width: panelWidth.clamp(0, availableWidth * .82).toDouble(),
+          child: Material(
+            elevation: 8,
+            color: cs.surface,
+            borderRadius: const BorderRadiusDirectional.only(
+              topEnd: Radius.circular(10),
+              bottomEnd: Radius.circular(10),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: panel,
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAdvancedExpenseFilters(
+    AppTypography t,
+    ColorScheme cs,
+    bool isSpanish,
+  ) {
+    Widget sectionLabel(String label) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            label.toUpperCase(),
+            style: t.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: .7,
+            ),
+          ),
+        );
+
+    Widget auditSwitch({
+      required String label,
+      required int count,
+      required bool value,
+      required ValueChanged<bool> onChanged,
+    }) {
+      return SwitchListTile.adaptive(
+        value: value,
+        onChanged: (next) {
+          onChanged(next);
+          _reloadActiveSummary();
+        },
+        dense: true,
+        visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+        contentPadding: EdgeInsets.zero,
+        title: Text(
+          label,
+          style: t.bodySmall.copyWith(fontSize: 11.5),
+        ),
+        subtitle: Text(
+          '$count',
+          style: t.bodySmall.copyWith(
+            fontSize: 10,
+            color: cs.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      key: const ValueKey('expense-advanced-filters-panel'),
+      color: cs.surfaceContainerLow.withValues(alpha: .45),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 38,
+            child: Row(
+              children: [
+                const SizedBox(width: 10),
+                Icon(Icons.tune_rounded, size: 16, color: cs.primary),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    isSpanish ? 'Filtros avanzados' : 'Advanced filters',
+                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                IconButton(
+                  tooltip: isSpanish ? 'Cerrar filtros' : 'Close filters',
+                  onPressed: () => setState(() => _advancedFiltersOpen = false),
+                  icon: const Icon(Icons.close_rounded, size: 17),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .35)),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+              children: [
+                sectionLabel(isSpanish ? 'Archivo' : 'File'),
+                InputDecorator(
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<_ExpenseFileTypeFilter>(
+                      value: _selectedFileType,
+                      isExpanded: true,
+                      isDense: true,
+                      items: [
+                        DropdownMenuItem(
+                          value: _ExpenseFileTypeFilter.all,
+                          child: Text(isSpanish ? 'Todos' : 'All'),
+                        ),
+                        const DropdownMenuItem(
+                          value: _ExpenseFileTypeFilter.pdf,
+                          child: Text('PDF'),
+                        ),
+                        DropdownMenuItem(
+                          value: _ExpenseFileTypeFilter.image,
+                          child: Text(isSpanish ? 'Imagen' : 'Image'),
+                        ),
+                        DropdownMenuItem(
+                          value: _ExpenseFileTypeFilter.other,
+                          child: Text(isSpanish ? 'Otros' : 'Other'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _selectedFileType = value);
+                        _reloadActiveSummary();
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                sectionLabel(isSpanish ? 'Incidencias' : 'Issues'),
+                auditSwitch(
+                  label: isSpanish ? 'IDs duplicados' : 'Duplicate IDs',
+                  count: _duplicateInvoiceItemCount,
+                  value: _showOnlyDuplicateInvoiceIds,
+                  onChanged: (value) =>
+                      setState(() => _showOnlyDuplicateInvoiceIds = value),
+                ),
+                auditSwitch(
+                  label:
+                      isSpanish ? 'Posibles duplicados' : 'Possible duplicates',
+                  count: _potentialDuplicateItemCount,
+                  value: _showOnlyPotentialDuplicates,
+                  onChanged: (value) =>
+                      setState(() => _showOnlyPotentialDuplicates = value),
+                ),
+                auditSwitch(
+                  label: 'IVA 0',
+                  count: _zeroVatItemCount,
+                  value: _showOnlyZeroVat,
+                  onChanged: (value) =>
+                      setState(() => _showOnlyZeroVat = value),
+                ),
+                const SizedBox(height: 12),
+                sectionLabel(isSpanish ? 'Columnas' : 'Columns'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        isSpanish
+                            ? 'Columnas financieras visibles'
+                            : 'Visible financial columns',
+                        style: t.bodySmall.copyWith(fontSize: 11.5),
+                      ),
+                    ),
+                    HexoraColumnVisibilityMenu(
+                      moduleKey: 'expenses',
+                      availableColumns: const {
+                        HexoraFinancialColumn.date,
+                        HexoraFinancialColumn.taxableBase,
+                        HexoraFinancialColumn.vat,
+                        HexoraFinancialColumn.total,
+                      },
+                      visibleColumns: _visibleFinancialColumns,
+                      onChanged: (columns) => setState(
+                        () => _visibleFinancialColumns = columns,
+                      ),
+                    ),
+                  ],
+                ),
+                if (_hasActiveExpenseColumnFilters) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    isSpanish
+                        ? 'Hay filtros activos en las cabeceras de la tabla.'
+                        : 'Table header filters are active.',
+                    style: t.bodySmall.copyWith(
+                      fontSize: 10.5,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                if (_duplicateInvoiceItemCount > 0) ...[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: _resolveDuplicatesButton(cs, t, isSpanish),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (_activeAdvancedExpenseFilterCount > 0)
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: OutlinedButton.icon(
+                onPressed: _resetAdvancedExpenseFilters,
+                icon: const Icon(Icons.filter_alt_off_rounded, size: 15),
+                label: Text(
+                  isSpanish ? 'Limpiar avanzados' : 'Clear advanced',
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingExpensesState(
+    AppTypography t,
+    ColorScheme cs,
+    bool isSpanish,
+  ) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 28,
+            width: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: cs.primary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            isSpanish ? 'Cargando gastos…' : 'Loading expenses…',
+            style: t.bodySmall.copyWith(
+              fontWeight: FontWeight.w700,
+              color: cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isSpanish
+                ? 'Estamos preparando tus gastos registrados.'
+                : 'We are preparing your registered expenses.',
+            style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1593,7 +2347,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         final isWide = constraints.maxWidth >= 760;
         final decoration = BoxDecoration(
           color: cs.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: cs.outlineVariant.withValues(alpha: 0.32),
           ),
@@ -1613,11 +2367,13 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                 children: [
                   _buildQuarterFilterBar(t, cs, isSpanish),
                   const SizedBox(width: 8),
-                  if (_zeroVatItemCount > 0) ...[
-                    _buildVatReprocessButton(cs, t, isSpanish),
+                  if (_bulkReprocessJob != null) ...[
+                    _buildOcrQueueIndicator(cs, t, isSpanish),
                     const SizedBox(width: 8),
                   ],
-                  _buildSummaryBar(l, t, cs, isSpanish, embedded: true),
+                  if (_zeroVatItemCount > 0) ...[
+                    _buildVatReprocessButton(cs, t, isSpanish),
+                  ],
                 ],
               ),
             ),
@@ -1664,7 +2420,15 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             decoration: decoration,
             child: Column(
               children: [
-                _buildSearchBar(cs, isSpanish, compact: true),
+                Row(children: [
+                  const DocumentLayoutSelector(),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildSearchBar(cs, isSpanish, compact: true),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildAdvancedFiltersToggle(t, cs, isSpanish),
+                ]),
                 const SizedBox(height: 7),
                 controlsRow(),
               ],
@@ -1673,14 +2437,20 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         }
 
         return Container(
-          padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+          key: const ValueKey('expense-desktop-toolbar'),
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
           decoration: decoration,
           child: Row(
             children: [
+              const DocumentLayoutSelector(),
+              const SizedBox(width: 8),
               SizedBox(
                 width: (constraints.maxWidth * 0.30).clamp(260.0, 380.0),
                 child: _buildSearchBar(cs, isSpanish, compact: true),
               ),
+              const SizedBox(width: 8),
+              _buildAdvancedFiltersToggle(t, cs, isSpanish),
               const SizedBox(width: 8),
               Expanded(
                 child: controlsRow(showScrollbar: true),
@@ -1689,6 +2459,48 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAdvancedFiltersToggle(
+    AppTypography t,
+    ColorScheme cs,
+    bool isSpanish,
+  ) {
+    final count = _activeAdvancedExpenseFilterCount;
+    final active = _advancedFiltersOpen || count > 0;
+    return SizedBox(
+      height: 34,
+      child: OutlinedButton.icon(
+        key: const ValueKey('expense-advanced-filters-toggle'),
+        onPressed: () =>
+            setState(() => _advancedFiltersOpen = !_advancedFiltersOpen),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          visualDensity: VisualDensity.compact,
+          foregroundColor: active ? cs.primary : cs.onSurfaceVariant,
+          backgroundColor:
+              active ? cs.primary.withValues(alpha: .08) : cs.surface,
+          side: BorderSide(
+            color: active
+                ? cs.primary.withValues(alpha: .5)
+                : cs.outlineVariant.withValues(alpha: .4),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        icon: const Icon(Icons.tune_rounded, size: 15),
+        label: Text(
+          count == 0
+              ? (isSpanish ? 'Filtros' : 'Filters')
+              : '${isSpanish ? 'Filtros' : 'Filters'} · $count',
+          style: t.bodySmall.copyWith(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 
@@ -1705,6 +2517,10 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     final taxSum = _summaryNum(summary, 'taxTotal');
     final total = _summaryNum(summary, 'total');
     final currency = _summaryCurrency(summary);
+    final adjustments = _summaryAdjustments(summary, isSpanish);
+    // Some APIs expose signed adjustments. Do not apply a UI-side sign rule;
+    // when present, show them and leave reconciliation to the source data.
+    final residual = adjustments.isEmpty ? _summaryResidual(summary) : 0.0;
     final summaryLoading = _summaryLoading[_selectedQuarterFilter ?? 0] == true;
     final summaryError = _summaryErrors[_selectedQuarterFilter ?? 0];
     final totalColor = cs.primary;
@@ -1781,10 +2597,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         ],
       );
     } else {
-      content = Wrap(
-        spacing: 12,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      content = Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -1796,7 +2610,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               ),
               const SizedBox(width: 5),
               Text(
-                '$count ${count == 1 ? 'gasto' : 'gastos'}',
+                '$count ${isSpanish ? (count == 1 ? 'gasto' : 'gastos') : (count == 1 ? 'expense' : 'expenses')}',
                 style: t.bodySmall.copyWith(
                   color: cs.onSurface,
                   fontSize: 12,
@@ -1805,55 +2619,73 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               ),
             ],
           ),
+          const SizedBox(width: 12),
           divider(),
-          metric(isSpanish ? 'Base' : 'Sub', _formatMoney(subtotal)),
+          const SizedBox(width: 12),
+          metric(
+            isSpanish ? 'Base' : 'Taxable base',
+            _formatMoney(subtotal),
+          ),
+          const SizedBox(width: 12),
           divider(),
+          const SizedBox(width: 12),
           metric('IVA', _formatMoney(taxSum)),
+          for (final adjustment in adjustments) ...[
+            const SizedBox(width: 12),
+            divider(),
+            const SizedBox(width: 12),
+            metric(adjustment.label, _formatMoney(adjustment.value)),
+          ],
+          const SizedBox(width: 12),
           divider(),
+          const SizedBox(width: 12),
           _SummaryTotalChip(
             formattedValue: _formatMoney(total),
             currency: currency,
             color: totalColor,
           ),
+          if (residual.abs() >= .01) ...[
+            const SizedBox(width: 8),
+            Tooltip(
+              message: isSpanish
+                  ? 'La diferencia no está desglosada por el resumen recibido.'
+                  : 'The received summary does not itemize this difference.',
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.info_outline_rounded, size: 14, color: cs.error),
+                const SizedBox(width: 4),
+                Text(
+                  '${isSpanish ? 'Diferencia' : 'Difference'} ${_formatMoney(residual)}',
+                  style: t.bodySmall.copyWith(
+                    color: cs.error,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ]),
+            ),
+          ],
         ],
       );
     }
 
     return Container(
+      key: const ValueKey('expense-summary-strip'),
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.26)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Text(
-                isSpanish ? 'Resumen de gastos' : 'Expense summary',
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurface,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                isSpanish ? 'Según filtros activos' : 'Based on active filters',
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontSize: 11,
-                ),
-              ),
-            ],
+        border: Border(
+          bottom: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.24),
           ),
-          const SizedBox(height: 6),
-          content,
-        ],
+        ),
+      ),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: content,
+        ),
       ),
     );
   }
@@ -1915,6 +2747,114 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               size: 16,
             ),
       label: Text(label),
+    );
+  }
+
+  /// Presents the status returned by the existing persisted bulk OCR job.
+  /// A document-level queue cannot be simulated here: the current API exposes
+  /// one bulk job, not queue listing, cancellation, or retry endpoints.
+  Widget _buildOcrQueueIndicator(
+    ColorScheme cs,
+    AppTypography t,
+    bool isSpanish,
+  ) {
+    final job = _bulkReprocessJob!;
+    final status = _asText(job['status']).toLowerCase();
+    final total = _asInt(job['total']);
+    final processed = _asInt(job['processed']);
+    final completed = status == 'completed';
+    final failed = status == 'failed';
+    final remaining = (total - processed).clamp(0, total);
+    final label = failed
+        ? 'OCR · Error'
+        : completed
+            ? 'OCR · ${isSpanish ? 'Listo' : 'Ready'}'
+            : status == 'queued'
+                ? 'OCR · ${isSpanish ? 'En espera' : 'Queued'} $remaining'
+                : 'OCR · ${isSpanish ? 'Procesando' : 'Processing'} $processed/$total';
+    final color = failed
+        ? cs.error
+        : completed
+            ? Colors.green
+            : cs.primary;
+
+    return PopupMenuButton<String>(
+      tooltip: isSpanish ? 'Estado del OCR' : 'OCR status',
+      onSelected: (value) {
+        if (value == 'review') _openBulkReprocessResults();
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem<String>(
+          enabled: false,
+          child: SizedBox(
+            width: 220,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isSpanish ? 'Procesamiento OCR' : 'OCR processing',
+                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  failed
+                      ? (isSpanish
+                          ? 'El procesamiento no pudo completarse.'
+                          : 'Processing could not be completed.')
+                      : completed
+                          ? (isSpanish
+                              ? '$total documentos listos para revisar.'
+                              : '$total documents ready for review.')
+                          : (isSpanish
+                              ? '$processed de $total documentos procesados.'
+                              : '$processed of $total documents processed.'),
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (completed)
+          PopupMenuItem<String>(
+            value: 'review',
+            child: Row(children: [
+              Icon(Icons.fact_check_outlined, size: 17, color: cs.primary),
+              const SizedBox(width: 8),
+              Text(isSpanish ? 'Revisar cambios' : 'Review changes'),
+            ]),
+          ),
+      ],
+      child: IgnorePointer(
+        child: OutlinedButton.icon(
+          onPressed: () {},
+          style: OutlinedButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+            minimumSize: const Size(0, 32),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            side: BorderSide(color: color.withValues(alpha: .35)),
+            foregroundColor: color,
+            textStyle: t.bodySmall.copyWith(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          icon: completed
+              ? const Icon(Icons.fact_check_outlined, size: 16)
+              : failed
+                  ? const Icon(Icons.error_outline, size: 16)
+                  : SizedBox(
+                      height: 14,
+                      width: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: color,
+                      ),
+                    ),
+          label: Text(label),
+        ),
+      ),
     );
   }
 
@@ -2024,31 +2964,31 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         initialValue: _selectedSort,
         onSelected: _setSortOption,
         itemBuilder: (context) => [
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: _ExpenseListSortOption.newest,
             child: Text(isSpanish ? 'Mas recientes' : 'Newest'),
           ),
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: _ExpenseListSortOption.oldest,
             child: Text(isSpanish ? 'Mas antiguos' : 'Oldest'),
           ),
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: _ExpenseListSortOption.amountHighToLow,
             child: Text(
               isSpanish ? 'Importe mayor a menor' : 'Amount high to low',
             ),
           ),
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: _ExpenseListSortOption.amountLowToHigh,
             child: Text(
               isSpanish ? 'Importe menor a mayor' : 'Amount low to high',
             ),
           ),
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: _ExpenseListSortOption.vendorAz,
             child: Text(isSpanish ? 'Proveedor A-Z' : 'Vendor A-Z'),
           ),
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: _ExpenseListSortOption.vendorZa,
             child: Text(isSpanish ? 'Proveedor Z-A' : 'Vendor Z-A'),
           ),
@@ -2099,12 +3039,12 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         initialValue: _selectedYearFilter,
         onSelected: _setYearFilter,
         itemBuilder: (context) => [
-          PopupMenuItem<int?>(
+          NavigationPopupMenuItem<int?>(
             value: null,
             child: Text(isSpanish ? 'Todos los años' : 'All years'),
           ),
           for (final year in years)
-            PopupMenuItem<int?>(
+            NavigationPopupMenuItem<int?>(
               value: year,
               child: Text('$year'),
             ),
@@ -2210,7 +3150,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         _reloadActiveSummary();
       },
       itemBuilder: (context) => [
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: _ExpenseFileTypeFilter.all,
           child: Row(children: [
             const Icon(Icons.all_inclusive, size: 16),
@@ -2218,7 +3158,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             Text(isSpanish ? 'Todos los tipos' : 'All types'),
           ]),
         ),
-        const PopupMenuItem(
+        const NavigationPopupMenuItem(
           value: _ExpenseFileTypeFilter.pdf,
           child: Row(children: <Widget>[
             Icon(Icons.picture_as_pdf_outlined, size: 16),
@@ -2226,7 +3166,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             Text('PDF'),
           ]),
         ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: _ExpenseFileTypeFilter.image,
           child: Row(children: [
             const Icon(Icons.image_outlined, size: 16),
@@ -2234,7 +3174,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             Text(isSpanish ? 'Imagen' : 'Image'),
           ]),
         ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: _ExpenseFileTypeFilter.other,
           child: Row(children: [
             const Icon(Icons.insert_drive_file_outlined, size: 16),
@@ -2373,7 +3313,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           ),
         ),
         if (_hasActiveAuditFilters)
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: 'clear',
             child: Row(
               children: [
@@ -2536,7 +3476,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (context) {
         return Dialog(
@@ -2798,7 +3738,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     final t = AppTypography.of(context);
 
     try {
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (context) {
           final deleteIds = <String>{...initialDeleteIds};
@@ -3108,8 +4048,24 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                                   ? null
                                   : () async {
                                       setDialogState(() => deleting = true);
-                                      for (final id in deleteIds.toList()) {
-                                        await widget.onDeleteExpense(id);
+                                      try {
+                                        for (final id in deleteIds.toList()) {
+                                          await widget.onDeleteExpense(id);
+                                        }
+                                      } catch (_) {
+                                        if (!mounted || !context.mounted) {
+                                          return;
+                                        }
+                                        setDialogState(() => deleting = false);
+                                        ScaffoldMessenger.of(this.context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'No se pudieron eliminar todos los gastos seleccionados.',
+                                            ),
+                                          ),
+                                        );
+                                        return;
                                       }
                                       if (!mounted) return;
                                       if (context.mounted) {
@@ -3151,6 +4107,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 
   // ── Summary Bar ──
 
+  // Legacy inline variant retained for the mobile/editor composition.
+  // ignore: unused_element
   Widget _buildSummaryBar(
     AppLocalizations l,
     AppTypography t,
@@ -3423,6 +4381,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     );
   }
 
+  // Legacy rich-card implementation kept temporarily for editor migrations.
+  // ignore: unused_element
   Widget _buildExpenseCard(
     Map<String, String> item,
     AppLocalizations l,
@@ -3782,8 +4742,9 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                     size: 16,
                   ),
                   color: cs.onSurfaceVariant,
-                  onPressed:
-                      id.isEmpty ? null : () => widget.onDeleteExpense(id),
+                  onPressed: id.isEmpty || !widget.canDeleteExpenses
+                      ? null
+                      : () => _confirmDeleteExpense(item),
                 ),
               ],
             ),
@@ -3795,6 +4756,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 }
 
 // Single-chip KPI for the Total — the one metric that earns a border.
+enum _OcrReviewFilter { suggestions, unchanged, all }
+
 class _OcrReprocessReviewDialog extends StatefulWidget {
   final String title;
   final String groupId;
@@ -3837,7 +4800,10 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
   ];
 
   late final Set<String> _selectedExpenseIds;
+  late final Set<String> _selectedChangeKeys;
   bool _applying = false;
+  _OcrReviewFilter _filter = _OcrReviewFilter.suggestions;
+  bool _changesExpanded = true;
 
   @override
   void initState() {
@@ -3846,6 +4812,10 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
       for (final result in widget.results)
         if (_hasSuggestion(result)) _expenseId(result),
     }..removeWhere((id) => id.isEmpty);
+    _selectedChangeKeys = <String>{
+      for (final result in _withSuggestions)
+        for (final field in _changedFields(result)) _changeKey(result, field),
+    };
   }
 
   List<Map<String, dynamic>> get _withSuggestions =>
@@ -3860,6 +4830,87 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
         return !_hasSuggestion(result) &&
             !_failed.any((failed) => identical(failed, result));
       }).toList(growable: false);
+
+  List<Map<String, dynamic>> get _visibleResults => switch (_filter) {
+        _OcrReviewFilter.suggestions => _withSuggestions,
+        _OcrReviewFilter.unchanged => _noChanges,
+        _OcrReviewFilter.all => widget.results,
+      };
+
+  static String _changeKey(Map<String, dynamic> result, String field) =>
+      '${_expenseId(result)}::$field';
+
+  List<String> _changedFields(Map<String, dynamic> result) {
+    final suggested = _mapOf(result['suggested']);
+    final changes = result['changes'];
+    final fields = changes is List
+        ? changes
+            .map((value) => value is Map
+                ? _asText(value['field'] ?? value['path'] ?? value['key'])
+                : _asText(value))
+            .where((field) => field.isNotEmpty)
+        : suggested.keys;
+    return fields
+        .where((field) => _allowedFields.contains(field))
+        .where(suggested.containsKey)
+        .toSet()
+        .toList(growable: false);
+  }
+
+  int get _selectedFieldCount => _selectedChangeKeys.length;
+
+  int get _selectedDocumentCount => _withSuggestions
+      .where((result) => _changedFields(result).any(
+          (field) => _selectedChangeKeys.contains(_changeKey(result, field))))
+      .length;
+
+  void _toggleDocumentSelection(Map<String, dynamic> result, bool selected) {
+    final id = _expenseId(result);
+    final fields = _changedFields(result);
+    setState(() {
+      if (selected) {
+        _selectedExpenseIds.add(id);
+        _selectedChangeKeys
+            .addAll(fields.map((field) => _changeKey(result, field)));
+      } else {
+        _selectedExpenseIds.remove(id);
+        _selectedChangeKeys
+            .removeAll(fields.map((field) => _changeKey(result, field)));
+      }
+    });
+  }
+
+  void _toggleFieldSelection(
+    Map<String, dynamic> result,
+    String field,
+    bool selected,
+  ) {
+    final key = _changeKey(result, field);
+    final id = _expenseId(result);
+    setState(() {
+      if (selected) {
+        _selectedChangeKeys.add(key);
+        _selectedExpenseIds.add(id);
+      } else {
+        _selectedChangeKeys.remove(key);
+        if (!_changedFields(result).any(
+            (item) => _selectedChangeKeys.contains(_changeKey(result, item)))) {
+          _selectedExpenseIds.remove(id);
+        }
+      }
+    });
+  }
+
+  String _comparisonValue(String field, dynamic value) {
+    if (value == null) return '—';
+    if (const {'subtotal', 'taxTotal', 'total'}.contains(field)) {
+      final amount = ExpenseFormHelpers.parseNum(value);
+      return amount == null
+          ? _valueLabel(value)
+          : '${ExpenseFormHelpers.formatAmount(amount)} €';
+    }
+    return _valueLabel(value);
+  }
 
   static String _expenseId(Map<String, dynamic> result) =>
       _asText(result['expenseId'] ?? result['id']);
@@ -3914,13 +4965,15 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
 
   Future<void> _applySelected() async {
     final items = _withSuggestions
-        .where((result) => _selectedExpenseIds.contains(_expenseId(result)))
         .map((result) {
           final suggested = _mapOf(result['suggested']);
+          final selectedFields = _changedFields(result).where(
+            (field) => _selectedChangeKeys.contains(_changeKey(result, field)),
+          );
           return <String, dynamic>{
             'expenseId': _expenseId(result),
             'suggested': <String, dynamic>{
-              for (final field in _allowedFields)
+              for (final field in selectedFields)
                 if (suggested.containsKey(field)) field: suggested[field],
             },
           };
@@ -3959,12 +5012,12 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
     final hasDocumentPreview = widget.previewItem != null;
 
     return AlertDialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
       contentPadding: EdgeInsets.zero,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       content: SizedBox(
-        width: hasDocumentPreview ? 1180 : 920,
-        height: 680,
+        width: hasDocumentPreview ? 1490 : 980,
+        height: 930,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -4008,9 +5061,23 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
                     ),
                   ),
                   _DialogCountChip(
-                    label: 'seleccionados',
-                    value: _selectedExpenseIds.length,
+                    label: 'documentos',
+                    value: _selectedDocumentCount,
                     color: cs.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  _DialogCountChip(
+                    label: 'cambios',
+                    value: _selectedFieldCount,
+                    color: cs.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Cerrar',
+                    onPressed: _applying
+                        ? null
+                        : () => Navigator.of(context).pop(false),
+                    icon: const Icon(Icons.close_rounded),
                   ),
                 ],
               ),
@@ -4038,7 +5105,7 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton.icon(
-                    onPressed: _selectedExpenseIds.isEmpty || _applying
+                    onPressed: _selectedFieldCount == 0 || _applying
                         ? null
                         : _applySelected,
                     icon: _applying
@@ -4048,7 +5115,9 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.check_rounded, size: 18),
-                    label: const Text('Aplicar cambios'),
+                    label: Text(
+                      'Aplicar $_selectedFieldCount ${_selectedFieldCount == 1 ? 'cambio' : 'cambios'}',
+                    ),
                   ),
                 ],
               ),
@@ -4059,54 +5128,62 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
     );
   }
 
-  Widget _sectionTitle(BuildContext context, String label) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
-      child: Text(
-        label.toUpperCase(),
-        style: t.bodySmall.copyWith(
-          color: cs.onSurfaceVariant.withValues(alpha: 0.72),
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.7,
-        ),
-      ),
-    );
-  }
-
   Widget _buildDialogBody(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final list = ListView(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+    final t = AppTypography.of(context);
+    final comparisonResults = _visibleResults.where(_hasSuggestion).toList();
+    final suggestedCount = _withSuggestions.fold<int>(
+      0,
+      (count, result) => count + _changedFields(result).length,
+    );
+    final list = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_withSuggestions.isNotEmpty)
-          _sectionTitle(context, 'Sugerencias disponibles'),
-        for (final result in _withSuggestions) _suggestionCard(context, result),
-        if (_noChanges.isNotEmpty) ...[
-          _sectionTitle(context, 'Sin cambios detectados'),
-          for (final result in _noChanges)
-            _ResultCompactTile(
-              title: _expenseId(result),
-              subtitle: 'OCR no propuso cambios relevantes.',
-              icon: Icons.check_circle_outline,
-              color: Colors.green,
-            ),
-        ],
-        if (_failed.isNotEmpty) ...[
-          _sectionTitle(context, 'Fallidos'),
-          for (final result in _failed)
-            _ResultCompactTile(
-              title: _expenseId(result),
-              subtitle: _asText(
-                result['message'] ??
-                    result['error'] ??
-                    'No se pudo releer la factura.',
-              ),
-              icon: Icons.error_outline,
-              color: cs.error,
-            ),
-        ],
+        _OcrReviewFilterBar(
+          selected: _filter,
+          suggestions: _withSuggestions.length,
+          unchanged: _noChanges.length,
+          total: widget.results.length,
+          onChanged: (value) => setState(() => _filter = value),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 0, 12, 14),
+            children: [
+              if (comparisonResults.isNotEmpty) ...[
+                Text(
+                  '$_selectedDocumentCount documentos seleccionados · '
+                  '$suggestedCount cambios sugeridos · '
+                  '$_selectedFieldCount cambios seleccionados',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (final result in comparisonResults)
+                  _buildComparisonTable(context, result),
+              ],
+              for (final result
+                  in _visibleResults.where((item) => !_hasSuggestion(item)))
+                if (_failed.any((failed) => identical(failed, result)))
+                  _ResultCompactTile(
+                    title: _expenseId(result),
+                    subtitle: _asText(result['message'] ?? result['error']),
+                    icon: Icons.error_outline,
+                    color: cs.error,
+                  )
+                else
+                  _ResultCompactTile(
+                    title: _expenseId(result),
+                    subtitle: 'OCR no propuso cambios relevantes.',
+                    icon: Icons.check_circle_outline,
+                    color: Colors.green,
+                  ),
+            ],
+          ),
+        ),
       ],
     );
 
@@ -4133,6 +5210,146 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
     );
   }
 
+  Widget _buildComparisonTable(
+    BuildContext context,
+    Map<String, dynamic> result,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final current = _mapOf(result['current']);
+    final suggested = _mapOf(result['suggested']);
+    final fields = _changedFields(result);
+    final selectedCount = fields
+        .where(
+            (field) => _selectedChangeKeys.contains(_changeKey(result, field)))
+        .length;
+    final documentSelected = selectedCount == fields.length;
+    final vendor = _asText(
+      suggested['vendorName'] ?? current['vendorName'] ?? result['vendorName'],
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .38)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 7, 10, 7),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: documentSelected
+                      ? true
+                      : selectedCount == 0
+                          ? false
+                          : null,
+                  tristate: true,
+                  visualDensity: VisualDensity.compact,
+                  onChanged: (value) =>
+                      _toggleDocumentSelection(result, value ?? true),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    vendor.isEmpty ? 'Documento OCR' : vendor,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                Text(
+                  '$selectedCount/${fields.length}',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .32)),
+          const _OcrComparisonHeader(),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .32)),
+          for (final field in fields)
+            _OcrComparisonRow(
+              selected: _selectedChangeKeys.contains(_changeKey(result, field)),
+              onSelected: (value) =>
+                  _toggleFieldSelection(result, field, value),
+              label: _fieldLabel(field),
+              current: _comparisonValue(field, current[field]),
+              suggested: _comparisonValue(field, suggested[field]),
+              confidence: _confidenceFor(result, field),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Legacy helper retained for the transition; the dialog renders only the
+  // consolidated comparison table above.
+  // ignore: unused_element
+  Widget _buildChangeReview(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final result = _withSuggestions.firstWhere(
+      (item) => _selectedExpenseIds.contains(_expenseId(item)),
+      orElse: () => _withSuggestions.first,
+    );
+    final current = _mapOf(result['current']);
+    final suggested = _mapOf(result['suggested']);
+    final changes = result['changes'];
+    final fields = changes is List
+        ? changes
+            .map((item) => item is Map
+                ? _asText(item['field'] ?? item['path'] ?? item['key'])
+                : _asText(item))
+            .where((field) => field.isNotEmpty)
+            .toSet()
+            .toList()
+        : suggested.keys.toList();
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: .18),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .35)),
+      ),
+      child: Column(children: [
+        InkWell(
+          onTap: () => setState(() => _changesExpanded = !_changesExpanded),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(children: [
+              Icon(Icons.check_rounded, size: 16, color: cs.primary),
+              const SizedBox(width: 8),
+              Text('Vista de cambios',
+                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w900)),
+              const Spacer(),
+              Icon(_changesExpanded ? Icons.expand_less : Icons.expand_more,
+                  size: 18),
+            ]),
+          ),
+        ),
+        if (_changesExpanded) ...[
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .3)),
+          for (final field in fields)
+            _OcrComparisonRow(
+              selected: false,
+              onSelected: (_) {},
+              label: _fieldLabel(field),
+              current: _valueLabel(current[field]),
+              suggested: _valueLabel(suggested[field]),
+              confidence: _confidenceFor(result, field),
+            ),
+        ],
+      ]),
+    );
+  }
+
+  // ignore: unused_element
   Widget _suggestionCard(BuildContext context, Map<String, dynamic> result) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
@@ -4294,6 +5511,194 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _OcrReviewFilterBar extends StatelessWidget {
+  final _OcrReviewFilter selected;
+  final int suggestions;
+  final int unchanged;
+  final int total;
+  final ValueChanged<_OcrReviewFilter> onChanged;
+
+  const _OcrReviewFilterBar({
+    required this.selected,
+    required this.suggestions,
+    required this.unchanged,
+    required this.total,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    Widget item(
+        _OcrReviewFilter value, IconData icon, String label, int count) {
+      final active = selected == value;
+      return Expanded(
+        child: InkWell(
+          onTap: () => onChanged(value),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            height: 46,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: active
+                  ? cs.primary.withValues(alpha: .12)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: active
+                  ? Border.all(color: cs.primary.withValues(alpha: .55))
+                  : null,
+            ),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(icon,
+                  size: 16, color: active ? cs.primary : cs.onSurfaceVariant),
+              const SizedBox(width: 7),
+              Flexible(
+                  child: Text(label,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          t.bodySmall.copyWith(fontWeight: FontWeight.w800))),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: active ? .18 : .08),
+                    borderRadius: BorderRadius.circular(999)),
+                child: Text('$count',
+                    style: t.bodySmall.copyWith(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: active ? cs.primary : cs.onSurfaceVariant)),
+              ),
+            ]),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 12, 12, 0),
+      child: Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withValues(alpha: .25),
+            borderRadius: BorderRadius.circular(9)),
+        child: Row(children: [
+          item(_OcrReviewFilter.suggestions, Icons.check_rounded, 'Sugerencias',
+              suggestions),
+          item(_OcrReviewFilter.unchanged, Icons.remove_circle_outline,
+              'Sin cambios', unchanged),
+          item(_OcrReviewFilter.all, Icons.format_list_bulleted_rounded, 'Todo',
+              total),
+        ]),
+      ),
+    );
+  }
+}
+
+class _OcrComparisonHeader extends StatelessWidget {
+  const _OcrComparisonHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final style = t.bodySmall.copyWith(
+      color: cs.onSurfaceVariant,
+      fontSize: 11,
+      fontWeight: FontWeight.w900,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      child: Row(children: [
+        SizedBox(width: 54, child: Text('Seleccionar', style: style)),
+        SizedBox(width: 96, child: Text('Campo', style: style)),
+        Expanded(child: Text('Valor actual', style: style)),
+        const SizedBox(width: 12),
+        Expanded(child: Text('Valor sugerido', style: style)),
+      ]),
+    );
+  }
+}
+
+class _OcrComparisonRow extends StatelessWidget {
+  final bool selected;
+  final ValueChanged<bool> onSelected;
+  final String label;
+  final String current;
+  final String suggested;
+  final double confidence;
+
+  const _OcrComparisonRow({
+    required this.selected,
+    required this.onSelected,
+    required this.label,
+    required this.current,
+    required this.suggested,
+    required this.confidence,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final confidenceLabel =
+        confidence > 0 ? 'Confianza ${(confidence * 100).round()}%' : null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      child: Row(children: [
+        Checkbox(
+          value: selected,
+          visualDensity: VisualDensity.compact,
+          onChanged: (value) => onSelected(value ?? false),
+        ),
+        SizedBox(
+            width: 96,
+            child: Text(label,
+                style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                overflow: TextOverflow.ellipsis)),
+        const SizedBox(width: 8),
+        Expanded(
+            child: Text(current,
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis)),
+        const SizedBox(width: 12),
+        Expanded(
+            child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: .09),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: cs.primary.withValues(alpha: .25))),
+          child: Row(children: [
+            Expanded(
+              child: Text(suggested,
+                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+            ),
+            if (confidenceLabel != null) ...[
+              const SizedBox(width: 6),
+              Tooltip(
+                message: 'Confianza de lectura OCR',
+                child: Text(
+                  confidenceLabel,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ]),
+        )),
+      ]),
     );
   }
 }

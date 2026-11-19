@@ -14,12 +14,10 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
   String? _inlinePdfError;
   Uint8List? _inlinePdfBytes;
   bool _savingBillingName = false;
-  bool _updatingDelivery = false;
   List<Map<String, dynamic>> _invoiceHistory = const [];
   bool _historyLoading = false;
   String? _historyError;
   Invoice get _invoice => _currentInvoice ?? widget.invoice;
-  num get _total => _lines.fold<num>(0, (sum, l) => sum + (l.lineTotal ?? 0));
 
   Future<void> _loadInvoiceDetail() async {
     final id = widget.invoice.id.trim();
@@ -71,14 +69,6 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     } finally {
       if (mounted) setState(() => _historyLoading = false);
     }
-  }
-
-  Future<void> _updateInvoicePayment(Map<String, dynamic> payload) async {
-    final updated = await _invoicesApi.updatePayment(_invoice.id, payload);
-    if (!mounted) return;
-    setState(() => _currentInvoice = updated);
-    widget.onInvoiceChanged?.call();
-    await _loadInlinePdfPreview();
   }
 
   Future<void> _fetchLines() async {
@@ -178,73 +168,6 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     }
   }
 
-  Future<void> _markInvoiceSent({
-    required String channel,
-  }) async {
-    if (_updatingDelivery) return;
-    setState(() => _updatingDelivery = true);
-    try {
-      final updated = await _invoicesApi.markInvoiceSent(
-        _invoice.id,
-        channel: channel,
-      );
-      if (!mounted) return;
-      setState(() => _currentInvoice = updated);
-      await _notifyInvoiceChanged();
-      if (!mounted) return;
-      final l = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.invoiceDeliveryStatusUpdated)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      final l = AppLocalizations.of(context)!;
-      final message = e.toString().replaceFirst('Exception: ', '').trim();
-      final normalized = message.toLowerCase();
-      final readable = normalized.contains('409') ||
-              normalized.contains('not issued') ||
-              normalized.contains('solo') && normalized.contains('emit')
-          ? l.invoiceDeliveryOnlyIssued
-          : (message.isEmpty ? l.invoiceDeliveryUpdateError : message);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(readable)),
-      );
-    } finally {
-      if (mounted) setState(() => _updatingDelivery = false);
-    }
-  }
-
-  Future<void> _markInvoiceUnsent() async {
-    if (_updatingDelivery) return;
-    setState(() => _updatingDelivery = true);
-    try {
-      final updated = await _invoicesApi.markInvoiceUnsent(_invoice.id);
-      if (!mounted) return;
-      setState(() => _currentInvoice = updated);
-      await _notifyInvoiceChanged();
-      if (!mounted) return;
-      final l = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.invoiceMarkedUnsent)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      final l = AppLocalizations.of(context)!;
-      final message = e.toString().replaceFirst('Exception: ', '').trim();
-      final normalized = message.toLowerCase();
-      final readable = normalized.contains('409') ||
-              normalized.contains('not issued') ||
-              normalized.contains('solo') && normalized.contains('emit')
-          ? l.invoiceDeliveryOnlyIssued
-          : (message.isEmpty ? l.invoiceDeliveryUpdateError : message);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(readable)),
-      );
-    } finally {
-      if (mounted) setState(() => _updatingDelivery = false);
-    }
-  }
-
   Uint8List _validatePdf(http.Response r) {
     final bytes = r.bodyBytes;
     final ct = (r.headers['content-type'] ?? '').toLowerCase();
@@ -338,7 +261,7 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     }.toList()
       ..removeWhere((e) => e.trim().isEmpty);
 
-    final result = await showDialog<Map<String, String?>>(
+    final result = await showHexoraDialog<Map<String, String?>>(
       context: context,
       builder: (context) {
         return AlertDialog(

@@ -1,3 +1,5 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -16,6 +18,8 @@ import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/w
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker_account_setup_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/l10n/build_context_locale.dart';
@@ -40,8 +44,8 @@ class WorkersHubScreen extends StatefulWidget {
 }
 
 class _WorkersHubScreenState extends State<WorkersHubScreen> {
-  static const double _expandedMenuWidth = 168;
-  static const double _collapsedMenuWidth = 64;
+  static const double _expandedMenuWidth = NavigationTokens.sidebarWidth;
+  static const double _collapsedMenuWidth = NavigationTokens.railWidth;
 
   _WorkersSection _section = _WorkersSection.workers;
   bool _sideMenuCollapsed = false;
@@ -68,16 +72,19 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
       _RegisterHoursImportPanel(group: widget.group),
       WorkerAccountSetupScreen(group: widget.group),
     ];
-    return IndexedStack(
-      index: _section.index,
-      children: [
-        for (var i = 0; i < sections.length; i++)
-          if (!isMobile ||
-              _visitedMobileSections.contains(_WorkersSection.values[i]))
-            sections[i]
-          else
-            const SizedBox.shrink(),
-      ],
+    return HexoraMenuContentTransition.submenu(
+      transitionKey: _section,
+      child: IndexedStack(
+        index: _section.index,
+        children: [
+          for (var i = 0; i < sections.length; i++)
+            if (!isMobile ||
+                _visitedMobileSections.contains(_WorkersSection.values[i]))
+              sections[i]
+            else
+              const SizedBox.shrink(),
+        ],
+      ),
     );
   }
 
@@ -92,80 +99,48 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
             })>
         navItems,
   ) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-
     return Row(
       children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          width: _sideMenuCollapsed ? _collapsedMenuWidth : _expandedMenuWidth,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                child: Align(
-                  alignment: _sideMenuCollapsed
-                      ? Alignment.center
-                      : Alignment.centerRight,
-                  child: Tooltip(
-                    message: _sideMenuCollapsed
-                        ? l.groupInvoicesNavExpand
-                        : l.groupInvoicesNavCollapse,
-                    child: IconButton.filledTonal(
-                      onPressed: () => setState(
-                        () => _sideMenuCollapsed = !_sideMenuCollapsed,
-                      ),
-                      icon: Icon(
-                        _sideMenuCollapsed
-                            ? Icons.keyboard_double_arrow_right_rounded
-                            : Icons.keyboard_double_arrow_left_rounded,
-                      ),
-                      iconSize: 18,
-                      style: IconButton.styleFrom(
-                        minimumSize: const Size(40, 34),
-                        fixedSize: const Size(40, 34),
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+        Theme(
+          data: navigationTheme(Theme.of(context)),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            width:
+                _sideMenuCollapsed ? _collapsedMenuWidth : _expandedMenuWidth,
+            child: SidebarEdgeShell(
+              collapsed: _sideMenuCollapsed,
+              onToggle: () => setState(
+                () => _sideMenuCollapsed = !_sideMenuCollapsed,
               ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-                  children: [
-                    ...navItems.map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: SidebarItem(
-                          icon: item.icon,
-                          label: item.label,
-                          isSelected: _section == item.section,
-                          collapsed: _sideMenuCollapsed,
-                          onTap: () => setState(
-                            () => _section = item.section,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
+                      children: [
+                        ...navItems.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: SidebarItem(
+                              icon: item.icon,
+                              label: item.label,
+                              isSelected: _section == item.section,
+                              collapsed: _sideMenuCollapsed,
+                              onTap: () => setState(
+                                () => _section = item.section,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-        VerticalDivider(
-          width: 1,
-          thickness: 1,
-          color: cs.outlineVariant.withValues(alpha: 0.4),
         ),
         Expanded(child: _buildSectionContent()),
       ],
@@ -247,7 +222,7 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
                     onSelected: (value) => setState(() => _section = value),
                     itemBuilder: (_) => [
                       for (final item in navItems)
-                        PopupMenuItem(
+                        NavigationPopupMenuItem(
                           value: item.section,
                           child: Text(item.label),
                         ),
@@ -265,7 +240,7 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
                           navItems
                               .firstWhere((item) => item.section == _section)
                               .label,
-                          style: TextStyle(
+                          style: NavigationTokens.label(context).copyWith(
                               color: cs.onPrimaryContainer,
                               fontWeight: FontWeight.w700),
                         )),

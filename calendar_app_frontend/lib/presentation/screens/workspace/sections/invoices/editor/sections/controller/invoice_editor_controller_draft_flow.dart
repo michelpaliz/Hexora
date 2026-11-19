@@ -31,7 +31,15 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
     if (_clientId == null) {
       throw Exception(l.selectClientFirst);
     }
-    final paymentPayload = buildDraftPaymentPayload(context);
+    // A newly created or unchanged draft already has the backend default
+    // payment state. Do not make a second payment-endpoint request unless the
+    // user actually changed payment details; that request used to turn an
+    // otherwise successful draft save into a failed Continue action.
+    if (_draftPaymentPayloadInvalid) {
+      buildDraftPaymentPayload(context);
+    }
+    final paymentPayload =
+        _draftPaymentPayload == null ? null : buildDraftPaymentPayload(context);
 
     _saving = true;
     notifyListeners();
@@ -66,30 +74,25 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
         final updated =
             await _invoicesApi.updateDraft(_editingDraftId!, payload);
 
-        if (!_useBlocks) {
-          final existing = await _linesApi.list(_editingDraftId!);
-          for (final line in existing) {
-            final id = line.id;
-            if (id != null && id.isNotEmpty) {
-              await _linesApi.delete(_editingDraftId!, id);
+        var updatedLines = updated.lines;
+        if (hasBillableEntries) {
+          updatedLines = await _replaceLinesForInvoice(_editingDraftId!);
+          if (!_useBlocks) {
+            final drafts = _billableLineDrafts();
+            for (var i = 0; i < drafts.length && i < updatedLines.length; i++) {
+              drafts[i].id = updatedLines[i].id;
+              drafts[i].evidenceBlobName = updatedLines[i].evidenceBlobName;
             }
           }
-          final updatedLines = <InvoiceLine>[];
-          if (!allowEmptyLines) {
-            for (final d in _billableLineDrafts()) {
-              final saved =
-                  await _linesApi.create(_editingDraftId!, d.toLine());
-              updatedLines.add(saved);
-              d.id = saved.id;
-              d.evidenceBlobName = saved.evidenceBlobName;
-            }
-          }
-          _savedInvoice = updated.copyWith(lines: updatedLines);
-        } else {
-          _savedInvoice = updated.copyWith(blocks: blocksPayload);
         }
-        _savedInvoice =
-            await _applyDraftPayment(_savedInvoice!, paymentPayload);
+        _savedInvoice = updated.copyWith(
+          lines: updatedLines,
+          blocks: blocksPayload,
+        );
+        if (paymentPayload != null) {
+          _savedInvoice =
+              await _applyDraftPayment(_savedInvoice!, paymentPayload);
+        }
         _pendingDrafts = [
           _savedInvoice!,
           ..._pendingDrafts.where((inv) => inv.id != _savedInvoice!.id),
@@ -138,14 +141,25 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
         debugPrint('[InvoiceDraft] fetch failed: $e');
       }
 
-      if (!_useBlocks) {
-        final createdLines =
-            created.lines.isNotEmpty ? created.lines : draftLines;
-        _savedInvoice = created.copyWith(lines: createdLines);
-      } else {
-        _savedInvoice = created.copyWith(blocks: sanitizedBlocks);
+      var createdLines = created.lines;
+      if (hasBillableEntries) {
+        createdLines = await _replaceLinesForInvoice(created.id);
+        if (!_useBlocks) {
+          final drafts = _billableLineDrafts();
+          for (var i = 0; i < drafts.length && i < createdLines.length; i++) {
+            drafts[i].id = createdLines[i].id;
+            drafts[i].evidenceBlobName = createdLines[i].evidenceBlobName;
+          }
+        }
       }
-      _savedInvoice = await _applyDraftPayment(_savedInvoice!, paymentPayload);
+      _savedInvoice = created.copyWith(
+        lines: createdLines,
+        blocks: sanitizedBlocks,
+      );
+      if (paymentPayload != null) {
+        _savedInvoice =
+            await _applyDraftPayment(_savedInvoice!, paymentPayload);
+      }
       if (_savedInvoice?.status == 'draft') {
         final savedDraft = _savedInvoice!;
         _editingDraftId = savedDraft.id.trim().isEmpty ? null : savedDraft.id;

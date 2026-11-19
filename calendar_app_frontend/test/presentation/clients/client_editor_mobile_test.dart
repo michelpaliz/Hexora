@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/tabs/clients/clients_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,6 +38,154 @@ Widget _app(Widget child, {bool dark = false}) => MaterialApp(
     );
 
 void main() {
+  testWidgets('desktop client list paginates and filters active status',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1600, 1000);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    String? customerType;
+    String? propertyType;
+    var missingInvoice = false;
+    await tester.pumpWidget(_app(Align(
+        alignment: Alignment.centerLeft,
+        child: SizedBox(
+            width: 970,
+            child: StatefulBuilder(
+                builder: (context, setState) => ClientsTab(
+                      items: List.generate(
+                          28,
+                          (i) => GroupClient(
+                              id: '$i',
+                              name: 'Cliente ${i.toString().padLeft(2, '0')}',
+                              email: 'client$i@example.com',
+                              entityType: 'Com. de prop.',
+                              propertyKind: 'Comunidad de propietarios',
+                              customerType: 'community',
+                              propertyType: 'building',
+                              isActive: i < 26)),
+                      loading: false,
+                      error: null,
+                      onRefresh: () async {},
+                      customerTypeFilter: customerType,
+                      customerTypeOptions: const ['community'],
+                      onCustomerTypeChanged: (value) =>
+                          setState(() => customerType = value),
+                      propertyTypeFilter: propertyType,
+                      propertyTypeOptions: const ['building'],
+                      onPropertyTypeChanged: (value) =>
+                          setState(() => propertyType = value),
+                      missingCurrentMonthInvoiceOnly: missingInvoice,
+                      onToggleMissingCurrentMonthInvoiceOnly: (value) =>
+                          setState(() => missingInvoice = value),
+                    ))))));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    final search = find.byType(TextField);
+    final filters =
+        find.byKey(const ValueKey('client-advanced-filters-toggle'));
+    final sort = find.byKey(const ValueKey('client-sort-control'));
+    final refresh = find.byKey(const ValueKey('client-refresh-control'));
+    expect(find.text('Inactivo 2'), findsNothing);
+    expect(
+        tester.getCenter(filters).dy, closeTo(tester.getCenter(search).dy, 1));
+    expect(tester.getCenter(sort).dy, closeTo(tester.getCenter(search).dy, 1));
+    expect(
+        tester.getCenter(refresh).dy, closeTo(tester.getCenter(search).dy, 1));
+    expect(find.text('Mostrando 1–25 de 28 clientes'), findsOneWidget);
+    await tester.tap(find.byTooltip('Página siguiente'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mostrando 26–28 de 28 clientes'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButton<int>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('10').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Mostrando 1–10 de 28 clientes'), findsOneWidget);
+    await tester.tap(filters);
+    await tester.pumpAndSettle();
+    final popover = find.byKey(const ValueKey('client-filter-popover'));
+    expect(tester.getSize(popover).width, lessThanOrEqualTo(320));
+    expect(
+      find.byKey(const ValueKey('client-filter-select-Tipo de cliente')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('client-filter-select-Tipo de inmueble')),
+      findsOneWidget,
+    );
+    expect(find.byType(Checkbox), findsOneWidget);
+    expect(find.text('Inactivo 2'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('client-filter-select-Tipo de cliente')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Comunidad de propietarios').last);
+    await tester.pumpAndSettle();
+    expect(customerType, 'community');
+    expect(popover, findsOneWidget);
+    expect(find.text('Filtros (1)'), findsOneWidget);
+    await tester.tap(find.text('Inactivo 2'));
+    await tester.pumpAndSettle();
+    expect(find.text('Filtros (2)'), findsOneWidget);
+    expect(find.text('Cliente 26'), findsOneWidget);
+    expect(find.text('Cliente 27'), findsOneWidget);
+    expect(find.text('Cliente 00'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('inline editor keeps save and cancel visible while scrolling',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(540, 800);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    var cancelled = false;
+    await tester.pumpWidget(_app(AddClientSheet(
+        groupId: 'group-1',
+        api: ClientsApi(),
+        client: GroupClient(id: 'c', name: 'Las Alondras Playa'),
+        closeOnSave: false,
+        onCancel: () => cancelled = true)));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    final before = tester.getCenter(find.text('Guardar cambios'));
+    await tester.drag(
+        find.byType(SingleChildScrollView).first, const Offset(0, -400));
+    await tester.pumpAndSettle();
+    expect(tester.getCenter(find.text('Guardar cambios')), before);
+    await tester.tap(find.text('Cancelar'));
+    expect(cancelled, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('inline editor can defer its title to the split-view shell',
+      (tester) async {
+    await tester.pumpWidget(_app(AddClientSheet(
+      groupId: 'group-1',
+      api: ClientsApi(),
+      client: GroupClient(id: 'c', name: 'Las Alondras Playa'),
+      closeOnSave: false,
+      showInlineHeader: false,
+    )));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar cliente'), findsNothing);
+    expect(find.text('Las Alondras Playa'), findsWidgets);
+    expect(find.text('Guardar cambios'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('new inline client editor omits the redundant create heading',
+      (tester) async {
+    await tester.pumpWidget(_app(AddClientSheet(
+      groupId: 'group-1',
+      api: ClientsApi(),
+      closeOnSave: false,
+    )));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Crear cliente'), findsNothing);
+    expect(find.text('—'), findsNothing);
+    expect(find.text('Crear cliente').hitTestable(), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [360.0, 1280.0]) {
     for (final scale in [1.0, 1.5]) {
       testWidgets('editor at width $width keeps save visible at scale $scale',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/services/user/domain/user_agenda_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
@@ -14,6 +15,7 @@ class GroupUpcomingEventsCard extends StatefulWidget {
   final int daysRange;
   final int limit;
   final Color? cardColor;
+  final bool compactSummary;
   final GroupRole role;
   final String? currentUserId;
 
@@ -25,6 +27,7 @@ class GroupUpcomingEventsCard extends StatefulWidget {
     this.daysRange = 14,
     this.limit = 5,
     this.cardColor,
+    this.compactSummary = false,
   });
 
   @override
@@ -115,6 +118,17 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
+          if (widget.compactSummary) {
+            return const SizedBox(
+              height: 48,
+              child: Center(
+                child: SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            );
+          }
           return styledCard(
             Padding(
               padding: const EdgeInsets.all(16),
@@ -135,6 +149,22 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
           );
         }
         if (snapshot.hasError) {
+          if (widget.compactSummary) {
+            return ListTile(
+              minTileHeight: 48,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+              leading:
+                  Icon(Icons.event_busy_rounded, color: cs.error, size: 20),
+              title: Text(loc.noUpcomingEvents),
+              trailing: Icon(Icons.chevron_right_rounded,
+                  size: 18, color: cs.onSurfaceVariant),
+              onTap: () => Navigator.pushNamed(
+                context,
+                AppRoutes.groupCalendar,
+                arguments: widget.groupId,
+              ),
+            );
+          }
           return styledCard(
             Padding(
               padding: const EdgeInsets.all(16),
@@ -149,6 +179,49 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
         final currentUserId =
             widget.currentUserId ?? context.read<UserDomain>().user?.id;
         final items = snapshot.data ?? const <Event>[];
+        if (widget.compactSummary) {
+          final es = Localizations.localeOf(context).languageCode == 'es';
+          final nextLabel = items.isEmpty
+              ? (es ? 'Ninguno' : 'None')
+              : MaterialLocalizations.of(context)
+                  .formatCompactDate(items.first.startDate);
+          return ListTile(
+            minTileHeight: 48,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+            leading:
+                Icon(Icons.event_note_outlined, color: cs.primary, size: 20),
+            title: Text(
+              es ? 'Próximos eventos' : 'Upcoming events',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 92),
+                  child: Text(
+                    nextLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_right_rounded,
+                    size: 18, color: cs.onSurfaceVariant),
+              ],
+            ),
+            onTap: () => Navigator.pushNamed(
+              context,
+              AppRoutes.groupCalendar,
+              arguments: widget.groupId,
+            ),
+          );
+        }
         final isDesktop = MediaQuery.of(context).size.width >= 1180;
         final selectedEvent = items.cast<Event?>().firstWhere(
               (e) => e?.id == _selectedEventId,
@@ -197,7 +270,7 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
                           loc.upcomingEventsSubtitle,
                           style: TextStyle(color: onSurfaceVar),
                         ),
-                  trailing: TextButton(
+                  trailing: HexoraButton(
                     onPressed: () {
                       Navigator.pushNamed(
                         context,
@@ -205,7 +278,8 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
                         arguments: widget.groupId,
                       );
                     },
-                    child: Text(loc.seeAll),
+                    label: loc.seeAll,
+                    variant: HexoraButtonVariant.ghost,
                   ),
                 ),
                 const Divider(height: 1),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 
 Future<String?> showCategoryCreateDialog({
   required BuildContext context,
@@ -10,7 +11,7 @@ Future<String?> showCategoryCreateDialog({
   TextStyle? buttonTextStyle,
 }) {
   final controller = TextEditingController();
-  return showDialog<String?>(
+  return showHexoraDialog<String?>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(title, style: titleStyle),

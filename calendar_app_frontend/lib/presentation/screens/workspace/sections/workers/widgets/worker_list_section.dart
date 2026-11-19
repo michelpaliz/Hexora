@@ -1,8 +1,13 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
+import 'package:flutter/services.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'worker_directory_card.dart';
+import 'worker_directory_tabs.dart';
 
 // Future-ready per-worker metrics slot.  Pass null for any unknown metric.
 // When the API gains per-worker stats, populate this from the parent and
@@ -31,9 +36,15 @@ class WorkerListSection extends StatelessWidget {
     this.selectedWorkerId,
     this.tapSelects = false,
     this.workerMetrics,
+    this.spacious = false,
+    this.grid = false,
+    this.partnerRoles = const {},
   });
 
   final List<Worker> workers;
+  final bool spacious;
+  final bool grid;
+  final Map<String, WorkerPartnerRole> partnerRoles;
   final void Function(Worker worker) onEdit;
   final void Function(Worker worker) onAddHours;
   final void Function(Worker worker)? onOpenOverview;
@@ -46,14 +57,36 @@ class WorkerListSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (spacious) {
+      return LayoutBuilder(builder: (context, constraints) {
+        final columns = grid && constraints.maxWidth >= 740 ? 2 : 1;
+        return Wrap(spacing: 12, runSpacing: grid ? 8 : 0, children: [
+          for (final worker in workers)
+            SizedBox(
+                width: (constraints.maxWidth - (columns - 1) * 12) / columns,
+                child: WorkerDirectoryCard(
+                  key: ValueKey(worker.id),
+                  worker: worker,
+                  partnerRole: partnerRoles[worker.id],
+                  selected: selectedWorkerId == worker.id,
+                  grid: grid,
+                  onEdit: () => onEdit(worker),
+                  onAddHours: () => onAddHours(worker),
+                  onOverview: () =>
+                      (onOpenOverviewIcon ?? onOpenOverview)?.call(worker),
+                )),
+        ]);
+      });
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: workers
           .map(
             (w) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(bottom: spacious ? 12 : 8),
               child: _WorkerRow(
                 worker: w,
+                spacious: spacious,
                 isSelected:
                     selectedWorkerId != null && selectedWorkerId == w.id,
                 metrics: workerMetrics?[w.id],
@@ -77,6 +110,7 @@ class WorkerListSection extends StatelessWidget {
 }
 
 class _WorkerRow extends StatefulWidget {
+  final bool spacious;
   final Worker worker;
   final bool isSelected;
   final WorkerRowMetrics? metrics;
@@ -93,6 +127,7 @@ class _WorkerRow extends StatefulWidget {
     required this.onAddHours,
     required this.onOpenOverview,
     this.metrics,
+    this.spacious = false,
   });
 
   @override
@@ -117,18 +152,15 @@ class _WorkerRowState extends State<_WorkerRow> {
     final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
     final role = (w.roleTag ?? '').trim();
     final isInactive = w.status == WorkerStatus.archived;
-    final hasRate =
-        w.defaultHourlyRate != null && w.defaultHourlyRate! > 0;
+    final hasRate = w.defaultHourlyRate != null && w.defaultHourlyRate! > 0;
     final hasAdvance = w.advanceAmount != null && w.advanceAmount! > 0;
-    final hasExternalId =
-        (w.externalId ?? '').trim().isNotEmpty && !isLinked;
+    final hasExternalId = (w.externalId ?? '').trim().isNotEmpty && !isLinked;
     final currency = (w.currency ?? 'EUR').trim();
     final hasNotes = (w.notes ?? '').trim().isNotEmpty;
 
     // Format helpers
     final locale = Localizations.localeOf(context).toString();
-    String fmtNum(double v) =>
-        NumberFormat('#,##0.##', locale).format(v);
+    String fmtNum(double v) => NumberFormat('#,##0.##', locale).format(v);
 
     // Background
     Color rowBg;
@@ -151,24 +183,10 @@ class _WorkerRowState extends State<_WorkerRow> {
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           color: rowBg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected
-                ? cs.primary.withValues(alpha: 0.35)
-                : cs.outlineVariant.withValues(alpha: _hovered ? 0.55 : 0.38),
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: cs.primary.withValues(alpha: 0.10),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+          borderRadius: BorderRadius.circular(10),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(10),
           child: IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -180,19 +198,20 @@ class _WorkerRowState extends State<_WorkerRow> {
                   decoration: BoxDecoration(
                     color: cs.primary,
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(13),
-                      bottomLeft: Radius.circular(13),
+                      topLeft: Radius.circular(10),
+                      bottomLeft: Radius.circular(10),
                     ),
                   ),
                 ),
                 // Main row content
                 Expanded(
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(13),
+                    borderRadius: BorderRadius.circular(10),
                     onTap: widget.onTap,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: widget.spacious ? 14 : 10,
+                          vertical: widget.spacious ? 12 : 8),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -227,12 +246,12 @@ class _WorkerRowState extends State<_WorkerRow> {
                                 // Status + role + type
                                 Row(
                                   children: [
-                                    _WorkerStatusChip(
-                                        status: w.status, l: l),
+                                    _WorkerStatusChip(status: w.status, l: l),
                                     const SizedBox(width: 5),
                                     Expanded(
                                       child: Text(
-                                        _metaLine(l, isLinked, role, w.operationalRole),
+                                        _metaLine(l, isLinked, role,
+                                            w.operationalRole),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: t.bodySmall.copyWith(
@@ -304,29 +323,130 @@ class _WorkerRowState extends State<_WorkerRow> {
                           const SizedBox(width: 8),
 
                           // ── Actions ───────────────────────────────────
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _HoverActionIcon(
-                                tooltip: l.addTimeEntryCta,
-                                icon: Icons.schedule_outlined,
-                                onTap: widget.onAddHours,
-                                isPrimary: true,
-                              ),
-                              const SizedBox(width: 6),
-                              _HoverActionIcon(
-                                tooltip: l.overviewInfoTitle,
-                                icon: Icons.calendar_view_month_outlined,
-                                onTap: widget.onOpenOverview,
-                              ),
-                              const SizedBox(width: 6),
-                              _HoverActionIcon(
-                                tooltip: l.editWorker,
-                                icon: Icons.edit_outlined,
-                                onTap: widget.onEdit,
-                              ),
-                            ],
-                          ),
+                          Builder(builder: (context) {
+                            final cs = Theme.of(context).colorScheme;
+                            final baseStyle = IconButton.styleFrom(
+                              minimumSize: const Size(32, 32),
+                              padding: EdgeInsets.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                              side: BorderSide(
+                                  color:
+                                      cs.outlineVariant.withValues(alpha: .55)),
+                            );
+                            return Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton.outlined(
+                                  tooltip: l.addTimeEntryCta,
+                                  style: baseStyle.copyWith(
+                                    foregroundColor:
+                                        WidgetStatePropertyAll(cs.primary),
+                                    backgroundColor: WidgetStatePropertyAll(
+                                        cs.primary.withValues(alpha: 0.08)),
+                                    side: WidgetStatePropertyAll(BorderSide(
+                                        color:
+                                            cs.primary.withValues(alpha: 0.3))),
+                                  ),
+                                  onPressed: widget.onAddHours,
+                                  icon: const Icon(Icons.schedule_outlined,
+                                      size: 16),
+                                ),
+                                const SizedBox(width: 5),
+                                IconButton.outlined(
+                                  tooltip: l.overviewInfoTitle,
+                                  style: baseStyle,
+                                  onPressed: widget.onOpenOverview,
+                                  icon: const Icon(
+                                      Icons.calendar_view_month_outlined,
+                                      size: 16),
+                                ),
+                                const SizedBox(width: 5),
+                                IconButton.outlined(
+                                  tooltip: l.editWorker,
+                                  style: baseStyle,
+                                  onPressed: widget.onEdit,
+                                  icon:
+                                      const Icon(Icons.edit_outlined, size: 16),
+                                ),
+                                if (widget.spacious) ...[
+                                  const SizedBox(width: 5),
+                                  PopupMenuButton<String>(
+                                    tooltip: l.localeName.startsWith('es')
+                                        ? 'Más opciones'
+                                        : 'More options',
+                                    style: ButtonStyle(
+                                      minimumSize: const WidgetStatePropertyAll(
+                                          Size(32, 32)),
+                                      padding: const WidgetStatePropertyAll(
+                                          EdgeInsets.zero),
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                      visualDensity: VisualDensity.compact,
+                                      shape: WidgetStatePropertyAll(
+                                          RoundedRectangleBorder(
+                                              side: BorderSide(
+                                                  color: cs.outlineVariant
+                                                      .withValues(alpha: .55)),
+                                              borderRadius:
+                                                  BorderRadius.circular(8))),
+                                    ),
+                                    icon: const Icon(Icons.more_vert_rounded,
+                                        size: 16),
+                                    onSelected: (value) async {
+                                      if (value == 'copy') {
+                                        await Clipboard.setData(
+                                            ClipboardData(text: name));
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(SnackBar(
+                                          content: Text(
+                                              l.localeName.startsWith('es')
+                                                  ? 'Nombre copiado'
+                                                  : 'Name copied'),
+                                        ));
+                                      } else if (value == 'notes') {
+                                        showHexoraDialog<void>(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                                  title: Text(name),
+                                                  content:
+                                                      SelectableText(w.notes!),
+                                                  actions: [
+                                                    TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                                context),
+                                                        child: Text(
+                                                            MaterialLocalizations
+                                                                    .of(context)
+                                                                .closeButtonLabel))
+                                                  ],
+                                                ));
+                                      }
+                                    },
+                                    itemBuilder: (_) => [
+                                      NavigationPopupMenuItem(
+                                          value: 'copy',
+                                          child: Text(
+                                              l.localeName.startsWith('es')
+                                                  ? 'Copiar nombre'
+                                                  : 'Copy name')),
+                                      if (hasNotes)
+                                        NavigationPopupMenuItem(
+                                            value: 'notes',
+                                            child: Text(
+                                                l.localeName.startsWith('es')
+                                                    ? 'Ver notas'
+                                                    : 'View notes')),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            );
+                          }),
                         ],
                       ),
                     ),
@@ -340,10 +460,15 @@ class _WorkerRowState extends State<_WorkerRow> {
     );
   }
 
-  String _metaLine(AppLocalizations l, bool isLinked, String role, String operationalRole) {
+  String _metaLine(
+      AppLocalizations l, bool isLinked, String role, String operationalRole) {
     final typeLabel = isLinked ? l.linkedUser : l.externalWorker;
     final workerRole = operationalRole == 'supervisor' ? 'Supervisor' : null;
-    return [typeLabel, if (workerRole != null) workerRole, if (role.isNotEmpty) role].join(' · ');
+    return [
+      typeLabel,
+      if (workerRole != null) workerRole,
+      if (role.isNotEmpty) role
+    ].join(' · ');
   }
 }
 
@@ -373,9 +498,8 @@ class _WorkerAvatar extends StatelessWidget {
             ? cs.primary.withValues(alpha: 0.22)
             : cs.primary.withValues(alpha: 0.12);
 
-    final textColor = isInactive
-        ? cs.onSurfaceVariant.withValues(alpha: 0.5)
-        : cs.primary;
+    final textColor =
+        isInactive ? cs.onSurfaceVariant.withValues(alpha: 0.5) : cs.primary;
 
     return Stack(
       children: [
@@ -536,11 +660,10 @@ class _MetricChip extends StatelessWidget {
     final t = AppTypography.of(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         color: color.withValues(alpha: 0.08),
-        border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -572,7 +695,8 @@ class _NotePreview extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final trimmed = notes.trim();
-    final preview = trimmed.length > 38 ? '${trimmed.substring(0, 38)}…' : trimmed;
+    final preview =
+        trimmed.length > 38 ? '${trimmed.substring(0, 38)}…' : trimmed;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -594,85 +718,3 @@ class _NotePreview extends StatelessWidget {
 }
 
 // ── Hover-aware action icon ───────────────────────────────────────────────────
-
-class _HoverActionIcon extends StatefulWidget {
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool isPrimary;
-
-  const _HoverActionIcon({
-    required this.tooltip,
-    required this.icon,
-    required this.onTap,
-    this.isPrimary = false,
-  });
-
-  @override
-  State<_HoverActionIcon> createState() => _HoverActionIconState();
-}
-
-class _HoverActionIconState extends State<_HoverActionIcon> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    final Color bgBase = widget.isPrimary
-        ? cs.primary.withValues(alpha: 0.09)
-        : cs.surfaceContainerHighest.withValues(alpha: 0.7);
-
-    final Color bgHover = widget.isPrimary
-        ? cs.primary.withValues(alpha: 0.18)
-        : cs.surfaceContainerHighest;
-
-    final Color borderBase = widget.isPrimary
-        ? cs.primary.withValues(alpha: 0.22)
-        : cs.outlineVariant.withValues(alpha: 0.4);
-
-    final Color borderHover = widget.isPrimary
-        ? cs.primary.withValues(alpha: 0.5)
-        : cs.outlineVariant.withValues(alpha: 0.7);
-
-    final Color iconColor = widget.isPrimary
-        ? cs.primary.withValues(alpha: _hovered ? 1.0 : 0.7)
-        : _hovered
-            ? cs.onSurface
-            : cs.onSurfaceVariant;
-
-    return Tooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 140),
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: _hovered ? bgHover : bgBase,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: _hovered ? borderHover : borderBase,
-              ),
-              boxShadow: _hovered && widget.isPrimary
-                  ? [
-                      BoxShadow(
-                        color: cs.primary.withValues(alpha: 0.12),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Icon(widget.icon, size: 15, color: iconColor),
-          ),
-        ),
-      ),
-    );
-  }
-}

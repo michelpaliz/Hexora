@@ -155,6 +155,99 @@ void main() {
     );
   });
 
+  test('document financials preserve mixed VAT rates and line discounts', () {
+    final values = presupuestoDocumentFinancials(<String, dynamic>{
+      'discountPercent': 10,
+      'lines': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'quantity': 2,
+          'unitPrice': 100,
+          'discountPercent': 10,
+          'taxRate': 21,
+        },
+        <String, dynamic>{
+          'quantity': 1,
+          'unitPrice': 50,
+          'taxRate': 10,
+        },
+        <String, dynamic>{
+          'quantity': 1,
+          'unitPrice': 20,
+          'taxRate': 0,
+        },
+      ],
+    });
+
+    expect(values.taxableBase, 225);
+    expect(values.vat, closeTo(38.52, 0.001));
+    expect(values.total, closeTo(263.52, 0.001));
+  });
+
+  test('document financials do not invent a VAT split from total only', () {
+    final values = presupuestoDocumentFinancials(<String, dynamic>{
+      'amount': 484,
+    });
+
+    expect(values.taxableBase, isNull);
+    expect(values.vat, isNull);
+    expect(values.total, 484);
+  });
+
+  test('document financials ignore empty list-summary placeholders', () {
+    final values = presupuestoDocumentFinancials(<String, dynamic>{
+      'amount': 250,
+      'taxableBase': 0,
+      'taxTotal': 0,
+    });
+
+    expect(values.taxableBase, isNull);
+    expect(values.vat, isNull);
+    expect(values.total, 250);
+  });
+
+  test('document concepts use structured service content, not generic title',
+      () {
+    final concepts = presupuestoDocumentConcepts(<String, dynamic>{
+      'title': 'Presupuesto',
+      'clientName': 'Brisas',
+      'documentContent': <String, dynamic>{
+        'sections': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'title': 'Lijado y pintado de bancos',
+            'items': <String>['Preparación de superficie', 'Dos capas'],
+          },
+          <String, dynamic>{'title': 'Condiciones de pago'},
+        ],
+      },
+    });
+
+    expect(concepts.first, 'Lijado y pintado de bancos');
+    expect(concepts, contains('Preparación de superficie'));
+    expect(concepts, isNot(contains('Presupuesto')));
+    expect(concepts, isNot(contains('Condiciones de pago')));
+  });
+
+  test('document concepts use existing service variables', () {
+    final concepts = presupuestoDocumentConcepts(<String, dynamic>{
+      'documentTitle': 'Presupuesto Michel S.L.',
+      'documentContent': <String, dynamic>{
+        'variables': <String, dynamic>{
+          'SERVICIO_MANTENIMIENTO': 'Mantenimiento del jardín',
+        },
+      },
+    });
+
+    expect(concepts, ['Mantenimiento del jardín']);
+  });
+
+  test('document concepts derive a concise service from a legacy title', () {
+    final concepts = presupuestoDocumentConcepts(<String, dynamic>{
+      'documentTitle': 'Mantenimiento de jardines y piscinas Michel S.L.',
+    });
+
+    expect(concepts, ['Jardines y piscinas']);
+  });
+
   test('cleaning draft ignores stale garden title and sums monthly schedule',
       () {
     final cleaningDraft = <String, dynamic>{

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/clients/client_api.dart';
@@ -8,7 +10,9 @@ import 'package:hexora/presentation/screens/workspace/sections/enable_banking/st
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_formatters.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/event_args_helper.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_category_meta.dart';
+import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_destination.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_formatting.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/panels/notifications/widgets/notification_density.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -22,10 +26,11 @@ class NotificationDetailsPanel extends StatefulWidget {
     required this.groupName,
     required this.onConfirm,
     required this.onNegate,
-    required this.onOpen,
+    this.onOpen,
     this.openLabel,
-    required this.onMarkRead,
     required this.onDelete,
+    this.onMarkRead,
+    this.onClose,
   });
 
   final NotificationUser? notification;
@@ -36,6 +41,7 @@ class NotificationDetailsPanel extends StatefulWidget {
   final String? openLabel;
   final VoidCallback? onMarkRead;
   final VoidCallback? onDelete;
+  final VoidCallback? onClose;
 
   @override
   State<NotificationDetailsPanel> createState() =>
@@ -46,6 +52,30 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
   String? _resolvedClientName;
   String? _resolvedServiceName;
   String? _resolvedOwnerName;
+
+  Future<void> _confirmDelete(bool isEs) async {
+    if (widget.onDelete == null) return;
+    final confirmed = await showHexoraDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEs ? 'Eliminar notificación' : 'Delete notification'),
+        content: Text(isEs
+            ? 'Esta acción no se puede deshacer.'
+            : 'This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(isEs ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(isEs ? 'Eliminar' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) widget.onDelete!();
+  }
 
   @override
   void initState() {
@@ -76,7 +106,7 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
       futures.add(() async {
         try {
           final client = await ClientsApi().getById(args.clientId!.trim());
-          if (!mounted) return;
+          if (!mounted || widget.notification?.id != notification.id) return;
           setState(() => _resolvedClientName =
               client.name.trim().isEmpty ? null : client.name.trim());
         } catch (_) {}
@@ -88,7 +118,7 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
         try {
           final service =
               await ServiceApi().getById(args.primaryServiceId!.trim());
-          if (!mounted) return;
+          if (!mounted || widget.notification?.id != notification.id) return;
           setState(() => _resolvedServiceName =
               service.name.trim().isEmpty ? null : service.name.trim());
         } catch (_) {}
@@ -107,7 +137,7 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
               : (owner.name.trim().isNotEmpty
                   ? owner.name.trim()
                   : owner.userName.trim());
-          if (!mounted) return;
+          if (!mounted || widget.notification?.id != notification.id) return;
           setState(() => _resolvedOwnerName = name.isEmpty ? null : name);
         } catch (_) {}
       }());
@@ -234,10 +264,16 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
     final n = widget.notification!;
     final isBankExpenseNotification = _isBankExpenseNotification(n);
     final bankExpenseRows = _bankExpenseRows(n);
-    final hasActions = n.category == Category.groupInvitation ||
+    final hasActions = resolveNotificationDestination(n) ==
+            NotificationDestination.invitation ||
         n.questionsAndAnswers.isNotEmpty;
 
-    final isEvent = isEventNotification(n);
+    final documentKey = '${n.titleKey} ${n.fallbackTitle}'.toLowerCase();
+    final isDocument = !isBankExpenseNotification &&
+        (n.args.containsKey('receiptId') ||
+            n.args.containsKey('invoiceId') ||
+            RegExp('receipt|invoice|recibo|factura').hasMatch(documentKey));
+    final isEvent = !isDocument && isEventNotification(n);
     final meta = resolveNotifMeta(n, cs);
     final args = EventArgsHelper(n.args);
     final locale = Localizations.localeOf(context).toString();
@@ -252,373 +288,501 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
 
     final dim = cs.onSurface.withValues(alpha: 0.55);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: meta.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(meta.icon, size: 20, color: meta.color),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: NotifDensity.detailsPadding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isEvent && args.eventTitle != null
-                          ? args.eventTitle!
-                          : n.getLocalizedTitle(l),
-                      style: t.bodyLarge.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: ThemeColors.textPrimary(context),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: meta.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Icon(meta.icon, size: 18, color: meta.color),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isEvent && args.eventTitle != null
+                                ? args.eventTitle!
+                                : n.getLocalizedTitle(l),
+                            style: t.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: ThemeColors.textPrimary(context),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            formatTimeDifference(n.timestamp, context),
+                            style:
+                                t.caption.copyWith(color: cs.onSurfaceVariant),
+                          ),
+                          const SizedBox(height: 4),
+                          Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: [
+                              if (!n.isRead)
+                                _Pill(
+                                  label: isEs ? 'No leída' : 'Unread',
+                                  color: meta.color,
+                                ),
+                              if (args.action != null)
+                                _Pill(
+                                  label: actionLabel(args.action, isEs: isEs),
+                                  color:
+                                      resolveActionMeta(args.action, cs).color,
+                                ),
+                              if (args.isDone == true)
+                                _Pill(
+                                  label: isEs ? 'Hecho' : 'Done',
+                                  color: Colors.green.shade600,
+                                ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: [
-                        if (!n.isRead)
-                          _Pill(
-                            label: isEs ? 'No leida' : 'Unread',
-                            color: meta.color,
-                          ),
-                        if (args.action != null)
-                          _Pill(
-                            label: actionLabel(args.action, isEs: isEs),
-                            color: resolveActionMeta(args.action, cs).color,
-                          ),
-                        if (args.isDone == true)
-                          _Pill(
-                            label: isEs ? 'Hecho' : 'Done',
-                            color: Colors.green.shade600,
-                          ),
-                      ],
+                    if (widget.onClose != null)
+                      IconButton(
+                        tooltip: MaterialLocalizations.of(context)
+                            .closeButtonTooltip,
+                        onPressed: widget.onClose,
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  n.getLocalizedMessage(l),
+                  style: t.bodyMedium.copyWith(
+                    color: ThemeColors.textSecondary(context),
+                    height: 1.35,
+                  ),
+                ),
+                if (isDocument)
+                  _DocumentDetails(
+                      notification: n,
+                      clientName: _resolvedClientName ?? args.clientName,
+                      creatorName: args.createdByName ??
+                          args.senderName ??
+                          args.ownerName ??
+                          _resolvedOwnerName),
+                if (!isDocument) ...[
+                  // ── Event section (always for event notifications) ────────────
+                  if (isBankExpenseNotification &&
+                      bankExpenseRows.isNotEmpty) ...[
+                    _SectionDivider(
+                      label: isEs ? 'Gastos detectados' : 'Detected expenses',
+                      cs: cs,
+                      t: t,
                     ),
+                    _BankExpenseRowsSection(
+                      rows: bankExpenseRows,
+                      args: n.args,
+                      isEs: isEs,
+                    ),
+                  ] else if (isBankExpenseNotification) ...[
+                    _BankExpenseFallbackSummary(args: n.args, isEs: isEs),
+                  ],
+                  if (isEvent) ...[
+                    _SectionDivider(
+                        label: isEs ? 'Evento' : 'Event', cs: cs, t: t),
+                    if (args.eventTitle != null)
+                      _IconDetailRow(
+                        icon: Icons.event_rounded,
+                        label: isEs ? 'Nombre' : 'Name',
+                        value: args.eventTitle!,
+                        color: meta.color,
+                      ),
+                    _IconDetailRow(
+                      icon: Icons.person_add_rounded,
+                      label: isEs ? 'Creado por' : 'Created by',
+                      value: args.createdByName ??
+                          args.senderName ??
+                          args.ownerName ??
+                          _resolvedOwnerName ??
+                          _fallbackActorLabel(
+                            isEs: isEs,
+                            actorId: args.senderId ?? n.senderId,
+                          ),
+                      color: dim,
+                    ),
+                    if (args.eventId != null)
+                      _IconDetailRow(
+                        icon: Icons.tag_rounded,
+                        label: 'ID',
+                        value: args.eventId!,
+                        color: dim,
+                      ),
+                    if (args.eventType != null)
+                      _IconDetailRow(
+                        icon: resolveEventTypeMeta(args.eventType, cs).icon,
+                        label: isEs ? 'Tipo' : 'Type',
+                        value: eventTypeLabel(args.eventType, isEs: isEs),
+                        color: resolveEventTypeMeta(args.eventType, cs).color,
+                      ),
+                    if (args.status != null)
+                      _IconDetailRow(
+                        icon: resolveStatusMeta(args.status, cs).icon,
+                        label: isEs ? 'Estado' : 'Status',
+                        value: statusLabel(args.status, isEs: isEs),
+                        color: resolveStatusMeta(args.status, cs).color,
+                      ),
+                    if (args.isDone == true)
+                      _IconDetailRow(
+                        icon: Icons.task_alt_rounded,
+                        label: isEs ? 'Completado' : 'Completed',
+                        value: isEs ? 'Sí' : 'Yes',
+                        color: Colors.green.shade600,
+                      ),
+                    if (args.recurrenceRuleId != null)
+                      _IconDetailRow(
+                        icon: Icons.repeat_rounded,
+                        label: isEs ? 'Recurrencia' : 'Recurrence',
+                        value: args.recurrenceRuleId!,
+                        color: dim,
+                      ),
+                    if (args.categoryId != null)
+                      _IconDetailRow(
+                        icon: Icons.label_rounded,
+                        label: isEs ? 'Categoría' : 'Category',
+                        value: args.subcategoryId != null
+                            ? '${args.categoryId!} › ${args.subcategoryId!}'
+                            : args.categoryId!,
+                        color: dim,
+                      ),
+                  ],
+
+                  // ── Schedule ──────────────────────────────────────────────────────
+                  if (isEvent &&
+                      (args.startDate != null ||
+                          args.endDate != null ||
+                          args.allDay != null ||
+                          args.reminderTime != null)) ...[
+                    _SectionDivider(
+                        label: isEs ? 'Horario' : 'Schedule', cs: cs, t: t),
+                    if (args.allDay == true)
+                      _IconDetailRow(
+                        icon: Icons.wb_sunny_rounded,
+                        label: isEs ? 'Todo el día' : 'All day',
+                        value: isEs ? 'Sí' : 'Yes',
+                        color: Colors.amber.shade600,
+                      ),
+                    if (args.formattedStartDate(locale) != null)
+                      _IconDetailRow(
+                        icon: Icons.play_arrow_rounded,
+                        label: isEs ? 'Inicio' : 'Start',
+                        value: args.formattedStartDate(locale)!,
+                        trailing: relTime != null
+                            ? _Pill(label: relTime, color: meta.color)
+                            : null,
+                        color: meta.color,
+                      ),
+                    if (args.formattedEndDate(locale) != null)
+                      _IconDetailRow(
+                        icon: Icons.stop_rounded,
+                        label: isEs ? 'Fin' : 'End',
+                        value: args.formattedEndDate(locale)!,
+                        color: dim,
+                      ),
+                    if (args.formattedReminderTime(isEs: isEs) != null)
+                      _IconDetailRow(
+                        icon: Icons.alarm_rounded,
+                        label: isEs ? 'Recordatorio' : 'Reminder',
+                        value: args.formattedReminderTime(isEs: isEs)!,
+                        color: const Color(0xFFFF8F00),
+                      ),
+                  ],
+
+                  // ── Content ───────────────────────────────────────────────────────
+                  if (args.location != null ||
+                      args.localization != null ||
+                      args.description != null ||
+                      args.note != null) ...[
+                    _SectionDivider(
+                        label: isEs ? 'Contenido' : 'Content', cs: cs, t: t),
+                    if (args.location != null || args.localization != null)
+                      _IconDetailRow(
+                        icon: Icons.location_on_rounded,
+                        label: isEs ? 'Ubicación' : 'Location',
+                        value: args.location ?? args.localization!,
+                        color: dim,
+                      ),
+                    if (args.description != null)
+                      _IconDetailRow(
+                        icon: Icons.description_rounded,
+                        label: isEs ? 'Descripción' : 'Description',
+                        value: args.description!,
+                        color: dim,
+                      ),
+                    if (args.note != null)
+                      _IconDetailRow(
+                        icon: Icons.sticky_note_2_rounded,
+                        label: isEs ? 'Nota' : 'Note',
+                        value: args.note!,
+                        color: dim,
+                      ),
+                  ],
+
+                  // ── Work visit ────────────────────────────────────────────────────
+                  if (args.clientId != null ||
+                      args.clientName != null ||
+                      args.primaryServiceId != null ||
+                      args.stopId != null) ...[
+                    _SectionDivider(
+                        label: isEs ? 'Visita de trabajo' : 'Work visit',
+                        cs: cs,
+                        t: t),
+                    if (args.clientName != null || args.clientId != null)
+                      _IconDetailRow(
+                        icon: Icons.person_outline_rounded,
+                        label: isEs ? 'Cliente' : 'Client',
+                        value: _bestResolvedLabel(
+                              resolvedName: _resolvedClientName,
+                              payloadName: args.clientName,
+                              fallbackId: args.clientId,
+                            ) ??
+                            args.clientId!,
+                        color: dim,
+                      ),
+                    if (args.primaryServiceId != null ||
+                        _resolvedServiceName != null)
+                      _IconDetailRow(
+                        icon: Icons.home_repair_service_rounded,
+                        label: isEs ? 'Servicio' : 'Service',
+                        value: _bestResolvedLabel(
+                              resolvedName: _resolvedServiceName,
+                              payloadName: null,
+                              fallbackId: args.primaryServiceId,
+                            ) ??
+                            args.primaryServiceId!,
+                        color: dim,
+                      ),
+                    if (args.stopId != null)
+                      _IconDetailRow(
+                        icon: Icons.place_rounded,
+                        label: isEs ? 'Parada' : 'Stop',
+                        value: args.stopId!,
+                        color: dim,
+                      ),
+                  ],
+
+                  // ── Context ───────────────────────────────────────────────────────
+                  ExpansionTile(
+                    expansionAnimationStyle:
+                        HexoraMotion.expansionStyle(context),
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: EdgeInsets.zero,
+                    title: Text(
+                      isEs ? 'Ver detalles' : 'View details',
+                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Column(
+                          children: [
+                            _IconDetailRow(
+                              icon: Icons.group_rounded,
+                              label: l.groupSectionTitle,
+                              value: widget.groupName,
+                              color: dim,
+                            ),
+                            if (args.ownerName != null || args.ownerId != null)
+                              _IconDetailRow(
+                                icon: Icons.manage_accounts_rounded,
+                                label: isEs ? 'Responsable' : 'Owner',
+                                value: _bestResolvedLabel(
+                                      resolvedName: _resolvedOwnerName,
+                                      payloadName: args.ownerName,
+                                      fallbackId: args.ownerId,
+                                    ) ??
+                                    args.ownerId!,
+                                color: dim,
+                              ),
+                            _IconDetailRow(
+                              icon: Icons.send_rounded,
+                              label: isEs ? 'Enviado por' : 'Sent by',
+                              value: args.senderName ??
+                                  args.ownerName ??
+                                  _fallbackActorLabel(
+                                    isEs: isEs,
+                                    actorId: args.senderId ?? n.senderId,
+                                  ),
+                              color: dim,
+                            ),
+                            _IconDetailRow(
+                              icon: Icons.notifications_rounded,
+                              label: l.notifications,
+                              value: _localizedCategory(n.category, l),
+                              color: dim,
+                            ),
+                            _IconDetailRow(
+                              icon: Icons.access_time_rounded,
+                              label: isEs ? 'Recibida' : 'Received',
+                              value: formatTimeDifference(n.timestamp, context),
+                              color: dim,
+                            ),
+                            // Priority — always visible
+                            _IconDetailRow(
+                              icon: Icons.flag_rounded,
+                              label: isEs ? 'Prioridad' : 'Priority',
+                              value: switch (n.priority) {
+                                PriorityLevel.high => isEs ? 'Alta' : 'High',
+                                PriorityLevel.low => isEs ? 'Baja' : 'Low',
+                                PriorityLevel.medium =>
+                                  isEs ? 'Media' : 'Medium',
+                              },
+                              color: switch (n.priority) {
+                                PriorityLevel.high => Colors.red.shade600,
+                                PriorityLevel.low => Colors.grey.shade500,
+                                PriorityLevel.medium => dim,
+                              },
+                            ),
+                            // Notification type
+                            _IconDetailRow(
+                              icon: Icons.category_rounded,
+                              label: isEs ? 'Tipo de notif.' : 'Notif. type',
+                              value: switch (n.type) {
+                                NotificationType.alert =>
+                                  isEs ? 'Alerta' : 'Alert',
+                                NotificationType.reminder =>
+                                  isEs ? 'Recordatorio' : 'Reminder',
+                                NotificationType.message =>
+                                  isEs ? 'Mensaje' : 'Message',
+                                NotificationType.update =>
+                                  isEs ? 'Actualización' : 'Update',
+                              },
+                              color: dim,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        if (hasActions ||
+            widget.onOpen != null ||
+            widget.onMarkRead != null ||
+            widget.onDelete != null)
+          _NotificationDetailsFooter(
+            hasActions: hasActions,
+            isEs: isEs,
+            openLabel: widget.openLabel,
+            onConfirm: widget.onConfirm,
+            onNegate: widget.onNegate,
+            onOpen: widget.onOpen,
+            onMarkRead: widget.onMarkRead,
+            onDelete: widget.onDelete,
+            onDeleteRequested: () => _confirmDelete(isEs),
+          ),
+      ],
+    );
+  }
+}
+
+class _NotificationDetailsFooter extends StatelessWidget {
+  const _NotificationDetailsFooter({
+    required this.hasActions,
+    required this.isEs,
+    required this.openLabel,
+    required this.onConfirm,
+    required this.onNegate,
+    required this.onOpen,
+    required this.onMarkRead,
+    required this.onDelete,
+    required this.onDeleteRequested,
+  });
+
+  final bool hasActions;
+  final bool isEs;
+  final String? openLabel;
+  final VoidCallback? onConfirm;
+  final VoidCallback? onNegate;
+  final VoidCallback? onOpen;
+  final VoidCallback? onMarkRead;
+  final VoidCallback? onDelete;
+  final VoidCallback onDeleteRequested;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: NotifDensity.footerPadding,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(
+          top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (hasActions) ...[
+            OutlinedButton(
+              onPressed: onNegate,
+              child: Text(isEs ? 'Cancelar' : 'Cancel'),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: onConfirm,
+              child: Text(isEs ? 'Confirmar' : 'Confirm'),
+            ),
+          ] else ...[
+            if (onOpen != null)
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onOpen,
+                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                  label: Text(openLabel ?? (isEs ? 'Abrir' : 'Open')),
+                ),
+              ),
+            if (onOpen != null && onMarkRead != null) const SizedBox(width: 8),
+            if (onMarkRead != null)
+              OutlinedButton.icon(
+                onPressed: onMarkRead,
+                icon: const Icon(Icons.mark_email_read_outlined, size: 16),
+                label: Text(isEs ? 'Marcar como leída' : 'Mark as read'),
+              ),
+          ],
+          const SizedBox(width: 4),
+          PopupMenuButton<String>(
+            tooltip: isEs ? 'Más acciones' : 'More actions',
+            onSelected: (value) {
+              if (value == 'delete') onDeleteRequested();
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                value: 'delete',
+                enabled: onDelete != null,
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline_rounded,
+                        color: cs.error, size: 18),
+                    const SizedBox(width: 8),
+                    Text(isEs ? 'Eliminar' : 'Delete',
+                        style: TextStyle(color: cs.error)),
                   ],
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            n.getLocalizedMessage(l),
-            style: t.bodyMedium.copyWith(
-              color: ThemeColors.textSecondary(context),
-              height: 1.4,
-            ),
-          ),
-          // ── Event section (always for event notifications) ────────────
-          if (isBankExpenseNotification && bankExpenseRows.isNotEmpty) ...[
-            _SectionDivider(
-              label: isEs ? 'Gastos detectados' : 'Detected expenses',
-              cs: cs,
-              t: t,
-            ),
-            _BankExpenseRowsSection(
-              rows: bankExpenseRows,
-              args: n.args,
-              isEs: isEs,
-            ),
-          ] else if (isBankExpenseNotification) ...[
-            _BankExpenseFallbackSummary(args: n.args, isEs: isEs),
-          ],
-          if (isEvent) ...[
-            _SectionDivider(label: isEs ? 'Evento' : 'Event', cs: cs, t: t),
-            if (args.eventTitle != null)
-              _IconDetailRow(
-                icon: Icons.event_rounded,
-                label: isEs ? 'Nombre' : 'Name',
-                value: args.eventTitle!,
-                color: meta.color,
-              ),
-            _IconDetailRow(
-              icon: Icons.person_add_rounded,
-              label: isEs ? 'Creado por' : 'Created by',
-              value: args.createdByName ??
-                  args.senderName ??
-                  args.ownerName ??
-                  _resolvedOwnerName ??
-                  _fallbackActorLabel(
-                    isEs: isEs,
-                    actorId: args.senderId ?? n.senderId,
-                  ),
-              color: dim,
-            ),
-            if (args.eventId != null)
-              _IconDetailRow(
-                icon: Icons.tag_rounded,
-                label: 'ID',
-                value: args.eventId!,
-                color: dim,
-              ),
-            if (args.eventType != null)
-              _IconDetailRow(
-                icon: resolveEventTypeMeta(args.eventType, cs).icon,
-                label: isEs ? 'Tipo' : 'Type',
-                value: eventTypeLabel(args.eventType, isEs: isEs),
-                color: resolveEventTypeMeta(args.eventType, cs).color,
-              ),
-            if (args.status != null)
-              _IconDetailRow(
-                icon: resolveStatusMeta(args.status, cs).icon,
-                label: isEs ? 'Estado' : 'Status',
-                value: statusLabel(args.status, isEs: isEs),
-                color: resolveStatusMeta(args.status, cs).color,
-              ),
-            if (args.isDone == true)
-              _IconDetailRow(
-                icon: Icons.task_alt_rounded,
-                label: isEs ? 'Completado' : 'Completed',
-                value: isEs ? 'Sí' : 'Yes',
-                color: Colors.green.shade600,
-              ),
-            if (args.recurrenceRuleId != null)
-              _IconDetailRow(
-                icon: Icons.repeat_rounded,
-                label: isEs ? 'Recurrencia' : 'Recurrence',
-                value: args.recurrenceRuleId!,
-                color: dim,
-              ),
-            if (args.categoryId != null)
-              _IconDetailRow(
-                icon: Icons.label_rounded,
-                label: isEs ? 'Categoría' : 'Category',
-                value: args.subcategoryId != null
-                    ? '${args.categoryId!} › ${args.subcategoryId!}'
-                    : args.categoryId!,
-                color: dim,
-              ),
-          ],
-
-          // ── Schedule ──────────────────────────────────────────────────────
-          if (isEvent &&
-              (args.startDate != null ||
-                  args.endDate != null ||
-                  args.allDay != null ||
-                  args.reminderTime != null)) ...[
-            _SectionDivider(label: isEs ? 'Horario' : 'Schedule', cs: cs, t: t),
-            if (args.allDay == true)
-              _IconDetailRow(
-                icon: Icons.wb_sunny_rounded,
-                label: isEs ? 'Todo el día' : 'All day',
-                value: isEs ? 'Sí' : 'Yes',
-                color: Colors.amber.shade600,
-              ),
-            if (args.formattedStartDate(locale) != null)
-              _IconDetailRow(
-                icon: Icons.play_arrow_rounded,
-                label: isEs ? 'Inicio' : 'Start',
-                value: args.formattedStartDate(locale)!,
-                trailing: relTime != null
-                    ? _Pill(label: relTime, color: meta.color)
-                    : null,
-                color: meta.color,
-              ),
-            if (args.formattedEndDate(locale) != null)
-              _IconDetailRow(
-                icon: Icons.stop_rounded,
-                label: isEs ? 'Fin' : 'End',
-                value: args.formattedEndDate(locale)!,
-                color: dim,
-              ),
-            if (args.formattedReminderTime(isEs: isEs) != null)
-              _IconDetailRow(
-                icon: Icons.alarm_rounded,
-                label: isEs ? 'Recordatorio' : 'Reminder',
-                value: args.formattedReminderTime(isEs: isEs)!,
-                color: const Color(0xFFFF8F00),
-              ),
-          ],
-
-          // ── Content ───────────────────────────────────────────────────────
-          if (args.location != null ||
-              args.localization != null ||
-              args.description != null ||
-              args.note != null) ...[
-            _SectionDivider(
-                label: isEs ? 'Contenido' : 'Content', cs: cs, t: t),
-            if (args.location != null || args.localization != null)
-              _IconDetailRow(
-                icon: Icons.location_on_rounded,
-                label: isEs ? 'Ubicación' : 'Location',
-                value: args.location ?? args.localization!,
-                color: dim,
-              ),
-            if (args.description != null)
-              _IconDetailRow(
-                icon: Icons.description_rounded,
-                label: isEs ? 'Descripción' : 'Description',
-                value: args.description!,
-                color: dim,
-              ),
-            if (args.note != null)
-              _IconDetailRow(
-                icon: Icons.sticky_note_2_rounded,
-                label: isEs ? 'Nota' : 'Note',
-                value: args.note!,
-                color: dim,
-              ),
-          ],
-
-          // ── Work visit ────────────────────────────────────────────────────
-          if (args.clientId != null ||
-              args.clientName != null ||
-              args.primaryServiceId != null ||
-              args.stopId != null) ...[
-            _SectionDivider(
-                label: isEs ? 'Visita de trabajo' : 'Work visit', cs: cs, t: t),
-            if (args.clientName != null || args.clientId != null)
-              _IconDetailRow(
-                icon: Icons.person_outline_rounded,
-                label: isEs ? 'Cliente' : 'Client',
-                value: _bestResolvedLabel(
-                      resolvedName: _resolvedClientName,
-                      payloadName: args.clientName,
-                      fallbackId: args.clientId,
-                    ) ??
-                    args.clientId!,
-                color: dim,
-              ),
-            if (args.primaryServiceId != null || _resolvedServiceName != null)
-              _IconDetailRow(
-                icon: Icons.home_repair_service_rounded,
-                label: isEs ? 'Servicio' : 'Service',
-                value: _bestResolvedLabel(
-                      resolvedName: _resolvedServiceName,
-                      payloadName: null,
-                      fallbackId: args.primaryServiceId,
-                    ) ??
-                    args.primaryServiceId!,
-                color: dim,
-              ),
-            if (args.stopId != null)
-              _IconDetailRow(
-                icon: Icons.place_rounded,
-                label: isEs ? 'Parada' : 'Stop',
-                value: args.stopId!,
-                color: dim,
-              ),
-          ],
-
-          // ── Context ───────────────────────────────────────────────────────
-          _SectionDivider(label: isEs ? 'Contexto' : 'Context', cs: cs, t: t),
-          _IconDetailRow(
-            icon: Icons.group_rounded,
-            label: l.groupSectionTitle,
-            value: widget.groupName,
-            color: dim,
-          ),
-          if (args.ownerName != null || args.ownerId != null)
-            _IconDetailRow(
-              icon: Icons.manage_accounts_rounded,
-              label: isEs ? 'Responsable' : 'Owner',
-              value: _bestResolvedLabel(
-                    resolvedName: _resolvedOwnerName,
-                    payloadName: args.ownerName,
-                    fallbackId: args.ownerId,
-                  ) ??
-                  args.ownerId!,
-              color: dim,
-            ),
-          _IconDetailRow(
-            icon: Icons.send_rounded,
-            label: isEs ? 'Enviado por' : 'Sent by',
-            value: args.senderName ??
-                args.ownerName ??
-                _fallbackActorLabel(
-                  isEs: isEs,
-                  actorId: args.senderId ?? n.senderId,
-                ),
-            color: dim,
-          ),
-          _IconDetailRow(
-            icon: Icons.notifications_rounded,
-            label: l.notifications,
-            value: _localizedCategory(n.category, l),
-            color: dim,
-          ),
-          _IconDetailRow(
-            icon: Icons.access_time_rounded,
-            label: isEs ? 'Recibida' : 'Received',
-            value: formatTimeDifference(n.timestamp, context),
-            color: dim,
-          ),
-          // Priority — always visible
-          _IconDetailRow(
-            icon: Icons.flag_rounded,
-            label: isEs ? 'Prioridad' : 'Priority',
-            value: switch (n.priority) {
-              PriorityLevel.high => isEs ? 'Alta' : 'High',
-              PriorityLevel.low => isEs ? 'Baja' : 'Low',
-              PriorityLevel.medium => isEs ? 'Media' : 'Medium',
-            },
-            color: switch (n.priority) {
-              PriorityLevel.high => Colors.red.shade600,
-              PriorityLevel.low => Colors.grey.shade500,
-              PriorityLevel.medium => dim,
-            },
-          ),
-          // Notification type
-          _IconDetailRow(
-            icon: Icons.category_rounded,
-            label: isEs ? 'Tipo de notif.' : 'Notif. type',
-            value: switch (n.type) {
-              NotificationType.alert => isEs ? 'Alerta' : 'Alert',
-              NotificationType.reminder => isEs ? 'Recordatorio' : 'Reminder',
-              NotificationType.message => isEs ? 'Mensaje' : 'Message',
-              NotificationType.update => isEs ? 'Actualización' : 'Update',
-            },
-            color: dim,
-          ),
-          if (hasActions) ...[
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton(
-                    onPressed: widget.onConfirm, child: Text(l.confirm)),
-                OutlinedButton(
-                    onPressed: widget.onNegate, child: Text(l.cancel)),
-              ],
-            ),
-          ],
-          if (widget.onOpen != null || widget.onMarkRead != null) ...[
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (widget.onOpen != null)
-                  FilledButton.icon(
-                    onPressed: widget.onOpen,
-                    icon: const Icon(Icons.open_in_new_rounded),
-                    label: Text(widget.openLabel ?? (isEs ? 'Abrir' : 'Open')),
-                  ),
-                if (widget.onMarkRead != null)
-                  OutlinedButton.icon(
-                    onPressed: widget.onMarkRead,
-                    icon: const Icon(Icons.done_rounded),
-                    label: Text(isEs ? 'Marcar como leída' : 'Mark as read'),
-                  ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: widget.onDelete,
-            icon: Icon(Icons.delete_outline_rounded, color: cs.error),
-            label: Text(l.delete, style: TextStyle(color: cs.error)),
+            icon: const Icon(Icons.more_horiz_rounded),
           ),
         ],
       ),
@@ -696,11 +860,6 @@ class _BankExpenseRowsSection extends StatelessWidget {
     return raw.isEmpty ? '-' : _money(context, raw, _currency(row));
   }
 
-  String _balance(BuildContext context, Map<String, dynamic> row) {
-    final raw = _text(row, const ['balance']);
-    return raw.isEmpty ? '-' : _money(context, raw, _currency(row));
-  }
-
   String _date(BuildContext context, Map<String, dynamic> row) {
     final value = _text(row, const [
       'date',
@@ -752,32 +911,33 @@ class _BankExpenseRowsSection extends StatelessWidget {
             ),
           ),
         ],
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border:
-                Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: SingleChildScrollView(
+        if (rows.length == 1)
+          _BankExpenseSingleRowCard(
+            date: _date(context, rows.first),
+            description: _description(rows.first),
+            amount: _amount(context, rows.first),
+            provider: _provider(rows.first),
+          )
+        else
+          SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              headingRowHeight: 36,
-              dataRowMinHeight: 44,
-              dataRowMaxHeight: 58,
-              horizontalMargin: 12,
-              columnSpacing: 18,
+              // Subtle row separators instead of a prominent bordered card.
+              dividerThickness: NotifDensity.tableDividerThickness,
+              headingRowHeight: NotifDensity.tableHeadingHeight,
+              dataRowMinHeight: NotifDensity.tableRowMinHeight,
+              dataRowMaxHeight: NotifDensity.tableRowMaxHeight,
+              horizontalMargin: NotifDensity.tableHorizontalMargin,
+              columnSpacing: NotifDensity.tableColumnSpacing,
               headingTextStyle: t.caption.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w900,
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w800,
               ),
               dataTextStyle: t.caption.copyWith(color: cs.onSurface),
               columns: const [
                 DataColumn(label: Text('Fecha')),
                 DataColumn(label: Text('Descripción')),
                 DataColumn(label: Text('Importe')),
-                DataColumn(label: Text('Saldo')),
                 DataColumn(label: Text('Proveedor')),
               ],
               rows: List<DataRow>.generate(rows.length, (index) {
@@ -806,7 +966,6 @@ class _BankExpenseRowsSection extends StatelessWidget {
                         ),
                       ),
                     ),
-                    DataCell(Text(_balance(context, row))),
                     DataCell(
                       SizedBox(
                         width: 150,
@@ -822,8 +981,63 @@ class _BankExpenseRowsSection extends StatelessWidget {
               }),
             ),
           ),
-        ),
       ],
+    );
+  }
+}
+
+class _BankExpenseSingleRowCard extends StatelessWidget {
+  const _BankExpenseSingleRowCard({
+    required this.date,
+    required this.description,
+    required this.amount,
+    required this.provider,
+  });
+
+  final String date;
+  final String description;
+  final String amount;
+  final String provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: cs.surfaceContainerHighest.withValues(alpha: .16),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .3)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text(date, style: t.caption.copyWith(color: cs.onSurfaceVariant)),
+          const Spacer(),
+          Text(
+            amount,
+            style: t.bodySmall.copyWith(
+              color: cs.error,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+          description,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          provider,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: t.caption.copyWith(color: cs.onSurfaceVariant),
+        ),
+      ]),
     );
   }
 }
@@ -929,27 +1143,21 @@ class _IconDetailRow extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: NotifDensity.detailRowPadding,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 6),
           Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: t.bodySmall
-                    .copyWith(color: cs.onSurface.withValues(alpha: 0.75)),
-                children: [
-                  TextSpan(
-                    text: '$label: ',
-                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  TextSpan(text: value),
-                ],
-              ),
-            ),
-          ),
+              flex: 2,
+              child: Text(label,
+                  style: t.caption.copyWith(color: cs.onSurfaceVariant))),
+          const SizedBox(width: 12),
+          Expanded(
+              flex: 3,
+              child: Text(value,
+                  style: t.bodySmall.copyWith(color: cs.onSurface))),
           if (trailing != null) ...[
             const SizedBox(width: 6),
             trailing!,
@@ -1000,27 +1208,17 @@ class _SectionDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Label only — no decorative rule — matching the compact list headings.
     return Padding(
-      padding: const EdgeInsets.only(top: 14, bottom: 8),
-      child: Row(
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: t.caption.copyWith(
-              fontWeight: FontWeight.w700,
-              color: cs.onSurface.withValues(alpha: 0.4),
-              letterSpacing: 0.8,
-              fontSize: 10,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Divider(
-              color: cs.outlineVariant.withValues(alpha: 0.4),
-              height: 1,
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.only(top: 12, bottom: 5),
+      child: Text(
+        label.toUpperCase(),
+        style: t.caption.copyWith(
+          fontWeight: FontWeight.w700,
+          color: NotifDensity.sectionLabelColor(cs),
+          letterSpacing: NotifDensity.sectionLabelSpacing,
+          fontSize: NotifDensity.sectionLabelSize,
+        ),
       ),
     );
   }
@@ -1033,5 +1231,108 @@ String _localizedCategory(Category category, AppLocalizations loc) {
       return loc.groupNotificationsSectionTitle;
     default:
       return loc.notifications;
+  }
+}
+
+class _DocumentDetails extends StatelessWidget {
+  const _DocumentDetails(
+      {required this.notification, this.clientName, this.creatorName});
+  final NotificationUser notification;
+  final String? clientName;
+  final String? creatorName;
+
+  @override
+  Widget build(BuildContext context) {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final cs = Theme.of(context).colorScheme;
+    final n = notification;
+    String? value(List<String> keys) {
+      for (final key in keys) {
+        final raw = n.args[key];
+        if (raw != null &&
+            raw is! Map &&
+            raw is! List &&
+            raw.toString().trim().isNotEmpty) {
+          return raw.toString().trim();
+        }
+      }
+      return null;
+    }
+
+    Widget row(IconData icon, String label, String? text) => _IconDetailRow(
+        icon: icon,
+        label: label,
+        value: text ?? '—',
+        color: cs.onSurfaceVariant);
+    final rawAmount = value(['amount', 'totalAmount', 'amountTotal', 'total']);
+    final amount = num.tryParse(rawAmount ?? '');
+    final currency = value(['currency']) ?? 'EUR';
+    final rawDate =
+        value(['issueDate', 'issuedAt', 'invoiceDate', 'receiptDate']);
+    final date = DateTime.tryParse(rawDate ?? '');
+    final reference = value([
+      'receiptNumber',
+      'invoiceNumber',
+      'documentNumber',
+      'reference',
+      'number'
+    ]);
+    final recurring = value(['recurrenceName', 'seriesName']);
+    final receipt = RegExp('receipt|recibo')
+        .hasMatch('${n.titleKey} ${n.fallbackTitle}'.toLowerCase());
+    final locale = Localizations.localeOf(context).toString();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Padding(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: Divider(height: 1)),
+      row(Icons.info_outline, es ? 'Evento' : 'Event',
+          n.getLocalizedTitle(AppLocalizations.of(context)!)),
+      row(Icons.person_add_outlined, es ? 'Creado por' : 'Created by',
+          creatorName),
+      row(Icons.person_outline, es ? 'Cliente' : 'Client', clientName),
+      row(
+          Icons.payments_outlined,
+          es ? 'Importe' : 'Amount',
+          amount == null
+              ? rawAmount
+              : NumberFormat.simpleCurrency(locale: locale, name: currency)
+                  .format(amount)),
+      row(Icons.calendar_today_outlined, es ? 'Fecha de emisión' : 'Issue date',
+          date == null ? rawDate : DateFormat.yMMMd(locale).format(date)),
+      row(Icons.credit_card_outlined, es ? 'Método de pago' : 'Payment method',
+          value(['paymentMethodName', 'paymentMethod'])),
+      row(Icons.check_circle_outline, es ? 'Estado' : 'Status',
+          value(['paymentStatus', 'status'])),
+      const Padding(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: Divider(height: 1)),
+      row(Icons.notes_outlined, es ? 'Notas' : 'Notes', value(['notes'])),
+      row(Icons.receipt_long_outlined, es ? 'Referencia' : 'Reference',
+          reference),
+      row(Icons.description_outlined, es ? 'Tipo' : 'Type',
+          receipt ? (es ? 'Recibo' : 'Receipt') : (es ? 'Factura' : 'Invoice')),
+      if (value(['relatedInvoiceNumber', 'relatedDocumentNumber']) != null)
+        row(Icons.link, es ? 'Relacionado con' : 'Related to',
+            value(['relatedInvoiceNumber', 'relatedDocumentNumber'])),
+      if (recurring != null)
+        Container(
+            margin: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(10)),
+            child: Row(children: [
+              Icon(Icons.info_outline, size: 18, color: cs.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: Text(
+                      es
+                          ? 'Documento de la recurrencia: $recurring'
+                          : 'Recurring document: $recurring',
+                      style: AppTypography.of(context)
+                          .bodySmall
+                          .copyWith(color: cs.onPrimaryContainer)))
+            ])),
+    ]);
   }
 }

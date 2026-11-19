@@ -203,11 +203,6 @@ class ProfileInlinePanel extends StatelessWidget {
 
   String _headline(
       AppLocalizations l, String displayName, String roleLabel, GroupRole role) {
-    final key = role.wire.toLowerCase().replaceAll('-', '').replaceAll('_', '');
-    final text = l.roleCardTapHint;
-    if (key == 'owner' || key == 'admin' || key == 'coadmin') {
-      return '${l.hey} $displayName — ${l.youAreThe} $roleLabel ${l.ofThisGroup}. ${l.youHaveSuperPowersHere}\n$text';
-    }
-    return '${l.hey} $displayName — ${l.youAreThe} ${l.member} ${l.ofThisGroup}.\n$text';
+    return '${l.youAreThe} $roleLabel ${l.ofThisGroup}.\n${l.roleCardTapHint}';
   }
 }

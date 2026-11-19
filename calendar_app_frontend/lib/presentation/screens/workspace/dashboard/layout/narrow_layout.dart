@@ -1,4 +1,5 @@
 import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
+import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_preview_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/layout/group_dashboard_content.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/group_dashboard_right_panel.dart';
@@ -6,10 +7,12 @@ import 'package:hexora/presentation/screens/workspace/sections/enable_banking/en
 import 'package:hexora/presentation/screens/workspace/sections/expenses/gastos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/presupuestos_module_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/quick_notes/quick_notes_board_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
 import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 
 import '../navigation/dashboard_sections.dart';
 import '../state/group_dashboard_state.dart';
@@ -22,13 +25,23 @@ class NarrowLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget child;
     switch (state.activeSection) {
+      case Sections.home:
+        child = const DashboardPreviewScreen(embedded: true);
+        break;
       case Sections.agenda:
         child = AgendaScreen(groupId: state.group.id, embedded: true);
         break;
       case Sections.invoices:
         child = GroupInvoicesScreen(
+          key: ValueKey(
+            'group-invoices-${state.group.id}-${state.invoicesNavigationRevision}',
+          ),
           group: state.group,
           embedded: true,
+          initialMenu: state.invoicesInitialMenu,
+          initialInvoiceId: state.invoicesInitialInvoiceId,
+          initialReceiptId: state.invoicesInitialReceiptId,
+          initialBudgetId: state.invoicesInitialBudgetId,
         );
         break;
       case Sections.budgets:
@@ -66,6 +79,9 @@ class NarrowLayout extends StatelessWidget {
           canEdit: state.canSeeAdmin,
         );
         break;
+      case Sections.quickNotes:
+        child = QuickNotesBoardScreen(group: state.group, embedded: true);
+        break;
       case Sections.chat:
       case Sections.businessChat:
       case Sections.notifications:
@@ -96,7 +112,10 @@ class NarrowLayout extends StatelessWidget {
 
     return GroupDashboardContent(
       panelBg: state.backdrop,
-      child: child,
+      child: HexoraMenuContentTransition.module(
+        transitionKey: state.activeSection,
+        child: child,
+      ),
     );
   }
 }

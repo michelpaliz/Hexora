@@ -202,8 +202,10 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
       body: jsonEncode(entry.toCreateJson()),
     );
     if (res.statusCode != 201 && res.statusCode != 200) {
-      throw Exception(
-          'Failed to create time entry: ${res.statusCode} ${res.body}');
+      throw BackendApiException.fromResponse(
+        res,
+        fallbackMessage: 'Failed to create time entry',
+      );
     }
     final map = jsonDecode(res.body) as Map<String, dynamic>;
     return TimeEntry.fromJson(map);
@@ -1035,6 +1037,40 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
       throw BackendApiException.fromResponse(res,
           fallbackMessage: 'Failed to update live location');
     }
+  }
+
+  @override
+  Future<List<WorkerLiveLocation>> getActiveWorkerLocations(
+    String groupId,
+    String token,
+  ) async {
+    final res = await _client.get(
+      Uri.parse('$_root${_ttPath(groupId)}/location-tracking/active'),
+      headers: _headers(token, json: false),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw BackendApiException.fromResponse(
+        res,
+        fallbackMessage: 'Failed to load active worker locations',
+      );
+    }
+    final decoded =
+        res.body.trim().isEmpty ? const <dynamic>[] : jsonDecode(res.body);
+    final raw = decoded is List
+        ? decoded
+        : decoded is Map && decoded['locations'] is List
+            ? decoded['locations'] as List
+            : decoded is Map && decoded['workers'] is List
+                ? decoded['workers'] as List
+                : decoded is Map && decoded['data'] is List
+                    ? decoded['data'] as List
+                    : const <dynamic>[];
+    return raw
+        .whereType<Map>()
+        .map((item) =>
+            WorkerLiveLocation.fromJson(Map<String, dynamic>.from(item)))
+        .where((loc) => loc.workerId.isNotEmpty)
+        .toList(growable: false);
   }
 
   @override

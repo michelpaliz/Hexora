@@ -17,9 +17,8 @@ class RecurringDetailSectionCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        color: cs.surfaceContainerHighest.withValues(alpha: .16),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: child,
     );

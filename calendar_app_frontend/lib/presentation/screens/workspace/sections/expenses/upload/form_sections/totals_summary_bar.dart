@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class ExpenseTotalsSummaryBar extends StatelessWidget {
@@ -22,97 +21,104 @@ class ExpenseTotalsSummaryBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final items = <Widget>[
-      _SummaryItem(
+    final rows = <({String label, String value, Color? color})>[
+      (
         label: (discount ?? '').trim().isEmpty
             ? l.expenseUploadLinesSubtotalLabel
             : 'Subtotal antes de descuento',
         value: subtotal,
+        color: null,
       ),
       if ((discount ?? '').trim().isNotEmpty)
-        _SummaryItem(
+        (
           label: 'Descuento',
           value: discount!,
-          errorHighlight: true,
+          color: cs.error,
         ),
       if ((discountedBase ?? '').trim().isNotEmpty)
-        _SummaryItem(
+        (
           label: 'Base tras descuento',
           value: discountedBase!,
+          color: null,
         ),
-      _SummaryItem(
+      (
         label: l.expenseUploadLinesTaxLabel,
         value: tax,
-      ),
-      _SummaryItem(
-        label: l.expenseUploadLinesTotalLabel,
-        value: total,
-        highlight: true,
+        color: null,
       ),
     ];
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    TextStyle? rowStyle(Color? color) =>
+        Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: color ?? cs.onSurface,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        );
+
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+        color: cs.surfaceContainerHighest.withValues(alpha: .18),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .34)),
       ),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 8,
-        children: items,
-      ),
-    );
-  }
-}
-
-class _SummaryItem extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool highlight;
-  final bool errorHighlight;
-
-  const _SummaryItem({
-    required this.label,
-    required this.value,
-    this.highlight = false,
-    this.errorHighlight = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final color = errorHighlight
-        ? cs.error
-        : highlight
-            ? cs.primary
-            : cs.onSurface;
-    final style = (highlight || errorHighlight)
-        ? t.bodySmall.copyWith(
-            fontWeight: FontWeight.w800,
-            fontSize: 13,
-            color: color,
-          )
-        : t.bodySmall.copyWith(
-            fontWeight: FontWeight.w600,
-            color: color,
-          );
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 96),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: t.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontSize: 11,
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      row.label,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontSize: 12,
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(row.value,
+                      textAlign: TextAlign.right, style: rowStyle(row.color)),
+                ],
+              ),
+            ),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: cs.outlineVariant.withValues(alpha: .38),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: .07),
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(8),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l.expenseUploadLinesTotalLabel,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ),
+                Text(
+                  total,
+                  textAlign: TextAlign.right,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: cs.primary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
             ),
           ),
-          Text(value, style: style),
         ],
       ),
     );

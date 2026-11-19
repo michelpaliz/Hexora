@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 
 class LoadingDialog {
   static Future<void> show(
@@ -13,7 +14,7 @@ class LoadingDialog {
 
     return Future<void>.microtask(() async {
       if (!context.mounted) return;
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         barrierDismissible: barrierDismissible,
         barrierColor: barrierColor ?? Colors.black54,

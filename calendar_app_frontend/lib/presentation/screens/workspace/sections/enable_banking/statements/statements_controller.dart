@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/statements/models/statement_expense_suggestion.dart';
 import 'package:hexora/services/statements/statements_api.dart';
+import 'package:hexora/services/invoicing/invoice_link_events.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -131,6 +133,7 @@ class StatementsController extends ChangeNotifier {
   String? allEntriesClientProviderQuery;
   String? allEntriesDescriptionSearch;
   String? allEntriesNotesSearch;
+  String? allEntriesInvoiceNumberSearch;
   String allEntriesSort = 'date_desc';
 
   // Batch freshness status
@@ -223,18 +226,35 @@ class StatementsController extends ChangeNotifier {
     _notify();
     try {
       imports = await _api.listImports();
-      for (final b in imports) {
-        final id = (b['batchId'] ?? b['_id'] ?? b['id'])?.toString() ?? '';
-        if (id.isEmpty) continue;
-        await fetchBatchStatus(id);
-        await fetchReminderSettings(id);
-      }
     } catch (e) {
       importsError = e.toString();
-    } finally {
       loadingImports = false;
       _notify();
+      return;
     }
+    // Show the list as soon as it arrives. Previously the spinner stayed up
+    // until a per-batch freshness status (and reminder settings) had been
+    // fetched sequentially for every import — a 1 + 2N request waterfall that
+    // blocked the whole list. Freshness now hydrates in the background and
+    // each row updates as its status arrives; reminder settings load lazily
+    // from the freshness banner when a batch is opened.
+    loadingImports = false;
+    _notify();
+    unawaited(_hydrateImportStatuses());
+  }
+
+  /// Fetches the freshness status for every loaded import in parallel.
+  /// Each [fetchBatchStatus] call guards its own errors, so one failure does
+  /// not abort the rest.
+  Future<void> _hydrateImportStatuses({int? threshold}) async {
+    final ids = <String>[
+      for (final b in imports)
+        (b['batchId'] ?? b['_id'] ?? b['id'])?.toString() ?? '',
+    ].where((id) => id.isNotEmpty).toList();
+    if (ids.isEmpty) return;
+    await Future.wait(
+      ids.map((id) => fetchBatchStatus(id, threshold: threshold)),
+    );
   }
 
   Future<void> fetchBatchEntries(
@@ -378,11 +398,8 @@ class StatementsController extends ChangeNotifier {
   Future<void> setStatusThreshold(int value) async {
     statusThreshold = value;
     _notify();
-    for (final b in imports) {
-      final id = (b['batchId'] ?? b['_id'] ?? b['id'])?.toString() ?? '';
-      if (id.isEmpty) continue;
-      await fetchBatchStatus(id, threshold: value);
-    }
+    // Re-fetch every batch's freshness in parallel rather than sequentially.
+    await _hydrateImportStatuses(threshold: value);
   }
 
   Future<void> fetchSummary({
@@ -739,6 +756,17 @@ class StatementsController extends ChangeNotifier {
 
       applyLocalUpdate(entries, (next) => entries = next);
       applyLocalUpdate(allEntries, (next) => allEntries = next);
+      // Keep any mounted Ingresos tab in sync without requiring a manual
+      // refresh. Banco is updated locally above and refreshed below.
+      InvoiceLinkEvents.instance.emit(groupId);
+      unawaited(() async {
+        try {
+          await refreshEntryCollections();
+        } catch (_) {
+          // The successful link and local update must not be rolled back if a
+          // background refresh is temporarily unavailable.
+        }
+      }());
 
       return LinkInvoiceOutcome(
         success: true,
@@ -797,6 +825,7 @@ class StatementsController extends ChangeNotifier {
       clientProviderQuery: allEntriesClientProviderQuery,
       descriptionSearch: allEntriesDescriptionSearch,
       notesSearch: allEntriesNotesSearch,
+      invoiceNumberSearch: allEntriesInvoiceNumberSearch,
       sort: allEntriesSort,
       applyDateFilters: true,
       applyAmountFilters: true,
@@ -906,6 +935,7 @@ class StatementsController extends ChangeNotifier {
     String? clientProviderQuery,
     String? descriptionSearch,
     String? notesSearch,
+    String? invoiceNumberSearch,
     String? sort,
     String? cursor,
     bool applyDateFilters = false,
@@ -913,6 +943,10 @@ class StatementsController extends ChangeNotifier {
   }) async {
     _repairHotReloadState();
     if (loadingAllEntries) return;
+    final normalizedInvoiceSearch = invoiceNumberSearch?.trim();
+    final invoiceFilterChanged = normalizedInvoiceSearch != null &&
+        (normalizedInvoiceSearch.isEmpty ? null : normalizedInvoiceSearch) !=
+            allEntriesInvoiceNumberSearch;
     loadingAllEntries = true;
     allEntriesError = null;
     if (size != null) allEntriesSize = size;
@@ -954,6 +988,17 @@ class StatementsController extends ChangeNotifier {
       final trimmedNotes = notesSearch.trim();
       allEntriesNotesSearch = trimmedNotes.isEmpty ? null : trimmedNotes;
     }
+    if (invoiceNumberSearch != null) {
+      final trimmedInvoiceNumber = normalizedInvoiceSearch!;
+      allEntriesInvoiceNumberSearch =
+          trimmedInvoiceNumber.isEmpty ? null : trimmedInvoiceNumber;
+    }
+
+    // A server-side invoice search has its own result set and pagination.
+    // Never reuse the previous page/cursor when that filter changes.
+    if (invoiceFilterChanged) {
+      allEntriesPage = 1;
+    }
 
     if (allEntriesPage <= 1) {
       _allEntriesCursorByPage
@@ -970,6 +1015,7 @@ class StatementsController extends ChangeNotifier {
           'amountType=$allEntriesAmountType min=$allEntriesMinAmount max=$allEntriesMaxAmount '
           'clientProvider=$allEntriesClientProviderQuery descriptionSearch=$allEntriesDescriptionSearch '
           'notesSearch=$allEntriesNotesSearch '
+          'invoiceNumberSearch=$allEntriesInvoiceNumberSearch '
           'sort=$allEntriesSort groupId=$groupId',
         );
       }
@@ -977,7 +1023,7 @@ class StatementsController extends ChangeNotifier {
       if (useAggregatedEntriesFlag) {
         try {
           await _loadAllEntriesAggregated(
-            explicitCursor: cursor,
+            explicitCursor: invoiceFilterChanged ? null : cursor,
           );
           return;
         } on StatementsApiException catch (e) {
@@ -1042,16 +1088,20 @@ class StatementsController extends ChangeNotifier {
         'amountType=$allEntriesAmountType min=$allEntriesMinAmount max=$allEntriesMaxAmount '
         'clientProvider=$allEntriesClientProviderQuery descriptionSearch=$allEntriesDescriptionSearch '
         'notesSearch=$allEntriesNotesSearch '
+        'invoiceNumberSearch=$allEntriesInvoiceNumberSearch '
         'sort=$allEntriesSort',
       );
     }
 
+    // When a full date range is set, omit the year param so the backend does
+    // not treat it as an override that shadows the more-specific date range.
+    final hasDateRange = allEntriesDateFrom != null && allEntriesDateTo != null;
     final payload = await _api.fetchStatementEntries(
       groupId: gid,
       page: page,
       size: size,
       cursor: cursorToUse,
-      year: allEntriesYear,
+      year: hasDateRange ? null : allEntriesYear,
       dateFrom: allEntriesDateFrom == null
           ? null
           : DateTime.tryParse(allEntriesDateFrom!),
@@ -1064,6 +1114,7 @@ class StatementsController extends ChangeNotifier {
       clientProviderQuery: allEntriesClientProviderQuery,
       descriptionSearch: allEntriesDescriptionSearch,
       notesSearch: allEntriesNotesSearch,
+      invoiceNumberSearch: allEntriesInvoiceNumberSearch,
       sort: allEntriesSort,
     );
 

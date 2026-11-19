@@ -137,15 +137,13 @@ class RecurringDetailRuleTab extends StatelessWidget {
     }) {
       final changed = before.trim() != now.trim();
       return Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
-          color: changed ? cs.primary.withValues(alpha: 0.06) : null,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: changed
-                ? cs.primary.withValues(alpha: 0.34)
-                : cs.outlineVariant.withValues(alpha: 0.22),
+          color: changed ? cs.primary.withValues(alpha: .055) : null,
+          border: Border(
+            bottom: BorderSide(
+              color: cs.outlineVariant.withValues(alpha: .22),
+            ),
           ),
         ),
         child: Row(
@@ -192,16 +190,12 @@ class RecurringDetailRuleTab extends StatelessWidget {
       bool accent = false,
     }) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color:
-              accent ? cs.primary.withValues(alpha: 0.14) : Colors.transparent,
+          color: accent
+              ? cs.primary.withValues(alpha: 0.10)
+              : cs.surfaceContainerHighest.withValues(alpha: .38),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: accent
-                ? cs.primary.withValues(alpha: 0.45)
-                : cs.outlineVariant.withValues(alpha: 0.36),
-          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -228,12 +222,11 @@ class RecurringDetailRuleTab extends StatelessWidget {
       return Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               color: cs.primary.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: cs.primary.withValues(alpha: 0.24)),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: cs.primary, size: 19),
           ),
@@ -291,7 +284,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
           : '${exceptions.length}';
 
       return RecurringDetailSectionCard(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -302,7 +295,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
                   ? 'Comprueba la regla antes de guardarla.'
                   : 'Review the rule before saving it.',
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -318,7 +311,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Row(
               children: [
                 const Spacer(flex: 4),
@@ -345,7 +338,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             compareRow(
               label: l.recurringInvoicesFrequencyLabel,
               before: freqLabel(originalFreq),
@@ -411,18 +404,22 @@ class RecurringDetailRuleTab extends StatelessWidget {
     }
 
     final saveButton = canManage
-        ? FilledButton(
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(999),
+        ? Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(132, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-            ),
-            onPressed: saving ? null : onSave,
-            child: Text(
-              saving
-                  ? l.recurringInvoicesSavingRule
-                  : l.recurringInvoicesSaveRuleCta,
+              onPressed: saving ? null : onSave,
+              child: Text(
+                saving
+                    ? l.recurringInvoicesSavingRule
+                    : l.recurringInvoicesSaveRuleCta,
+              ),
             ),
           )
         : const SizedBox.shrink();
@@ -462,7 +459,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
 
     Widget formCard() {
       return RecurringDetailSectionCard(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -473,7 +470,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
                   ? 'Define cuando se crean las proximas facturas.'
                   : 'Control when upcoming invoices are created.',
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             form,
           ],
         ),
@@ -484,7 +481,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 22),
+          const SizedBox(height: 10),
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 980;
@@ -506,7 +503,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(flex: 5, child: formCard()),
-                  const SizedBox(width: 24),
+                  const SizedBox(width: 16),
                   Expanded(
                     flex: 3,
                     child: Column(

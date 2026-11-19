@@ -1,9 +1,11 @@
+import 'client_filter_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/search_filters_header.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 
-String clientClassificationLabel(String value) => const {
+String clientClassificationLabel(String value) =>
+    const {
       'particular': 'Particular',
       'community': 'Comunidad de propietarios',
       'company': 'Empresa',
@@ -13,17 +15,45 @@ String clientClassificationLabel(String value) => const {
       'building': 'Edificio / Urbanización',
       'hotel': 'Hotel',
       'commercial_premises': 'Local comercial',
-    }[value] ?? value;
+      'owner': 'Propietario',
+      'administrator': 'Administrador',
+      'tenant': 'Inquilino',
+    }[value.toLowerCase()] ??
+    value;
 
 const _classificationOrder = <String>[
-  'particular', 'community', 'company', 'other',
-  'chalet', 'apartment', 'building', 'hotel', 'commercial_premises',
+  'particular',
+  'community',
+  'company',
+  'other',
+  'chalet',
+  'apartment',
+  'building',
+  'hotel',
+  'commercial_premises',
+  'owner',
+  'administrator',
+  'tenant',
 ];
+
+List<String> sortedClientClassificationOptions(Iterable<String> options) {
+  final values =
+      options.where((value) => value.trim().isNotEmpty).toSet().toList();
+  values.sort((a, b) {
+    final aIndex = _classificationOrder.indexOf(a.toLowerCase());
+    final bIndex = _classificationOrder.indexOf(b.toLowerCase());
+    if (aIndex < 0) return bIndex < 0 ? a.compareTo(b) : 1;
+    if (bIndex < 0) return -1;
+    return aIndex.compareTo(bIndex);
+  });
+  return values;
+}
 
 class ClientsSearchFilters extends StatelessWidget {
   final TextEditingController searchController;
   final VoidCallback onSearchChanged;
   final String searchHint;
+  final String? clearFiltersLabel;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onClearFilters;
   final int? activeCount;
@@ -54,12 +84,30 @@ class ClientsSearchFilters extends StatelessWidget {
   final Widget? additionalFilters;
   final int extraActiveFilterCount;
   final bool autoExpandWhenActive;
+  final Widget? statusContent;
+  final String? statusValue;
+  final ValueChanged<String>? onStatusChanged;
+  final bool inactiveValueMeansHidden;
+  final bool moveSummaryIntoFilters;
+  final double searchDesktopHeight;
+  final bool compactDesktopControls;
+  final double searchMaxWidth;
+  final double topSpacing;
+  final bool summaryInToolbar;
+  final bool filtersInMenu;
+  final double filterMenuWidth;
+  final bool filterBeforeSearch;
+  final bool additionalFiltersInFilterBody;
+  final bool compactClassificationDropdowns;
+  final bool compactSummary;
+  final List<Widget> trailingActions;
 
   const ClientsSearchFilters({
     super.key,
     required this.searchController,
     required this.onSearchChanged,
     required this.searchHint,
+    this.clearFiltersLabel,
     this.padding = const EdgeInsets.fromLTRB(12, 0, 12, 10),
     this.onClearFilters,
     this.activeCount,
@@ -87,6 +135,23 @@ class ClientsSearchFilters extends StatelessWidget {
     this.additionalFilters,
     this.extraActiveFilterCount = 0,
     this.autoExpandWhenActive = false,
+    this.statusContent,
+    this.statusValue,
+    this.onStatusChanged,
+    this.inactiveValueMeansHidden = false,
+    this.moveSummaryIntoFilters = false,
+    this.searchDesktopHeight = 40,
+    this.compactDesktopControls = false,
+    this.searchMaxWidth = 450,
+    this.topSpacing = 6,
+    this.summaryInToolbar = false,
+    this.filtersInMenu = false,
+    this.filterMenuWidth = 360,
+    this.filterBeforeSearch = false,
+    this.additionalFiltersInFilterBody = false,
+    this.compactClassificationDropdowns = false,
+    this.compactSummary = false,
+    this.trailingActions = const [],
   });
 
   @override
@@ -104,10 +169,6 @@ class ClientsSearchFilters extends StatelessWidget {
         propertyLabel != null &&
         onToggleProperty != null &&
         onClearProperty != null;
-    final hasFilterOptions = hasInactiveToggle ||
-        hasEntityFilters ||
-        hasPropertyFilters ||
-        additionalFilters != null;
 
     final entityActive = (entityFilter ?? '').trim().isNotEmpty;
     final propertyActive = (propertyFilter ?? '').trim().isNotEmpty;
@@ -160,119 +221,156 @@ class ClientsSearchFilters extends StatelessWidget {
         activeCountLabel != null &&
         inactiveCountLabel != null;
 
-    final filters = <Widget>[];
-
-    // Single responsive row: stat cards + toggle + additional chip
-    final hasToggleOrAdditional =
-        hasInactiveToggle || additionalFilters != null;
-    if (showCounts || hasToggleOrAdditional) {
-      final activeCountForDisplay = resolvedActiveCount ?? 0;
-      final inactiveCountForDisplay = resolvedInactiveCount ?? 0;
-      filters.add(
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final maxToggleWidth =
-                constraints.maxWidth < 360 ? constraints.maxWidth : 180.0;
-            return Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                if (showCounts) ...[
-                  _StatCard(
-                    label: activeCountLabel!,
-                    count: activeCountForDisplay,
-                    icon: Icons.people_alt_rounded,
-                    color: cs.primary,
-                    background: cs.primaryContainer.withValues(alpha: 0.35),
-                    foreground: cs.onPrimaryContainer,
-                  ),
-                  _StatCard(
-                    label: inactiveCountLabel!,
-                    count: inactiveCountForDisplay,
-                    icon: Icons.person_off_rounded,
-                    color: cs.onSurfaceVariant,
-                    background:
-                        cs.surfaceContainerHighest.withValues(alpha: 0.55),
-                    foreground: cs.onSurfaceVariant,
-                  ),
-                ],
-                if (hasInactiveToggle)
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxToggleWidth),
-                    child: _FilterToggleRow(
-                      icon: (inactiveValue ?? false)
-                          ? Icons.visibility_off_rounded
-                          : Icons.visibility_rounded,
-                      label: (inactiveValue ?? false)
-                          ? inactiveLabelOn!
-                          : inactiveLabelOff!,
-                      value: inactiveValue ?? false,
-                      onChanged: (v) => onInactiveChanged!(v),
+    final l = AppLocalizations.of(context)!;
+    final summary = Wrap(
+        spacing: 12,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (statusContent != null)
+            statusContent!
+          else if (showCounts && statusValue != null && onStatusChanged != null)
+            ClientStatusSegments(
+                value: statusValue!,
+                active: resolvedActiveCount,
+                inactive: resolvedInactiveCount,
+                onChanged: onStatusChanged!)
+          else if (showCounts)
+            Text(
+                '$activeCountLabel $resolvedActiveCount  ·  $inactiveCountLabel $resolvedInactiveCount',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium
+                    ?.copyWith(color: cs.onSurfaceVariant)),
+          if (hasInactiveToggle)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              if (compactSummary)
+                SizedBox(
+                  width: 40,
+                  height: 28,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: Switch.adaptive(
+                      value: inactiveValueMeansHidden
+                          ? inactiveValue!
+                          : !inactiveValue!,
+                      onChanged: (hidden) => onInactiveChanged!(
+                          inactiveValueMeansHidden ? hidden : !hidden),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
-                if (additionalFilters != null)
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: constraints.maxWidth),
-                    child: additionalFilters!,
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-    }
-
-    // Row 3: Entity filter (inline label + chips)
-    if (hasEntityFilters) {
-      if (filters.isNotEmpty) filters.add(const SizedBox(height: 8));
-      filters.add(
-        _InlineFilterRow(
-          label: entityLabel!,
-          options: entityOptions,
-          selected: entityFilter,
-          onToggle: onToggleEntity!,
-          onClear: onClearEntity!,
-        ),
-      );
-    }
-
-    // Row 4: Property filter (inline label + chips)
-    if (hasPropertyFilters) {
-      if (filters.isNotEmpty) filters.add(const SizedBox(height: 8));
-      filters.add(
-        _InlineFilterRow(
-          label: propertyLabel!,
-          options: propertyOptions,
-          selected: propertyFilter,
-          onToggle: onToggleProperty!,
-          onClear: onClearProperty!,
-        ),
-      );
-    }
+                )
+              else
+                Switch.adaptive(
+                  value: inactiveValueMeansHidden
+                      ? inactiveValue!
+                      : !inactiveValue!,
+                  onChanged: (hidden) => onInactiveChanged!(
+                      inactiveValueMeansHidden ? hidden : !hidden),
+                  materialTapTargetSize: MaterialTapTargetSize.padded,
+                ),
+              Flexible(
+                  child: Text(l.hideInactiveClients,
+                      style: Theme.of(context).textTheme.labelMedium)),
+            ]),
+          if (additionalFilters != null && !additionalFiltersInFilterBody)
+            additionalFilters!,
+        ]);
+    Widget buildFilterBody(double width) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (moveSummaryIntoFilters && !summaryInToolbar) ...[
+              summary,
+              if (hasEntityFilters || hasPropertyFilters)
+                SizedBox(height: compactClassificationDropdowns ? 6 : 8),
+            ],
+            Wrap(
+                spacing: 12,
+                runSpacing: compactClassificationDropdowns ? 6 : 8,
+                children: [
+                  if (hasEntityFilters)
+                    SizedBox(
+                      width: width,
+                      child: compactClassificationDropdowns
+                          ? _ClassificationSelect(
+                              label: entityLabel!,
+                              options: entityOptions,
+                              selected: entityFilter,
+                              onSelect: onToggleEntity!,
+                              onClear: onClearEntity!,
+                            )
+                          : _ClassificationDropdown(
+                              label: entityLabel!,
+                              options: entityOptions,
+                              selected: entityFilter,
+                              onSelect: onToggleEntity!,
+                              onClear: onClearEntity!,
+                            ),
+                    ),
+                  if (hasPropertyFilters)
+                    SizedBox(
+                      width: width,
+                      child: compactClassificationDropdowns
+                          ? _ClassificationSelect(
+                              label: propertyLabel!,
+                              options: propertyOptions,
+                              selected: propertyFilter,
+                              onSelect: onToggleProperty!,
+                              onClear: onClearProperty!,
+                            )
+                          : _ClassificationDropdown(
+                              label: propertyLabel!,
+                              options: propertyOptions,
+                              selected: propertyFilter,
+                              onSelect: onToggleProperty!,
+                              onClear: onClearProperty!,
+                            ),
+                    ),
+                ]),
+            if (additionalFilters != null && additionalFiltersInFilterBody) ...[
+              if (hasEntityFilters || hasPropertyFilters)
+                const SizedBox(height: 6),
+              additionalFilters!,
+            ],
+          ],
+        );
+    final filterBody = filtersInMenu
+        ? buildFilterBody(280)
+        : LayoutBuilder(builder: (context, constraints) {
+            return buildFilterBody(constraints.maxWidth);
+          });
 
     return SearchFiltersHeader(
       searchController: searchController,
       onSearchChanged: onSearchChanged,
       searchHint: searchHint,
-      hasFilterOptions: hasFilterOptions,
+      clearFiltersLabel: clearFiltersLabel,
+      hasFilterOptions: hasEntityFilters ||
+          hasPropertyFilters ||
+          additionalFilters != null ||
+          (moveSummaryIntoFilters && (hasInactiveToggle || showCounts)),
       hasActiveFilters: activeFilterCount > 0,
       activeFilterCount: activeFilterCount,
       padding: padding,
+      searchDesktopHeight: searchDesktopHeight,
+      compactDesktopControls: compactDesktopControls,
+      searchMaxWidth: searchMaxWidth,
+      topSpacing: topSpacing,
+      trailingActions: trailingActions,
       autoExpandWhenActive: autoExpandWhenActive,
-      filtersContent: hasFilterOptions
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: filters,
-            )
-          : null,
+      filtersInMenu: filtersInMenu,
+      filterMenuWidth: filterMenuWidth,
+      filterBeforeSearch: filterBeforeSearch,
+      toolbarContent: summaryInToolbar ? summary : null,
+      persistentContent:
+          moveSummaryIntoFilters || summaryInToolbar ? null : summary,
+      filtersContent: filterBody,
       onClearFilters: () {
         if (onClearFilters != null) {
           onClearFilters!();
         } else {
-          if (entityActive && onClearEntity != null) onClearEntity!();
-          if (propertyActive && onClearProperty != null) onClearProperty!();
+          if (entityActive) onClearEntity?.call();
+          if (propertyActive) onClearProperty?.call();
         }
         if (clearInactiveOnClear && inactiveCounts && hasInactiveToggle) {
           onInactiveChanged!(false);
@@ -282,272 +380,171 @@ class ClientsSearchFilters extends StatelessWidget {
   }
 }
 
-// ── Stat card ──────────────────────────────────────────────────────────────────
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final int count;
-  final IconData icon;
-  final Color color;
-  final Color background;
-  final Color foreground;
-
-  const _StatCard({
-    required this.label,
-    required this.count,
-    required this.icon,
-    required this.color,
-    required this.background,
-    required this.foreground,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    return Container(
-      constraints: const BoxConstraints(minHeight: 34),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: foreground.withValues(alpha: 0.12),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Text(
-            '$count',
-            style: t.bodySmall.copyWith(
-              fontWeight: FontWeight.w800,
-              color: foreground,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            maxLines: 1,
-            style: t.caption.copyWith(
-              color: foreground.withValues(alpha: 0.78),
-              fontWeight: FontWeight.w600,
-              fontSize: 10.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Toggle row ─────────────────────────────────────────────────────────────────
-
-class _FilterToggleRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _FilterToggleRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-
-    return Semantics(
-      button: true,
-      toggled: value,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: () => onChanged(!value),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          constraints: const BoxConstraints(minHeight: 34),
-          padding: const EdgeInsets.only(left: 10, right: 7, top: 3, bottom: 3),
-          decoration: BoxDecoration(
-            color: value
-                ? cs.primaryContainer.withValues(alpha: 0.5)
-                : cs.surfaceContainerHighest.withValues(alpha: 0.38),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: value
-                  ? cs.primary.withValues(alpha: 0.35)
-                  : cs.outlineVariant.withValues(alpha: 0.38),
-              width: 1.1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 14,
-                color: value ? cs.primary : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 7),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.bodySmall.copyWith(
-                    color: value ? cs.onPrimaryContainer : cs.onSurface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11.5,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 7),
-              SizedBox(
-                width: 32,
-                height: 20,
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  child: Switch.adaptive(
-                    value: value,
-                    onChanged: onChanged,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    activeThumbColor: cs.onPrimary,
-                    activeTrackColor: cs.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Inline filter row (label + chips on one Wrap line) ─────────────────────────
-
-class _InlineFilterRow extends StatelessWidget {
-  final String label;
-  final List<String> options;
-  final String? selected;
-  final ValueChanged<String> onToggle;
-  final VoidCallback onClear;
-
-  const _InlineFilterRow({
+class _ClassificationSelect extends StatelessWidget {
+  const _ClassificationSelect({
     required this.label,
     required this.options,
     required this.selected,
-    required this.onToggle,
+    required this.onSelect,
     required this.onClear,
   });
+
+  final String label;
+  final List<String> options;
+  final String? selected;
+  final ValueChanged<String> onSelect;
+  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final isActive = selected != null;
-    final sortedOptions = [...options]..sort((a, b) {
-      final aIndex = _classificationOrder.indexOf(a);
-      final bIndex = _classificationOrder.indexOf(b);
-      if (aIndex < 0) return bIndex < 0 ? a.compareTo(b) : 1;
-      if (bIndex < 0) return -1;
-      return aIndex.compareTo(bIndex);
+    final l = AppLocalizations.of(context)!;
+    final normalizedSelected = (selected ?? '').trim();
+    final values = sortedClientClassificationOptions(<String>{
+      ...options.where((value) => value.trim().isNotEmpty),
+      if (normalizedSelected.isNotEmpty) normalizedSelected,
     });
 
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 5,
-              height: 5,
-              decoration: BoxDecoration(
-                color: isActive ? cs.primary : cs.outlineVariant,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              '$label:',
-              style: t.caption.copyWith(
-                color: isActive ? cs.onSurface : cs.onSurfaceVariant,
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
                 fontWeight: FontWeight.w700,
-                fontSize: 11,
               ),
-            ),
-          ],
         ),
-        for (final o in sortedOptions)
-          _PillChip(
-            label: clientClassificationLabel(o),
-            selected: selected == o,
-            onTap: () => selected == o ? onClear() : onToggle(o),
+        const SizedBox(height: 3),
+        Container(
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: normalizedSelected.isEmpty
+                  ? cs.outlineVariant.withValues(alpha: .7)
+                  : cs.primary.withValues(alpha: .5),
+            ),
           ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              key: ValueKey('client-filter-select-$label'),
+              value: normalizedSelected,
+              isExpanded: true,
+              isDense: true,
+              borderRadius: BorderRadius.circular(8),
+              dropdownColor: cs.surface,
+              icon: const Icon(Icons.expand_more_rounded, size: 17),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: cs.onSurface,
+                  ),
+              items: [
+                DropdownMenuItem(value: '', child: Text(l.all)),
+                for (final value in values)
+                  DropdownMenuItem(
+                    value: value,
+                    child: Text(
+                      clientClassificationLabel(value),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: (value) {
+                if ((value ?? '').isEmpty) {
+                  onClear();
+                } else {
+                  onSelect(value!);
+                }
+              },
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
-// ── Pill chip ──────────────────────────────────────────────────────────────────
-
-class _PillChip extends StatelessWidget {
+class _ClassificationDropdown extends StatelessWidget {
+  const _ClassificationDropdown(
+      {required this.label,
+      required this.options,
+      required this.selected,
+      required this.onSelect,
+      required this.onClear});
   final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _PillChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
+  final List<String> options;
+  final String? selected;
+  final ValueChanged<String> onSelect;
+  final VoidCallback onClear;
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
+    final values = sortedClientClassificationOptions(<String>{
+      ...options.where((value) => value.isNotEmpty),
+      if (selected != null && selected!.isNotEmpty) selected!
+    });
+    final l = AppLocalizations.of(context)!;
+    final normalizedSelected = (selected ?? '').trim();
 
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          constraints: const BoxConstraints(minHeight: 30),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: selected
-                ? cs.primary
-                : cs.surfaceContainerHighest.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected
-                  ? cs.primary
-                  : cs.outlineVariant.withValues(alpha: 0.4),
-              width: 1,
-            ),
-          ),
-          child: Text(
-            label,
-            style: t.bodySmall.copyWith(
-              color: selected ? cs.onPrimary : cs.onSurface,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              fontSize: 11.5,
-            ),
-          ),
+    Widget option(String value, String text) {
+      final isSelected = normalizedSelected == value;
+      return ChoiceChip(
+        key: ValueKey(
+          'client-filter-$label-${value.isEmpty ? 'all' : value}',
         ),
-      ),
+        selected: isSelected,
+        showCheckmark: false,
+        avatar: isSelected
+            ? Icon(Icons.check_rounded, size: 14, color: cs.primary)
+            : null,
+        label: Text(text, maxLines: 1),
+        labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: isSelected ? cs.primary : cs.onSurfaceVariant,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            ),
+        selectedColor: cs.primary.withValues(alpha: .10),
+        backgroundColor: cs.surfaceContainerLow,
+        side: BorderSide(
+          color:
+              isSelected ? cs.primary.withValues(alpha: .5) : cs.outlineVariant,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        onSelected: (_) {
+          if (value.isEmpty || isSelected) {
+            onClear();
+          } else {
+            onSelect(value);
+          }
+        },
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: [
+            option('', l.all),
+            for (final value in values)
+              option(value, clientClassificationLabel(value)),
+          ],
+        ),
+      ],
     );
   }
 }

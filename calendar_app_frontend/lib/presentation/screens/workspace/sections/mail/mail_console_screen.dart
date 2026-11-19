@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
@@ -24,8 +25,8 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/mail/console/hexora_email_template.dart';
 import 'package:hexora/presentation/screens/workspace/sections/mail/widgets/mail_html_content.dart';
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_compose_screen.dart';
-import 'package:hexora/presentation/screens/workspace/sections/enable_banking/widgets/folder_section_card.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
@@ -101,6 +102,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       _replySubjectController ??= TextEditingController();
 
   bool _leftCollapsed = false;
+  int _desktopListFilter = 0;
   bool _showCompose = false;
   bool _showFooterManager = false;
   bool _showTemplateManager = false;
@@ -246,7 +248,12 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   }
 
   void _selectFolder(MailFolder folder) {
-    if (_folder == folder) return;
+    if (_folder == folder &&
+        !_showCompose &&
+        !_showFooterManager &&
+        !_showTemplateManager) {
+      return;
+    }
     setState(() {
       _folder = folder;
       _selectedThreadKey = null;

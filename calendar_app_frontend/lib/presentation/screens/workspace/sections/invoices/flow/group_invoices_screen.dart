@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
@@ -56,6 +57,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   }) {
     final l = AppLocalizations.of(context)!;
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -146,8 +148,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                           ),
                           onDeleteInvoice: (inv) =>
                               _c.deleteInvoice(context, inv),
-                          onEditDraft: (inv) =>
-                              _c.openEditDraft(context, inv),
+                          onEditDraft: (inv) => _c.openEditDraft(context, inv),
                           clientBillingViewBuilder: (client) =>
                               ClientBillingView(
                             client: client,
@@ -167,11 +168,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                               onTap: onTap,
                               onDelete: onDelete,
                               onEdit: onEdit,
-                              onPreview: () => _openInvoiceDetailSheet(
-                                invoice: invoice,
-                                clients: s.clients,
-                                billingProfile: s.billingProfile,
-                              ),
                             );
                           },
                         )
@@ -185,8 +181,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                           onSelectInvoice: _c.selectInvoice,
                           onDeleteDraft: (inv) =>
                               _c.deleteInvoice(context, inv),
-                          onEditDraft: (inv) =>
-                              _c.openEditDraft(context, inv),
+                          onEditDraft: (inv) => _c.openEditDraft(context, inv),
                           onIssueAll: (drafts) =>
                               _c.issueAllDrafts(context, drafts),
                           detailBuilder: (inv) => InvoiceDetailSheet(
@@ -207,11 +202,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                               onTap: onTap,
                               onDelete: onDelete,
                               onEdit: onEdit,
-                              onPreview: () => _openInvoiceDetailSheet(
-                                invoice: inv,
-                                clients: s.clients,
-                                billingProfile: s.billingProfile,
-                              ),
                             );
                           },
                         ),
@@ -241,8 +231,3 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     );
   }
 }
-
-
-
-
-

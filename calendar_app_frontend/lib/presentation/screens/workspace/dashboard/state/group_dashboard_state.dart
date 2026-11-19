@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
@@ -16,9 +17,14 @@ import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/mai
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/navigation/horizontal_nav/components/avatar_icon.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab_manager.dart';
 
 import '../navigation/dashboard_sections.dart';
 
@@ -53,6 +59,8 @@ class MailBarActions {
 
 class GroupDashboardState extends ChangeNotifier {
   GroupDashboardState(this.context, this.group) {
+    workspaceTabs = WorkspaceTabManager(businessId: group.id)
+      ..addListener(_onWorkspaceTabChanged);
     _gm = context.read<GroupDomain>();
     _gm.addListener(_onGroupUpdated);
     _ud = context.read<UserDomain>();
@@ -74,6 +82,8 @@ class GroupDashboardState extends ChangeNotifier {
   @override
   void dispose() {
     _gm.removeListener(_onGroupUpdated);
+    workspaceTabs.removeListener(_onWorkspaceTabChanged);
+    workspaceTabs.dispose();
     super.dispose();
   }
 
@@ -87,13 +97,21 @@ class GroupDashboardState extends ChangeNotifier {
   MembersCount? counts;
   GroupRole? role;
   User? user;
+  late final WorkspaceTabManager workspaceTabs;
 
   // UI
   String activeSection = Sections.calendar;
+  String? invoicesInitialMenu = 'invoices_issued';
+  String? invoicesInitialInvoiceId;
+  String? invoicesInitialReceiptId;
+  String? invoicesInitialBudgetId;
+  int invoicesNavigationRevision = 0;
   bool _sectionChosenSinceOpen = false;
+
   static const _adminOnlySections = {
     Sections.services,
     Sections.invoices,
+    Sections.invoiceClients,
     Sections.budgets,
     Sections.expenses,
     Sections.emails,
@@ -101,14 +119,29 @@ class GroupDashboardState extends ChangeNotifier {
     Sections.enableBanking,
     Sections.telegram,
     Sections.settings,
-  };
-  static const _restorableSections = {
-    Sections.calendar,
-    Sections.maps,
-    Sections.businessChat,
-    Sections.notifications,
     Sections.workers,
-    ..._adminOnlySections,
+  };
+
+  static const _workspaceSections = {
+    Sections.home,
+    Sections.agenda,
+    Sections.calendar,
+    Sections.quickNotes,
+    Sections.notifications,
+    Sections.settings,
+    Sections.members,
+    Sections.services,
+    Sections.maps,
+    Sections.workers,
+    Sections.invoices,
+    Sections.invoiceClients,
+    Sections.budgets,
+    Sections.expenses,
+    Sections.emails,
+    Sections.chat,
+    Sections.businessChat,
+    Sections.enableBanking,
+    Sections.telegram,
   };
 
   String _sectionKey(String userId) =>
@@ -118,19 +151,104 @@ class GroupDashboardState extends ChangeNotifier {
     try {
       final preferences = await SharedPreferences.getInstance();
       await preferences.setString(_sectionKey(userId), section);
-    } catch (_) {}
+    } catch (_) {
+      // Browser storage can be unavailable without blocking navigation.
+    }
+  }
+
+  void _onWorkspaceTabChanged() {
+    final active = workspaceTabs.activeTab;
+    activeSection = active?.section ?? '';
+    final userId = user?.id;
+    if (userId != null && active != null) {
+      unawaited(_rememberSection(userId, active.section));
+    }
+    // Desktop workspace consumers listen to workspaceTabs directly. Notifying
+    // the root dashboard provider here rebuilt the complete Scaffold whenever
+    // a tab was activated or closed, producing a visible full-screen refresh.
+    // Mobile navigation still relies on the dashboard notifier.
+    if (!isWide) notifyListeners();
   }
 
   void selectSection(String section) {
     if (section == Sections.chat && !canSeeAdmin) return;
     if (section == Sections.services && !canSeeAdmin) return;
+    if (section == Sections.workers && !canSeeAdmin) return;
     _sectionChosenSinceOpen = true;
+    if (isWide) {
+      workspaceTabs.openOrActivateTab(_tabForSection(section));
+      return;
+    }
     if (activeSection == section) return;
+    if (section == Sections.invoices) {
+      invoicesInitialMenu = 'invoices_issued';
+      invoicesInitialInvoiceId = null;
+      invoicesInitialReceiptId = null;
+      invoicesInitialBudgetId = null;
+      invoicesNavigationRevision += 1;
+    }
     activeSection = section;
     final userId = user?.id;
     if (userId != null) unawaited(_rememberSection(userId, section));
     notifyListeners();
   }
+
+  void openInvoicesWorkspace({
+    required String initialMenu,
+    String? initialInvoiceId,
+    String? initialReceiptId,
+    String? initialBudgetId,
+    String? tabTitle,
+  }) {
+    invoicesInitialMenu = initialMenu;
+    invoicesInitialInvoiceId = initialInvoiceId;
+    invoicesInitialReceiptId = initialReceiptId;
+    invoicesInitialBudgetId = initialBudgetId;
+    invoicesNavigationRevision += 1;
+    _sectionChosenSinceOpen = true;
+    if (isWide) {
+      final identity = initialInvoiceId != null
+          ? 'invoice:$initialInvoiceId'
+          : initialReceiptId != null
+              ? 'receipt:$initialReceiptId'
+              : initialBudgetId != null
+                  ? 'budget:$initialBudgetId'
+                  : _invoiceMenuIdentity(initialMenu);
+      final workspaceIdentity = WorkspaceTabIdentity(identity);
+      if (workspaceTabs.isDirty(workspaceIdentity)) {
+        workspaceTabs.activateTab(workspaceIdentity);
+        return;
+      }
+      workspaceTabs.openOrActivateTab(
+        _tabForSection(
+          Sections.invoices,
+          identity: identity,
+          title: tabTitle ??
+              _invoiceTabTitle(
+                initialMenu,
+                invoiceId: initialInvoiceId,
+                receiptId: initialReceiptId,
+                budgetId: initialBudgetId,
+              ),
+          arguments: <String, String>{
+            'initialMenu': initialMenu,
+            'navigationRevision': invoicesNavigationRevision.toString(),
+            if (initialInvoiceId != null) 'initialInvoiceId': initialInvoiceId,
+            if (initialReceiptId != null) 'initialReceiptId': initialReceiptId,
+            if (initialBudgetId != null) 'initialBudgetId': initialBudgetId,
+          },
+        ),
+      );
+      return;
+    }
+    activeSection = Sections.invoices;
+    final userId = user?.id;
+    if (userId != null) {
+      unawaited(_rememberSection(userId, Sections.invoices));
+    }
+    notifyListeners();
+  }
+
   CalendarDashboardActions? calendarActions;
 
   void setCalendarActions(CalendarDashboardActions? actions) {
@@ -187,14 +305,19 @@ class GroupDashboardState extends ChangeNotifier {
 
     role = await RoleResolver.resolve(group: target, userDomain: _ud);
     user = await _getSafeUser();
-    if (!_sectionChosenSinceOpen && user != null) {
-      try {
-        final preferences = await SharedPreferences.getInstance();
-        final savedSection = preferences.getString(_sectionKey(user!.id));
-        if (savedSection != null && _restorableSections.contains(savedSection)) {
-          activeSection = savedSection;
-        }
-      } catch (_) {}
+    if (isWide && user != null && workspaceTabs.tabs.isEmpty) {
+      await workspaceTabs.configureSession(user!.id);
+      final restored = await workspaceTabs.restore(
+        resolver: _restoreWorkspaceTab,
+      );
+      if (!restored) {
+        workspaceTabs.openOrActivateTab(
+          _tabForSection(canSeeAdmin ? Sections.invoices : Sections.calendar),
+        );
+      }
+    }
+    if (!_sectionChosenSinceOpen && canSeeAdmin) {
+      invoicesInitialMenu = 'invoices_issued';
     }
     if (_adminOnlySections.contains(activeSection) && !canSeeAdmin) {
       activeSection = Sections.calendar;
@@ -203,6 +326,182 @@ class GroupDashboardState extends ChangeNotifier {
     if (refreshed != null) group = refreshed;
 
     notifyListeners();
+  }
+
+  WorkspaceTab? _restoreWorkspaceTab(WorkspaceTabSnapshot snapshot) {
+    if (!_workspaceSections.contains(snapshot.section)) return null;
+    if (_adminOnlySections.contains(snapshot.section) && !canSeeAdmin) {
+      return null;
+    }
+
+    // Workspace persistence deliberately excludes unsaved form state. An
+    // editor tab without the document it was editing cannot be restored into
+    // a useful workflow: it opens a blank form and immediately presents
+    // validation such as “Select a client to continue”. Restore the durable
+    // invoices landing view instead. Existing invoice, receipt and budget
+    // editor tabs retain their IDs and continue to restore normally.
+    if (snapshot.section == Sections.invoices &&
+        _isTransientInvoiceEditorSnapshot(snapshot)) {
+      return _tabForSection(
+        Sections.invoices,
+        identity: Sections.invoices,
+        arguments: const {'initialMenu': 'invoices_issued'},
+      );
+    }
+    var restoredTitle = snapshot.title;
+    if (snapshot.section == Sections.invoices) {
+      final documentIds = <String>[
+        snapshot.arguments['initialInvoiceId'] ?? '',
+        snapshot.arguments['initialReceiptId'] ?? '',
+        snapshot.arguments['initialBudgetId'] ?? '',
+      ].where((id) => id.isNotEmpty);
+      if (documentIds.any(restoredTitle.contains)) {
+        restoredTitle = _invoiceTabTitle(
+          snapshot.arguments['initialMenu'] ?? '',
+          invoiceId: snapshot.arguments['initialInvoiceId'],
+          receiptId: snapshot.arguments['initialReceiptId'],
+          budgetId: snapshot.arguments['initialBudgetId'],
+        );
+      }
+    }
+    return _tabForSection(
+      snapshot.section,
+      identity: snapshot.identity,
+      title: restoredTitle,
+      arguments: snapshot.arguments,
+    );
+  }
+
+  bool _isTransientInvoiceEditorSnapshot(WorkspaceTabSnapshot snapshot) {
+    final menu = (snapshot.arguments['initialMenu'] ?? '').trim();
+    if (menu == 'invoice_editor') {
+      return (snapshot.arguments['initialInvoiceId'] ?? '').trim().isEmpty;
+    }
+    if (menu == 'receipt_editor') {
+      return (snapshot.arguments['initialReceiptId'] ?? '').trim().isEmpty;
+    }
+    if (menu == 'budgets_new') {
+      return (snapshot.arguments['initialBudgetId'] ?? '').trim().isEmpty;
+    }
+    return snapshot.identity == 'invoice:new';
+  }
+
+  WorkspaceTab _tabForSection(
+    String section, {
+    String? identity,
+    String? title,
+    Map<String, String> arguments = const <String, String>{},
+  }) {
+    final l = AppLocalizations.of(context)!;
+    final es = l.localeName.startsWith('es');
+    final defaults = switch (section) {
+      Sections.home => (Icons.home_outlined, 'Home'),
+      Sections.invoices => (
+          Icons.receipt_long_outlined,
+          es ? 'Ingresos' : 'Income'
+        ),
+      Sections.invoiceClients => (
+          Icons.people_alt_outlined,
+          es ? 'Facturas por cliente' : 'Invoices by client'
+        ),
+      Sections.expenses => (
+          Icons.trending_down_rounded,
+          es ? 'Gastos' : 'Expenses'
+        ),
+      Sections.enableBanking => (
+          Icons.account_balance_outlined,
+          es ? 'Banco' : 'Bank'
+        ),
+      Sections.calendar => (Icons.calendar_month_rounded, l.calendar),
+      Sections.quickNotes => (
+          Icons.view_kanban_outlined,
+          es ? 'Notas rápidas' : 'Quick notes'
+        ),
+      Sections.budgets => (
+          Icons.description_outlined,
+          es ? 'Propuestas' : 'Proposals'
+        ),
+      Sections.businessChat => (Icons.chat_bubble_outline_rounded, 'Chat'),
+      Sections.maps => (Icons.map_outlined, es ? 'Mapa' : 'Map'),
+      Sections.emails => (Icons.email_outlined, 'Emails'),
+      Sections.workers => (
+          Icons.access_time_rounded,
+          es ? 'Trabajadores' : 'Workers'
+        ),
+      Sections.chat => (
+          Icons.auto_awesome_outlined,
+          es ? 'Asistente IA' : 'AI assistant'
+        ),
+      Sections.telegram => (Icons.telegram, 'Telegram'),
+      Sections.settings => (
+          Icons.settings_outlined,
+          es ? 'Ajustes' : 'Settings'
+        ),
+      Sections.notifications => (
+          Icons.notifications_none_rounded,
+          l.notifications
+        ),
+      Sections.agenda => (Icons.event_note_outlined, es ? 'Agenda' : 'Agenda'),
+      Sections.services => (
+          Icons.people_outline_rounded,
+          es ? 'Clientes' : 'Clients'
+        ),
+      Sections.members => (Icons.groups_outlined, es ? 'Miembros' : 'Members'),
+      _ => (Icons.dashboard_outlined, section),
+    };
+    return WorkspaceTab(
+      identity: WorkspaceTabIdentity(identity ?? section),
+      section: section,
+      title: title?.trim().isNotEmpty == true ? title!.trim() : defaults.$2,
+      icon: defaults.$1,
+      arguments: Map.unmodifiable(arguments),
+    );
+  }
+
+  String _invoiceMenuIdentity(String menu) {
+    final normalized = menu.toLowerCase();
+    if (normalized.contains('create') || normalized.contains('new')) {
+      return 'invoice:new';
+    }
+    if (normalized == 'invoices_issued' || normalized.isEmpty) {
+      return Sections.invoices;
+    }
+    return 'invoices:$normalized';
+  }
+
+  String _invoiceTabTitle(
+    String menu, {
+    String? invoiceId,
+    String? receiptId,
+    String? budgetId,
+  }) {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final normalized = menu.toLowerCase();
+    // Document IDs remain part of the stable workspace identity and routing,
+    // but are not meaningful labels for users. Callers pass a document number
+    // through tabTitle when it is already available; otherwise use a localized
+    // fallback until the loaded editor updates the title from its metadata.
+    if (invoiceId != null) {
+      if (normalized.contains('draft')) {
+        return es ? 'Borrador de factura' : 'Invoice draft';
+      }
+      return es ? 'Factura' : 'Invoice';
+    }
+    if (receiptId != null) return es ? 'Recibo' : 'Receipt';
+    if (budgetId != null) return es ? 'Presupuesto' : 'Proposal';
+    if (normalized.contains('create') || normalized.contains('new')) {
+      return es ? 'Nueva factura' : 'New invoice';
+    }
+    if (normalized.contains('receipt') || normalized.contains('recibo')) {
+      return es ? 'Recibos' : 'Receipts';
+    }
+    if (normalized.contains('budget') || normalized.contains('presupuesto')) {
+      return es ? 'Presupuestos' : 'Proposals';
+    }
+    if (normalized.contains('recurring')) {
+      return es ? 'Facturas recurrentes' : 'Recurring invoices';
+    }
+    return es ? 'Ingresos' : 'Income';
   }
 
   Future<User?> _getSafeUser() async {
@@ -252,6 +551,7 @@ class GroupDashboardState extends ChangeNotifier {
     final theme = Theme.of(context);
     final topBarColor = backdrop;
     final onTopBar = theme.colorScheme.onSurface;
+    final iconButtonStyle = ThemedButtons.iconAction(context);
 
     final ma =
         (!isWide && activeSection == Sections.emails) ? _mailBarActions : null;
@@ -265,6 +565,7 @@ class GroupDashboardState extends ChangeNotifier {
         actionsIconTheme: IconThemeData(color: onTopBar),
         // Back arrow: detail view → back to thread list; list view → back to dashboard
         leading: IconButton(
+          style: iconButtonStyle,
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           onPressed: ma.isDetailView
@@ -288,6 +589,7 @@ class GroupDashboardState extends ChangeNotifier {
           if (!ma.isDetailView) ...[
             if (ma.onRefresh != null)
               IconButton(
+                style: iconButtonStyle,
                 icon: const Icon(Icons.refresh_rounded),
                 tooltip: l.refreshAction,
                 onPressed: ma.onRefresh,
@@ -295,6 +597,7 @@ class GroupDashboardState extends ChangeNotifier {
             // Hamburger moved to right side
             if (ma.onOpenFolderMenu != null)
               IconButton(
+                style: iconButtonStyle,
                 icon: const Icon(Icons.menu_rounded),
                 tooltip: l.mailConsoleFoldersTitle,
                 onPressed: ma.onOpenFolderMenu,
@@ -303,6 +606,7 @@ class GroupDashboardState extends ChangeNotifier {
           if (ma.isDetailView) ...[
             if (ma.onToggleRead != null)
               IconButton(
+                style: iconButtonStyle,
                 icon: Icon(
                   ma.hasUnread == true
                       ? Icons.mark_email_read_outlined
@@ -323,7 +627,7 @@ class GroupDashboardState extends ChangeNotifier {
                 },
                 itemBuilder: (_) => [
                   if (ma.onArchive != null)
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(
                       value: 'archive',
                       child: Row(children: [
                         const Icon(Icons.archive_outlined, size: 18),
@@ -332,7 +636,7 @@ class GroupDashboardState extends ChangeNotifier {
                       ]),
                     ),
                   if (ma.onSpam != null)
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(
                       value: 'spam',
                       child: Row(children: [
                         const Icon(Icons.report_gmailerrorred_outlined,
@@ -342,7 +646,7 @@ class GroupDashboardState extends ChangeNotifier {
                       ]),
                     ),
                   if (ma.onTrash != null)
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(
                       value: 'trash',
                       child: Row(children: [
                         const Icon(Icons.delete_outline_rounded, size: 18),
@@ -364,30 +668,79 @@ class GroupDashboardState extends ChangeNotifier {
       surfaceTintColor: Colors.transparent,
       iconTheme: IconThemeData(color: onTopBar),
       actionsIconTheme: IconThemeData(color: onTopBar),
-      toolbarHeight: isWide ? 0 : null,
+      toolbarHeight:
+          isWide ? 0 : (activeSection == Sections.calendar ? 62 : null),
       titleSpacing: isWide ? 0 : null,
       automaticallyImplyLeading: !isWide,
       leadingWidth: isWide ? 0 : null,
       leading: isWide
           ? const SizedBox.shrink()
           : IconButton(
+              style: iconButtonStyle,
               icon: const Icon(Icons.arrow_back_ios_new_rounded),
               tooltip: MaterialLocalizations.of(context).backButtonTooltip,
               onPressed: () => Navigator.of(context).maybePop(),
             ),
-      title: isWide || activeSection == Sections.calendar
+      title: isWide
           ? null
-          : Text(
-              group.name,
-              style: t.bodyLarge.copyWith(
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-                color: onTopBar,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          : activeSection == Sections.calendar
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.localeName.startsWith('es')
+                          ? 'Resumen del negocio'
+                          : 'Business overview',
+                      style: t.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: onTopBar,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      DateFormat.yMMMd(l.localeName).format(DateTime.now()),
+                      style: t.bodySmall.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                )
+              : Text(
+                  group.name,
+                  style: t.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                    color: onTopBar,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
       actions: [
+        if (!isWide && activeSection != Sections.calendar)
+          DownloadJobsTopMenu(
+            groupId: group.id,
+            onViewAllDownloads: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (routeContext) => Scaffold(
+                  appBar: AppBar(
+                    title: Text(
+                      Localizations.localeOf(routeContext).languageCode == 'es'
+                          ? 'Descargas'
+                          : 'Downloads',
+                    ),
+                  ),
+                  body: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: SettingsGeneratedFilesSection(group: group),
+                  ),
+                ),
+              ),
+            ),
+            compact: true,
+            openInNotifications: false,
+          ),
         if (!isWide)
           DownloadJobsTopMenu(
             groupId: group.id,
@@ -413,15 +766,30 @@ class GroupDashboardState extends ChangeNotifier {
           ),
         if (!isWide)
           IconButton(
+            style: iconButtonStyle,
             tooltip: l.groupNotificationsSectionTitle,
             icon: const Icon(Icons.notifications_none_rounded),
             onPressed: () => openSection(Sections.notifications),
           ),
         if (!isWide && canSeeAdmin)
           IconButton(
+            style: iconButtonStyle,
             tooltip: l.groupSettingsTitle,
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => openSection(Sections.settings),
+          ),
+        if (!isWide)
+          IconButton(
+            key: const ValueKey('dashboard-mobile-profile-action'),
+            style: iconButtonStyle,
+            tooltip: l.profile,
+            onPressed: () => selectSection(Sections.profile),
+            icon: AvatarIcon(
+              photoUrl: user?.photoUrl,
+              isSelected: activeSection == Sections.profile,
+              activeColor: theme.colorScheme.primary,
+              inactiveColor: onTopBar,
+            ),
           ),
       ],
       bottom: null,

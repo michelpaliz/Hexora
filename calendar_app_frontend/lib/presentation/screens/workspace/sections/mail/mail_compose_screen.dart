@@ -1,10 +1,13 @@
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:hexora/models/clients/client.dart';
@@ -24,11 +27,16 @@ import 'package:hexora/services/mail/models/mail_requests.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/widgets/folder_section_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_workspace.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
 import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
+import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
@@ -43,6 +51,7 @@ part 'compose/widgets/collapsed_panel.dart';
 part 'compose/widgets/compose_bottom_bar.dart';
 part 'compose/widgets/invoice_picker_sheet.dart';
 part 'compose/widgets/inline_invoice_wizard.dart';
+part 'compose/widgets/invoice_history_comparison.dart';
 part 'compose/widgets/invoice_selection_preview.dart';
 
 part 'compose/sections/recipients_card.dart';
@@ -75,12 +84,17 @@ Future<List<Receipt>> sendEmailAndRefreshReceipts({
   return refreshed;
 }
 
+enum _ComposePreparationMode { clients, email, recent }
+
 class MailComposeScreen extends StatefulWidget {
   const MailComposeScreen({
     super.key,
     this.embedded = false,
     this.groupId,
     this.clientsApi,
+    this.invoicesApi,
+    this.receiptsApi,
+    this.presupuestosApi,
     this.replyToMessage,
     this.initialReplyBody,
     this.initialReplySubject,
@@ -92,6 +106,9 @@ class MailComposeScreen extends StatefulWidget {
   final bool embedded;
   final String? groupId;
   final ClientsApi? clientsApi;
+  final InvoicesApi? invoicesApi;
+  final ReceiptsApi? receiptsApi;
+  final PresupuestosApi? presupuestosApi;
   final MailMessage? replyToMessage;
   final String? initialReplyBody;
   final String? initialReplySubject;
@@ -105,9 +122,9 @@ class MailComposeScreen extends StatefulWidget {
 
 class _MailComposeScreenState extends State<MailComposeScreen> {
   late final _clientsApi = widget.clientsApi ?? ClientsApi();
-  final _invoicesApi = InvoicesApi();
-  final _receiptsApi = ReceiptsApi();
-  final _presupuestosApi = PresupuestosApi();
+  late final _invoicesApi = widget.invoicesApi ?? InvoicesApi();
+  late final _receiptsApi = widget.receiptsApi ?? ReceiptsApi();
+  late final _presupuestosApi = widget.presupuestosApi ?? PresupuestosApi();
 
   final _toCtrl = TextEditingController();
   final _ccCtrl = TextEditingController();
@@ -137,23 +154,34 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   bool _uploadingAttachment = false;
   bool _showCc = false;
   bool _showBcc = false;
-  bool _attachmentsExpanded = false;
   bool _invoiceExpanded = false;
   bool _openingInvoicePicker = false;
   bool _loadingRecipientClients = false;
   bool _useClientMode =
       false; // true = pick from client list, false = type email directly
+  bool _manualRecipientHintDismissed = false;
   bool _loadingRecentInvoices = false;
+  _ComposePreparationMode _preparationMode = _ComposePreparationMode.clients;
+  List<Invoice> _recentIssuedInvoices = const [];
+  List<GroupClient> _recentInvoiceClients = const [];
+  String? _recentInvoicesError;
   bool _inlineInvoiceLoading = false;
   String? _inlineInvoiceError;
   String? _inlineClientId;
   String? _recipientClientId;
   String? _recipientClientError;
+  String? _autoRecipientEmail;
 
   final List<MailOutgoingAttachment> _attachments = [];
   List<GroupClient> _pickerClients = const [];
   final Map<String, List<Invoice>> _pickerInvoicesByClient = {};
   final Map<String, List<Receipt>> _pickerReceiptsByClient = {};
+  Map<String, ClientUnsentDocumentCounts> _clientUnsentDocumentCounts =
+      const {};
+  bool _clientUnsentDocumentCountsLoading = false;
+  String? _clientUnsentDocumentCountsError;
+  List<Invoice>? _mailIssuedInvoices;
+  List<Receipt>? _mailIssuedReceipts;
   final Map<String, List<Map<String, dynamic>>> _pickerPresupuestosByClient =
       {};
   final Set<String> _wordPresupuestoIds = <String>{};
@@ -164,6 +192,17 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   void update(VoidCallback fn) {
     if (!mounted) return;
     setState(fn);
+  }
+
+  void _setRecipientSelectionMode(
+    bool selective, {
+    bool loadClientWorkflow = true,
+  }) {
+    if (_sending || _useClientMode == selective) return;
+    setState(() => _useClientMode = selective);
+    if (selective && loadClientWorkflow) {
+      unawaited(_prepareInlineInvoiceFlow());
+    }
   }
 
   void _refreshCanSendState() {
@@ -183,10 +222,10 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
           ?.trim();
       final recipient = rawRecipient == null
           ? null
-          : RegExp(r'[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}',
-                  caseSensitive: false)
-              .firstMatch(rawRecipient)
-              ?.group(0);
+          : RegExp(
+              r'[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}',
+              caseSensitive: false,
+            ).firstMatch(rawRecipient)?.group(0);
       if (recipient != null && recipient.isNotEmpty) _toList.add(recipient);
       final subject = reply.subject.trim();
       _subjectCtrl.text = subject.isEmpty
@@ -250,7 +289,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     final contentTypeCtrl = TextEditingController();
     final sizeCtrl = TextEditingController();
 
-    final result = await showDialog<MailOutgoingAttachment>(
+    final result = await showHexoraDialog<MailOutgoingAttachment>(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -328,7 +367,6 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     if (result != null) {
       setState(() {
         _attachments.add(result);
-        _attachmentsExpanded = true;
       });
     }
   }
@@ -385,7 +423,6 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
             size: file.size,
           ),
         );
-        _attachmentsExpanded = true;
       });
     } catch (e) {
       _showError(l.mailComposeUploadFailed(e.toString()));
@@ -447,7 +484,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       _confirmingSend = true;
       bool? confirmed;
       try {
-        confirmed = await showDialog<bool>(
+        confirmed = await showHexoraDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             icon: const Icon(Icons.warning_amber_rounded),
@@ -536,6 +573,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         receiptIds: receiptIds,
         loadReceipt: _receiptsApi.getById,
       );
+      await _loadClientUnsentDocumentCounts(groupId, force: true);
       if (!mounted) return;
       if (refreshedReceipts.isNotEmpty) {
         setState(() {
@@ -554,9 +592,12 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(widget.replyToMessage == null
+          content: Text(
+            widget.replyToMessage == null
                 ? l.mailComposeSentToast
-                : (_isSpanishLocale ? 'Respuesta enviada.' : 'Reply sent.'))),
+                : (_isSpanishLocale ? 'Respuesta enviada.' : 'Reply sent.'),
+          ),
+        ),
       );
       _resetForm();
       if (widget.embedded) {
@@ -672,9 +713,16 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       _sending = false;
       _showCc = false;
       _showBcc = false;
-      _attachmentsExpanded = false;
       _invoiceExpanded = false;
       _useClientMode = false;
+      _manualRecipientHintDismissed = false;
+      _preparationMode = _ComposePreparationMode.clients;
+      _recentIssuedInvoices = const [];
+      _recentInvoiceClients = const [];
+      _recentInvoicesError = null;
+      _recipientClientId = null;
+      _inlineClientId = null;
+      _autoRecipientEmail = null;
       _toList.clear();
       _ccList.clear();
       _bccList.clear();
@@ -704,6 +752,73 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       _attachments.where(_isManualPdfAttachment).toList(growable: false);
 
   int get _manualPdfAttachmentCount => _manualPdfAttachments.length;
+
+  Set<String> get _composerInvoiceIds => _splitValues(
+        _normalizeInvoiceIds(_invoiceIdsCtrl.text),
+      ).where((id) => id.trim().isNotEmpty).toSet();
+
+  Set<String> get _attachedInvoiceIds =>
+      _attachInvoicePdf ? _composerInvoiceIds : <String>{};
+
+  List<String> get _generatedDocumentDisplayNames {
+    final names = <String>[];
+    if (_attachInvoicePdf) {
+      final invoicesById = <String, Invoice>{
+        for (final invoices in _pickerInvoicesByClient.values)
+          for (final invoice in invoices) invoice.id: invoice,
+      };
+      for (final id in _composerInvoiceIds) {
+        final invoice = invoicesById[id];
+        final number = invoice?.invoiceNumber.trim() ?? '';
+        names.add(
+          '${_isSpanishLocale ? 'Factura' : 'Invoice'} ${number.isEmpty ? id : number}.pdf',
+        );
+      }
+
+      for (final id in _selectedReceiptIds) {
+        final receipt = _pickerReceiptsByClient.values
+            .expand((items) => items)
+            .cast<Receipt?>()
+            .firstWhere((item) => item?.id == id, orElse: () => null);
+        final number = receipt?.receiptNumber?.trim() ?? '';
+        names.add(
+          '${_isSpanishLocale ? 'Recibo' : 'Receipt'} ${number.isEmpty ? id : number}.pdf',
+        );
+      }
+
+      for (final id in _selectedPresupuestoIds) {
+        names.add(_presupuestoDisplayFileName(id));
+      }
+    }
+    return names;
+  }
+
+  String _presupuestoDisplayFileName(String id) {
+    Map<String, dynamic>? presupuesto;
+    for (final items in _pickerPresupuestosByClient.values) {
+      for (final item in items) {
+        if (_mailPresupuestoId(item) == id) {
+          presupuesto = item;
+          break;
+        }
+      }
+      if (presupuesto != null) break;
+    }
+
+    final number = (presupuesto?['presupuestoNumber'] ??
+            presupuesto?['budgetNumber'] ??
+            '')
+        .toString()
+        .trim();
+    if (number.isNotEmpty) {
+      return '${_isSpanishLocale ? 'Presupuesto' : 'Estimate'} $number.pdf';
+    }
+    if (presupuesto != null && _isWordPresupuesto(presupuesto)) {
+      final title = presupuestoDocumentTitle(presupuesto).trim();
+      if (title.isNotEmpty) return '$title.pdf';
+    }
+    return '${_isSpanishLocale ? 'Presupuesto' : 'Estimate'} $id.pdf';
+  }
 
   String _manualPdfAttachmentName(MailOutgoingAttachment attachment) {
     final filename = (attachment.filename ?? '').trim();
@@ -830,7 +945,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       return;
     }
     final hasSelected = _selectedComposeTemplateId != null;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
         insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
@@ -903,6 +1018,50 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     return _isValidEmail(email) ? email : '';
   }
 
+  String _clientEmailIssue(GroupClient client) {
+    if (_clientPrimaryEmail(client).isNotEmpty) return '';
+    final hasSavedValue = [client.billing?.email, client.email]
+        .any((value) => (value ?? '').trim().isNotEmpty);
+    return hasSavedValue ? 'invalid' : 'missing';
+  }
+
+  GroupClient? _selectedRecipientClient() {
+    final id = (_recipientClientId ?? '').trim();
+    if (id.isEmpty) return null;
+    for (final client in _pickerClients) {
+      if (client.id == id) return client;
+    }
+    return null;
+  }
+
+  void _enterRecipientManually() {
+    setState(() => _useClientMode = false);
+  }
+
+  bool get _canEditClients {
+    try {
+      return (context.read<GroupDashboardState>().role?.rank ?? 0) >= 1;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _editSelectedRecipientClient() async {
+    if (!_canEditClients) return;
+    final client = _selectedRecipientClient();
+    final groupId = _currentGroupId();
+    if (client == null || groupId == null || groupId.isEmpty) return;
+    final updated = await showClientEditor(
+      context: context,
+      groupId: groupId,
+      api: _clientsApi,
+      client: client,
+      existingClients: _pickerClients,
+    );
+    if (!mounted || updated == null) return;
+    _applyRecipientClient(updated.id, updated, replaceClient: true);
+  }
+
   DateTime _invoiceDisplayDate(Invoice invoice) {
     return (invoice.issueDate ??
             invoice.issuedAtResolved ??
@@ -952,11 +1111,13 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     try {
       final clients = await _ensurePickerClientsLoaded(groupId);
       if (!mounted) return;
-      final withEmail = clients
-          .where((c) => _clientPrimaryEmail(c).isNotEmpty)
-          .toList(growable: false);
       setState(() {
-        _recipientClientId = withEmail.isNotEmpty ? withEmail.first.id : null;
+        final selectedId = (_recipientClientId ?? '').trim();
+        final selectionStillExists = selectedId.isNotEmpty &&
+            clients.any((client) =>
+                client.id == selectedId &&
+                _clientPrimaryEmail(client).isNotEmpty);
+        if (!selectionStillExists) _recipientClientId = null;
       });
     } catch (e) {
       if (!mounted) return;
@@ -971,9 +1132,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   }
 
   List<GroupClient> _recipientClientsWithEmail() {
-    return _pickerClients
-        .where((c) => _clientPrimaryEmail(c).isNotEmpty)
-        .toList(growable: false);
+    return _pickerClients;
   }
 
   String? _selectedRecipientClientEmail() {
@@ -991,15 +1150,71 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     if (_toList.isNotEmpty) return true;
     final pending = _toCtrl.text.trim();
     if (pending.isNotEmpty && _isValidEmail(pending)) return true;
-    return _selectedRecipientClientEmail() != null;
+    return _useClientMode && _selectedRecipientClientEmail() != null;
   }
 
   void _applySelectedClientEmailIfNeeded() {
+    if (!_useClientMode) return;
     if (_toList.isNotEmpty) return;
     final email = _selectedRecipientClientEmail();
     if (email == null || email.isEmpty) return;
     if (_toList.contains(email)) return;
     _toList.add(email);
+  }
+
+  void _applyRecipientClient(
+    String clientId,
+    GroupClient client, {
+    bool replaceClient = false,
+  }) {
+    final email = _clientPrimaryEmail(client);
+    setState(() {
+      _useClientMode = true;
+      _recipientClientId = clientId;
+      _inlineClientId = clientId;
+
+      final previousEmail = _autoRecipientEmail;
+      if (previousEmail != null && previousEmail != email) {
+        _toList.remove(previousEmail);
+      }
+      if (email.isNotEmpty && !_toList.contains(email)) {
+        _toList.add(email);
+      }
+      _autoRecipientEmail = email.isEmpty ? null : email;
+
+      if (replaceClient) {
+        final index = _pickerClients.indexWhere((item) => item.id == clientId);
+        if (index >= 0) {
+          _pickerClients = [..._pickerClients]..[index] = client;
+        }
+      }
+    });
+  }
+
+  Future<void> _selectRecipientClient(String id) async {
+    final normalizedId = id.trim();
+    if (normalizedId.isEmpty) return;
+    final client = _pickerClients.cast<GroupClient?>().firstWhere(
+          (item) => item?.id == normalizedId,
+          orElse: () => null,
+        );
+    if (client == null) return;
+
+    // Apply the list value immediately, then refresh the full client record.
+    // The list endpoint can omit nested billing contact details.
+    _applyRecipientClient(normalizedId, client);
+    try {
+      final detailedClient = await _clientsApi.getById(normalizedId);
+      if (!mounted || _recipientClientId != normalizedId) return;
+      _applyRecipientClient(
+        normalizedId,
+        detailedClient,
+        replaceClient: true,
+      );
+    } catch (_) {
+      // Keep the list value and selected client available if detail refresh
+      // fails; the existing missing/invalid email guidance remains visible.
+    }
   }
 
   Future<void> _openRecentIssuedInvoicesPicker() async {
@@ -1030,7 +1245,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
             (a, b) => _invoiceDisplayDate(b).compareTo(_invoiceDisplayDate(a)));
       final clients = responses[1] as List<GroupClient>;
 
-      final selected = await showDialog<Invoice>(
+      final selected = await showHexoraDialog<Invoice>(
         context: context,
         builder: (dialogContext) => _RecentIssuedInvoicesDialog(
           invoices: invoices,
@@ -1073,7 +1288,8 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     }
 
     setState(() {
-      _useClientMode = true;
+      _preparationMode = _ComposePreparationMode.recent;
+      _useClientMode = false;
       _recipientClientId = clientId;
       _inlineClientId = clientId;
       final existing = _splitValues(_normalizeInvoiceIds(_invoiceIdsCtrl.text));
@@ -1084,9 +1300,94 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       _attachInvoicePdf = true;
       _includeInvoiceLinks = true;
       _invoiceExpanded = true;
-      _toList.clear();
-      if (email.isNotEmpty) _toList.add(email);
+      if (email.isNotEmpty && !_toList.contains(email)) _toList.add(email);
     });
+  }
+
+  Future<void> _selectPreparationMode(_ComposePreparationMode mode) async {
+    if (_sending) return;
+    setState(() {
+      _preparationMode = mode;
+      _useClientMode = mode == _ComposePreparationMode.clients;
+    });
+    if (mode == _ComposePreparationMode.clients) {
+      await _loadRecipientClientsIfNeeded();
+    } else if (mode == _ComposePreparationMode.recent) {
+      await _loadRecentIssuedInvoices();
+    }
+  }
+
+  Future<void> _loadRecentIssuedInvoices({bool force = false}) async {
+    if (_loadingRecentInvoices ||
+        (!force && _recentIssuedInvoices.isNotEmpty)) {
+      return;
+    }
+    final groupId = _currentGroupId();
+    if (groupId == null || groupId.isEmpty) {
+      setState(() => _recentInvoicesError = _isSpanishLocale
+          ? 'Selecciona un grupo para cargar las facturas recientes.'
+          : 'Select a group to load recent invoices.');
+      return;
+    }
+    setState(() {
+      _loadingRecentInvoices = true;
+      _recentInvoicesError = null;
+    });
+    try {
+      final responses = await Future.wait([
+        _invoicesApi.listByGroup(
+          groupId,
+          status: 'issued',
+          sortBy: 'issueDate',
+          sortDir: 'desc',
+        ),
+        _ensurePickerClientsLoaded(groupId),
+      ]);
+      if (!mounted) return;
+      final invoices = List<Invoice>.from(responses[0] as List<Invoice>)
+        ..sort(
+          (a, b) => _invoiceDisplayDate(b).compareTo(_invoiceDisplayDate(a)),
+        );
+      setState(() {
+        _recentIssuedInvoices = invoices;
+        _recentInvoiceClients =
+            List<GroupClient>.from(responses[1] as List<GroupClient>);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _recentInvoicesError = _isSpanishLocale
+          ? 'No se pudieron cargar las facturas recientes.'
+          : 'Recent invoices could not be loaded.');
+    } finally {
+      if (mounted) setState(() => _loadingRecentInvoices = false);
+    }
+  }
+
+  void _toggleRecentInvoice(Invoice invoice) {
+    final ids =
+        _splitValues(_normalizeInvoiceIds(_invoiceIdsCtrl.text)).toSet();
+    final selecting = !ids.remove(invoice.id);
+    if (selecting) ids.add(invoice.id);
+
+    final client = _recentInvoiceClients.cast<GroupClient?>().firstWhere(
+          (item) => item?.id == invoice.clientId,
+          orElse: () => null,
+        );
+    final email = client == null ? '' : _clientPrimaryEmail(client);
+    setState(() {
+      _invoiceIdsCtrl.text = ids.where((id) => id.trim().isNotEmpty).join(',');
+      if (selecting) {
+        _attachInvoicePdf = true;
+        _includeInvoiceLinks = true;
+        _invoiceExpanded = true;
+        if (email.isNotEmpty && !_toList.contains(email)) _toList.add(email);
+      }
+    });
+    if (selecting && email.isEmpty) {
+      _showError(_isSpanishLocale
+          ? 'El cliente no tiene un email guardado. Introduce el destinatario manualmente.'
+          : 'The client has no saved email. Enter the recipient manually.');
+    }
   }
 
   String _normalizeInvoiceIds(String raw) {
@@ -1101,6 +1402,104 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     return clients;
   }
 
+  bool _isReliablyUnsentDelivery(String? rawStatus, DateTime? sentAt) {
+    if (sentAt != null) return false;
+    final status = (rawStatus ?? '').trim().toLowerCase();
+    return const {
+      'not_sent',
+      'not-sent',
+      'unsent',
+      'failed',
+      'error',
+      'send_failed',
+      'delivery_failed',
+    }.contains(status);
+  }
+
+  Future<void> _loadClientUnsentDocumentCounts(
+    String groupId, {
+    bool force = false,
+  }) async {
+    if (_clientUnsentDocumentCountsLoading ||
+        (!force &&
+            _mailIssuedInvoices != null &&
+            _mailIssuedReceipts != null)) {
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        _clientUnsentDocumentCountsLoading = true;
+        _clientUnsentDocumentCountsError = null;
+      });
+    }
+    try {
+      final responses = await Future.wait([
+        _invoicesApi.listByGroup(groupId, status: 'issued'),
+        _receiptsApi.list(groupId: groupId, status: 'issued'),
+      ]);
+      final invoices = List<Invoice>.from(responses[0] as List<Invoice>);
+      final receipts = List<Receipt>.from(responses[1] as List<Receipt>);
+      final invoiceCounts = <String, int>{};
+      final receiptCounts = <String, int>{};
+
+      for (final invoice in invoices) {
+        if (invoice.groupId != groupId ||
+            (invoice.status ?? '').trim().toLowerCase() != 'issued' ||
+            !_isReliablyUnsentDelivery(
+                invoice.deliveryStatus, invoice.sentAt)) {
+          continue;
+        }
+        final clientId = invoice.clientId.trim();
+        if (clientId.isNotEmpty) {
+          invoiceCounts.update(clientId, (value) => value + 1,
+              ifAbsent: () => 1);
+        }
+      }
+      for (final receipt in receipts) {
+        if (receipt.groupId != groupId ||
+            (receipt.status ?? '').trim().toLowerCase() != 'issued' ||
+            !_isReliablyUnsentDelivery(
+                receipt.deliveryStatus, receipt.sentAt)) {
+          continue;
+        }
+        final clientId = receipt.clientId.trim();
+        if (clientId.isNotEmpty) {
+          receiptCounts.update(clientId, (value) => value + 1,
+              ifAbsent: () => 1);
+        }
+      }
+
+      final clientIds = <String>{
+        ...invoiceCounts.keys,
+        ...receiptCounts.keys,
+      };
+      final counts = <String, ClientUnsentDocumentCounts>{
+        for (final clientId in clientIds)
+          clientId: ClientUnsentDocumentCounts(
+            invoices: invoiceCounts[clientId] ?? 0,
+            receipts: receiptCounts[clientId] ?? 0,
+          ),
+      };
+      if (!mounted) return;
+      setState(() {
+        _mailIssuedInvoices = invoices;
+        _mailIssuedReceipts = receipts;
+        _clientUnsentDocumentCounts = counts;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _clientUnsentDocumentCountsError = _isSpanishLocale
+            ? 'No se pudieron cargar los documentos sin enviar.'
+            : 'Unsent document counts could not be loaded.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _clientUnsentDocumentCountsLoading = false);
+      }
+    }
+  }
+
   Future<List<Invoice>> _loadInvoicesForClient({
     required String groupId,
     required String clientId,
@@ -1108,12 +1507,11 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     final cached = _pickerInvoicesByClient[clientId];
     if (cached != null) return cached;
 
-    final responses = await Future.wait([
-      _invoicesApi.listByGroup(groupId, status: 'issued'),
-      _invoicesApi.listByGroup(groupId, status: 'draft'),
-    ]);
+    final issued = _mailIssuedInvoices ??
+        await _invoicesApi.listByGroup(groupId, status: 'issued');
+    final drafts = await _invoicesApi.listByGroup(groupId, status: 'draft');
     final merged = <String, Invoice>{};
-    for (final invoice in [...responses[0], ...responses[1]]) {
+    for (final invoice in [...issued, ...drafts]) {
       if (invoice.clientId == clientId) merged[invoice.id] = invoice;
     }
     final list = merged.values.toList()
@@ -1133,12 +1531,11 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     final cached = _pickerReceiptsByClient[clientId];
     if (cached != null) return cached;
 
-    final responses = await Future.wait([
-      _receiptsApi.list(groupId: groupId, status: 'issued'),
-      _receiptsApi.list(groupId: groupId, status: 'draft'),
-    ]);
+    final issued = _mailIssuedReceipts ??
+        await _receiptsApi.list(groupId: groupId, status: 'issued');
+    final drafts = await _receiptsApi.list(groupId: groupId, status: 'draft');
     final merged = <String, Receipt>{};
-    for (final receipt in [...responses[0], ...responses[1]]) {
+    for (final receipt in [...issued, ...drafts]) {
       if (receipt.clientId == clientId) merged[receipt.id] = receipt;
     }
     final list = merged.values.toList()
@@ -1280,6 +1677,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     setState(() => _openingInvoicePicker = true);
     try {
       final clients = await _ensurePickerClientsLoaded(groupId);
+      await _loadClientUnsentDocumentCounts(groupId);
       if (!mounted) return;
       if (clients.isEmpty) {
         _showError(l.noClientsYet);
@@ -1369,22 +1767,112 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     });
     try {
       final clients = await _ensurePickerClientsLoaded(groupId);
+      await _loadClientUnsentDocumentCounts(groupId);
       if (!mounted) return;
-      if (clients.isEmpty) {
-        setState(() => _inlineClientId = null);
-      } else {
-        final clientId = _inlineClientId ?? clients.first.id;
+      final clientId = (_inlineClientId ?? '').trim();
+      final hasExplicitSelection =
+          clientId.isNotEmpty && clients.any((client) => client.id == clientId);
+      if (hasExplicitSelection) {
         await _loadInvoicesForClient(groupId: groupId, clientId: clientId);
         await _loadReceiptsForClient(groupId: groupId, clientId: clientId);
         await _loadPresupuestosForClient(groupId: groupId, clientId: clientId);
         if (!mounted) return;
-        setState(() => _inlineClientId = clientId);
+      } else {
+        setState(() => _inlineClientId = null);
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _inlineInvoiceError = e.toString());
     } finally {
       if (mounted) setState(() => _inlineInvoiceLoading = false);
+    }
+  }
+
+  Future<void> _openDocumentSelectionWorkflow() async {
+    if (_openingInvoicePicker || _sending) return;
+    setState(() => _openingInvoicePicker = true);
+    try {
+      await _prepareInlineInvoiceFlow();
+      if (!mounted || (_inlineInvoiceError ?? '').trim().isNotEmpty) return;
+
+      final media = MediaQuery.of(context);
+      final compact = media.size.width < 700;
+      await showHexoraDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) {
+          final content = _InlineInvoiceFlowPanel(
+            state: this,
+            onComplete: () => Navigator.of(dialogContext).pop(),
+            onClose: () => Navigator.of(dialogContext).pop(),
+          );
+          if (compact) {
+            return Dialog.fullscreen(
+              child: SafeArea(child: content),
+            );
+          }
+          return Dialog(
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 28,
+              vertical: 24,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 900,
+                maxHeight: media.size.height * 0.88,
+              ),
+              child: content,
+            ),
+          );
+        },
+      );
+    } finally {
+      if (mounted) setState(() => _openingInvoicePicker = false);
+    }
+  }
+
+  void _removeAttachedDocumentAt(int index) {
+    final invoiceIds = _composerInvoiceIds.toList(growable: true);
+    if (index < invoiceIds.length) {
+      invoiceIds.removeAt(index);
+      setState(() {
+        _invoiceIdsCtrl.text = invoiceIds.join(',');
+        _attachInvoicePdf = invoiceIds.isNotEmpty ||
+            _selectedReceiptIds.isNotEmpty ||
+            _selectedPresupuestoIds.isNotEmpty;
+      });
+      return;
+    }
+
+    var remaining = index - invoiceIds.length;
+    final receiptIds = _selectedReceiptIds.toList(growable: false);
+    if (remaining < receiptIds.length) {
+      setState(() {
+        _selectedReceiptIds.remove(receiptIds[remaining]);
+        _attachInvoicePdf = invoiceIds.isNotEmpty ||
+            _selectedReceiptIds.isNotEmpty ||
+            _selectedPresupuestoIds.isNotEmpty;
+      });
+      return;
+    }
+
+    remaining -= receiptIds.length;
+    final presupuestoIds = _selectedPresupuestoIds.toList(growable: false);
+    if (remaining < presupuestoIds.length) {
+      setState(() {
+        _selectedPresupuestoIds.remove(presupuestoIds[remaining]);
+        _attachInvoicePdf = invoiceIds.isNotEmpty ||
+            _selectedReceiptIds.isNotEmpty ||
+            _selectedPresupuestoIds.isNotEmpty;
+      });
+      return;
+    }
+
+    remaining -= presupuestoIds.length;
+    final manual = _manualPdfAttachments;
+    if (remaining < manual.length) {
+      setState(() => _attachments.remove(manual[remaining]));
     }
   }
 
@@ -1399,7 +1887,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     final labelCtrl = TextEditingController(text: selectedText);
     final urlCtrl = TextEditingController(text: 'https://');
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l.mailComposeAddAttachment),
@@ -1455,6 +1943,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   Future<void> _showAttachmentActions() async {
     final l = AppLocalizations.of(context)!;
     final choice = await showModalBottomSheet<String>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       builder: (context) {
         return SafeArea(
@@ -1465,6 +1954,13 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
                 leading: const Icon(Icons.cloud_upload_outlined),
                 title: Text(l.mailComposeUploadAttachment),
                 onTap: () => Navigator.of(context).pop('upload'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: Text(_isSpanishLocale
+                    ? 'Adjuntar documentos'
+                    : 'Attach documents'),
+                onTap: () => Navigator.of(context).pop('documents'),
               ),
               ListTile(
                 leading: const Icon(Icons.link_outlined),
@@ -1478,7 +1974,9 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     );
 
     if (!mounted || choice == null) return;
-    if (choice == 'upload') {
+    if (choice == 'documents') {
+      await _openDocumentSelectionWorkflow();
+    } else if (choice == 'upload') {
       await _pickAndUploadAttachment();
     } else {
       await _addAttachment();

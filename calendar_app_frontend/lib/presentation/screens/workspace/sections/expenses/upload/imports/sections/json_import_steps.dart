@@ -52,23 +52,6 @@ extension _ExpenseJsonImportSteps on _ExpenseUploadImportTabsSection {
           ),
         );
 
-    Widget continueBtn({VoidCallback? onPressed}) => Padding(
-          padding: const EdgeInsets.only(top: 14),
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.icon(
-              onPressed: onPressed,
-              icon: const Icon(Icons.arrow_forward_rounded, size: 17),
-              label: Text(isEs ? 'Continuar' : 'Continue'),
-              style: FilledButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              ),
-            ),
-          ),
-        );
-
     // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Step 0: Documento ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
     if (step == 0) {
       final hasPayload = _jsonPayloadController.text.trim().isNotEmpty;
@@ -94,119 +77,124 @@ extension _ExpenseJsonImportSteps on _ExpenseUploadImportTabsSection {
               enabled: !jsonSubmitting,
             ),
             const SizedBox(height: 10),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    onPressed: jsonSubmitting ? null : pickJsonPayloadFile,
-                    icon: const Icon(Icons.data_object_rounded, size: 16),
-                    label: Text(
-                      isEs ? 'Seleccionar JSON' : 'Select JSON',
-                      style: const TextStyle(fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                    ),
+                OutlinedButton.icon(
+                  onPressed: jsonSubmitting ? null : pickJsonPayloadFile,
+                  icon: const Icon(Icons.data_object_rounded, size: 16),
+                  label: Text(
+                    isEs ? 'Seleccionar JSON' : 'Select JSON',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 34),
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    onPressed: jsonSubmitting ? null : pickJsonInvoiceFile,
-                    icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
-                    label: Text(
-                      isEs ? 'Adjuntar factura' : 'Attach invoice',
-                      style: const TextStyle(fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                    ),
+                OutlinedButton.icon(
+                  onPressed: jsonSubmitting ? null : pickJsonInvoiceFile,
+                  icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
+                  label: Text(
+                    isEs ? 'Adjuntar factura' : 'Attach invoice',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 34),
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 color: cs.surfaceContainerHighest.withValues(alpha: 0.14),
                 border: Border.all(
                     color: cs.outlineVariant.withValues(alpha: 0.22)),
               ),
-              child: Row(
-                children: [
-                  Icon(Icons.auto_awesome_outlined,
-                      size: 15, color: cs.primary.withValues(alpha: 0.8)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      hasPrompt
-                          ? (isEs
-                              ? 'Prompt generado ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³pialo a tu asistente de IA'
-                              : 'Prompt ready ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Copy it to your AI assistant')
-                          : (isEs
-                              ? 'Genera el prompt para tu asistente de IA'
-                              : 'Generate the prompt for your AI assistant'),
-                      style: ts.bodySmall?.copyWith(
-                        color: hasPrompt ? cs.primary : cs.onSurfaceVariant,
-                        fontWeight: hasPrompt ? FontWeight.w600 : null,
+              child: ExpansionTile(
+                dense: true,
+                visualDensity: VisualDensity.compact,
+                tilePadding: const EdgeInsets.symmetric(horizontal: 10),
+                childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                title: Row(
+                  children: [
+                    Icon(Icons.auto_awesome_outlined,
+                        size: 15, color: cs.primary.withValues(alpha: 0.8)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        hasPrompt
+                            ? (isEs
+                                ? 'Prompt generado ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· CÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³pialo a tu asistente de IA'
+                                : 'Prompt ready ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Copy it to your AI assistant')
+                            : (isEs
+                                ? 'Genera el prompt para tu asistente de IA'
+                                : 'Generate the prompt for your AI assistant'),
+                        style: ts.bodySmall?.copyWith(
+                          color: hasPrompt ? cs.primary : cs.onSurfaceVariant,
+                          fontWeight: hasPrompt ? FontWeight.w600 : null,
+                        ),
                       ),
                     ),
-                  ),
-                  if (jsonPromptLoading)
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 1.5),
-                    )
-                  else ...[
-                    _CompactIconActionButton(
-                      icon: Icons.auto_awesome_outlined,
-                      tooltip: isEs ? 'Generar prompt' : 'Generate prompt',
-                      onPressed: jsonSubmitting ? null : fetchExpenseJsonPrompt,
-                    ),
-                    if (hasPrompt) ...[
-                      const SizedBox(width: 4),
+                    if (jsonPromptLoading)
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 1.5),
+                      )
+                    else ...[
                       _CompactIconActionButton(
-                        icon: Icons.copy_outlined,
-                        tooltip: isEs ? 'Copiar prompt' : 'Copy prompt',
+                        icon: Icons.auto_awesome_outlined,
+                        tooltip: isEs ? 'Generar prompt' : 'Generate prompt',
                         onPressed:
-                            jsonSubmitting ? null : copyPromptToClipboard,
+                            jsonSubmitting ? null : fetchExpenseJsonPrompt,
                       ),
+                      if (hasPrompt) ...[
+                        const SizedBox(width: 4),
+                        _CompactIconActionButton(
+                          icon: Icons.copy_outlined,
+                          tooltip: isEs ? 'Copiar prompt' : 'Copy prompt',
+                          onPressed:
+                              jsonSubmitting ? null : copyPromptToClipboard,
+                        ),
+                      ],
                     ],
                   ],
+                ),
+                children: [
+                  if (hasPrompt)
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 110),
+                      child: SingleChildScrollView(
+                        child: SelectableText(
+                          jsonPromptText!,
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                              height: 1.5),
+                        ),
+                      ),
+                    )
+                  else
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        isEs
+                            ? 'Genera instrucciones compactas para tu asistente de IA.'
+                            : 'Generate compact instructions for your AI assistant.',
+                        style:
+                            ts.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    ),
                 ],
               ),
             ),
-            if (hasPrompt) ...[
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: cs.outlineVariant.withValues(alpha: 0.3)),
-                  color: cs.surfaceContainerHighest.withValues(alpha: 0.08),
-                ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 110),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(10),
-                    child: SelectableText(
-                      jsonPromptText!,
-                      style: const TextStyle(
-                          fontSize: 11, fontFamily: 'monospace', height: 1.5),
-                    ),
-                  ),
-                ),
-              ),
-            ],
             if (hasFiles) ...[
               const SizedBox(height: 10),
               Wrap(
@@ -294,40 +282,39 @@ extension _ExpenseJsonImportSteps on _ExpenseUploadImportTabsSection {
                 ),
                 color: cs.surfaceContainerHighest.withValues(alpha: 0.08),
               ),
-              child: TextField(
-                controller: jsonPayloadController,
-                enabled: !jsonSubmitting,
-                minLines: 8,
-                maxLines: 14,
-                style: TextStyle(
-                  fontSize: _ExpenseImportTypeScale.code,
-                  fontFamily: 'monospace',
-                  height: 1.55,
-                  color: cs.onSurface,
-                ),
-                onChanged: (value) {
-                  _tryLoadJsonSummaryControllersFromPayload(value);
-                  _updateImportState(() {});
-                },
-                decoration: InputDecoration(
-                  hintText: l.expenseJsonTabPayloadHint,
-                  hintStyle: TextStyle(
+              child: Focus(
+                onFocusChange: (focused) =>
+                    _updateImportState(() => jsonEditorFocused = focused),
+                child: TextField(
+                  controller: jsonPayloadController,
+                  enabled: !jsonSubmitting,
+                  minLines: jsonEditorFocused ? 10 : 7,
+                  maxLines: jsonEditorFocused ? 14 : 10,
+                  style: TextStyle(
                     fontSize: _ExpenseImportTypeScale.code,
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                    fontFamily: 'monospace',
+                    height: 1.55,
+                    color: cs.onSurface,
                   ),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  isDense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  onChanged: (value) {
+                    _tryLoadJsonSummaryControllersFromPayload(value);
+                    _updateImportState(() {});
+                  },
+                  decoration: InputDecoration(
+                    hintText: l.expenseJsonTabPayloadHint,
+                    hintStyle: TextStyle(
+                      fontSize: _ExpenseImportTypeScale.code,
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                    ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                  ),
                 ),
               ),
-            ),
-            continueBtn(
-              onPressed: hasPayload
-                  ? () => _updateImportState(() => _jsonImportStep = 1)
-                  : null,
             ),
             const SizedBox(height: 8),
           ],
@@ -538,8 +525,6 @@ extension _ExpenseJsonImportSteps on _ExpenseUploadImportTabsSection {
                 ],
               ),
             ),
-            continueBtn(
-                onPressed: () => _updateImportState(() => _jsonImportStep = 2)),
             const SizedBox(height: 8),
           ],
         ),
@@ -588,9 +573,26 @@ extension _ExpenseJsonImportSteps on _ExpenseUploadImportTabsSection {
         lockToLines: false,
         validationError: jsonSummaryValidationError,
         onSummaryModeChanged: (value) => _updateImportState(() {
+          if (!value) {
+            _jsonSummaryTotalsDraft = _captureTotals(
+              _jsonBaseController,
+              _jsonTaxController,
+              _jsonTotalController,
+            );
+          }
           _jsonUseSummaryTotals = value;
           if (_jsonUseSummaryTotals) {
-            _syncJsonSummaryControllers(_ExpenseDocumentTotalField.total);
+            final saved = _jsonSummaryTotalsDraft;
+            if (saved != null) {
+              _restoreTotals(
+                saved,
+                _jsonBaseController,
+                _jsonTaxController,
+                _jsonTotalController,
+              );
+            } else {
+              _syncJsonSummaryControllers(_ExpenseDocumentTotalField.total);
+            }
           }
         }),
         onBaseChanged: (_) {
@@ -663,11 +665,6 @@ extension _ExpenseJsonImportSteps on _ExpenseUploadImportTabsSection {
               help: _expenseImportHelpText(context, 'totals'),
             ),
             jsonTotalsFields,
-            continueBtn(
-              onPressed: jsonSummaryValidationError == null
-                  ? () => _updateImportState(() => _jsonImportStep = 3)
-                  : null,
-            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -676,10 +673,6 @@ extension _ExpenseJsonImportSteps on _ExpenseUploadImportTabsSection {
 
     // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Step 3: ConfirmaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
     final hasGroup = resolveGroupId().trim().isNotEmpty;
-    final canImport = hasGroup &&
-        !jsonSubmitting &&
-        !(_jsonSettlement.isFinal &&
-            (_jsonSettlement.selectedAdvanceExpenseId ?? '').trim().isEmpty);
     final invoiceLabel = (_jsonInvoiceFileName ?? _fileName ?? '').trim();
 
     return SingleChildScrollView(
@@ -765,32 +758,6 @@ extension _ExpenseJsonImportSteps on _ExpenseUploadImportTabsSection {
               ),
             ),
           ],
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 52,
-            child: FilledButton.icon(
-              onPressed: canImport ? submitExpenseJsonImport : null,
-              style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              icon: jsonSubmitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.playlist_add_check_circle_outlined,
-                      size: 22),
-              label: Text(
-                isEs ? 'Importar documento' : 'Import document',
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
           if (!hasGroup) ...[
             const SizedBox(height: 8),
             Text(

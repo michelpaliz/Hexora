@@ -19,9 +19,9 @@ class ExpenseFormFields extends StatelessWidget {
   final Widget totalsFields;
   final Widget linesEditor;
   final Widget vatBreakdown;
-  final Widget summaryBar;
   final bool hasLines;
   final bool submitting;
+  final bool manualProvider;
   final ValueChanged<TextEditingController> onPickDate;
 
   const ExpenseFormFields({
@@ -43,9 +43,9 @@ class ExpenseFormFields extends StatelessWidget {
     required this.totalsFields,
     required this.linesEditor,
     required this.vatBreakdown,
-    required this.summaryBar,
     required this.hasLines,
     required this.submitting,
+    required this.manualProvider,
     required this.onPickDate,
   });
 
@@ -60,72 +60,29 @@ class ExpenseFormFields extends StatelessWidget {
       InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(fontSize: 12),
-        prefixIcon: icon != null
-            ? Icon(icon, size: 16)
-            : null,
+        prefixIcon: icon != null ? Icon(icon, size: 16) : null,
         prefixIconConstraints:
             const BoxConstraints(minWidth: 36, minHeight: 36),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(
-            color: cs?.outlineVariant.withValues(alpha: 0.5) ??
-                Colors.white24,
+            color: cs?.outlineVariant.withValues(alpha: 0.5) ?? Colors.white24,
           ),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(
-            color: cs?.outlineVariant.withValues(alpha: 0.4) ??
-                Colors.white24,
+            color: cs?.outlineVariant.withValues(alpha: 0.4) ?? Colors.white24,
           ),
         ),
         filled: true,
-        fillColor: cs?.surfaceContainerHighest.withValues(alpha: 0.18),
+        fillColor: cs?.surfaceContainer,
         isDense: true,
+        constraints: const BoxConstraints(minHeight: 40),
         contentPadding: icon != null
             ? const EdgeInsets.symmetric(horizontal: 4, vertical: 10)
             : const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         suffixIcon: suffix,
-      );
-
-  static InputDecoration _dateDecor(
-    String label, {
-    required TextEditingController controller,
-    required bool disabled,
-    required ValueChanged<TextEditingController> onPick,
-    required ColorScheme cs,
-  }) =>
-      InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(fontSize: 12),
-        prefixIcon: const Icon(Icons.event_outlined, size: 16),
-        prefixIconConstraints:
-            const BoxConstraints(minWidth: 36, minHeight: 36),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.4),
-          ),
-        ),
-        filled: true,
-        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.18),
-        isDense: true,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-        suffixIcon: IconButton(
-          icon: Icon(Icons.edit_calendar_outlined,
-              size: 16, color: cs.onSurfaceVariant),
-          onPressed: disabled ? null : () => onPick(controller),
-          padding: EdgeInsets.zero,
-          constraints:
-              const BoxConstraints(minWidth: 32, minHeight: 32),
-        ),
       );
 
   @override
@@ -137,16 +94,9 @@ class ExpenseFormFields extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── Totals bar ──
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: summaryBar,
-        ),
-        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.25)),
-        // ── Form body ──
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+            padding: const EdgeInsets.fromLTRB(4, 4, 8, 4),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final wide = constraints.maxWidth >= 440;
@@ -176,23 +126,21 @@ class ExpenseFormFields extends StatelessWidget {
                   );
                 }
 
-                Widget sectionLabel(String text, IconData icon) =>
-                    Padding(
+                Widget sectionLabel(String text, IconData icon) => Padding(
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Row(
                         children: [
                           Icon(icon,
                               size: 12,
-                              color: cs.onSurfaceVariant
-                                  .withValues(alpha: 0.6)),
+                              color:
+                                  cs.onSurfaceVariant.withValues(alpha: 0.6)),
                           const SizedBox(width: 5),
                           Text(
                             text.toUpperCase(),
                             style: ts.bodySmall?.copyWith(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
-                              color: cs.onSurfaceVariant
-                                  .withValues(alpha: 0.6),
+                              color: cs.onSurfaceVariant.withValues(alpha: 0.6),
                               letterSpacing: 0.8,
                             ),
                           ),
@@ -205,34 +153,39 @@ class ExpenseFormFields extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // ── Proveedor ──
-                      sectionLabel(l.expenseUploadVendorLabel,
-                          Icons.business_outlined),
+                      sectionLabel(
+                          l.expenseUploadVendorLabel, Icons.business_outlined),
                       providerPicker,
-                      gap,
-                      row([
-                        TextField(
-                          controller: vendorController,
-                          style: _fieldStyle,
-                          decoration: _decor(
-                            l.expenseUploadVendorLabel,
-                            icon: Icons.storefront_outlined,
-                            cs: cs,
+                      if (manualProvider) ...[
+                        gap,
+                        row([
+                          TextField(
+                            controller: vendorController,
+                            style: _fieldStyle,
+                            decoration: _decor(
+                              l.expenseUploadVendorLabel,
+                              icon: Icons.storefront_outlined,
+                              cs: cs,
+                            ),
                           ),
-                        ),
-                        TextField(
-                          controller: vendorTaxIdController,
-                          style: _fieldStyle,
-                          decoration: _decor(
-                            l.expenseUploadVendorTaxIdLabel,
-                            icon: Icons.badge_outlined,
-                            cs: cs,
+                          TextField(
+                            controller: vendorTaxIdController,
+                            style: _fieldStyle,
+                            decoration: _decor(
+                              l.expenseUploadVendorTaxIdLabel,
+                              icon: Icons.badge_outlined,
+                              cs: cs,
+                            ),
                           ),
-                        ),
-                      ]),
-                      const SizedBox(height: 14),
+                        ]),
+                      ],
+                      const SizedBox(height: 16),
 
                       // ── Factura ──
-                      sectionLabel(l.expenseUploadInvoiceNumberLabel,
+                      sectionLabel(
+                          l.localeName.toLowerCase().startsWith('es')
+                              ? 'Datos del gasto'
+                              : 'Expense details',
                           Icons.receipt_outlined),
                       row([
                         TextField(
@@ -256,54 +209,39 @@ class ExpenseFormFields extends StatelessWidget {
                       ]),
                       gap,
                       row([
-                        TextField(
+                        _ExpenseLocalizedDateField(
                           controller: issueDateController,
-                          style: _fieldStyle,
-                          decoration: _dateDecor(
-                            l.expenseUploadIssueDateLabel,
-                            controller: issueDateController,
-                            disabled: submitting,
-                            onPick: onPickDate,
-                            cs: cs,
-                          ),
-                          readOnly: true,
-                          enableInteractiveSelection: false,
-                          onTap: submitting
-                              ? null
-                              : () => onPickDate(issueDateController),
+                          label: l.expenseUploadIssueDateLabel,
+                          disabled: submitting,
+                          onPick: onPickDate,
                         ),
-                        TextField(
+                        _ExpenseLocalizedDateField(
                           controller: dueDateController,
-                          style: _fieldStyle,
-                          decoration: _dateDecor(
-                            l.expenseUploadDueDateLabel,
-                            controller: dueDateController,
-                            disabled: submitting,
-                            onPick: onPickDate,
-                            cs: cs,
-                          ),
-                          readOnly: true,
-                          enableInteractiveSelection: false,
-                          onTap: submitting
-                              ? null
-                              : () => onPickDate(dueDateController),
+                          label: l.expenseUploadDueDateLabel,
+                          disabled: submitting,
+                          onPick: onPickDate,
                         ),
                       ]),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
                       // ── Importes ──
+                      sectionLabel(
+                          l.localeName.toLowerCase().startsWith('es')
+                              ? 'Impuestos y ajustes'
+                              : 'Tax and adjustments',
+                          Icons.calculate_outlined),
                       settlementFields,
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       discountFields,
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       withholdingFields,
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       totalsFields,
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
                       // ── Notas ──
-                      sectionLabel(l.expenseUploadNotesLabel,
-                          Icons.notes_outlined),
+                      sectionLabel(
+                          l.expenseUploadNotesLabel, Icons.notes_outlined),
                       TextField(
                         controller: notesController,
                         style: _fieldStyle,
@@ -329,6 +267,88 @@ class ExpenseFormFields extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ExpenseLocalizedDateField extends StatelessWidget {
+  const _ExpenseLocalizedDateField({
+    required this.controller,
+    required this.label,
+    required this.disabled,
+    required this.onPick,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final bool disabled;
+  final ValueChanged<TextEditingController> onPick;
+
+  String _displayDate(BuildContext context, DateTime date) {
+    if (Localizations.localeOf(context).languageCode == 'es') {
+      const months = <String>[
+        'ene',
+        'feb',
+        'mar',
+        'abr',
+        'may',
+        'jun',
+        'jul',
+        'ago',
+        'sept',
+        'oct',
+        'nov',
+        'dic',
+      ];
+      return '${date.day} ${months[date.month - 1]} ${date.year}';
+    }
+    return MaterialLocalizations.of(context).formatMediumDate(date);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        final parsed = DateTime.tryParse(value.text.trim());
+        final display = parsed == null
+            ? ''
+            : _displayDate(
+                context,
+                DateTime(parsed.year, parsed.month, parsed.day),
+              );
+        return InkWell(
+          onTap: disabled ? null : () => onPick(controller),
+          borderRadius: BorderRadius.circular(8),
+          child: InputDecorator(
+            isEmpty: display.isEmpty,
+            decoration: ExpenseFormFields._decor(
+              label,
+              icon: Icons.event_outlined,
+              cs: cs,
+              suffix: Icon(
+                Icons.edit_calendar_outlined,
+                size: 16,
+                color: disabled
+                    ? cs.onSurface.withValues(alpha: 0.38)
+                    : cs.onSurfaceVariant,
+              ),
+            ),
+            child: Text(
+              display,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                color: disabled
+                    ? cs.onSurface.withValues(alpha: 0.38)
+                    : cs.onSurface,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

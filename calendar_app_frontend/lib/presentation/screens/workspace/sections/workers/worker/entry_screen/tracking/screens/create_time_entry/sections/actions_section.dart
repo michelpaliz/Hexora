@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 
 class ActionsSection extends StatelessWidget {
   const ActionsSection({
@@ -7,11 +8,13 @@ class ActionsSection extends StatelessWidget {
     required this.l,
     required this.saving,
     required this.onSave,
+    required this.onCancel,
   });
 
   final AppLocalizations l;
   final bool saving;
   final VoidCallback onSave;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -20,32 +23,23 @@ class ActionsSection extends StatelessWidget {
           MediaQuery.textScalerOf(context).scale(14) > 20;
       return Flex(
         direction: stacked ? Axis.vertical : Axis.horizontal,
+        mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment:
             stacked ? CrossAxisAlignment.stretch : CrossAxisAlignment.center,
         children: [
-          Flexible(
-            flex: stacked ? 0 : 1,
-            fit: stacked ? FlexFit.loose : FlexFit.tight,
-            child: OutlinedButton(
-              onPressed: saving ? null : () => Navigator.of(context).pop(false),
-              child: Text(l.cancel),
-            ),
+          HexoraButton(
+            label: l.cancel,
+            size: HexoraButtonSize.standard,
+            variant: HexoraButtonVariant.ghost,
+            onPressed: saving ? null : onCancel,
           ),
           SizedBox(width: stacked ? 0 : 12, height: stacked ? 8 : 0),
-          Flexible(
-            flex: stacked ? 0 : 1,
-            fit: stacked ? FlexFit.loose : FlexFit.tight,
-            child: FilledButton.icon(
-              onPressed: saving ? null : onSave,
-              icon: saving
-                  ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: Text(saving ? l.savingLabel : l.addTimeEntryCta),
-            ),
+          HexoraButton(
+            icon: Icons.save_outlined,
+            label: saving ? l.savingLabel : l.addTimeEntryCta,
+            size: HexoraButtonSize.standard,
+            loading: saving,
+            onPressed: saving ? null : onSave,
           ),
         ],
       );

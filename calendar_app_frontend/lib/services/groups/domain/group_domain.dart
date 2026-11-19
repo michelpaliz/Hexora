@@ -119,6 +119,13 @@ class GroupDomain extends ChangeNotifier {
     }
   }
 
+  /// Publishes a confirmed mutation of the active group to every dashboard
+  /// surface that derives UI state from its membership or role map.
+  void publishCurrentGroupUpdate(Group updated) {
+    _lastUpdatedGroup = updated;
+    currentGroup = updated;
+  }
+
   Future<void> _rememberSelectedGroup(String userId, String groupId) async {
     try {
       await LastGroupSelection.save(userId, groupId);

@@ -1,14 +1,13 @@
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
-// lib/presentation/screens/workspace/settings/group_settings_screen.dart
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard/header/group_header_view.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_info_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/widgets/folder_section_card.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/widgets/notification_card.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class GroupSettingsScreen extends StatefulWidget {
@@ -106,9 +105,12 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
     );
   }
 
-  Widget _buildSideMenu(BuildContext context) {
+  Widget _buildSideMenu(BuildContext context) =>
+      NavigationSurface(builder: _buildNavigation);
+
+  Widget _buildNavigation(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    const menuWidth = 214.0;
+    const menuWidth = NavigationTokens.sidebarWidth;
 
     return SizedBox(
       width: menuWidth,
@@ -153,68 +155,14 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final fg = selected ? cs.onPrimaryContainer : cs.onSurfaceVariant;
-
-    return SizedBox(
-      height: 44,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? cs.primaryContainer : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              if (selected)
-                Container(
-                  width: 3,
-                  height: 18,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: cs.primary,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              Icon(icon, size: 18, color: fg),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  style: t.bodySmall.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return SidebarItem(icon: icon, label: label, isSelected: selected,
+      collapsed: false, onTap: onTap);
   }
 
   Widget _buildContent(BuildContext context) {
-    // Show group header only for info section and only on non-web platforms
-    final showGroupHeader = _selectedSection == 'info' && !kIsWeb;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (showGroupHeader) ...[
-            GroupHeaderView(group: widget.group),
-            const SizedBox(height: 24),
-          ],
-          _buildSectionContent(context),
-        ],
-      ),
+      child: _buildSectionContent(context),
     );
   }
 
@@ -312,50 +260,11 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
 
     switch (_selectedSection) {
       case 'info':
-        return FolderSectionCard(
-          label: l.groupInfo,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildInfoRow(
-                  context,
-                  icon: Icons.business,
-                  label: 'Nombre del negocio',
-                  value: widget.group.name,
-                ),
-                const SizedBox(height: 16),
-                _buildInfoRow(
-                  context,
-                  icon: Icons.description_outlined,
-                  label: 'Descripción',
-                  value: widget.group.description.isNotEmpty
-                      ? widget.group.description
-                      : 'Sin descripción',
-                ),
-                const SizedBox(height: 16),
-                _buildInfoRow(
-                  context,
-                  icon: Icons.calendar_today,
-                  label: 'Fecha de creación',
-                  value:
-                      '${widget.group.createdTime.day}/${widget.group.createdTime.month}/${widget.group.createdTime.year}',
-                ),
-                const SizedBox(height: 16),
-                _buildInfoRow(
-                  context,
-                  icon: Icons.people_outline,
-                  label: 'Miembros',
-                  value: '${widget.group.userIds.length} miembros',
-                ),
-              ],
-            ),
-          ),
-        );
+        return SettingsInfoSection(group: widget.group);
       case 'notifications':
         return FolderSectionCard(
           label: l.notifications,
+          showTitle: false,
           actions: [
             IconButton(
               icon: const Icon(Icons.add, size: 18),
@@ -376,55 +285,4 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
     }
   }
 
-  Widget _buildInfoRow(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: cs.primaryContainer.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: cs.onPrimaryContainer,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: t.bodyMedium.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 }

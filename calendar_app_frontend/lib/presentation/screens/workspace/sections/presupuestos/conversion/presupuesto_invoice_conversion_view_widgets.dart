@@ -35,53 +35,57 @@ class _LinkedInvoiceCard extends StatelessWidget {
     final typo = AppTypography.of(context);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.28)),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.22)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
               color: _isIssued
                   ? cs.primaryContainer.withValues(alpha: 0.28)
                   : cs.secondaryContainer.withValues(alpha: 0.34),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               record.isFinal
                   ? Icons.request_quote_outlined
                   : Icons.description_outlined,
-              size: 18,
+              size: 15,
               color: _isIssued ? cs.primary : cs.secondary,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
+                Text(
+                  record.displayNumber,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: typo.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 3),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 6,
+                  runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(
-                      record.displayNumber,
-                      style: typo.bodyLarge.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                      ),
-                    ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 6,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
                         color: cs.tertiaryContainer.withValues(alpha: 0.26),
@@ -90,28 +94,12 @@ class _LinkedInvoiceCard extends StatelessWidget {
                       child: Text(
                         _typeLabel(isSpanish),
                         style: typo.bodySmall.copyWith(
+                          fontSize: 10,
                           color: cs.tertiary,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${isSpanish ? 'ID' : 'ID'}: ${record.id}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: typo.bodyMedium.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 5,
@@ -128,9 +116,7 @@ class _LinkedInvoiceCard extends StatelessWidget {
                         style: typo.bodySmall.copyWith(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: _isIssued
-                              ? cs.tertiary
-                              : cs.onSurfaceVariant,
+                          color: _isIssued ? cs.tertiary : cs.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -166,55 +152,6 @@ class _LinkedInvoiceCard extends StatelessWidget {
                 ),
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.tone,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: tone.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: tone.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: tone),
-          const SizedBox(width: 6),
-          Text(
-            '$label: ',
-            style: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Text(
-            value,
-            style: typo.bodySmall.copyWith(
-              color: tone,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
         ],
       ),
     );
@@ -258,11 +195,13 @@ class _CenteredInfoState extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.action,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -297,9 +236,172 @@ class _CenteredInfoState extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
+            if (action != null) ...[
+              const SizedBox(height: 12),
+              action!,
+            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PreviewTabToggle extends StatelessWidget {
+  const _PreviewTabToggle({
+    required this.selectedIndex,
+    required this.isSpanish,
+    required this.onChanged,
+  });
+
+  final int selectedIndex;
+  final bool isSpanish;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+
+    Widget tab(int index, IconData icon, String label) {
+      final selected = selectedIndex == index;
+      return GestureDetector(
+        onTap: () => onChanged(index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: selected
+                ? cs.primaryContainer.withValues(alpha: 0.4)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 14,
+                color: selected ? cs.primary : cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: typo.bodySmall.copyWith(
+                  fontSize: 11,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          tab(
+            0,
+            Icons.picture_as_pdf_outlined,
+            isSpanish ? 'Presupuesto' : 'Proposal',
+          ),
+          tab(
+            1,
+            Icons.receipt_long_outlined,
+            isSpanish ? 'Factura' : 'Invoice',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryField extends StatelessWidget {
+  const _SummaryField({
+    required this.label,
+    required this.value,
+    required this.typo,
+    required this.cs,
+  });
+
+  final String label;
+  final String value;
+  final AppTypography typo;
+  final ColorScheme cs;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: typo.bodySmall.copyWith(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: cs.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 1),
+        Text(
+          value.isEmpty ? '—' : value,
+          style: typo.bodyMedium.copyWith(
+            fontWeight: FontWeight.w700,
+            color: cs.onSurface,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryAmountRow extends StatelessWidget {
+  const _SummaryAmountRow({
+    required this.label,
+    required this.value,
+    required this.typo,
+    required this.cs,
+    this.emphasized = false,
+  });
+
+  final String label;
+  final String value;
+  final AppTypography typo;
+  final ColorScheme cs;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: emphasized ? FontWeight.w800 : FontWeight.w600,
+              fontSize: emphasized ? 12 : 11,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: typo.bodySmall.copyWith(
+            color: emphasized ? cs.primary : cs.onSurface,
+            fontWeight: emphasized ? FontWeight.w900 : FontWeight.w700,
+            fontSize: emphasized ? 14 : 12,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
     );
   }
 }

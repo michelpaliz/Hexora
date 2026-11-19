@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/client_form_fields.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/input_border.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -28,48 +29,39 @@ class TimePickersSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+    final isSpanish = l.localeName.startsWith('es');
+    Widget field({
+      required String label,
+      required DateTime value,
+      required VoidCallback onTap,
+    }) =>
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: InputDecorator(
+            decoration: buildInputDecoration(
+              context,
+              label: label,
+              prefixIcon: const Icon(Icons.calendar_month_outlined),
+            ),
+            child: Text(
+              '${dateFormat.format(value)} · ${timeFormat.format(value)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        );
+    return ClientFormFields(
+      first: field(
+        label: isSpanish ? 'Fecha y hora de inicio' : 'Start date and time',
+        value: start,
+        onTap: onPickStart,
       ),
-      child: Column(
-        children: [
-          ListTile(
-            title: Text(
-              l.startTime,
-              style: t.bodyMedium.copyWith(
-                color: ThemeColors.textPrimary(context),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            subtitle: Text(
-              '${dateFormat.format(start)} ${timeFormat.format(start)}',
-              style: t.bodySmall.copyWith(
-                color: ThemeColors.textSecondary(context),
-              ),
-            ),
-            trailing: const Icon(Icons.edit_outlined),
-            onTap: onPickStart,
-          ),
-          const Divider(height: 0),
-          ListTile(
-            title: Text(
-              l.endTime,
-              style: t.bodyMedium.copyWith(
-                color: ThemeColors.textPrimary(context),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            subtitle: Text(
-              '${dateFormat.format(end)} ${timeFormat.format(end)}',
-              style: t.bodySmall.copyWith(
-                color: ThemeColors.textSecondary(context),
-              ),
-            ),
-            trailing: const Icon(Icons.edit_outlined),
-            onTap: onPickEnd,
-          ),
-        ],
+      second: field(
+        label: isSpanish ? 'Fecha y hora de fin' : 'End date and time',
+        value: end,
+        onTap: onPickEnd,
       ),
     );
   }

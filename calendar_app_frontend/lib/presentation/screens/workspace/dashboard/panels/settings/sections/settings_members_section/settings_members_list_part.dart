@@ -9,7 +9,7 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
     }
 
     return SizedBox(
-      height: 380,
+      height: 480,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -52,7 +52,7 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
     final repo = context.read<IUserRepository>();
 
     return Container(
-      constraints: const BoxConstraints(maxHeight: 380),
+      constraints: const BoxConstraints(maxHeight: 480),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
@@ -89,7 +89,8 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
                   duration: const Duration(milliseconds: 150),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? cs.primaryContainer.withValues(alpha: 0.5)
@@ -98,24 +99,13 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
                   ),
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundImage: (user?.photoUrl != null &&
-                                user!.photoUrl!.isNotEmpty)
-                            ? NetworkImage(user.photoUrl!)
-                            : null,
-                        backgroundColor:
-                            cs.primaryContainer.withValues(alpha: 0.4),
-                        child: (user?.photoUrl == null || user!.photoUrl!.isEmpty)
-                            ? Text(
-                                _initials(displayName),
-                                style: t.caption.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: cs.primary,
-                                  fontSize: 10,
-                                ),
-                              )
-                            : null,
+                      HexoraUserAvatar(
+                        userId: user?.id ?? ref.username,
+                        displayName:
+                            user?.displayName ?? user?.name ?? displayName,
+                        username: user?.userName ?? ref.username,
+                        photoUrl: user?.photoUrl,
+                        size: 32,
                       ),
                       const SizedBox(width: 8),
                       Expanded(

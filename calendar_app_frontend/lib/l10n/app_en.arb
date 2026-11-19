@@ -74,9 +74,9 @@
     "errorEventNote": "Event note cannot be empty!",
     "name": "Name",
     "userName": "User name",
-    "currentPassword": "Insert your current password",
-    "newPassword": "Update your current password",
-    "confirmPassword": "Confirm password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
     "password": "Password",
     "register": "Register",
     "login": "Login",
@@ -89,6 +89,7 @@
     "confirmPasswordHint": "Enter your password again",
     "logoutMessage": "Are you sure you want to log out ?",
     "passwordNotMatch": "New password and confirmation password do not match.",
+    "newPasswordMustDiffer": "New password must be different from the current password.",
     "userNameTaken": "The user name is already taken",
     "weakPassword": "Weak Password",
     "emailTaken": "The email is already taken",
@@ -1005,6 +1006,22 @@
     "@roleCardTapHint": {
         "description": "Hint displayed on the profile role card encouraging users to tap for more details."
     },
+    "accessPermissionsTitle": "Access permissions",
+    "@accessPermissionsTitle": {
+        "description": "Title for the access permissions row in the business information section."
+    },
+    "accessFullBusiness": "Full access to the business",
+    "@accessFullBusiness": {
+        "description": "Subtitle shown when the current user has full access to the business."
+    },
+    "viewRolePermissions": "View role permissions",
+    "@viewRolePermissions": {
+        "description": "Action label that opens the role permissions details."
+    },
+    "businessHoursScheduleHint": "Set the allowed schedule for scheduling events.",
+    "@businessHoursScheduleHint": {
+        "description": "Short explanation shown inside the business hours editing screen."
+    },
     "createdByLabel": "Created by",
     "@createdByLabel": {
         "description": "Label shown before the event owner's information."
@@ -1679,7 +1696,7 @@
     }
   },
   "openInvoicesWorkspace": "Open invoices workspace",
-  "invoiceNumberLabel": "Invoice number (NNN-YY)",
+  "invoiceNumberLabel": "Invoice number",
   "invoiceNumberHelper": "Year suffix locked to {year}. Enter the 3 digits.",
   "@invoiceNumberHelper": {
     "placeholders": {
@@ -1893,7 +1910,7 @@
       "date": { "type": "String" }
     }
   },
-  "clientMissingCountThisMonth": "{count, plural, =0{None missing} =1{1 missing this month} other{{count} missing this month}}",
+  "clientMissingCountThisMonth": "{count, plural, =0{All invoiced this month} =1{1 without invoice this month} other{{count} without invoice this month}}",
   "@clientMissingCountThisMonth": {
     "placeholders": {
       "count": { "type": "int" }
@@ -2574,14 +2591,14 @@
   "statementsInvoiceAlreadyLinkedToast": "This invoice was already linked to another bank transaction.",
   "statementsInvalidInvoiceToast": "Invalid invoice.",
   "statementsInvoiceNotFoundToast": "Invoice not found.",
-  "statementsRepetitiveInvoiceBadge": "Split payment",
+  "statementsRepetitiveInvoiceBadge": "Repeated invoice",
   "statementsRepetitiveInvoiceTooltip": "This invoice is linked to {count} bank movements.",
   "@statementsRepetitiveInvoiceTooltip": {
     "placeholders": {
       "count": {}
     }
   },
-  "statementsRepetitiveInvoiceLinkedToast": "Payment added. The invoice now has {count} linked transactions.",
+  "statementsRepetitiveInvoiceLinkedToast": "Invoice linked, but it was already used in other movements ({count}).",
   "@statementsRepetitiveInvoiceLinkedToast": {
     "placeholders": {
       "count": {}
@@ -2892,12 +2909,16 @@
     }
   },
   "mailConversationSignature": "Signature",
+  "mailConversationShowQuoted": "Show quoted content",
+  "mailConversationHideQuoted": "Hide quoted content",
+  "mailConversationViewComplete": "View complete message",
+  "mailConversationViewCompact": "Show compact view",
   "mailConversationReply": "Reply",
   "mailConversationReplyAll": "Reply all",
   "mailConversationForward": "Forward",
   "mailConversationSortNewestFirst": "Newest first",
   "mailConversationSortOldestFirst": "Oldest first",
-  "mailConversationMessageCount": "{count, plural, one {# message} other {# messages}}",
+  "mailConversationMessageCount": "{count, plural, one {1 message} other {{count} messages}}",
   "@mailConversationMessageCount": {
     "description": "Message count shown above a thread's conversation list.",
     "placeholders": {
@@ -3392,9 +3413,9 @@
   "expenseBatchDocListClearAll": "Clear all",
   "expenseBatchDocListRemove": "Remove",
   "expenseBatchErrorCopyList": "Copy list",
-  "expenseTotalsUseSummaryLabel": "Use document summary",
-  "expenseTotalsSummaryMode": "Totals extracted from summary",
-  "expenseTotalsCalculateMode": "Calculate from lines",
+  "expenseTotalsUseSummaryLabel": "Amount source",
+  "expenseTotalsSummaryMode": "From document",
+  "expenseTotalsCalculateMode": "From lines",
   "expenseTotalsSummaryHelp": "The VAT for this document appears in the summary at the bottom of the ticket/invoice. It is not necessary for each line to show VAT separately.",
   "expenseTotalsLockToLinesHelp": "Base, VAT and total are calculated from the lines and discounts. Enable summary if the document only shows VAT in the footer.",
   "expenseTotalsDirectReviewHelp": "You can review the document totals directly from this block.",
@@ -3641,6 +3662,10 @@
   "groupSettingsDeleteNamePrompt": "Type “{name}” to confirm permanent deletion. This cannot be undone.",
   "@groupSettingsDeleteNamePrompt": {"placeholders": {"name": {"type": "String"}}},
   "groupSettingsDeleteGroup": "Delete business",
+  "invoiceIssueChronologyError": "This draft is dated {draftDate}, but invoice {invoiceNumber} was already issued with the later date {issuedDate}. Change the draft date before issuing it.",
+  "@invoiceIssueChronologyError": {"placeholders": {"draftDate": {}, "invoiceNumber": {}, "issuedDate": {}}},
+  "invoiceBatchIssueStoppedAfter": "{count} invoices were issued before the process stopped.",
+  "@invoiceBatchIssueStoppedAfter": {"placeholders": {"count": {}}},
   "agendaCompleted": "Completed",
   "agendaEmptyDay": "No jobs for this day. Select another date or All.",
   "downloadsTitle": "Downloads",
@@ -3662,5 +3687,18 @@
   "downloadsRefresh": "Refresh",
   "downloadsEmpty": "No recent downloads",
   "downloadsChecking": "Checking files…",
-  "downloadsGeneratedFile": "Generated file"
+  "downloadsGeneratedFile": "Generated file",
+  "preferencesTitle": "Preferences",
+  "preferencesNavigation": "Navigation",
+  "preferencesAppearance": "Appearance",
+  "preferencesLanguage": "Language",
+  "preferencesAutomatic": "Automatic",
+  "preferencesNavigationAutomatic": "Automatic",
+  "preferencesNavigationAutomaticDescription": "Show labels when space is available.",
+  "preferencesNavigationIconsAndText": "Icons and text",
+  "preferencesNavigationIconsAndTextDescription": "Always show module icons and labels.",
+  "preferencesNavigationIconsOnly": "Icons only",
+  "preferencesNavigationIconsOnlyDescription": "Use a compact navigation with tooltips.",
+  "preferencesThemeLight": "Light",
+  "preferencesThemeDark": "Dark"
 }

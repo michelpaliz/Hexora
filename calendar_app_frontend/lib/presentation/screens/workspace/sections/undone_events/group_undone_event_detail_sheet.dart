@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/presentation/screens/events/screens/event_screen/event_detail/event_detail_screen.dart';
@@ -14,6 +15,7 @@ Future<void> showEventDetailSheet({
   bool allowMarkComplete = true,
 }) {
   return showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
@@ -63,6 +65,7 @@ class _PendingEventDetailContent extends StatelessWidget {
       if (type == 'general') {
         final es = loc.localeName.startsWith('es');
         final selected = await showModalBottomSheet<ImageSource>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
           context: context,
           showDragHandle: true,
           builder: (context) => SafeArea(

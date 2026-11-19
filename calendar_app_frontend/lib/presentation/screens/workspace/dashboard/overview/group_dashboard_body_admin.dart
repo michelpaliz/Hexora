@@ -1,10 +1,15 @@
 // lib/presentation/screens/workspace/dashboard/overview/group_dashboard_body_admin.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/header/group_header_view.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/overview/widgets/mobile_dashboard_components.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/overview/widgets/home_calendar_preview.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/overview/widgets/business_info_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/business_hours/edit_business_hours_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/business_hours/group_business_hours_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/domain/models/members_count.dart';
@@ -80,7 +85,7 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
     final rootNav = Navigator.of(context, rootNavigator: true);
 
     if (!rootNav.mounted) return;
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: rootNav.context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
@@ -118,149 +123,357 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
     void open(String section) =>
         context.read<GroupDashboardState>().openSection(section);
 
-    Widget heading(String text) => Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 8),
-          child: Text(text,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  )),
-        );
-    Widget destination(IconData icon, String title, String section) => ListTile(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-          leading: Icon(icon, color: cs.primary, size: 22),
-          title: Text(title,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  )),
-          trailing:
-              Icon(Icons.chevron_right, size: 20, color: cs.onSurfaceVariant),
-          onTap: () => open(section),
-        );
-    Widget quickNotesDestination() => ListTile(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-          leading: Icon(Icons.view_kanban_outlined, color: cs.primary, size: 22),
-          title: Text(es ? 'Notas rápidas' : 'Quick notes',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  )),
-          trailing:
-              Icon(Icons.chevron_right, size: 20, color: cs.onSurfaceVariant),
-          onTap: () => Navigator.of(context).pushNamed(
-            AppRoutes.groupQuickNotes,
-            arguments: _group,
+    Widget quickAction(
+      IconData icon,
+      String title,
+      String subtitle,
+      String section,
+    ) =>
+        Material(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(14),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => open(section),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer.withValues(alpha: .65),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, color: cs.primary, size: 19),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(children: [
+                    Expanded(
+                      child: Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                      ),
+                    ),
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerHighest,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.chevron_right_rounded,
+                          size: 16, color: cs.onSurfaceVariant),
+                    ),
+                  ]),
+                ],
+              ),
+            ),
           ),
         );
-    Widget group(List<Widget> items) => Card(
-          margin: EdgeInsets.zero,
-          elevation: 0,
-          color: cs.surfaceContainerLow,
-          clipBehavior: Clip.antiAlias,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Column(children: [
-            for (var i = 0; i < items.length; i++) ...[
-              if (i > 0)
-                Divider(
-                    height: 1,
-                    indent: 54,
-                    color: cs.outlineVariant.withValues(alpha: 0.4)),
-              items[i],
-            ],
-          ]),
+    Widget quickGrid(List<Widget> items) => GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 1.42,
+          children: items,
         );
-
+    Widget financialCard(
+      IconData icon,
+      String title,
+      Color color,
+      String section,
+    ) =>
+        Material(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(14),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => open(section),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Icon(icon, color: color, size: 17),
+                  ),
+                  const Spacer(),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    es ? 'Ver detalle' : 'View details',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
         children: [
           GroupHeaderView(group: _group),
-          heading(l.sectionEvents),
-          group([
-            destination(Icons.view_agenda_outlined, l.agenda, Sections.agenda),
-          ]),
-          const SizedBox(height: 12),
-          if (!_group.hasCalendar)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child:
-                  Text(l.noCalendarWarning, style: TextStyle(color: cs.error)),
+          MobileDashboardSection(
+            title: es ? 'Resumen financiero' : 'Financial overview',
+            action: TextButton(
+              onPressed: () => open(Sections.insights),
+              child: Text(es ? 'Ver reportes' : 'View reports'),
             ),
-          GroupUndoneEventsSection(
-            group: _group,
-            user: widget.user,
-            role: widget.role,
-            onSeeAll: () => open(Sections.undone),
+            child: SizedBox(
+              height: 104,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: financialCard(
+                      Icons.arrow_upward_rounded,
+                      es ? 'Ingresos' : 'Income',
+                      const Color(0xFF20B47A),
+                      Sections.invoices,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: financialCard(
+                      Icons.arrow_downward_rounded,
+                      es ? 'Gastos' : 'Expenses',
+                      const Color(0xFFE65B73),
+                      Sections.expenses,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: financialCard(
+                      Icons.schedule_rounded,
+                      es ? 'Por cobrar' : 'Receivable',
+                      const Color(0xFFE9A21B),
+                      Sections.invoices,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 12),
-          GroupUpcomingEventsCard(
-            limit: 3,
-            groupId: _group.id,
-            role: widget.role,
-            currentUserId: widget.user.id,
+          MobileDashboardSection(
+            title: es ? 'Accesos rápidos' : 'Quick access',
+            action: Text(
+              es ? '4 herramientas' : '4 tools',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+            ),
+            child: quickGrid([
+              quickAction(
+                Icons.calendar_month_outlined,
+                l.calendarTitle,
+                es ? 'Eventos y visitas' : 'Events and visits',
+                Sections.calendar,
+              ),
+              quickAction(
+                Icons.view_agenda_outlined,
+                l.agenda,
+                es ? 'Visitas y tareas' : 'Visits and tasks',
+                Sections.agenda,
+              ),
+              quickAction(
+                Icons.receipt_long_outlined,
+                l.invoicesNavLabel,
+                es ? 'Crear o emitir' : 'Create or issue',
+                Sections.invoices,
+              ),
+              quickAction(
+                Icons.groups_outlined,
+                l.tabClients,
+                es ? 'Gestionar clientes' : 'Manage clients',
+                Sections.services,
+              ),
+            ]),
           ),
-          const SizedBox(height: 12),
-          WorkConditionsCard(groupId: _group.id),
-          heading(es ? 'Accesos rápidos' : 'Quick access'),
-          group([
-            destination(Icons.design_services_outlined, l.servicesClientsTitle,
-                Sections.services),
-            quickNotesDestination(),
-            destination(Icons.map_outlined,
-                es ? 'Mapa y visitas' : 'Map and visits', Sections.maps),
-            destination(Icons.forum_outlined,
-                es ? 'Chat de la empresa' : 'Business chat', Sections.businessChat),
-          ]),
-          const SizedBox(height: 12),
-          group([
-            destination(
-                Icons.insights_outlined, l.insightsTitle, Sections.insights),
-          ]),
-          heading(es ? 'Finanzas y comunicación' : 'Finance and communication'),
-          group([
-            destination(Icons.receipt_long_outlined, l.invoicesNavLabel,
-                Sections.invoices),
-            destination(Icons.account_balance_outlined, l.statementsNavTitle,
-                Sections.enableBanking),
-            destination(Icons.payments_outlined, es ? 'Gastos' : 'Expenses',
-                Sections.expenses),
-            destination(Icons.mail_outline_rounded, l.mailConsoleTitle,
-                Sections.emails),
-            destination(Icons.telegram, 'Telegram', Sections.telegram),
-          ]),
-          heading(es ? 'Equipo' : 'Team'),
-          group([
-            destination(Icons.group_outlined, l.membersTitle, Sections.members),
-            destination(Icons.access_time_rounded, l.timeTrackingTitle,
-                Sections.workers),
-          ]),
-          const SizedBox(height: 20),
-          Card(
-            margin: EdgeInsets.zero,
-            elevation: 0,
-            color: cs.surfaceContainerLow,
-            child: ExpansionTile(
-              key: const PageStorageKey('group-details'),
-              title: Text(es ? 'Información del negocio' : 'Business information'),
-              leading: const Icon(Icons.info_outline),
-              childrenPadding: const EdgeInsets.all(12),
+          MobileDashboardSection(
+            title: es ? 'Calendario y agenda' : 'Calendar and agenda',
+            action: TextButton(
+              onPressed: () => open(Sections.calendar),
+              child: Text(es ? 'Ver agenda' : 'View agenda'),
+            ),
+            child: HomeCalendarPreview(
+              groupId: _group.id,
+              role: widget.role,
+              currentUserId: widget.user.id,
+            ),
+          ),
+          MobileDashboardSection(
+            title: es ? 'Actividad de hoy' : "Today's activity",
+            child: CompactNavigationGroup(
               children: [
-                ProfileRoleCard(
+                if (!_group.hasCalendar)
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(l.noCalendarWarning,
+                        style: TextStyle(color: cs.error)),
+                  ),
+                GroupUndoneEventsSection(
+                  group: _group,
                   user: widget.user,
                   role: widget.role,
-                  fetchReadSas: widget.fetchReadSas,
-                  onTap: () => open(Sections.profile),
+                  onSeeAll: () => open(Sections.undone),
+                  compact: true,
                 ),
-                const SizedBox(height: 12),
-                GroupBusinessHoursCard(
-                  group: _group,
-                  description: l.businessHoursAdminSubtitle,
-                  onTap: () => _editBusinessHours(context),
+                WorkConditionsCard(groupId: _group.id, compact: true),
+              ],
+            ),
+          ),
+          MobileDashboardSection(
+            title: es ? 'Clientes y operación' : 'Clients and operations',
+            child: CompactNavigationGroup(
+              children: [
+                CompactNavigationTile(
+                  icon: Icons.design_services_outlined,
+                  label: l.servicesClientsTitle,
+                  onTap: () => open(Sections.services),
+                ),
+                CompactNavigationTile(
+                  icon: Icons.view_kanban_outlined,
+                  label: es ? 'Notas rápidas' : 'Quick notes',
+                  onTap: () => Navigator.of(context).pushNamed(
+                    AppRoutes.groupQuickNotes,
+                    arguments: _group,
+                  ),
+                ),
+                CompactNavigationTile(
+                  icon: Icons.map_outlined,
+                  label: es ? 'Mapa y visitas' : 'Map and visits',
+                  onTap: () => open(Sections.maps),
+                ),
+                CompactNavigationTile(
+                  icon: Icons.forum_outlined,
+                  label: es ? 'Chat de la empresa' : 'Business chat',
+                  onTap: () => open(Sections.businessChat),
+                ),
+                CompactNavigationTile(
+                  icon: Icons.insights_outlined,
+                  label: l.insightsTitle,
+                  onTap: () => open(Sections.insights),
                 ),
               ],
+            ),
+          ),
+          MobileDashboardSection(
+            title: es ? 'Finanzas' : 'Finance',
+            child: CompactNavigationGroup(
+              children: [
+                CompactNavigationTile(
+                  icon: Icons.request_quote_outlined,
+                  label: es ? 'Presupuestos' : 'Estimates',
+                  onTap: () => open(Sections.budgets),
+                ),
+                CompactNavigationTile(
+                  icon: Icons.account_balance_outlined,
+                  label: l.statementsNavTitle,
+                  onTap: () => open(Sections.enableBanking),
+                ),
+              ],
+            ),
+          ),
+          MobileDashboardSection(
+            title: es ? 'Comunicación' : 'Communication',
+            child: CompactNavigationGroup(
+              children: [
+                CompactNavigationTile(
+                  icon: Icons.mail_outline_rounded,
+                  label: l.mailConsoleTitle,
+                  onTap: () => open(Sections.emails),
+                ),
+                CompactNavigationTile(
+                  icon: Icons.telegram,
+                  label: 'Telegram',
+                  onTap: () => open(Sections.telegram),
+                ),
+              ],
+            ),
+          ),
+          MobileDashboardSection(
+            title: es ? 'Equipo' : 'Team',
+            child: CompactNavigationGroup(
+              children: [
+                CompactNavigationTile(
+                  icon: Icons.group_outlined,
+                  label: l.membersTitle,
+                  onTap: () => open(Sections.members),
+                ),
+                CompactNavigationTile(
+                  icon: Icons.access_time_rounded,
+                  label: l.timeTrackingTitle,
+                  onTap: () => open(Sections.workers),
+                ),
+              ],
+            ),
+          ),
+          MobileDashboardSection(
+            title: es ? 'Configuración' : 'Configuration',
+            child: Material(
+              color: cs.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+              clipBehavior: Clip.antiAlias,
+              child: ExpansionTile(
+                expansionAnimationStyle: HexoraMotion.expansionStyle(context),
+                key: const PageStorageKey('group-details'),
+                tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+                title: Text(
+                  es ? 'Información del negocio' : 'Business information',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                leading: Icon(Icons.info_outline, color: cs.primary, size: 20),
+                childrenPadding: const EdgeInsets.only(bottom: 6),
+                children: [
+                  BusinessInfoSection(
+                    user: widget.user,
+                    role: widget.role,
+                    group: _group,
+                    fetchReadSas: widget.fetchReadSas,
+                    onOpenProfile: () => open(Sections.profile),
+                    onEditBusinessHours: () => _editBusinessHours(context),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

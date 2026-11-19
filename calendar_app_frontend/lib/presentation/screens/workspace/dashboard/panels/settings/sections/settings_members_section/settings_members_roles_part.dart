@@ -1,7 +1,80 @@
 part of '../settings_members_section.dart';
 
 extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
+  void _showPermissionsGuide(BuildContext context) {
+    _permissionsFuture ??= context
+        .read<GroupDomain>()
+        .groupRepository
+        .getGroupPermissions(widget.group.id);
+
+    showHexoraDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final size = MediaQuery.sizeOf(dialogContext);
+        return Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: size.width >= 900 ? 860 : size.width - 32,
+              maxHeight: size.height * 0.8,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.shield_outlined, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Guía de permisos',
+                          style: Theme.of(dialogContext).textTheme.titleMedium,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Cerrar',
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Consulta los permisos de cada rol',
+                    style: Theme.of(dialogContext).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  Flexible(
+                    child: FutureBuilder<GroupPermissionsResponse>(
+                      future: _permissionsFuture,
+                      builder: (context, snap) {
+                        if (snap.connectionState == ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+                        if (snap.hasError || !snap.hasData) {
+                          return _buildPermissionsError(context, snap.error);
+                        }
+                        return _buildCompactPermissionsGuide(
+                            context, snap.data!);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   // ── Entry point ────────────────────────────────────────────────────────────
+  // Retained as the legacy full guide while the compact dialog is rolled out.
+  // ignore: unused_element
   Widget _buildRolesTab(BuildContext context) {
     _permissionsFuture ??= context
         .read<GroupDomain>()
@@ -54,6 +127,10 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
           ),
           const SizedBox(height: 12),
           TextButton.icon(
+            style: ThemedButtons.button(
+              context,
+              variant: ButtonVariant.ghost,
+            ),
             onPressed: () => _updateUi(() => _permissionsFuture = null),
             icon: const Icon(Icons.refresh_rounded, size: 14),
             label: Text(l.rolesRetryButton),
@@ -109,11 +186,89 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
               child: _buildRoleCard(
                 context,
                 def: def,
-                isCurrent:
-                    def.wire.toLowerCase() == data.currentUserRole.toLowerCase(),
+                isCurrent: def.wire.toLowerCase() ==
+                    data.currentUserRole.toLowerCase(),
               ),
             ),
       ],
+    );
+  }
+
+  Widget _buildCompactPermissionsGuide(
+    BuildContext context,
+    GroupPermissionsResponse data,
+  ) {
+    final definitions = [...data.roleDefinitions]..sort(
+        (a, b) => GroupRole.fromWire(b.wire)
+            .rank
+            .compareTo(GroupRole.fromWire(a.wire).rank),
+      );
+    if (definitions.isEmpty) return _buildFallbackRolesGuide(context);
+
+    final permissions = <String>{
+      for (final definition in definitions) ...definition.permissions.keys,
+    }.toList()
+      ..sort();
+
+    return Scrollbar(
+      child: SingleChildScrollView(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            headingRowHeight: 40,
+            dataRowMinHeight: 38,
+            dataRowMaxHeight: 44,
+            columnSpacing: 20,
+            columns: [
+              const DataColumn(label: Text('Permiso')),
+              for (final definition in definitions)
+                DataColumn(
+                  label: Tooltip(
+                    message: definition.label,
+                    child: Text(
+                      roleLabelOf(context, GroupRole.fromWire(definition.wire)),
+                    ),
+                  ),
+                ),
+            ],
+            rows: [
+              for (final permission in permissions)
+                DataRow(
+                  cells: [
+                    DataCell(
+                      Tooltip(
+                        message: _permissionExplanation(context, permission),
+                        child: Text(_permissionLabel(context, permission)),
+                      ),
+                    ),
+                    for (final definition in definitions)
+                      DataCell(
+                        SizedBox(
+                          width: 30,
+                          child: Center(
+                            child: definition.permissions[permission] == true
+                                ? Icon(
+                                    Icons.check_rounded,
+                                    size: 17,
+                                    color: Colors.green.shade700,
+                                  )
+                                : Text(
+                                    '—',
+                                    style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -241,7 +396,9 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
                 const SizedBox(width: 7),
                 Expanded(
                   child: Text(
-                    def.label.isNotEmpty ? def.label : roleLabelOf(context, role),
+                    def.label.isNotEmpty
+                        ? def.label
+                        : roleLabelOf(context, role),
                     style: t.bodySmall.copyWith(
                       fontWeight: FontWeight.w700,
                       color: isCurrent ? color : cs.onSurface,
@@ -250,8 +407,8 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
                 ),
                 if (isCurrent)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
@@ -418,20 +575,24 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
   String _permissionLabel(BuildContext context, String key) {
     final l = AppLocalizations.of(context)!;
     switch (key) {
+      case 'canManageBilling':
+        return 'Gestionar facturación';
+      case 'canViewAllData':
+        return 'Ver datos compartidos';
       case 'canInvite':
         return l.permLabelInvite;
       case 'canKick':
         return l.permLabelKick;
       case 'canEdit':
       case 'canEditGroup':
-        return l.permLabelEditGroup;
+        return 'Configurar negocio';
       case 'canDelete':
       case 'canDeleteGroup':
         return l.permLabelDeleteGroup;
       case 'canManageRoles':
-        return l.permLabelManageRoles;
+        return 'Gestionar roles';
       case 'canViewBilling':
-        return l.permLabelViewBilling;
+        return 'Gestionar facturación';
       case 'canManageInvoices':
         return l.permLabelManageInvoices;
       case 'canManageBudgets':
@@ -439,7 +600,7 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
       case 'canViewMembers':
         return l.permLabelViewMembers;
       case 'canManageMembers':
-        return l.permLabelManageMembers;
+        return 'Gestionar miembros';
       case 'canSendMessages':
         return l.permLabelSendMessages;
       case 'canViewCalendar':
@@ -486,6 +647,25 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
     }
   }
 
+  String _permissionExplanation(BuildContext context, String key) {
+    switch (key) {
+      case 'canManageBilling':
+      case 'canViewBilling':
+        return 'Permite consultar y gestionar la facturación del negocio.';
+      case 'canEdit':
+      case 'canEditGroup':
+        return 'Permite cambiar la configuración general del negocio.';
+      case 'canManageMembers':
+        return 'Permite invitar, quitar y gestionar miembros según el rol.';
+      case 'canManageRoles':
+        return 'Permite cambiar roles dentro de los límites del rol propio.';
+      case 'canViewAllData':
+        return 'Permite consultar los datos compartidos del negocio.';
+      default:
+        return _permissionLabel(context, key);
+    }
+  }
+
   String _fallbackRoleDescription(BuildContext context, GroupRole role) {
     final l = AppLocalizations.of(context)!;
     if (role == GroupRole.owner) return l.roleFallbackDescOwner;
@@ -522,12 +702,11 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
       future: _permissionsFuture,
       builder: (context, snap) {
         if (!snap.hasData) return const SizedBox.shrink();
-        final def = snap.data!.roleDefinitions
-            .cast<RoleDefinition?>()
-            .firstWhere(
-              (d) => d!.wire.toLowerCase() == role.wire.toLowerCase(),
-              orElse: () => null,
-            );
+        final def =
+            snap.data!.roleDefinitions.cast<RoleDefinition?>().firstWhere(
+                  (d) => d!.wire.toLowerCase() == role.wire.toLowerCase(),
+                  orElse: () => null,
+                );
         final description = def?.description;
         if (description == null || description.isEmpty) {
           return const SizedBox.shrink();
@@ -537,7 +716,7 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
         return Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Text(
-            description,
+            _localizedRoleDesc(context, role, description),
             style: t.caption.copyWith(
               color: cs.onSurfaceVariant,
               fontStyle: FontStyle.italic,

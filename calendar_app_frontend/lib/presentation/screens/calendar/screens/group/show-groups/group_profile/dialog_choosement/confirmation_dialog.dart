@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 
@@ -9,7 +10,7 @@ Future<bool> showConfirmationDialog(BuildContext context, String message) {
   final dialogBg = ThemeColors.cardBg(context);
   final onDialog = ThemeColors.textPrimary(context);
 
-  return showDialog<bool>(
+  return showHexoraDialog<bool>(
     context: context,
     builder: (context) {
       return AlertDialog(

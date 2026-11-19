@@ -4,6 +4,7 @@
 export 'form_sections/file_picker_card.dart';
 export 'form_sections/provider_picker.dart';
 export 'form_sections/form_fields.dart';
+export 'form_sections/manual_expense_tabbed_form.dart';
 export 'form_sections/expense_document_discount_fields.dart';
 export 'form_sections/expense_document_withholding_fields.dart';
 export 'form_sections/expense_document_totals_fields.dart';

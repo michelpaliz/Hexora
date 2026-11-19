@@ -1,13 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:hexora/theme/themes/mobile_theme.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/button_styles.dart';
 
 /// Button variants you actually use.
-enum ButtonVariant { primary, secondary, danger, info }
+enum ButtonVariant { primary, secondary, ghost, danger, info }
 
 /// Central place to produce button styles using your saucyButtonStyle.
 class ThemedButtons {
   ThemedButtons._();
+
+  static double actionTarget(BuildContext context) =>
+      MobileTheme.isActive(context) || MediaQuery.sizeOf(context).width < 760
+          ? HexoraDimensions.touchTarget
+          : HexoraDimensions.button;
+
+  static ButtonStyle iconAction(BuildContext context, {Color? color}) =>
+      IconButton.styleFrom(
+        minimumSize: Size.square(actionTarget(context)),
+        iconSize: HexoraTableTokens.icon,
+        padding: const EdgeInsets.all(HexoraDimensions.space),
+        foregroundColor:
+            color ?? Theme.of(context).colorScheme.onSurfaceVariant,
+        backgroundColor: Colors.transparent,
+        side: BorderSide.none,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(HexoraDimensions.radius)),
+      );
 
   static ButtonStyle button(
     BuildContext context, {
@@ -63,6 +82,13 @@ class ThemedButtons {
         bgPressed = c.withValues(alpha: 0.85);
         text = cs.onSecondary;
         border = c;
+        break;
+
+      case ButtonVariant.ghost:
+        bg = Colors.transparent;
+        bgPressed = cs.onSurface.withValues(alpha: 0.08);
+        text = cs.onSurfaceVariant;
+        border = Colors.transparent;
         break;
 
       case ButtonVariant.primary:

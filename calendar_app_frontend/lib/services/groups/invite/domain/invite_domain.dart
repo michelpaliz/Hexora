@@ -140,6 +140,18 @@ class InvitationDomain with ChangeNotifier {
     return null;
   }
 
+  /// Accept an invitation while preserving the backend error for UI flows
+  /// that must distinguish a failed response from a successful one.
+  Future<Invitation> acceptOrThrow(String invitationId) async {
+    final token = await _requireToken();
+    final res = await _repo.accept(invitationId, token: token);
+    if (res is RepoSuccess<Invitation>) {
+      _patchCaches(res.data);
+      return res.data;
+    }
+    throw (res as RepoFailure<Invitation>).error;
+  }
+
   Future<Invitation?> decline(String invitationId, {String? reason}) async {
     try {
       final token = await _requireToken();
@@ -156,6 +168,22 @@ class InvitationDomain with ChangeNotifier {
       devtools.log('❌ decline error: $e');
     }
     return null;
+  }
+
+  /// Decline an invitation while preserving the backend error for UI flows.
+  Future<Invitation> declineOrThrow(String invitationId,
+      {String? reason}) async {
+    final token = await _requireToken();
+    final res = await _repo.decline(
+      invitationId,
+      token: token,
+      reason: reason,
+    );
+    if (res is RepoSuccess<Invitation>) {
+      _patchCaches(res.data);
+      return res.data;
+    }
+    throw (res as RepoFailure<Invitation>).error;
   }
 
   Future<Invitation?> resend(String invitationId) async {

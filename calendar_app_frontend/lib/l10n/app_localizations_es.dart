@@ -156,13 +156,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get userName => 'Nombre de usuario';
 
   @override
-  String get currentPassword => 'Introduce tu contraseña actual';
+  String get currentPassword => 'Contraseña actual';
 
   @override
-  String get newPassword => 'Actualiza tu contraseña actual';
+  String get newPassword => 'Nueva contraseña';
 
   @override
-  String get confirmPassword => 'Confirmar contraseña';
+  String get confirmPassword => 'Confirmar nueva contraseña';
 
   @override
   String get password => 'Contraseña';
@@ -201,6 +201,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get passwordNotMatch =>
       'La nueva contraseña y la confirmación no coinciden.';
+
+  @override
+  String get newPasswordMustDiffer =>
+      'La nueva contraseña debe ser distinta de la contraseña actual.';
 
   @override
   String get userNameTaken => 'El nombre de usuario ya está en uso';
@@ -1718,6 +1722,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get roleCardTapHint => 'Toca para ver todas las capacidades del rol.';
 
   @override
+  String get accessPermissionsTitle => 'Permisos de acceso';
+
+  @override
+  String get accessFullBusiness => 'Acceso completo al negocio';
+
+  @override
+  String get viewRolePermissions => 'Ver permisos del rol';
+
+  @override
+  String get businessHoursScheduleHint =>
+      'Establece el horario permitido para programar eventos.';
+
+  @override
   String get createdByLabel => 'Creado por';
 
   @override
@@ -3205,7 +3222,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get openInvoicesWorkspace => 'Abrir espacio de facturas';
 
   @override
-  String get invoiceNumberLabel => 'Número de factura (NNN-AA)';
+  String get invoiceNumberLabel => 'Número de factura';
 
   @override
   String invoiceNumberHelper(String year) {
@@ -3772,7 +3789,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceClientInvoicesThisMonthLabel => 'Facturas este mes';
 
   @override
-  String get clientMissingInvoiceThisMonth => 'Factura pendiente este mes';
+  String get clientMissingInvoiceThisMonth => 'Sin factura este mes';
 
   @override
   String get clientInvoiceAllGood => 'Factura emitida este mes';
@@ -3812,9 +3829,9 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count pendientes este mes',
-      one: '1 pendiente este mes',
-      zero: 'Ninguno pendiente',
+      other: '$count sin factura este mes',
+      one: '1 sin factura este mes',
+      zero: 'Todos facturados este mes',
     );
     return '$_temp0';
   }
@@ -5297,7 +5314,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsInvoiceNotFoundToast => 'Factura no encontrada.';
 
   @override
-  String get statementsRepetitiveInvoiceBadge => 'Pago fraccionado';
+  String get statementsRepetitiveInvoiceBadge => 'Factura repetida';
 
   @override
   String statementsRepetitiveInvoiceTooltip(Object count) {
@@ -5306,7 +5323,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String statementsRepetitiveInvoiceLinkedToast(Object count) {
-    return 'Pago añadido. La factura tiene ahora $count movimientos vinculados.';
+    return 'Factura vinculada, pero ya estaba usada en otros movimientos ($count).';
   }
 
   @override
@@ -6176,6 +6193,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailConversationSignature => 'Firma';
 
   @override
+  String get mailConversationShowQuoted => 'Mostrar contenido citado';
+
+  @override
+  String get mailConversationHideQuoted => 'Ocultar contenido citado';
+
+  @override
+  String get mailConversationViewComplete => 'Ver mensaje completo';
+
+  @override
+  String get mailConversationViewCompact => 'Mostrar vista compacta';
+
+  @override
   String get mailConversationReply => 'Responder';
 
   @override
@@ -6195,8 +6224,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# mensajes',
-      one: '# mensaje',
+      other: '$count mensajes',
+      one: '1 mensaje',
     );
     return '$_temp0';
   }
@@ -6543,7 +6572,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get budgetStepConfirm => 'Confirmar';
 
   @override
-  String get budgetStepPreview => 'Preview';
+  String get budgetStepPreview => 'Vista previa';
 
   @override
   String get budgetClientInfoPrompt =>
@@ -7412,13 +7441,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get expenseBatchErrorCopyList => 'Copiar lista';
 
   @override
-  String get expenseTotalsUseSummaryLabel => 'Usar resumen del documento';
+  String get expenseTotalsUseSummaryLabel => 'Origen de los importes';
 
   @override
-  String get expenseTotalsSummaryMode => 'Totales extraidos del resumen';
+  String get expenseTotalsSummaryMode => 'Desde documento';
 
   @override
-  String get expenseTotalsCalculateMode => 'Calcular desde lineas';
+  String get expenseTotalsCalculateMode => 'Desde líneas';
 
   @override
   String get expenseTotalsSummaryHelp =>
@@ -8001,70 +8030,122 @@ class AppLocalizationsEs extends AppLocalizations {
   String get groupSettingsDeleteGroup => 'Eliminar negocio';
 
   @override
+  String invoiceIssueChronologyError(
+      Object draftDate, Object invoiceNumber, Object issuedDate) {
+    return 'Este borrador tiene fecha $draftDate, pero la factura $invoiceNumber ya se emitió con la fecha posterior $issuedDate. Cambia la fecha del borrador antes de emitirlo.';
+  }
+
+  @override
+  String invoiceBatchIssueStoppedAfter(Object count) {
+    return 'Se emitieron $count facturas antes de que se detuviera el proceso.';
+  }
+
+  @override
   String get agendaCompleted => 'Completado';
 
   @override
   String get agendaEmptyDay =>
       'No hay trabajos para este día. Selecciona otra fecha o Todos.';
-  @override
-  String get downloadsTitle => "Descargas";
 
   @override
-  String get downloadsRecent => "Descargas recientes";
+  String get downloadsTitle => 'Descargas';
 
   @override
-  String get downloadsViewAll => "Ver todas las descargas";
+  String get downloadsRecent => 'Descargas recientes';
 
   @override
-  String get downloadsInvoicesZip => "Facturas";
+  String get downloadsViewAll => 'Ver todas las descargas';
 
   @override
-  String get downloadsInvoiceVatAudit => "Auditoría de IVA de facturas";
+  String get downloadsInvoicesZip => 'Facturas';
 
   @override
-  String get downloadsExpenseVatAudit => "Auditoría de IVA de gastos";
+  String get downloadsInvoiceVatAudit => 'Auditoría de IVA de facturas';
 
   @override
-  String get downloadsBankExpenses => "Gastos bancarios";
+  String get downloadsExpenseVatAudit => 'Auditoría de IVA de gastos';
 
   @override
-  String get downloadsBankTransactions => "Movimientos bancarios";
+  String get downloadsBankExpenses => 'Gastos bancarios';
 
   @override
-  String get downloadsInsights => "Informe de análisis";
+  String get downloadsBankTransactions => 'Movimientos bancarios';
 
   @override
-  String get downloadsCustomReport => "Informe personalizado";
+  String get downloadsInsights => 'Informe de análisis';
 
   @override
-  String get downloadsInvoice => "Factura";
+  String get downloadsCustomReport => 'Informe personalizado';
 
   @override
-  String get downloadsQueued => "En cola";
+  String get downloadsInvoice => 'Factura';
 
   @override
-  String get downloadsProcessing => "Procesando";
+  String get downloadsQueued => 'En cola';
 
   @override
-  String get downloadsReady => "Listo";
+  String get downloadsProcessing => 'Procesando';
 
   @override
-  String get downloadsFailed => "Error";
+  String get downloadsReady => 'Listo';
 
   @override
-  String get downloadsExpired => "Caducado";
+  String get downloadsFailed => 'Error';
 
   @override
-  String get downloadsRefresh => "Actualizar";
+  String get downloadsExpired => 'Caducado';
 
   @override
-  String get downloadsEmpty => "No hay descargas recientes";
+  String get downloadsRefresh => 'Actualizar';
 
   @override
-  String get downloadsChecking => "Comprobando archivos…";
+  String get downloadsEmpty => 'No hay descargas recientes';
 
   @override
-  String get downloadsGeneratedFile => "Archivo generado";
+  String get downloadsChecking => 'Comprobando archivos…';
 
+  @override
+  String get downloadsGeneratedFile => 'Archivo generado';
 
+  @override
+  String get preferencesTitle => 'Preferencias';
+
+  @override
+  String get preferencesNavigation => 'Navegación';
+
+  @override
+  String get preferencesAppearance => 'Apariencia';
+
+  @override
+  String get preferencesLanguage => 'Idioma';
+
+  @override
+  String get preferencesAutomatic => 'Automático';
+
+  @override
+  String get preferencesNavigationAutomatic => 'Automático';
+
+  @override
+  String get preferencesNavigationAutomaticDescription =>
+      'Muestra las etiquetas cuando hay espacio disponible.';
+
+  @override
+  String get preferencesNavigationIconsAndText => 'Iconos y texto';
+
+  @override
+  String get preferencesNavigationIconsAndTextDescription =>
+      'Muestra siempre los iconos y nombres de los módulos.';
+
+  @override
+  String get preferencesNavigationIconsOnly => 'Solo iconos';
+
+  @override
+  String get preferencesNavigationIconsOnlyDescription =>
+      'Usa una navegación compacta con ayudas emergentes.';
+
+  @override
+  String get preferencesThemeLight => 'Claro';
+
+  @override
+  String get preferencesThemeDark => 'Oscuro';
 }

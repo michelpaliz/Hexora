@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
@@ -13,11 +15,13 @@ import 'package:hexora/presentation/screens/workspace/sections/presupuestos/docu
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/templates/presupuesto_image_library_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/widgets/presupuesto_pdf_preview_dialog.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
 import 'package:intl/intl.dart';
 
 part 'editor/sections/editor_layout.dart';
 part 'editor/sections/template_selection.dart';
 part 'editor/sections/variable_fields.dart';
+part 'editor/sections/maintenance_seasons.dart';
 part 'editor/sections/document_preview.dart';
 part 'editor/sections/section_editors.dart';
 part 'editor/sections/image_editor.dart';

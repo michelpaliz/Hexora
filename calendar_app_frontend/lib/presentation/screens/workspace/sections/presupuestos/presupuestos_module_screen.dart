@@ -1,5 +1,9 @@
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/clients/client_api.dart';
@@ -7,10 +11,11 @@ import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_actions_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/templates/presupuesto_image_library_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/templates/presupuesto_template_editor_screen.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/nav_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 
 class PresupuestosModuleScreen extends StatefulWidget {
   const PresupuestosModuleScreen({
@@ -32,7 +37,6 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
   List<GroupClient> _clients = const [];
   String _menu = 'budgets_document_all';
   int _documentRefreshRevision = 0;
-  bool _documentMenuExpanded = true;
   bool _sideMenuCollapsed = false;
   bool _loading = true;
   String? _error;
@@ -64,10 +68,6 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
     setState(() => _menu = value);
   }
 
-  void _toggleDocumentMenuExpanded() {
-    setState(() => _documentMenuExpanded = !_documentMenuExpanded);
-  }
-
   void _toggleSideMenuCollapsed() {
     setState(() => _sideMenuCollapsed = !_sideMenuCollapsed);
   }
@@ -86,61 +86,93 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
     final title = _isEs ? 'Propuestas' : 'Proposals';
-    final body = FolderPanel(
-      title: title,
-      showTab: !isNarrow,
-      contentTopPadding: isNarrow ? 10 : 18,
-      child: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _ErrorState(message: _error!, onRetry: _loadClients)
-              : isNarrow
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _PresupuestosMobileMenu(
-                          selected: _menu,
-                          onSelected: _selectMenu,
-                        ),
-                        Expanded(child: _content()),
-                      ],
-                    )
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(
-                          width: _sideMenuCollapsed ? 64 : 224,
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: _PresupuestosMenu(
-                              selected: _menu,
-                              onSelected: _selectMenu,
-                              documentMenuExpanded: _documentMenuExpanded,
-                              onToggleDocumentMenu: _toggleDocumentMenuExpanded,
-                              collapsed: _sideMenuCollapsed,
-                              onToggleCollapse: _toggleSideMenuCollapsed,
-                            ),
-                          ),
-                        ),
-                        const VerticalDivider(width: 1),
-                        Expanded(child: _content()),
-                      ],
-                    ),
+    final menuContent = HexoraMenuContentTransition.submenu(
+      transitionKey: _menu,
+      preserveState: true,
+      child: _content(),
     );
+    final bodyContent = _loading
+        ? const Center(child: CircularProgressIndicator())
+        : _error != null
+            ? _ErrorState(message: _error!, onRetry: _loadClients)
+            : menuContent;
+    final content = isNarrow
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.embedded)
+                _PresupuestosMobileHeader(
+                  title: title,
+                  action: _isProposalsTab ? _createHeaderButton() : null,
+                ),
+              _PresupuestosMobileMenu(
+                selected: _menu,
+                onSelected: _selectMenu,
+              ),
+              Expanded(child: bodyContent),
+            ],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: _sideMenuCollapsed
+                    ? NavigationTokens.railWidth
+                    : NavigationTokens.sidebarWidth,
+                child: PresupuestosSideMenu(
+                  selected: _menu,
+                  onSelected: _selectMenu,
+                  collapsed: _sideMenuCollapsed,
+                  onToggleCollapse: _toggleSideMenuCollapsed,
+                ),
+              ),
+              Expanded(
+                child: WorkspaceMainContent(
+                  child: FolderPanel(
+                    title: title,
+                    showTab: true,
+                    contentTopPadding: 8,
+                    child: menuContent,
+                  ),
+                ),
+              ),
+            ],
+          );
 
     if (!widget.embedded && isNarrow) {
       return Scaffold(
         appBar: SectionAppBar(
           title: title,
+          actions: [
+            if (_isProposalsTab)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _createHeaderButton(),
+              ),
+          ],
         ),
-        body: body,
+        body: content,
       );
     }
 
-    return body;
+    return content;
   }
 
+  bool get _isProposalsTab => _menu == 'budgets_document_all';
+
+  void _openNewProposal() {
+    setState(() => _menu = 'budgets_document_new');
+  }
+
+  Widget _createHeaderButton() => HexoraButton(
+        icon: Icons.add_rounded,
+        label: _isEs ? 'Nueva propuesta' : 'New proposal',
+        onPressed: _openNewProposal,
+        size: HexoraButtonSize.compact,
+      );
+
   Widget _content() {
+    final narrow = MediaQuery.sizeOf(context).width < 760;
     switch (_menu) {
       case 'budgets_document_all':
         return PresupuestoDocumentActionsView(
@@ -150,6 +182,7 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
           groupId: widget.group.id,
           clients: _clients,
           mode: PresupuestoDocumentActionMode.all,
+          onCreate: narrow ? null : _openNewProposal,
         );
       case 'budgets_document_new':
         return PresupuestoTemplateEditorScreen(
@@ -158,42 +191,6 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
           groupId: widget.group.id,
           createDocumentDraft: true,
           onDocumentSaved: _handleDocumentSaved,
-        );
-      case 'budgets_document_edit':
-        return PresupuestoDocumentActionsView(
-          key: ValueKey(
-            'budget-document-edit-${widget.group.id}-$_documentRefreshRevision',
-          ),
-          groupId: widget.group.id,
-          clients: _clients,
-          mode: PresupuestoDocumentActionMode.edit,
-        );
-      case 'budgets_document_drafts':
-        return PresupuestoDocumentActionsView(
-          key: ValueKey(
-            'budget-document-drafts-${widget.group.id}-$_documentRefreshRevision',
-          ),
-          groupId: widget.group.id,
-          clients: _clients,
-          mode: PresupuestoDocumentActionMode.drafts,
-        );
-      case 'budgets_document_issued':
-        return PresupuestoDocumentActionsView(
-          key: ValueKey(
-            'budget-document-issued-${widget.group.id}-$_documentRefreshRevision',
-          ),
-          groupId: widget.group.id,
-          clients: _clients,
-          mode: PresupuestoDocumentActionMode.issued,
-        );
-      case 'budgets_document_preview':
-        return PresupuestoDocumentActionsView(
-          key: ValueKey(
-            'budget-document-preview-${widget.group.id}-$_documentRefreshRevision',
-          ),
-          groupId: widget.group.id,
-          clients: _clients,
-          mode: PresupuestoDocumentActionMode.preview,
         );
       case 'budget_image_library':
         return PresupuestoImageLibraryView(
@@ -213,136 +210,73 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
   }
 }
 
-class _PresupuestosMenu extends StatelessWidget {
-  const _PresupuestosMenu({
+class PresupuestosSideMenu extends StatelessWidget {
+  const PresupuestosSideMenu({
+    super.key,
     required this.selected,
     required this.onSelected,
-    required this.documentMenuExpanded,
-    required this.onToggleDocumentMenu,
     required this.collapsed,
     required this.onToggleCollapse,
   });
 
   final String selected;
   final ValueChanged<String> onSelected;
-  final bool documentMenuExpanded;
-  final VoidCallback onToggleDocumentMenu;
   final bool collapsed;
   final VoidCallback onToggleCollapse;
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    const childIndent = 12.0;
-
-    if (collapsed) {
-      return _PresupuestosCollapsedMenu(
-        selected: selected,
-        onSelected: onSelected,
-        onToggleCollapse: onToggleCollapse,
+  Widget build(BuildContext context) => Theme(
+        data: navigationTheme(Theme.of(context)),
+        child: Builder(builder: _buildNavigation),
       );
-    }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.38),
-              ),
-            ),
-            child: Row(
+  Widget _buildNavigation(BuildContext context) {
+    const childIndent = NavigationTokens.nestedIndent;
+
+    return SidebarEdgeShell(
+      collapsed: collapsed,
+      onToggle: onToggleCollapse,
+      expandTooltip: _expandMenuLabel(context),
+      collapseTooltip: _collapseMenuLabel(context),
+      child: collapsed
+          ? _PresupuestosCollapsedMenu(
+              selected: selected,
+              onSelected: onSelected,
+              onToggleCollapse: onToggleCollapse,
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: cs.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: Icon(
-                    Icons.request_quote_outlined,
-                    size: 17,
-                    color: cs.primary,
-                  ),
-                ),
-                const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    _budgetMenuTitle(context),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                ),
-                Tooltip(
-                  message: _collapseMenuLabel(context),
-                  child: IconButton.filledTonal(
-                    onPressed: onToggleCollapse,
-                    icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
-                    iconSize: 18,
-                    style: IconButton.styleFrom(
-                      minimumSize: const Size(36, 34),
-                      fixedSize: const Size(36, 34),
-                      padding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final item in _budgetListMenuItems)
+                          GroupInvoicesSubMenuItem(
+                            icon: item.icon,
+                            label: item.label(context),
+                            selected: selected == item.key,
+                            onPressed: () => onSelected(item.key),
+                          ),
+                        const SizedBox(height: 4),
+                        GroupInvoicesSectionLabel(
+                            _resourcesSectionLabel(context)),
+                        for (final item in _resourceMenuItems)
+                          GroupInvoicesSubMenuItem(
+                            icon: item.icon,
+                            label: item.label(context),
+                            selected: selected == item.key,
+                            indent: childIndent,
+                            onPressed: () => onSelected(item.key),
+                          ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-            child: GroupInvoicesNavSection(
-              title: _documentsSectionLabel(context),
-              icon: Icons.description_outlined,
-              expanded: documentMenuExpanded,
-              onToggle: onToggleDocumentMenu,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GroupInvoicesSectionLabel(_templatesMenuLabel(context)),
-                  for (final item in _templateMenuItems)
-                    GroupInvoicesSubMenuItem(
-                      icon: item.icon,
-                      label: item.label(context),
-                      selected: selected == item.key,
-                      primaryAction: item.primaryAction,
-                      indent: childIndent,
-                      onPressed: () => onSelected(item.key),
-                    ),
-                  const SizedBox(height: 4),
-                  GroupInvoicesSectionLabel(_documentActionsMenuLabel(context)),
-                  for (final item in _documentActionMenuItems)
-                    GroupInvoicesSubMenuItem(
-                      icon: item.icon,
-                      label: item.label(context),
-                      selected: selected == item.key,
-                      primaryAction: item.primaryAction,
-                      indent: childIndent,
-                      onPressed: () => onSelected(item.key),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -360,26 +294,10 @@ class _PresupuestosCollapsedMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
       child: Column(
         children: [
-          Tooltip(
-            message: _expandMenuLabel(context),
-            child: IconButton.filledTonal(
-              onPressed: onToggleCollapse,
-              icon: const Icon(Icons.keyboard_double_arrow_right_rounded),
-              style: IconButton.styleFrom(
-                minimumSize: const Size(42, 42),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
           Expanded(
             child: ListView.separated(
               padding: EdgeInsets.zero,
@@ -389,49 +307,46 @@ class _PresupuestosCollapsedMenu extends StatelessWidget {
                 final item = _documentMenuItems[index];
                 final itemSelected = selected == item.key;
 
-                return Tooltip(
-                  message: item.label(context),
-                  waitDuration: const Duration(milliseconds: 350),
-                  child: Center(
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () => onSelected(item.key),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 160),
-                        curve: Curves.easeOutCubic,
-                        width: 48,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: itemSelected
-                              ? cs.primary.withValues(alpha: 0.13)
-                              : item.primaryAction
-                                  ? cs.surfaceContainerHighest
-                                      .withValues(alpha: 0.28)
-                                  : cs.surfaceContainerHighest
-                                      .withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(13),
-                          border: Border.all(
-                            color: itemSelected
-                                ? cs.primary.withValues(alpha: 0.25)
-                                : cs.outlineVariant.withValues(alpha: 0.18),
-                          ),
-                        ),
-                        child: Icon(
-                          item.icon,
-                          size: 19,
-                          color: itemSelected
-                              ? cs.primary
-                              : item.primaryAction
-                                  ? cs.primary.withValues(alpha: 0.82)
-                                  : cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
+                return SidebarItem(
+                    icon: item.icon,
+                    label: item.label(context),
+                    isSelected: itemSelected,
+                    collapsed: true,
+                    onTap: () => onSelected(item.key));
               },
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PresupuestosMobileHeader extends StatelessWidget {
+  const _PresupuestosMobileHeader({required this.title, this.action});
+
+  final String title;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 12, 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (action != null) action!,
         ],
       ),
     );
@@ -454,28 +369,22 @@ class _PresupuestosMobileMenu extends StatelessWidget {
         ? selected
         : _documentMenuItems.first.key;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.28),
-          ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(10),
         ),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
         child: Row(
           children: [
             for (final item in _documentMenuItems)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: _PresupuestoMobileMenuChip(
-                  icon: item.icon,
+              Expanded(
+                child: _PresupuestoSegmentedTab(
                   label: item.mobileLabel(context),
                   selected: selectedKey == item.key,
-                  primaryAction: item.primaryAction,
                   onTap: () => onSelected(item.key),
                 ),
               ),
@@ -486,65 +395,40 @@ class _PresupuestosMobileMenu extends StatelessWidget {
   }
 }
 
-class _PresupuestoMobileMenuChip extends StatelessWidget {
-  const _PresupuestoMobileMenuChip({
-    required this.icon,
+class _PresupuestoSegmentedTab extends StatelessWidget {
+  const _PresupuestoSegmentedTab({
     required this.label,
     required this.selected,
-    required this.primaryAction,
     required this.onTap,
   });
 
-  final IconData icon;
   final String label;
   final bool selected;
-  final bool primaryAction;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final fg = selected
-        ? cs.primary
-        : primaryAction
-            ? cs.primary
-            : cs.onSurfaceVariant;
-
-    return Material(
-      color: selected
-          ? cs.primary.withValues(alpha: 0.12)
-          : primaryAction
-              ? cs.surfaceContainerHighest.withValues(alpha: 0.36)
-              : cs.surfaceContainerHighest.withValues(alpha: 0.22),
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: onTap,
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected
-                  ? cs.primary.withValues(alpha: 0.24)
-                  : cs.outlineVariant.withValues(alpha: 0.22),
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: label,
+      child: Material(
+        color: selected ? cs.surface : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected ? cs.onSurface : cs.onSurfaceVariant,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: fg),
-              const SizedBox(width: 7),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: fg,
-                      fontWeight:
-                          selected || primaryAction ? FontWeight.w800 : null,
-                    ),
-              ),
-            ],
           ),
         ),
       ),
@@ -552,20 +436,12 @@ class _PresupuestoMobileMenuChip extends StatelessWidget {
   }
 }
 
-String _documentsSectionLabel(BuildContext context) {
+String _resourcesSectionLabel(BuildContext context) {
   final isEs = Localizations.localeOf(context)
       .languageCode
       .toLowerCase()
       .startsWith('es');
-  return isEs ? 'Documentos' : 'Documents';
-}
-
-String _budgetMenuTitle(BuildContext context) {
-  final isEs = Localizations.localeOf(context)
-      .languageCode
-      .toLowerCase()
-      .startsWith('es');
-  return isEs ? 'Propuestas' : 'Proposals';
+  return isEs ? 'Recursos' : 'Resources';
 }
 
 String _collapseMenuLabel(BuildContext context) {
@@ -582,22 +458,6 @@ String _expandMenuLabel(BuildContext context) {
       .toLowerCase()
       .startsWith('es');
   return isEs ? 'Mostrar menu' : 'Show menu';
-}
-
-String _templatesMenuLabel(BuildContext context) {
-  final isEs = Localizations.localeOf(context)
-      .languageCode
-      .toLowerCase()
-      .startsWith('es');
-  return isEs ? 'Plantillas' : 'Templates';
-}
-
-String _documentActionsMenuLabel(BuildContext context) {
-  final isEs = Localizations.localeOf(context)
-      .languageCode
-      .toLowerCase()
-      .startsWith('es');
-  return isEs ? 'Propuestas' : 'Proposals';
 }
 
 String _localizedLabel(
@@ -634,7 +494,6 @@ class _PresupuestosMenuEntry {
     this.labelEn, {
     this.mobileLabelEs,
     this.mobileLabelEn,
-    this.primaryAction = false,
   });
 
   final String key;
@@ -643,7 +502,6 @@ class _PresupuestosMenuEntry {
   final String labelEn;
   final String? mobileLabelEs;
   final String? mobileLabelEn;
-  final bool primaryAction;
 
   String label(BuildContext context) => _localizedLabel(
         context,
@@ -661,20 +519,22 @@ class _PresupuestosMenuEntry {
 }
 
 const _documentMenuItems = <_PresupuestosMenuEntry>[
-  ..._templateMenuItems,
-  ..._documentActionMenuItems,
+  ..._budgetListMenuItems,
+  ..._resourceMenuItems,
 ];
 
-const _templateMenuItems = <_PresupuestosMenuEntry>[
+const _budgetListMenuItems = <_PresupuestosMenuEntry>[
   _PresupuestosMenuEntry(
-    'budgets_document_new',
-    Icons.add_rounded,
-    'Nueva propuesta',
-    'New proposal',
-    mobileLabelEs: 'Crear',
-    mobileLabelEn: 'Create',
-    primaryAction: true,
+    'budgets_document_all',
+    Icons.description_outlined,
+    'Todas las propuestas',
+    'All proposals',
+    mobileLabelEs: 'Propuestas',
+    mobileLabelEn: 'Proposals',
   ),
+];
+
+const _resourceMenuItems = <_PresupuestosMenuEntry>[
   _PresupuestosMenuEntry(
     'budget_templates',
     Icons.description_outlined,
@@ -688,43 +548,6 @@ const _templateMenuItems = <_PresupuestosMenuEntry>[
     'Image library',
     mobileLabelEs: 'Imágenes',
     mobileLabelEn: 'Images',
-  ),
-];
-
-const _documentActionMenuItems = <_PresupuestosMenuEntry>[
-  _PresupuestosMenuEntry(
-    'budgets_document_all',
-    Icons.view_list_outlined,
-    'Todos',
-    'All',
-  ),
-  _PresupuestosMenuEntry(
-    'budgets_document_drafts',
-    Icons.drafts_outlined,
-    'Borradores',
-    'Drafts',
-  ),
-  _PresupuestosMenuEntry(
-    'budgets_document_issued',
-    Icons.verified_outlined,
-    'Emitidos',
-    'Issued',
-  ),
-  _PresupuestosMenuEntry(
-    'budgets_document_edit',
-    Icons.article_outlined,
-    'Editar documento',
-    'Edit document',
-    mobileLabelEs: 'Editar',
-    mobileLabelEn: 'Edit',
-  ),
-  _PresupuestosMenuEntry(
-    'budgets_document_preview',
-    Icons.visibility_outlined,
-    'Previsualizar PDF',
-    'Preview PDF',
-    mobileLabelEs: 'PDF',
-    mobileLabelEn: 'PDF',
   ),
 ];
 

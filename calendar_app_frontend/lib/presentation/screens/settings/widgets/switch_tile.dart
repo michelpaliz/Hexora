@@ -11,6 +11,7 @@ class SwitchTile extends StatelessWidget {
     this.subtitle,
     this.enabled = true,
     this.iconBgColor,
+    this.compact = false,
   });
 
   final Widget leading;
@@ -22,6 +23,7 @@ class SwitchTile extends StatelessWidget {
 
   /// Background color for the icon container. Defaults to a neutral tint.
   final Color? iconBgColor;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +44,10 @@ class SwitchTile extends StatelessWidget {
       splashColor: cs.primary.withValues(alpha: enabled ? 0.08 : 0),
       highlightColor: cs.primary.withValues(alpha: enabled ? 0.04 : 0),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        padding: EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: compact ? 10 : 13,
+        ),
         child: Row(
           children: [
             Container(

@@ -11,9 +11,9 @@ import 'package:hexora/services/mail/domain/mail_domain.dart';
 import 'package:hexora/services/mail/models/mail_requests.dart';
 import 'package:hexora/services/mail/repository/i_mail_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
-import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -34,8 +34,7 @@ const _typography = AppTypography(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets(
-      'Email menu collapses and expands with selection and tooltips intact',
+  testWidgets('desktop Email uses the persistent folder sidebar',
       (tester) async {
     await _setSurfaceSize(tester, const Size(1200, 800));
     final repository = _FakeMailRepository();
@@ -51,59 +50,68 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 250));
 
+    expect(find.byKey(const ValueKey('collapsible-sidebar')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mail-compose-action')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mail-desktop-compose-action')),
+        findsNothing);
     expect(
-      tester.getSize(find.byKey(const ValueKey('collapsible-sidebar'))).width,
-      CollapsibleSidebar.expandedWidth,
+        find.byKey(const ValueKey('mail-desktop-more-action')), findsNothing);
+    expect(find.byKey(const ValueKey('mail-list-filter-3')), findsOneWidget);
+    expect(find.text('Select an email to read it'), findsOneWidget);
+    final header = tester.widget<Container>(
+      find.byKey(const ValueKey('mail-desktop-header-surface')),
     );
     expect(
-      tester
-          .widget<SidebarItem>(
-            find.byKey(const ValueKey('mail-folder-archive')),
-          )
-          .isSelected,
-      isTrue,
+      (header.decoration! as BoxDecoration).color,
+      AppDarkColors.sidebar,
     );
+    final listSurface = find.byKey(
+      const ValueKey('mail-desktop-list-surface'),
+    );
+    final listBackground = tester.widget<ColoredBox>(
+      find.descendant(of: listSurface, matching: find.byType(ColoredBox)).first,
+    );
+    expect(listBackground.color, AppDarkColors.sidebar);
 
-    await tester.tap(
-      find.byKey(const ValueKey('collapsible-sidebar-toggle')),
-    );
-    await tester.pump();
-    await tester.pump(CollapsibleSidebar.animationDuration);
-
-    expect(
-      tester.getSize(find.byKey(const ValueKey('collapsible-sidebar'))).width,
-      CollapsibleSidebar.collapsedWidth,
-    );
-    expect(
-      tester
-          .widget<SidebarItem>(
-            find.byKey(const ValueKey('mail-folder-archive')),
-          )
-          .isSelected,
-      isTrue,
-    );
     for (final label in const [
-      'Compose',
       'Inbox',
       'Sent',
       'Archive',
       'Trash',
       'Spam',
-      'Create footer',
-      'Templates',
     ]) {
-      expect(find.byTooltip(label), findsOneWidget);
+      expect(find.text(label), findsWidgets);
     }
+  });
 
-    await tester.tap(
-      find.byKey(const ValueKey('collapsible-sidebar-toggle')),
+  testWidgets('desktop compose removes the mail section header',
+      (tester) async {
+    await _setSurfaceSize(tester, const Size(1200, 800));
+    final repository = _FakeMailRepository();
+
+    await tester.pumpWidget(
+      _mailApp(
+        repository: repository,
+        home: const MailConsoleScreen(embedded: true),
+      ),
     );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    await tester.tap(find.byKey(const ValueKey('mail-compose-action')));
     await tester.pump();
-    await tester.pump(CollapsibleSidebar.animationDuration);
+
+    expect(find.byKey(const ValueKey('collapsible-sidebar')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mail-compose-action')), findsOneWidget);
     expect(
-      tester.getSize(find.byKey(const ValueKey('collapsible-sidebar'))).width,
-      CollapsibleSidebar.expandedWidth,
+      find.byKey(const ValueKey('mail-desktop-more-action')),
+      findsNothing,
     );
+    expect(
+      find.byKey(const ValueKey('mail-desktop-header-surface')),
+      findsNothing,
+    );
+    expect(find.text('Compose'), findsWidgets);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('mobile Email drawer closes after selecting a folder',
@@ -143,7 +151,7 @@ void main() {
     );
   });
 
-  testWidgets('collapsing Email menu preserves the selected thread',
+  testWidgets('changing the Email list filter preserves the selected thread',
       (tester) async {
     await _setSurfaceSize(tester, const Size(1200, 800));
     final repository = _FakeMailRepository(pendingThreadDetail: true);
@@ -162,11 +170,8 @@ void main() {
     expect(repository.threadRequests, 1);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    await tester.tap(
-      find.byKey(const ValueKey('collapsible-sidebar-toggle')),
-    );
+    await tester.tap(find.byKey(const ValueKey('mail-list-filter-1')));
     await tester.pump();
-    await tester.pump(CollapsibleSidebar.animationDuration);
 
     expect(repository.threadRequests, 1);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -221,6 +226,7 @@ class _FakeMailRepository implements IMailRepository {
     threadKey: 'thread-1',
     subject: 'Quarterly update',
     participants: ['Client'],
+    unreadCount: 1,
     messageCount: 1,
   );
 

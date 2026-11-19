@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
@@ -47,7 +49,7 @@ class PresupuestoConversionDialog extends StatefulWidget {
     PresupuestoConversionType? initialType,
     ValueChanged<String>? onInvoiceCreated,
   }) {
-    return showDialog<void>(
+    return showHexoraDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => PresupuestoConversionDialog(
@@ -462,7 +464,7 @@ class _PresupuestoConversionDialogState
             // ── Body ─────────────────────────────────────────────────────────
             Flexible(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
+                duration: HexoraMotion.duration(context, HexoraMotion.standard),
                 child: _buildBody(l, t, cs, isSpanish),
               ),
             ),

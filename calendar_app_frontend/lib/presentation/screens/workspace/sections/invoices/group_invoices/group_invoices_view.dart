@@ -26,19 +26,19 @@ class _GroupInvoicesView extends StatelessWidget {
             ? state._menuBeforeReceiptEditor
             : state._selectedMenu;
     final compactPrimaryButtonStyle = FilledButton.styleFrom(
-      visualDensity: VisualDensity.compact,
-      minimumSize: const Size(44, 40),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      backgroundColor: cs.primary,
-      foregroundColor: cs.onPrimary,
+      minimumSize: const Size(32, HexoraDimensions.buttonCompact),
+      padding:
+          const EdgeInsets.symmetric(horizontal: HexoraTableTokens.cellPadding),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(HexoraDimensions.radius)),
       elevation: 0,
     );
     final compactIconButtonStyle = IconButton.styleFrom(
-      visualDensity: VisualDensity.compact,
-      minimumSize: const Size(40, 40),
-      padding: const EdgeInsets.all(10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      minimumSize: const Size.square(HexoraDimensions.buttonCompact),
+      fixedSize: const Size.square(HexoraDimensions.buttonCompact),
+      padding: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(HexoraDimensions.radius)),
       foregroundColor: cs.onSurfaceVariant,
       backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
       side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
@@ -72,6 +72,10 @@ class _GroupInvoicesView extends StatelessWidget {
               'budgets_convert' => 'Convertir presupuesto',
               'clients' => 'Clientes',
               'client_invoice_stats' => 'Análisis de ingresos',
+              'operations' =>
+                Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Operaciones'
+                    : 'Operations',
               'clients_flow' => l.groupInvoicesClientsFlowCta,
               'receipts' => 'Recibos',
               'emails' => 'Correo electrónico',
@@ -106,124 +110,14 @@ class _GroupInvoicesView extends StatelessWidget {
       final showInvoiceActions = activeMenu == 'invoices' ||
           activeMenu == 'invoices_issued' ||
           activeMenu == 'invoices_drafts';
-      final showInvoiceConceptExport =
-          activeMenu == 'invoices' || activeMenu == 'invoices_issued';
-      final invoiceActionButtonStyle = OutlinedButton.styleFrom(
-        minimumSize: const Size(0, 48),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        side: BorderSide(color: cs.primary.withValues(alpha: 0.18)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        foregroundColor: cs.primary,
-        backgroundColor: cs.primary.withValues(alpha: 0.04),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-      );
-      final invoiceActions = showInvoiceActions
-          ? <Widget>[
-              FilledButton.icon(
-                onPressed: state._openCreateInvoice,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 48),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                  backgroundColor: const Color(0xFF397DDA),
-                  foregroundColor: Colors.white,
-                  textStyle: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-                icon: const Icon(Icons.add_rounded, size: 22),
-                label: Text(l.invoiceToolbarNew),
-              ),
-              _InvoiceExportMenuButton(
-                state: state,
-                showExcel: showInvoiceConceptExport,
-                style: invoiceActionButtonStyle,
-              ),
-              OutlinedButton.icon(
-                onPressed: state._showStoredInvoiceZipDownloads,
-                style: invoiceActionButtonStyle,
-                icon: state._loadingInvoiceZipDownloads
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.history_rounded, size: 22),
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(l.invoiceToolbarHistory),
-                    if (state._invoiceZipDownloads.isNotEmpty) ...[
-                      const SizedBox(width: 10),
-                      Badge(
-                        backgroundColor: cs.error,
-                        textColor: cs.onError,
-                        label: Text('${state._invoiceZipDownloads.length}'),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              IconButton.outlined(
-                tooltip: l.refreshAction,
-                onPressed: state._refreshInvoiceListsOnly,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  side: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.65)),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                  foregroundColor: cs.onSurfaceVariant,
-                ),
-                icon: const Icon(Icons.refresh_rounded, size: 24),
-              ),
-            ]
-          : null;
-      final recurringActions =
-          activeMenu == 'recurring' && state._recurringActions != null
-              ? <Widget>[
-                  Tooltip(
-                    message: l.recurringInvoicesRefreshCta,
-                    child: IconButton(
-                      onPressed: state._recurringActions!.onRefresh,
-                      style: compactIconButtonStyle,
-                      icon: const Icon(Icons.refresh_rounded, size: 18),
-                    ),
-                  ),
-                  Tooltip(
-                    message: l.recurringInvoicesCreateCta,
-                    child: FilledButton(
-                      onPressed: state._recurringActions!.canManage
-                          ? state._recurringActions!.onCreate
-                          : null,
-                      style: compactPrimaryButtonStyle,
-                      child: const Icon(Icons.add_rounded, size: 18),
-                    ),
-                  ),
-                ]
-              : null;
-      final recurringReceiptsActions = activeMenu == 'recurring_receipts' &&
-              state._recurringReceiptsActions != null
-          ? <Widget>[
-              Tooltip(
-                message: l.recurringInvoicesRefreshCta,
-                child: IconButton(
-                  onPressed: state._recurringReceiptsActions!.onRefresh,
-                  style: compactIconButtonStyle,
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                ),
-              ),
-              Tooltip(
-                message: 'Crear recurrencia de recibo',
-                child: FilledButton(
-                  onPressed: state._recurringReceiptsActions!.canManage
-                      ? state._recurringReceiptsActions!.onCreate
-                      : null,
-                  style: compactPrimaryButtonStyle,
-                  child: const Icon(Icons.add_rounded, size: 18),
-                ),
-              ),
-            ]
+      final invoiceToolbarOptions = showInvoiceActions
+          ? InvoiceToolbarOptions(
+              onOpenRecentExports: state._showStoredInvoiceZipDownloads,
+              recentExportsCount: state._invoiceZipDownloads.length,
+              onRefresh: state._refreshInvoiceListsOnly,
+              onExportInvoiceRegister: state._exportInvoiceRegisterExcel,
+              exportingInvoiceRegister: state._exportingInvoiceRegister,
+            )
           : null;
       final expenseListActions = activeMenu == 'expenses_list'
           ? <Widget>[
@@ -231,18 +125,6 @@ class _GroupInvoicesView extends StatelessWidget {
                 message: l.refreshAction,
                 child: IconButton(
                   onPressed: state._refreshExpensesListOnly,
-                  style: compactIconButtonStyle,
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                ),
-              ),
-            ]
-          : null;
-      final receiptActions = activeMenu == 'receipts'
-          ? <Widget>[
-              Tooltip(
-                message: l.refreshAction,
-                child: IconButton(
-                  onPressed: state._refreshInvoiceListsOnly,
                   style: compactIconButtonStyle,
                   icon: const Icon(Icons.refresh_rounded, size: 18),
                 ),
@@ -280,32 +162,56 @@ class _GroupInvoicesView extends StatelessWidget {
                 ),
             ]
           : null;
-      final classificationActions = activeMenu == 'client_classifications'
-          ? <Widget>[
-              Tooltip(
-                message: l.clientClassificationAddTitle,
-                child: FilledButton(
-                  onPressed: state._openClientClassificationManager,
-                  style: compactPrimaryButtonStyle,
-                  child: const Icon(Icons.add_rounded, size: 18),
-                ),
-              ),
-            ]
+      final List<Widget>? classificationActions =
+          activeMenu == 'client_classifications'
+              ? [
+                  FilledButton.icon(
+                    onPressed: state._openClientClassificationManager,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: Text(
+                        Localizations.localeOf(context).languageCode == 'es'
+                            ? 'Nueva clasificación'
+                            : 'New classification'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 30),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      textStyle: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  )
+                ]
+              : activeMenu == 'client_invoice_stats'
+                  ? const []
+                  : null;
+      final folderActions =
+          classificationActions ?? expenseListActions ?? clientsActions;
+      final invoiceToolbarTabs = showInvoiceActions
+          ? _InvoiceToolbarTabs(
+              draftsCount: state._drafts.length,
+              invoicesCount: state._invoices.length,
+              draftsSelected: activeMenu != 'invoices_issued',
+              onDrafts: () => state._changeInvoicesMenu('invoices_drafts'),
+              onInvoices: () => state._changeInvoicesMenu('invoices_issued'),
+            )
           : null;
-      final folderActions = classificationActions ??
-          expenseListActions ??
-          receiptActions ??
-          clientsActions ??
-          recurringReceiptsActions ??
-          recurringActions ??
-          invoiceActions;
+      final documentToolbarTabs = invoiceToolbarTabs;
+      final invoiceToolbarLeading =
+          showInvoiceActions ? invoiceToolbarTabs : null;
 
-      final content = _GroupInvoicesContent(
-        state: state,
-        menu: menu,
-        showInlineEditor: showInlineEditor,
-        visibleInvoices: visibleInvoices,
-        draftInvoices: draftInvoices,
+      final content = HexoraMenuContentTransition.submenu(
+        transitionKey: activeMenu,
+        preserveState: true,
+        child: _GroupInvoicesContent(
+          state: state,
+          menu: menu,
+          showInlineEditor: showInlineEditor,
+          visibleInvoices: visibleInvoices,
+          draftInvoices: draftInvoices,
+          invoiceToolbarLeading: invoiceToolbarLeading,
+          invoiceToolbarOptions: invoiceToolbarOptions,
+        ),
       );
       body = LayoutBuilder(
         builder: (context, constraints) {
@@ -398,17 +304,42 @@ class _GroupInvoicesView extends StatelessWidget {
                   },
                   collapsed: state._invoiceSideMenuCollapsed,
                   compactMode: false,
+                  showOperations: state.canEditIssuedInvoices(context),
                   onToggleCollapse: state._toggleInvoiceSideMenuCollapsed,
                 ),
                 Expanded(
-                  child: (kIsWeb && state._selectedMenu != 'receipt_editor')
-                      ? FolderPanel(
-                          title: folderTitle,
-                          showTab: true,
-                          actions: folderActions,
-                          child: content,
-                        )
-                      : content,
+                  child: WorkspaceMainContent(
+                    child: (kIsWeb &&
+                            state._selectedMenu != 'receipt_editor' &&
+                            activeMenu != 'operations')
+                        ? FolderPanel(
+                            title: folderTitle,
+                            showTab: activeMenu != 'clients',
+                            tabContent: showInvoiceActions ||
+                                    documentToolbarTabs == null
+                                ? null
+                                : Row(
+                                    children: [
+                                      HexoraBreadcrumb(title: folderTitle),
+                                      const SizedBox(width: 16),
+                                      Expanded(child: documentToolbarTabs),
+                                    ],
+                                  ),
+                            actions: folderActions,
+                            actionsSpacing: 6,
+                            showToolbarDivider: !showInvoiceActions &&
+                                activeMenu != 'recurring' &&
+                                activeMenu != 'recurring_receipts',
+                            contentTopPadding: activeMenu == 'clients'
+                                ? 0
+                                : showInvoiceActions
+                                    ? HexoraDimensions.button +
+                                        HexoraTableTokens.gap
+                                    : 30,
+                            child: content,
+                          )
+                        : content,
+                  ),
                 ),
               ],
             ),
@@ -426,6 +357,7 @@ class _GroupInvoicesView extends StatelessWidget {
         state._selectedMenu == 'billing_profile' ||
         activeMenu == 'clients' ||
         activeMenu == 'client_invoice_stats' ||
+        activeMenu == 'operations' ||
         activeMenu == 'clients_flow' ||
         activeMenu == 'receipts' ||
         activeMenu == 'emails' ||
@@ -495,79 +427,39 @@ class _GroupInvoicesView extends StatelessWidget {
   }
 }
 
-class _InvoiceExportMenuButton extends StatelessWidget {
-  const _InvoiceExportMenuButton({
-    required this.state,
-    required this.showExcel,
-    required this.style,
+class _InvoiceToolbarTabs extends StatelessWidget {
+  const _InvoiceToolbarTabs({
+    required this.draftsCount,
+    required this.invoicesCount,
+    required this.draftsSelected,
+    required this.onDrafts,
+    required this.onInvoices,
   });
 
-  final _GroupInvoicesScreenState state;
-  final bool showExcel;
-  final ButtonStyle style;
+  final int draftsCount;
+  final int invoicesCount;
+  final bool draftsSelected;
+  final VoidCallback onDrafts;
+  final VoidCallback onInvoices;
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
     final isEs = Localizations.localeOf(context).languageCode == 'es';
-    final busy = state._downloadingAllPdfs ||
-        state._exportingInvoiceConcepts ||
-        state._exportingInvoiceRegister;
-    return MenuAnchor(
-      style: MenuStyle(
-        padding: const WidgetStatePropertyAll(EdgeInsets.all(8)),
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return HexoraDocumentStatusTabs(
+      tabs: [
+        HexoraDocumentStatusTab(
+          label: isEs ? 'Borradores' : 'Drafts',
+          count: draftsCount,
+          icon: Icons.drafts_outlined,
         ),
-      ),
-      menuChildren: [
-        MenuItemButton(
-          onPressed:
-              state._downloadingAllPdfs ? null : state._showBulkDownloadDialog,
-          leadingIcon: const Icon(Icons.picture_as_pdf_outlined,
-              color: Color(0xFFC62828)),
-          child: Text(l.invoiceToolbarPdf),
+        HexoraDocumentStatusTab(
+          label: isEs ? 'Facturas' : 'Invoices',
+          count: invoicesCount,
+          icon: Icons.receipt_long_outlined,
         ),
-        MenuItemButton(
-          onPressed: state._exportingInvoiceRegister
-              ? null
-              : state._exportInvoiceRegisterExcel,
-          leadingIcon:
-              const Icon(Icons.table_chart_outlined, color: Color(0xFF21834A)),
-          child: Text(isEs ? 'Registro de facturas (Excel)' : 'Invoice register (Excel)'),
-        ),
-        if (showExcel)
-          MenuItemButton(
-            onPressed: state._exportingInvoiceConcepts
-                ? null
-                : state._exportInvoiceConceptsExcel,
-            leadingIcon:
-                const Icon(Icons.table_view_outlined, color: Color(0xFF21834A)),
-            child: Text(isEs ? 'Facturas por concepto (Excel)' : 'Invoices by concept (Excel)'),
-          ),
       ],
-      builder: (context, controller, child) => OutlinedButton.icon(
-        style: style,
-        onPressed: busy
-            ? null
-            : () {
-                controller.isOpen ? controller.close() : controller.open();
-              },
-        icon: busy
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2))
-            : const Icon(Icons.description_outlined, size: 22),
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(l.invoiceToolbarExport),
-            const SizedBox(width: 12),
-            const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
-          ],
-        ),
-      ),
+      selectedIndex: draftsSelected ? 0 : 1,
+      onSelected: (index) => index == 0 ? onDrafts() : onInvoices(),
     );
   }
 }
@@ -587,13 +479,15 @@ class _InvoiceZipDownloadsDialogState
   late List<InvoiceZipDownload> _downloads;
   late bool _loading;
   Timer? _pollTimer;
+  String? _error;
+  final Set<String> _openingDownloads = {};
 
   @override
   void initState() {
     super.initState();
-    _downloads = widget.state._invoiceZipDownloads;
-    _loading = widget.state._loadingInvoiceZipDownloads;
-    _syncPolling();
+    _downloads = List.of(widget.state._invoiceZipDownloads);
+    _loading = false;
+    unawaited(_refresh());
   }
 
   @override
@@ -603,14 +497,45 @@ class _InvoiceZipDownloadsDialogState
   }
 
   Future<void> _refresh() async {
-    setState(() => _loading = true);
-    await widget.state._refreshInvoiceZipDownloads(showErrors: true);
-    if (!mounted) return;
+    if (_loading) return;
     setState(() {
-      _downloads = widget.state._invoiceZipDownloads;
-      _loading = false;
+      _loading = true;
+      _error = null;
     });
-    _syncPolling();
+    try {
+      final downloads = await widget.state._invoicesApi
+          .listInvoiceZipDownloads(widget.state.widget.group.id);
+      downloads.sort((a, b) => (b.createdAt ?? DateTime(1970))
+          .compareTo(a.createdAt ?? DateTime(1970)));
+      if (!mounted) return;
+      setState(() => _downloads = downloads);
+      if (widget.state.mounted) {
+        widget.state
+            .setState(() => widget.state._invoiceZipDownloads = downloads);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      final isEs = Localizations.localeOf(context).languageCode == 'es';
+      setState(() => _error = isEs
+          ? 'No se pudieron cargar las exportaciones. Inténtalo de nuevo.'
+          : 'Could not load exports. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+        _syncPolling();
+      }
+    }
+  }
+
+  Future<void> _download(InvoiceZipDownload item) async {
+    final key = item.id.isNotEmpty ? item.id : item.fileName;
+    if (_openingDownloads.contains(key)) return;
+    setState(() => _openingDownloads.add(key));
+    try {
+      await widget.state._openStoredInvoiceZip(item);
+    } finally {
+      if (mounted) setState(() => _openingDownloads.remove(key));
+    }
   }
 
   void _syncPolling() {
@@ -649,325 +574,226 @@ class _InvoiceZipDownloadsDialogState
     return '$d/$m/$y $hh:$mm';
   }
 
-  String _statusLabel(AppLocalizations l, String status) => switch (status) {
-        'completed' => l.invoiceZipStatusCompleted,
-        'ready' => l.invoiceZipStatusReady,
-        'queued' => l.invoiceZipStatusQueued,
-        'processing' => l.invoiceZipStatusProcessing,
-        'failed' => l.invoiceZipStatusFailed,
-        _ => l.invoiceZipStatusUnknown,
-      };
-
-  ({Color foreground, Color background, IconData icon}) _statusStyle(
-    ColorScheme cs,
-    String status,
-  ) =>
-      switch (status) {
-        'completed' || 'ready' => (
-            foreground: const Color(0xFF19713A),
-            background: const Color(0xFFE6F5EA),
-            icon: Icons.check_circle_outline_rounded,
-          ),
-        'failed' => (
-            foreground: cs.error,
-            background: cs.errorContainer.withValues(alpha: 0.6),
-            icon: Icons.error_outline_rounded,
-          ),
-        'queued' => (
-            foreground: cs.onSurfaceVariant,
-            background: cs.surfaceContainerHighest,
-            icon: Icons.schedule_rounded,
-          ),
-        _ => (
-            foreground: cs.primary,
-            background: cs.primaryContainer.withValues(alpha: 0.55),
-            icon: Icons.sync_rounded,
-          ),
-      };
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final l = AppLocalizations.of(context)!;
-    final size = MediaQuery.sizeOf(context);
-    final compact = size.width < 600;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final hasActive = _downloads
+        .any((item) => item.status == 'queued' || item.status == 'processing');
 
-    return Dialog(
-      insetPadding: EdgeInsets.symmetric(
-        horizontal: compact ? 12 : 32,
-        vertical: compact ? 20 : 40,
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      titlePadding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
+      contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      title: Row(
+        children: [
+          Icon(Icons.history_rounded, color: cs.primary, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(isEs ? 'Exportaciones recientes' : 'Recent exports',
+                style: t.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
+          ),
+          IconButton(
+            tooltip: isEs ? 'Actualizar' : 'Refresh',
+            onPressed: _loading ? null : _refresh,
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+          ),
+          IconButton(
+            tooltip: isEs ? 'Cerrar' : 'Close',
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.close_rounded, size: 20),
+          ),
+        ],
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-      clipBehavior: Clip.antiAlias,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 620,
-          maxHeight: size.height * (compact ? 0.92 : 0.84),
-        ),
+      content: SizedBox(
+        width: 600,
+        height: (MediaQuery.sizeOf(context).height * 0.6).clamp(180.0, 460.0),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 20, 12, 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: cs.primaryContainer.withValues(alpha: 0.65),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.folder_zip_outlined,
-                        size: 22, color: cs.primary),
-                  ),
-                  const SizedBox(width: 12),
+            Text(
+              hasActive
+                  ? (isEs
+                      ? 'Tus archivos se están preparando. La lista se actualiza automáticamente.'
+                      : 'Your files are being prepared. This list updates automatically.')
+                  : (isEs
+                      ? 'Descarga tus archivos de facturas desde aquí.'
+                      : 'Download your invoice files here.'),
+              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
+            if (_loading)
+              const LinearProgressIndicator(minHeight: 2)
+            else
+              Divider(
+                  height: 2, color: cs.outlineVariant.withValues(alpha: 0.4)),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(children: [
+                  Icon(Icons.error_outline, color: cs.error, size: 18),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(l.invoiceZipDialogTitle,
-                            style: t.bodyLarge.copyWith(
-                              fontWeight: FontWeight.w800,
-                            )),
-                        const SizedBox(height: 2),
-                        Text(
-                          l.invoiceZipDialogSubtitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: t.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: l.invoiceZipCloseAction,
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
+                      child: Text(_error!,
+                          style: t.bodySmall.copyWith(color: cs.error))),
+                  TextButton(
+                      onPressed: _loading ? null : _refresh,
+                      child: Text(isEs ? 'Reintentar' : 'Retry')),
+                ]),
               ),
-            ),
-            Container(
-              color: cs.surfaceContainerLow,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
-              child: Row(
-                children: [
-                  Text(
-                    l.invoiceZipCountLabel(_downloads.length),
-                    style: t.bodySmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (_loading)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 8),
-                      child: SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _downloads.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.folder_zip_outlined,
+                              size: 40, color: cs.onSurfaceVariant),
+                          const SizedBox(height: 12),
+                          Text(
+                              _loading
+                                  ? (isEs
+                                      ? 'Cargando exportaciones…'
+                                      : 'Loading exports…')
+                                  : (isEs
+                                      ? 'Aún no hay exportaciones'
+                                      : 'No exports yet'),
+                              style: t.bodyMedium
+                                  .copyWith(fontWeight: FontWeight.w700)),
+                          if (!_loading && _error == null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                                isEs
+                                    ? 'Usa «Exportar PDF (ZIP)» en el menú ••• de la lista de facturas.'
+                                    : 'Use “Export PDF (ZIP)” in the invoice list’s ••• menu.',
+                                textAlign: TextAlign.center,
+                                style: t.bodySmall
+                                    .copyWith(color: cs.onSurfaceVariant)),
+                          ],
+                        ],
                       ),
-                    ),
-                  TextButton.icon(
-                    onPressed: _loading ? null : _refresh,
-                    icon: const Icon(Icons.refresh_rounded, size: 17),
-                    label: Text(l.invoiceZipRefreshAction),
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-            Flexible(
-              child: _loading && _downloads.isEmpty
-                  ? const SizedBox(
-                      height: 200,
-                      child: Center(child: CircularProgressIndicator()),
                     )
-                  : _downloads.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 52,
+                  : ListView.separated(
+                      itemCount: _downloads.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final item = _downloads[index];
+                        final status = (item.status ?? '').trim().toLowerCase();
+                        final failed = status == 'failed';
+                        final working =
+                            status == 'queued' || status == 'processing';
+                        final canDownload = !failed &&
+                            !working &&
+                            ((item.fileUrl?.trim().isNotEmpty ?? false) ||
+                                status == 'completed' ||
+                                status == 'ready');
+                        final label = switch (status) {
+                          'queued' => isEs ? 'En cola' : 'Queued',
+                          'processing' => isEs ? 'Preparando' : 'Preparing',
+                          'failed' => isEs ? 'Error' : 'Failed',
+                          'completed' ||
+                          'ready' =>
+                            isEs ? 'Disponible' : 'Ready',
+                          _ => canDownload
+                              ? (isEs ? 'Disponible' : 'Ready')
+                              : (isEs ? 'No disponible' : 'Unavailable'),
+                        };
+                        final color = failed
+                            ? cs.error
+                            : canDownload
+                                ? cs.primary
+                                : cs.onSurfaceVariant;
+                        final fileName = item.fileName.trim().isEmpty
+                            ? 'facturas.zip'
+                            : item.fileName.trim();
+                        final opening = _openingDownloads.contains(
+                            item.id.isNotEmpty ? item.id : item.fileName);
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainerHighest
+                                .withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color:
+                                    cs.outlineVariant.withValues(alpha: 0.4)),
                           ),
                           child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Icon(Icons.folder_off_outlined,
-                                  size: 38, color: cs.onSurfaceVariant),
-                              const SizedBox(height: 12),
-                              Text(
-                                l.invoiceZipEmptyTitle,
-                                textAlign: TextAlign.center,
-                                style: t.bodyMedium.copyWith(
-                                  fontWeight: FontWeight.w800,
+                              Row(children: [
+                                Icon(
+                                    failed
+                                        ? Icons.error_outline
+                                        : Icons.folder_zip_outlined,
+                                    size: 20,
+                                    color: color),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                    child: Text(fileName,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: t.bodySmall.copyWith(
+                                            fontWeight: FontWeight.w700))),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                      color: color.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(6)),
+                                  child: Text(label,
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: color)),
                                 ),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                l.invoiceZipEmptyMessage,
-                                textAlign: TextAlign.center,
-                                style: t.bodySmall.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                ),
-                              ),
+                              ]),
+                              const SizedBox(height: 8),
+                              Row(children: [
+                                Expanded(
+                                    child: Text(
+                                  [
+                                    _formatDate(item.createdAt?.toLocal()),
+                                    if ((item.sizeBytes ?? 0) > 0)
+                                      _formatSize(item.sizeBytes)
+                                  ].join(' · '),
+                                  style: t.bodySmall
+                                      .copyWith(color: cs.onSurfaceVariant),
+                                )),
+                                if (canDownload)
+                                  TextButton.icon(
+                                    onPressed:
+                                        opening ? null : () => _download(item),
+                                    icon: Icon(
+                                        opening
+                                            ? Icons.hourglass_empty_rounded
+                                            : Icons.download_outlined,
+                                        size: 16),
+                                    label:
+                                        Text(isEs ? 'Descargar' : 'Download'),
+                                  ),
+                              ]),
+                              if (working) ...[
+                                const SizedBox(height: 6),
+                                const LinearProgressIndicator(minHeight: 2),
+                              ],
+                              if (failed) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                    isEs
+                                        ? 'No se pudo generar el archivo. Vuelve a exportarlo desde la lista de facturas.'
+                                        : 'The file could not be generated. Export it again from the invoice list.',
+                                    style:
+                                        t.bodySmall.copyWith(color: cs.error)),
+                              ],
                             ],
                           ),
-                        )
-                      : ListView.separated(
-                          shrinkWrap: true,
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _downloads.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 7),
-                          itemBuilder: (context, index) {
-                            final item = _downloads[index];
-                            final fileName = item.fileName.trim().isEmpty
-                                ? l.invoiceZipFileFallback
-                                : item.fileName.trim();
-                            final status =
-                                (item.status ?? '').trim().toLowerCase();
-                            final canDownload = item.fileUrl != null ||
-                                status == 'completed' ||
-                                status == 'ready';
-                            final errorMessage =
-                                item.errorMessage?.trim() ?? '';
-                            final statusStyle = _statusStyle(cs, status);
-
-                            return Material(
-                              color: cs.surfaceContainerLowest,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                side: BorderSide(
-                                  color:
-                                      cs.outlineVariant.withValues(alpha: 0.55),
-                                ),
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              child: ListTile(
-                                onTap: canDownload
-                                    ? () =>
-                                        widget.state._openStoredInvoiceZip(item)
-                                    : null,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 5,
-                                ),
-                                leading: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: cs.primaryContainer
-                                        .withValues(alpha: 0.42),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(Icons.folder_zip_outlined,
-                                      size: 20, color: cs.primary),
-                                ),
-                                title: Text(
-                                  fileName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: t.bodyMedium.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                subtitle: Padding(
-                                  padding: const EdgeInsets.only(top: 5),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Wrap(
-                                        spacing: 7,
-                                        runSpacing: 4,
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
-                                        children: [
-                                          Text(_formatDate(item.createdAt)),
-                                          Text('•',
-                                              style: TextStyle(
-                                                  color: cs.outlineVariant)),
-                                          Text(_formatSize(item.sizeBytes)),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 7,
-                                              vertical: 3,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: statusStyle.background,
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(statusStyle.icon,
-                                                    size: 12,
-                                                    color:
-                                                        statusStyle.foreground),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  _statusLabel(l, status),
-                                                  style: t.bodySmall.copyWith(
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.w700,
-                                                    color:
-                                                        statusStyle.foreground,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      if (status == 'failed' &&
-                                          errorMessage.isNotEmpty) ...[
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          errorMessage,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: t.bodySmall.copyWith(
-                                            color: cs.error,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                                trailing: IconButton.filledTonal(
-                                  tooltip: l.invoiceZipDownloadAction(fileName),
-                                  onPressed: canDownload
-                                      ? () => widget.state
-                                          ._openStoredInvoiceZip(item)
-                                      : null,
-                                  icon: const Icon(Icons.download_rounded,
-                                      size: 20),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-            ),
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l.invoiceZipCloseAction),
-                ),
-              ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),

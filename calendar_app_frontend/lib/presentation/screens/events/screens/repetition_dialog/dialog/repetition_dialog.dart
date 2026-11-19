@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
 import 'package:hexora/models/calendar/recurrence/utils/custom_day_week.dart';
 import 'package:hexora/presentation/screens/events/screens/repetition_dialog/utils/frequency_selector.dart';
@@ -103,7 +104,7 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
   Future<void> _handleRemovePressed() async {
     final l = AppLocalizations.of(context)!;
     if (widget.initialRecurrenceRule != null) {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
         context: context,
         builder: (ctx) {
           final t = Theme.of(ctx);
@@ -405,13 +406,17 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
             );
 
             _updateWarningMessage();
+            setState(() => validationError = result.error);
 
-            setState(() {
-              validationError = result.error;
+            if (result.error != null || warningMessage != null) return;
 
-              if (result.error == null && warningMessage == null) {
-                _goBackToParentView(result.rule, true);
-              }
+            // The recurrence editor is presented in an Overlay on web.  Do
+            // not remove that overlay while this button's pointer event is
+            // still being dispatched; doing so can mutate a LayoutBuilder or
+            // MouseTracker during layout and leaves the rule unapplied.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              _goBackToParentView(result.rule, true);
             });
           },
           child: Text(l.confirm),

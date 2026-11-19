@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
@@ -68,6 +69,7 @@ class _InvoicesInlinePanelState extends State<InvoicesInlinePanel> {
 
   Future<void> _openBillingSheet() async {
     final updated = await showModalBottomSheet<BillingProfile>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -84,6 +86,7 @@ class _InvoicesInlinePanelState extends State<InvoicesInlinePanel> {
 
   void _openDetail(Invoice inv) {
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

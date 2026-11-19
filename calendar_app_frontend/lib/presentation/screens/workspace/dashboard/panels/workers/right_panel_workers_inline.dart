@@ -1,22 +1,26 @@
-import 'package:flutter/foundation.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/screens/workspace/sections/workers/card/time_tracking_header_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/loading_list.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/telegram_worker_hours_import_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/time_tracking_excel_import_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_current_month_summary_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_month_picker_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_time_history_graph_view.dart';
-import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_list_section.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_directory_tabs.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker_account_setup_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
-import 'package:hexora/presentation/screens/workspace/sections/workers/worker/monthly_overview/worker_monthly_overview.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:intl/intl.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/l10n/build_context_locale.dart';
@@ -24,8 +28,10 @@ import 'package:provider/provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/nav_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 
 import 'widgets/status_filter_chips.dart';
+import 'widgets/worker_directory_view.dart';
 import 'widgets/worker_monthly_overview_inline.dart';
 import 'widgets/workers_form_panel.dart';
 
@@ -53,88 +59,11 @@ String _formatMoney(
   return '$formatted $currency';
 }
 
-class _WorkersNavHeader extends StatelessWidget {
-  const _WorkersNavHeader({
-    required this.title,
-    required this.onCollapse,
-  });
-
-  final String title;
-  final VoidCallback onCollapse;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.38),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(
-                Icons.group_outlined,
-                size: 17,
-                color: cs.primary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.labelLarge?.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            Tooltip(
-              message: AppLocalizations.of(context)!.groupInvoicesNavCollapse,
-              child: IconButton.filledTonal(
-                onPressed: onCollapse,
-                icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
-                iconSize: 18,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(40, 34),
-                  fixedSize: const Size(40, 34),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _WorkersCollapsedRail extends StatelessWidget {
   const _WorkersCollapsedRail({
     required this.width,
     required this.selected,
     required this.onSelect,
-    required this.onExpand,
     required this.onCreateWorker,
     required this.workersLabel,
     required this.chartsLabel,
@@ -148,7 +77,6 @@ class _WorkersCollapsedRail extends StatelessWidget {
   final double width;
   final _InlineSection selected;
   final ValueChanged<_InlineSection> onSelect;
-  final VoidCallback onExpand;
   final VoidCallback onCreateWorker;
   final String workersLabel;
   final String chartsLabel;
@@ -160,8 +88,6 @@ class _WorkersCollapsedRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     Widget item(
       IconData icon,
       String tooltip, {
@@ -169,46 +95,15 @@ class _WorkersCollapsedRail extends StatelessWidget {
       VoidCallback? onTap,
       bool selectedOverride = false,
     }) {
-      final isSelected = selectedOverride || selected == section;
-      return Tooltip(
-        message: tooltip,
-        preferBelow: false,
-        waitDuration: const Duration(milliseconds: 300),
-        child: InkWell(
-          onTap: onTap ?? (section == null ? null : () => onSelect(section)),
-          borderRadius: BorderRadius.circular(10),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: 36,
-            height: 34,
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? cs.primary.withValues(alpha: 0.14)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isSelected
-                    ? cs.primary.withValues(alpha: 0.22)
-                    : Colors.transparent,
-              ),
-            ),
-            child: Icon(
-              icon,
-              size: 16,
-              color: isSelected ? cs.primary : cs.onSurfaceVariant,
-            ),
-          ),
-        ),
-      );
+      return SidebarItem(
+          icon: icon,
+          label: tooltip,
+          isSelected: selectedOverride || selected == section,
+          collapsed: true,
+          onTap: onTap ?? (section == null ? null : () => onSelect(section)));
     }
 
-    Widget divider() => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
-          child: Divider(
-            height: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.3),
-          ),
-        );
+    Widget groupGap() => const SizedBox(height: NavigationTokens.groupGap);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
@@ -217,30 +112,6 @@ class _WorkersCollapsedRail extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(7, 6, 7, 8),
       child: Column(
         children: [
-          Tooltip(
-            message: AppLocalizations.of(context)!.groupInvoicesNavExpand,
-            preferBelow: false,
-            child: InkWell(
-              onTap: onExpand,
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                width: 36,
-                height: 28,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  size: 16,
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -273,13 +144,13 @@ class _WorkersCollapsedRail extends StatelessWidget {
                     telegramLabel,
                     section: _InlineSection.telegramImport,
                   ),
-                  divider(),
+                  groupGap(),
                   item(
                     Icons.history_outlined,
                     summaryLabel,
                     section: _InlineSection.historial,
                   ),
-                  divider(),
+                  groupGap(),
                   item(
                     Icons.bar_chart_rounded,
                     chartsLabel,
@@ -305,8 +176,8 @@ class WorkersInlinePanel extends StatefulWidget {
 
 class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     with SingleTickerProviderStateMixin {
-  static const double _expandedMenuWidth = 218;
-  static const double _collapsedMenuWidth = 50;
+  static const double _expandedMenuWidth = NavigationTokens.sidebarWidth;
+  static const double _collapsedMenuWidth = NavigationTokens.railWidth;
 
   late UserDomain _userDomain;
   late ITimeTrackingRepository _repo;
@@ -316,11 +187,14 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
   bool _pluginDisabled = false;
   String? _error;
   List<Worker> _workers = const [];
+  bool _showPartners = false;
+  bool _showWorkerForm = false;
+  bool _showInlineTimeEntry = false;
   Worker? _selectedWorker;
+  Worker? _overviewWorker;
   _InlineSection _section = _InlineSection.workers;
   late final TabController _tabController;
   WorkerStatusFilter _statusFilter = WorkerStatusFilter.all;
-  bool _showOverview = false;
   Map<String, dynamic>? _activeTotals;
   bool _activeTotalsLoading = false;
   String? _activeTotalsError;
@@ -339,7 +213,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     final now = DateTime.now();
     _totalsYear = now.year;
     _totalsMonth = now.month;
-    _tabController = TabController(length: kIsWeb ? 3 : 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -416,7 +290,11 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
 
   String _selectedMonthLabel(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
-    return DateFormat.yMMMM(locale).format(DateTime(_totalsYear, _totalsMonth));
+    final label =
+        DateFormat.yMMM(locale).format(DateTime(_totalsYear, _totalsMonth));
+    return label.isEmpty
+        ? label
+        : '${label[0].toUpperCase()}${label.substring(1)}';
   }
 
   Future<void> _pickTotalsMonth() async {
@@ -467,7 +345,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
   }
 
   Future<void> _openPayrollHistoryDialog() async {
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (_) => _PayrollHistoryDialog(
         group: widget.group,
@@ -477,175 +355,153 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     );
   }
 
-  Widget _buildActiveTotalsInlineCard(BuildContext context) {
+  void _shiftTotalsMonth(int offset) {
+    final month = DateTime(_totalsYear, _totalsMonth + offset);
+    setState(() {
+      _totalsYear = month.year;
+      _totalsMonth = month.month;
+    });
+    _reloadActiveTotals();
+  }
+
+  Widget _buildActiveTotalsInlineCard(BuildContext context,
+      {bool controlsOnly = false}) {
     final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final entriesCount = (_activeTotals?['entriesCount'] as num?)?.toInt() ?? 0;
-    final activeWorkers =
-        (_activeTotals?['activeWorkersCount'] as num?)?.toInt() ?? 0;
-    final totalHours = (_activeTotals?['totalHours'] as num?)?.toDouble() ?? 0;
-    final totalPay = (_activeTotals?['totalPay'] as num?)?.toDouble();
-    final currency = _activeTotals?['currency']?.toString();
+    final isEs = _isSpanish(context);
+    final entries = (_activeTotals?['entriesCount'] as num?) ?? 0;
     final totalsByCurrency =
-        (_activeTotals?['totalsByCurrency'] as List?) ?? const [];
-    final multiCurrency = currency == null || totalsByCurrency.length > 1;
-
-    Widget statChip(IconData icon, String label) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(999),
-            border:
-                Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 13, color: cs.onSurfaceVariant),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: t.bodySmall.copyWith(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        );
-
+        (_activeTotals?['totalsByCurrency'] as List?) ?? [];
+    final currency = _activeTotals?['currency']?.toString();
+    final pay = _activeTotals?['totalPay'] as num?;
+    final summary = _activeTotalsLoading
+        ? const Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2)))
+        : _activeTotalsError != null
+            ? Text(_activeTotalsError!, style: TextStyle(color: cs.error))
+            : entries <= 0
+                ? Text(_emptyTotalsLabel(context),
+                    style: TextStyle(color: cs.onSurfaceVariant))
+                : Wrap(
+                    spacing: 12,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                        if (currency != null &&
+                            totalsByCurrency.length <= 1 &&
+                            pay != null)
+                          Text(_formatMoney(context, pay, currency: currency),
+                              style: TextStyle(
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w700))
+                        else
+                          for (final item in totalsByCurrency)
+                            if (item is Map)
+                              Text(_formatMoney(
+                                  context, (item['totalPay'] as num?) ?? 0,
+                                  currency: item['currency']?.toString())),
+                        Text(
+                            '${_activeTotals?['activeWorkersCount'] ?? 0} ${_activeWorkersLabel(context)}'),
+                        Text(
+                            '${((_activeTotals?['totalHours'] as num?) ?? 0).toStringAsFixed(1)} h'),
+                        TextButton.icon(
+                            style: ThemedButtons.button(
+                              context,
+                              variant: ButtonVariant.ghost,
+                            ),
+                            onPressed: _openPayrollHistoryDialog,
+                            icon: const Icon(Icons.history_rounded, size: 16),
+                            label: Text(isEs ? 'Historial' : 'History')),
+                      ]);
+    final compactIconStyle = IconButton.styleFrom(
+      minimumSize: const Size(34, 34),
+      maximumSize: const Size(34, 34),
+      padding: EdgeInsets.zero,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      side: BorderSide(color: cs.outlineVariant.withValues(alpha: .55)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+    final controls = Row(mainAxisSize: MainAxisSize.min, children: [
+      OutlinedButton.icon(
+        onPressed: _activeTotalsLoading ? null : _pickTotalsMonth,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 34),
+          maximumSize: const Size(double.infinity, 34),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: .55)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        icon: const Icon(Icons.calendar_month_outlined, size: 17),
+        label: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(_selectedMonthLabel(context),
+              style: const TextStyle(fontSize: 12.5)),
+          const SizedBox(width: 5),
+          const Icon(Icons.expand_more_rounded, size: 17),
+        ]),
+      ),
+      const SizedBox(width: 6),
+      IconButton(
+        tooltip: isEs ? 'Mes anterior' : 'Previous month',
+        style: compactIconStyle,
+        onPressed:
+            _activeTotalsLoading || (_totalsYear == 2018 && _totalsMonth == 1)
+                ? null
+                : () => _shiftTotalsMonth(-1),
+        icon: const Icon(Icons.chevron_left_rounded, size: 18),
+      ),
+      const SizedBox(width: 4),
+      IconButton(
+        tooltip: isEs ? 'Mes siguiente' : 'Next month',
+        style: compactIconStyle,
+        onPressed:
+            _activeTotalsLoading || (_totalsYear == 2100 && _totalsMonth == 12)
+                ? null
+                : () => _shiftTotalsMonth(1),
+        icon: const Icon(Icons.chevron_right_rounded, size: 18),
+      ),
+    ]);
+    if (controlsOnly) return controls;
+    final refresh = IconButton.outlined(
+      tooltip: AppLocalizations.of(context)!.refresh,
+      onPressed: _activeTotalsLoading ? null : _reloadActiveTotals,
+      icon: const Icon(Icons.refresh_rounded, size: 20),
+    );
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.42)),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
-        children: [
-          // Month picker chip
-          GestureDetector(
-            onTap: _activeTotalsLoading ? null : _pickTotalsMonth,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: cs.primary.withValues(alpha: 0.16)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.calendar_month_outlined,
-                      size: 13, color: cs.onPrimaryContainer),
-                  const SizedBox(width: 4),
-                  Text(
-                    _selectedMonthLabel(context),
-                    style: t.bodySmall.copyWith(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: cs.onPrimaryContainer,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          // Amount / state
-          if (_activeTotalsLoading)
-            SizedBox(
-              width: 14,
-              height: 14,
-              child:
-                  CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
-            )
-          else if (_activeTotalsError != null && _activeTotalsError!.isNotEmpty)
-            Flexible(
-              child: Text(
-                _activeTotalsError!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: t.bodySmall.copyWith(color: cs.error, fontSize: 11),
-              ),
-            )
-          else if (entriesCount <= 0)
-            Flexible(
-              child: Text(
-                _emptyTotalsLabel(context),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: t.bodySmall.copyWith(fontSize: 11),
-              ),
-            )
-          else ...[
-            if (!multiCurrency && totalPay != null)
-              Text(
-                _formatMoney(context, totalPay, currency: currency),
-                style: t.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: cs.primary,
-                ),
-              )
-            else
-              ...totalsByCurrency.map<Widget>((item) {
-                if (item is! Map) return const SizedBox.shrink();
-                final curr = item['currency']?.toString() ?? '-';
-                final pay = (item['totalPay'] as num?)?.toDouble() ?? 0;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: Text(
-                    _formatMoney(context, pay, currency: curr),
-                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                );
-              }),
-            const SizedBox(width: 10),
-            statChip(Icons.people_outline_rounded,
-                '$activeWorkers ${_activeWorkersLabel(context).toLowerCase()}'),
-            const SizedBox(width: 6),
-            statChip(
-                Icons.schedule_rounded, '${totalHours.toStringAsFixed(1)} h'),
-            const SizedBox(width: 8),
-            SizedBox(
-              height: 30,
-              child: OutlinedButton.icon(
-                onPressed: _openPayrollHistoryDialog,
-                icon: const Icon(Icons.history_rounded, size: 14),
-                label: Text(_isSpanish(context) ? 'Historial' : 'History'),
-                style: OutlinedButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                  textStyle: t.bodySmall.copyWith(fontSize: 11),
-                ),
-              ),
-            ),
-          ],
-          const Spacer(),
-          // Refresh
-          SizedBox(
-            width: 32,
-            height: 32,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              iconSize: 16,
-              visualDensity: VisualDensity.compact,
-              tooltip: AppLocalizations.of(context)!.refresh,
-              onPressed: _activeTotalsLoading ? null : _reloadActiveTotals,
-              icon: const Icon(Icons.refresh_rounded),
-            ),
-          ),
-        ],
-      ),
+      child: LayoutBuilder(builder: (context, constraints) {
+        if (constraints.maxWidth < 700 ||
+            MediaQuery.textScalerOf(context).scale(1) >= 1.5) {
+          return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [controls, refresh]),
+                const SizedBox(height: 12),
+                summary,
+              ]);
+        }
+        return Row(children: [
+          controls,
+          const SizedBox(width: 20),
+          Expanded(child: summary),
+          const SizedBox(width: 12),
+          refresh
+        ]);
+      }),
     );
   }
 
@@ -669,29 +525,10 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     }
   }
 
-  Future<void> _disable() async {
-    setState(() => _toggling = true);
-    try {
-      final token = await _token();
-      await _repo.disable(widget.group.id, token);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(AppLocalizations.of(context)!.timeTrackingDisabled)),
-      );
-      await _load();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _toggling = false);
-    }
-  }
-
   Future<void> _addSharedHours() async {
     if (_workers.isEmpty) return;
     final created = await showModalBottomSheet<bool>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       builder: (_) => FractionallySizedBox(
@@ -709,24 +546,24 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     _tabController.animateTo(0);
     setState(() {
       _selectedWorker = w;
-      _showOverview = false;
+      _showWorkerForm = true;
+      _showInlineTimeEntry = false;
     });
     return null;
   }
 
-  void _openOverviewInline(Worker w) {
-    setState(() {
-      _selectedWorker = w;
-      _showOverview = true;
-    });
+  void _openMonthlyOverview(Worker w) {
+    setState(() => _overviewWorker = w);
   }
 
   void _openCreateWorkerForm() {
     _tabController.animateTo(1);
     setState(() {
       _section = _InlineSection.workers;
+      _overviewWorker = null;
       _selectedWorker = null;
-      _showOverview = false;
+      _showWorkerForm = true;
+      _showInlineTimeEntry = false;
     });
   }
 
@@ -740,24 +577,37 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
         role == 'co-admin';
   }
 
-  Widget _buildSideMenu(BuildContext context) {
+  Widget _buildSideMenu(BuildContext context) => Theme(
+        data: navigationTheme(Theme.of(context)),
+        child: Builder(builder: _buildNavigation),
+      );
+
+  Widget _buildNavigation(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isEs = _isSpanish(context);
 
     if (_sideMenuCollapsed) {
-      return _WorkersCollapsedRail(
+      return SizedBox(
         width: _collapsedMenuWidth,
-        selected: _section,
-        onExpand: () => setState(() => _sideMenuCollapsed = false),
-        onSelect: (section) => setState(() => _section = section),
-        onCreateWorker: _openCreateWorkerForm,
-        workersLabel: l.workersLabel,
-        chartsLabel: isEs ? 'Graficas' : 'Charts',
-        summaryLabel: isEs ? 'Resumen del mes' : 'Summary this month',
-        telegramLabel: isEs ? 'Importar Telegram' : 'Telegram import',
-        registerHoursLabel: isEs ? 'Registrar horas' : 'Register hours',
-        createWorkerLabel: l.createWorkerCta,
-        showAccountSetup: _canManageAccounts,
+        child: SidebarEdgeShell(
+          collapsed: true,
+          onToggle: () => setState(() => _sideMenuCollapsed = false),
+          headerTitle: l.workersLabel,
+          collapseInHeader: true,
+          child: _WorkersCollapsedRail(
+            width: _collapsedMenuWidth,
+            selected: _section,
+            onSelect: (section) => setState(() => _section = section),
+            onCreateWorker: _openCreateWorkerForm,
+            workersLabel: l.workersLabel,
+            chartsLabel: isEs ? 'Graficas' : 'Charts',
+            summaryLabel: isEs ? 'Resumen del mes' : 'Summary this month',
+            telegramLabel: isEs ? 'Importar Telegram' : 'Telegram import',
+            registerHoursLabel: isEs ? 'Registrar horas' : 'Register hours',
+            createWorkerLabel: l.createWorkerCta,
+            showAccountSetup: _canManageAccounts,
+          ),
+        ),
       );
     }
 
@@ -765,125 +615,132 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       width: _expandedMenuWidth,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _WorkersNavHeader(
-            title: l.workersLabel,
-            onCollapse: () => setState(() => _sideMenuCollapsed = true),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Datos' : 'Data',
-                    icon: Icons.dataset_outlined,
-                    expanded: _dataMenuExpanded,
-                    onToggle: () => setState(
-                      () => _dataMenuExpanded = !_dataMenuExpanded,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.person_add_alt_1,
-                          label: l.createWorkerCta,
-                          selected: false,
-                          primaryAction: true,
-                          indent: 12,
-                          onPressed: _openCreateWorkerForm,
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.group_outlined,
-                          label: l.workersLabel,
-                          selected: _section == _InlineSection.workers,
-                          indent: 12,
-                          onPressed: () => setState(
-                            () => _section = _InlineSection.workers,
-                          ),
-                        ),
-                        if (_canManageAccounts)
+      child: SidebarEdgeShell(
+        collapsed: false,
+        onToggle: () => setState(() => _sideMenuCollapsed = true),
+        headerTitle: l.workersLabel,
+        collapseInHeader: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    GroupInvoicesNavSection(
+                      title: isEs ? 'Datos' : 'Data',
+                      icon: Icons.dataset_outlined,
+                      expanded: _dataMenuExpanded,
+                      onToggle: () => setState(
+                        () => _dataMenuExpanded = !_dataMenuExpanded,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                           GroupInvoicesSubMenuItem(
-                            icon: Icons.manage_accounts_outlined,
-                            label:
-                                isEs ? 'Cuentas de acceso' : 'Worker accounts',
-                            selected: _section == _InlineSection.accountSetup,
-                            indent: 12,
+                            icon: Icons.person_add_alt_1,
+                            label: l.createWorkerCta,
+                            selected: false,
+                            primaryAction: true,
+                            indent: NavigationTokens.nestedIndent,
+                            onPressed: _openCreateWorkerForm,
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.group_outlined,
+                            label: l.workersLabel,
+                            selected: _section == _InlineSection.workers,
+                            indent: NavigationTokens.nestedIndent,
                             onPressed: () => setState(
-                              () => _section = _InlineSection.accountSetup,
+                              () => _section = _InlineSection.workers,
                             ),
                           ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.schedule_outlined,
-                          label: isEs ? 'Registrar horas' : 'Register hours',
-                          selected: _section == _InlineSection.registerHours,
-                          indent: 12,
-                          onPressed: () => setState(
-                            () => _section = _InlineSection.registerHours,
+                          if (_canManageAccounts)
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.manage_accounts_outlined,
+                              label: isEs
+                                  ? 'Cuentas de acceso'
+                                  : 'Worker accounts',
+                              selected: _section == _InlineSection.accountSetup,
+                              indent: NavigationTokens.nestedIndent,
+                              onPressed: () => setState(
+                                () => _section = _InlineSection.accountSetup,
+                              ),
+                            ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.schedule_outlined,
+                            label: isEs ? 'Registrar horas' : 'Register hours',
+                            selected: _section == _InlineSection.registerHours,
+                            indent: NavigationTokens.nestedIndent,
+                            onPressed: () => setState(
+                              () => _section = _InlineSection.registerHours,
+                            ),
                           ),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.telegram,
-                          label: isEs ? 'Importar Telegram' : 'Telegram import',
-                          selected: _section == _InlineSection.telegramImport,
-                          indent: 12,
-                          onPressed: () => setState(
-                            () => _section = _InlineSection.telegramImport,
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.telegram,
+                            label:
+                                isEs ? 'Importar Telegram' : 'Telegram import',
+                            selected: _section == _InlineSection.telegramImport,
+                            indent: NavigationTokens.nestedIndent,
+                            onPressed: () => setState(
+                              () => _section = _InlineSection.telegramImport,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Historial' : 'History',
-                    icon: Icons.history_outlined,
-                    expanded: _historyMenuExpanded,
-                    onToggle: () => setState(
-                      () => _historyMenuExpanded = !_historyMenuExpanded,
-                    ),
-                    child: GroupInvoicesSubMenuItem(
+                    GroupInvoicesNavSection(
+                      title: isEs ? 'Historial' : 'History',
                       icon: Icons.history_outlined,
-                      label: isEs ? 'Resumen del mes' : 'Summary this month',
-                      selected: _section == _InlineSection.historial,
-                      indent: 12,
-                      onPressed: () => setState(
-                        () => _section = _InlineSection.historial,
+                      expanded: _historyMenuExpanded,
+                      onToggle: () => setState(
+                        () => _historyMenuExpanded = !_historyMenuExpanded,
+                      ),
+                      child: GroupInvoicesSubMenuItem(
+                        icon: Icons.history_outlined,
+                        label: isEs ? 'Resumen del mes' : 'Summary this month',
+                        selected: _section == _InlineSection.historial,
+                        indent: NavigationTokens.nestedIndent,
+                        onPressed: () => setState(
+                          () => _section = _InlineSection.historial,
+                        ),
                       ),
                     ),
-                  ),
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Analiticas' : 'Analytics',
-                    icon: Icons.analytics_outlined,
-                    expanded: _analyticsMenuExpanded,
-                    onToggle: () => setState(
-                      () => _analyticsMenuExpanded = !_analyticsMenuExpanded,
-                    ),
-                    child: GroupInvoicesSubMenuItem(
-                      icon: Icons.bar_chart_rounded,
-                      label: isEs ? 'Graficas' : 'Charts',
-                      selected: _section == _InlineSection.graphs,
-                      indent: 12,
-                      onPressed: () => setState(
-                        () => _section = _InlineSection.graphs,
+                    GroupInvoicesNavSection(
+                      title: isEs ? 'Analiticas' : 'Analytics',
+                      icon: Icons.analytics_outlined,
+                      expanded: _analyticsMenuExpanded,
+                      onToggle: () => setState(
+                        () => _analyticsMenuExpanded = !_analyticsMenuExpanded,
+                      ),
+                      child: GroupInvoicesSubMenuItem(
+                        icon: Icons.bar_chart_rounded,
+                        label: isEs ? 'Graficas' : 'Charts',
+                        selected: _section == _InlineSection.graphs,
+                        indent: NavigationTokens.nestedIndent,
+                        onPressed: () => setState(
+                          () => _section = _InlineSection.graphs,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  String _sectionTitle(BuildContext context) {
+  String _sectionTitle(BuildContext context) =>
+      _sectionTitleFor(context, _section);
+
+  String _sectionTitleFor(BuildContext context, _InlineSection section) {
     final l = AppLocalizations.of(context)!;
     final isEs = _isSpanish(context);
-    return switch (_section) {
+    return switch (section) {
       _InlineSection.workers => l.workersLabel,
       _InlineSection.graphs => isEs ? 'Graficas' : 'Charts',
       _InlineSection.historial =>
@@ -897,120 +754,228 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     };
   }
 
-  Widget _buildWorkersSection(BuildContext context) {
+  IconData _sectionIcon(_InlineSection section) => switch (section) {
+        _InlineSection.workers => Icons.group_outlined,
+        _InlineSection.graphs => Icons.bar_chart_rounded,
+        _InlineSection.historial => Icons.history_outlined,
+        _InlineSection.telegramImport => Icons.telegram,
+        _InlineSection.registerHours => Icons.schedule_outlined,
+        _InlineSection.accountSetup => Icons.manage_accounts_outlined,
+      };
+
+  Widget _buildMobileSectionSelector(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final sections = <_InlineSection>[
+      _InlineSection.workers,
+      if (_canManageAccounts) _InlineSection.accountSetup,
+      _InlineSection.registerHours,
+      _InlineSection.telegramImport,
+      _InlineSection.historial,
+      _InlineSection.graphs,
+    ];
 
-    if (_selectedWorker != null && _showOverview) {
-      return WorkerMonthlyOverviewInline(
-        group: widget.group,
-        worker: _selectedWorker!,
-        repo: _repo,
-        getToken: _token,
-        onDataChanged: _reloadActiveTotals,
-        onBack: () {
-          _tabController.animateTo(0);
-          setState(() => _showOverview = false);
-        },
-      );
-    }
-
-    return Column(
-      children: [
-        if (_selectedWorker == null) ...[
-          TimeTrackingHeaderCard(
-            groupName: widget.group.name,
-            onEnable: _enable,
-            onDisable: _disable,
-            busy: _toggling,
-          ),
-          const SizedBox(height: 12),
-        ],
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 3,
-                child: Column(
+    return Container(
+      key: const ValueKey('workers-mobile-section-selector'),
+      height: 42,
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: .55),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: PopupMenuButton<_InlineSection>(
+              tooltip: l.workersLabel,
+              position: PopupMenuPosition.under,
+              initialValue: _section,
+              onSelected: (section) => setState(() {
+                _section = section;
+                _overviewWorker = null;
+                _showWorkerForm = false;
+                _showInlineTimeEntry = false;
+              }),
+              itemBuilder: (context) => [
+                for (final section in sections)
+                  PopupMenuItem(
+                    value: section,
+                    child: Row(
+                      children: [
+                        Icon(
+                          _sectionIcon(section),
+                          size: 18,
+                          color: section == _section
+                              ? cs.primary
+                              : cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(_sectionTitleFor(context, section)),
+                        ),
+                        if (section == _section)
+                          Icon(Icons.check_rounded,
+                              size: 18, color: cs.primary),
+                      ],
+                    ),
+                  ),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
                   children: [
-                    _buildActiveTotalsInlineCard(context),
+                    Icon(_sectionIcon(_section), size: 19, color: cs.primary),
+                    const SizedBox(width: 9),
                     Expanded(
-                      child: SingleChildScrollView(
-                        child: WorkerListSection(
-                          workers: _workers,
-                          selectedWorkerId: _selectedWorker?.id,
-                          tapSelects: true,
-                          onSelect: (w) => _openEditWorkerDialog(w),
-                          onEdit: (w) => _openEditWorkerDialog(w),
-                          onAddHours: _addHoursForWorker,
-                          onOpenOverviewIcon: (w) => _openOverviewInline(w),
-                          onOpenOverview: _openOverview,
+                      child: Text(
+                        _sectionTitle(context),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: cs.onSurface,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l.statusLabel,
-                            style: t.bodySmall.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: cs.onSurface.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          StatusFilterChips(
-                            value: _statusFilter,
-                            onChanged: (next) {
-                              setState(() => _statusFilter = next);
-                              _load();
-                            },
-                          ),
-                        ],
-                      ),
+                    Icon(
+                      Icons.expand_more_rounded,
+                      size: 19,
+                      color: cs.onSurfaceVariant,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 2,
-                child: WorkersFormPanel(
-                  group: widget.group,
-                  repo: _repo,
-                  getToken: _token,
-                  selectedWorker: _selectedWorker,
-                  allWorkers: _workers,
-                  onSaved: (created, savedWorker) async {
-                    final loc = AppLocalizations.of(context)!;
-                    final messenger = ScaffoldMessenger.of(context);
-                    await _load();
-                    if (!mounted) return;
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          created ? loc.workerCreated : loc.workerUpdated,
-                        ),
-                      ),
-                    );
-                    if (created) _tabController.animateTo(0);
-                    setState(() => _selectedWorker = savedWorker);
-                  },
-                  tabController: _tabController,
-                  enableAddHoursTab: kIsWeb,
-                  onTimeEntryChanged: _reloadActiveTotals,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+          Container(
+            width: 1,
+            height: 24,
+            color: cs.outlineVariant.withValues(alpha: .55),
+          ),
+          IconButton(
+            tooltip: l.createWorkerCta,
+            onPressed: _openCreateWorkerForm,
+            icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+            color: cs.primary,
+          ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildWorkersSection(BuildContext context) {
+    final directory = WorkerDirectoryView(
+      group: widget.group,
+      workers: _workers,
+      showPartners: _showPartners,
+      selectedWorkerId: _selectedWorker?.id,
+      onTabChanged: (value) => setState(() {
+        _showPartners = value;
+        _selectedWorker = null;
+        _showWorkerForm = false;
+        _showInlineTimeEntry = false;
+        _tabController.animateTo(0);
+      }),
+      monthSummary: _buildActiveTotalsInlineCard(context, controlsOnly: true),
+      statusFilter: _statusFilter,
+      onStatusFilterChanged: (next) {
+        setState(() => _statusFilter = next);
+        _load();
+      },
+      onCreate: _openCreateWorkerForm,
+      onEdit: _openEditWorkerDialog,
+      onAddHours: _addHoursForWorker,
+      onOverview: _openMonthlyOverview,
+    );
+    final workerForm = WorkersFormPanel(
+      group: widget.group,
+      repo: _repo,
+      getToken: _token,
+      selectedWorker: _selectedWorker,
+      allWorkers: _workers,
+      onSaved: (created, savedWorker) async {
+        final loc = AppLocalizations.of(context)!;
+        final messenger = ScaffoldMessenger.of(context);
+        await _load();
+        if (!mounted) return;
+        messenger.showSnackBar(SnackBar(
+            content: Text(
+          created ? loc.workerCreated : loc.workerUpdated,
+        )));
+        setState(() {
+          _selectedWorker = savedWorker;
+          _showPartners = isPartnerWorker(savedWorker, widget.group);
+          _showWorkerForm = false;
+          _showInlineTimeEntry = false;
+          _tabController.animateTo(0);
+        });
+      },
+      tabController: _tabController,
+      enableAddHoursTab: false,
+      onTimeEntryChanged: _reloadActiveTotals,
+    );
+    final details = _showInlineTimeEntry && _selectedWorker != null
+        ? CreateTimeEntryScreen(
+            key: ValueKey('worker-entry-${_selectedWorker!.id}'),
+            group: widget.group,
+            workers: [_selectedWorker!],
+            fixedWorker: _selectedWorker,
+            embedded: true,
+            initialSelectedIds: {_selectedWorker!.id},
+            onCancel: () => setState(() {
+              _showInlineTimeEntry = false;
+              _tabController.animateTo(0);
+            }),
+            onCreated: () async {
+              setState(() => _showInlineTimeEntry = false);
+              await _load();
+              await _reloadActiveTotals();
+            },
+          )
+        : workerForm;
+
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth >= 1040) {
+        return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Expanded(flex: 3, child: directory),
+          const SizedBox(width: 16),
+          Expanded(flex: 2, child: details),
+        ]);
+      }
+      return Stack(children: [
+        Positioned.fill(child: directory),
+        if (_showWorkerForm)
+          Positioned.fill(
+              child: Material(
+            color: Theme.of(context).colorScheme.surface,
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        style: ThemedButtons.button(
+                          context,
+                          variant: ButtonVariant.ghost,
+                        ),
+                        onPressed: () => setState(() {
+                          _showWorkerForm = false;
+                          _showInlineTimeEntry = false;
+                        }),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: Text(_isSpanish(context)
+                            ? 'Volver al equipo'
+                            : 'Back to team'),
+                      )),
+                  Expanded(child: details),
+                ]),
+          )),
+      ]);
+    });
   }
 
   Widget _buildHistorialSection(BuildContext context) {
@@ -1055,11 +1020,16 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
             alignment: WrapAlignment.center,
             children: [
               FilledButton.icon(
+                style: ThemedButtons.button(context),
                 onPressed: _workers.isEmpty ? null : _addSharedHours,
                 icon: const Icon(Icons.add_circle_outline_rounded),
                 label: Text(isEs ? 'Registro manual' : 'Manual entry'),
               ),
               FilledButton.tonalIcon(
+                style: ThemedButtons.button(
+                  context,
+                  variant: ButtonVariant.secondary,
+                ),
                 onPressed: () async {
                   final imported = await TimeTrackingExcelImportDialog.show(
                     context,
@@ -1092,7 +1062,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
 
-    if (_loading) return const LoadingList();
+    if (_loading && _workers.isEmpty) return const LoadingList();
     if (_pluginDisabled) {
       return Center(
         child: Padding(
@@ -1107,6 +1077,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                   style: t.bodySmall, textAlign: TextAlign.center),
               const SizedBox(height: 12),
               FilledButton(
+                style: ThemedButtons.button(context),
                 onPressed: _toggling ? null : _enable,
                 child: Text(l.enableTrackingCta),
               ),
@@ -1122,83 +1093,92 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
           children: [
             Text(_error!, style: t.bodySmall.copyWith(color: Colors.red)),
             const SizedBox(height: 8),
-            FilledButton(onPressed: _load, child: Text(l.refresh)),
+            FilledButton(
+              style: ThemedButtons.button(context),
+              onPressed: _load,
+              child: Text(l.refresh),
+            ),
           ],
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final mobile = constraints.maxWidth < 760;
+        final mainContent = WorkspaceMainContent(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(mobile ? 8 : 0, 8, mobile ? 8 : 12, 8),
+            child: Column(
               children: [
-                _buildSideMenu(context),
-                const SizedBox(width: 12),
+                if (mobile) _buildMobileSectionSelector(context),
                 Expanded(
                   child: FolderPanel(
                     title: _sectionTitle(context),
-                    showTab: true,
-                    child: IndexedStack(
-                      index: _section.index,
-                      children: [
-                        _buildWorkersSection(context),
-                        WorkerTimeHistoryGraphView(
-                          key: ValueKey(
-                              'inline-worker-graphs-${widget.group.id}'),
-                          group: widget.group,
-                        ),
-                        _buildHistorialSection(context),
-                        TelegramWorkerHoursImportView(group: widget.group),
-                        _buildRegisterHoursImportSection(context),
-                        WorkerAccountSetupScreen(group: widget.group),
-                      ],
+                    showTab: _section != _InlineSection.workers,
+                    showBorder: false,
+                    showToolbarDivider: false,
+                    contentTopPadding:
+                        _section == _InlineSection.workers ? 12 : 30,
+                    child: HexoraMenuContentTransition.tab(
+                      transitionKey: _section,
+                      child: IndexedStack(
+                        index: _section.index,
+                        children: [
+                          IndexedStack(
+                            index: _overviewWorker == null ? 0 : 1,
+                            children: [
+                              _buildWorkersSection(context),
+                              if (_overviewWorker != null)
+                                WorkerMonthlyOverviewInline(
+                                  group: widget.group,
+                                  worker: _overviewWorker!,
+                                  repo: _repo,
+                                  getToken: _token,
+                                  onBack: () =>
+                                      setState(() => _overviewWorker = null),
+                                  onDataChanged: _reloadActiveTotals,
+                                ),
+                            ],
+                          ),
+                          WorkerTimeHistoryGraphView(
+                            key: ValueKey(
+                                'inline-worker-graphs-${widget.group.id}'),
+                            group: widget.group,
+                          ),
+                          _buildHistorialSection(context),
+                          TelegramWorkerHoursImportView(group: widget.group),
+                          _buildRegisterHoursImportSection(context),
+                          WorkerAccountSetupScreen(group: widget.group),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        );
+
+        if (mobile) return mainContent;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSideMenu(context),
+            Expanded(child: mainContent),
+          ],
+        );
+      },
     );
   }
 
-  Future<void> _addHoursForWorker(Worker w) async {
-    if (kIsWeb) {
-      _tabController.animateTo(2);
-      setState(() {
-        _selectedWorker = w;
-        _showOverview = false;
-      });
-      return;
-    }
-    final ordered = [w, ..._workers.where((x) => x.id != w.id)];
-    final created = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => FractionallySizedBox(
-        heightFactor: 0.92,
-        child: CreateTimeEntryScreen(group: widget.group, workers: ordered),
-      ),
-    );
-    if (created == true) _load();
-  }
-
-  Future<void> _openOverview(Worker w) async {
-    final created = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => FractionallySizedBox(
-        heightFactor: 0.95,
-        child: WorkerMonthlyOverviewScreen(group: widget.group, worker: w),
-      ),
-    );
-    if (created == true) _load();
+  void _addHoursForWorker(Worker w) {
+    _tabController.animateTo(0);
+    setState(() {
+      _selectedWorker = w;
+      _showWorkerForm = true;
+      _showInlineTimeEntry = true;
+    });
   }
 }
 
@@ -1305,6 +1285,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
+              style: ThemedButtons.button(context),
               onPressed: _load,
               icon: const Icon(Icons.refresh_rounded, size: 16),
               label: Text(l.refresh),
@@ -1666,6 +1647,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
           ),
           // Year prev/next navigation
           IconButton(
+            style: ThemedButtons.iconAction(context),
             icon: const Icon(Icons.chevron_left_rounded),
             iconSize: 20,
             visualDensity: VisualDensity.compact,
@@ -1684,6 +1666,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
             ),
           ),
           IconButton(
+            style: ThemedButtons.iconAction(context),
             icon: const Icon(Icons.chevron_right_rounded),
             iconSize: 20,
             visualDensity: VisualDensity.compact,
@@ -1703,6 +1686,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
             )
           else
             IconButton(
+              style: ThemedButtons.iconAction(context),
               tooltip: l.refresh,
               onPressed: _load,
               icon: const Icon(Icons.refresh_rounded),
@@ -1718,6 +1702,10 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
       ),
       actions: [
         TextButton(
+          style: ThemedButtons.button(
+            context,
+            variant: ButtonVariant.ghost,
+          ),
           onPressed: () => Navigator.of(context).pop(),
           child: Text(l.close),
         ),

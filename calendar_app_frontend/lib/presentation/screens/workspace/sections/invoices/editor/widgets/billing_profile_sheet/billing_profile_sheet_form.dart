@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/presentation/utils/validation/email_validator.dart';
 import 'package:hexora/presentation/utils/address/spain_postal_code_autofill.dart';
@@ -96,7 +97,7 @@ class BillingProfileSheetForm extends StatelessWidget {
           suffixIcon: suffix,
           isDense: true,
           filled: true,
-          fillColor: cs.surfaceContainerLowest,
+          fillColor: cs.surfaceContainer,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
           enabledBorder: border(cs.outlineVariant.withValues(alpha: 0.5)),
@@ -440,6 +441,11 @@ class BillingProfileSheetForm extends StatelessWidget {
           final hasPostalInput = controllers.postal.text.trim().isNotEmpty;
           final isSpanishLocale =
               Localizations.localeOf(context).languageCode == 'es';
+          final cityHelper = postalAutofill == null
+              ? null
+              : (isSpanishLocale
+                  ? 'El código postal puede abarcar varias localidades; confirma la ciudad.'
+                  : 'A postal code can cover multiple towns; confirm the city.');
           final postalHelper = postalAutofill != null
               ? (isSpanishLocale
                   ? 'Provincia detectada: ${postalAutofill.province}. Confirma la ciudad antes de guardar.'
@@ -477,13 +483,10 @@ class BillingProfileSheetForm extends StatelessWidget {
                 Row(children: [
                   Expanded(
                     child: field(
-                        controller: controllers.city,
-                        label: l.addressCity,
-                        helper: postalAutofill == null
-                            ? null
-                            : (isSpanishLocale
-                                ? 'El código postal puede abarcar varias localidades; confirma la ciudad.'
-                                : 'A postal code can cover multiple towns; confirm the city.')),
+                      controller: controllers.city,
+                      label: l.addressCity,
+                      helper: cityHelper,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -519,13 +522,10 @@ class BillingProfileSheetForm extends StatelessWidget {
                 ]),
               ] else ...[
                 field(
-                    controller: controllers.city,
-                    label: l.addressCity,
-                    helper: postalAutofill == null
-                        ? null
-                        : (isSpanishLocale
-                            ? 'El código postal puede abarcar varias localidades; confirma la ciudad.'
-                            : 'A postal code can cover multiple towns; confirm the city.')),
+                  controller: controllers.city,
+                  label: l.addressCity,
+                  helper: cityHelper,
+                ),
                 field(
                     controller: controllers.province, label: l.addressProvince),
                 field(
@@ -783,7 +783,8 @@ class BillingProfileSheetForm extends StatelessWidget {
                 child: Row(
                   children: [
                     AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
+                      duration:
+                          HexoraMotion.duration(context, HexoraMotion.standard),
                       child: hasChanges
                           ? Row(
                               key: const ValueKey('dirty'),

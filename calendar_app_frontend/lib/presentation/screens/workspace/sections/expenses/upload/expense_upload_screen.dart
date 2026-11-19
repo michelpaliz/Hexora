@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -7,6 +8,8 @@ import 'package:flutter_dropzone/flutter_dropzone.dart';
 import 'package:flutter_dropzone_platform_interface/flutter_dropzone_platform_interface.dart'
     show FlutterDropzonePlatform;
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -20,7 +23,11 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/presentation/shared/jobs/ocr_import_job_mapping_store.dart';
 import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_wizard_navigation.dart';
+import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
@@ -43,6 +50,7 @@ part 'imports/widgets/batch_onboarding.dart';
 part 'imports/utils/preview_formatters.dart';
 part 'imports/widgets/json_import_controls.dart';
 part 'imports/widgets/batch_documents.dart';
+part 'imports/widgets/batch_archive_confirmation.dart';
 
 class ExpenseUploadScreen extends StatefulWidget {
   const ExpenseUploadScreen({
@@ -50,6 +58,8 @@ class ExpenseUploadScreen extends StatefulWidget {
     this.embedded = false,
     this.onUploaded,
     this.initialTabIndex = 0,
+    this.initialImportTabIndex = 0,
+    this.hideImportTabs = false,
     this.providersOnly = false,
     this.providerFormOnly = false,
     this.listOnly = false,
@@ -62,10 +72,14 @@ class ExpenseUploadScreen extends StatefulWidget {
   final bool embedded;
   final VoidCallback? onUploaded;
   final int initialTabIndex;
+  final int initialImportTabIndex;
+  final bool hideImportTabs;
   final bool providersOnly;
   final bool providerFormOnly;
   final bool listOnly;
   final bool uploadOnly;
+
+  /// Opens this existing expense after the upload workspace is ready.
   final String? initialExpenseId;
   final String groupId;
   final String groupName;
@@ -452,8 +466,14 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   String? _error;
   bool _submitting = false;
   final List<Map<String, String>> _recentUploads = [];
+  bool _loadingRecentUploads = true;
   late TabController _tabs;
   late TabController _importTabs;
+  int _manualWizardStep = 0;
+  String _manualDataSection = 'general';
+  bool _manualDataExpanded = false;
+  bool _manualWizardCollapsed = false;
+  bool _manualExpenseSaved = false;
 
   // Provider state
   List<Map<String, dynamic>> _providers = [];
@@ -473,6 +493,8 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   final _jsonDocumentDiscount = ExpenseDocumentDiscountDraft();
   bool _manualUseSummaryTotals = false;
   bool _jsonUseSummaryTotals = false;
+  ({String base, String tax, String total})? _manualSummaryTotalsDraft;
+  ({String base, String tax, String total})? _jsonSummaryTotalsDraft;
   bool _syncingManualSummaryTotals = false;
   bool _syncingJsonSummaryTotals = false;
   List<Map<String, dynamic>>? _vatBreakdown;
@@ -488,6 +510,8 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   bool _jsonPromptLoading = false;
   String? _jsonError;
   bool _jsonAdvancedExpanded = false;
+  bool _jsonWizardCollapsed = false;
+  bool _jsonEditorFocused = false;
   int _jsonImportStep = 0;
   String? _jsonPromptMessage;
   String? _jsonPromptText;
@@ -495,9 +519,11 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   List<String> _batchDocumentNames = [];
   Uint8List? _batchArchiveBytes;
   String? _batchArchiveName;
-  Map<String, dynamic>? _batchArchiveInspection;
   bool _batchArchiveInspecting = false;
+  Map<String, dynamic>? _batchArchiveInspection;
   String? _batchArchiveInspectionError;
+  int _batchArchiveInspectionToken = 0;
+  bool _batchArchiveFilesExpanded = false;
   bool _batchSubmitting = false;
   bool _batchGeneratingJson = false;
   bool _batchStartingJob = false;
@@ -511,6 +537,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   int _batchFileFilterIndex = 0;
   bool _batchErrorsExpanded = false;
   bool _batchSummaryCollapsed = true;
+  bool _batchWizardCollapsed = false;
   String? _batchJobId;
   String? _batchBackgroundJobId;
   Map<String, dynamic>? _batchJobStatus;
@@ -519,7 +546,6 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   List<_ExpenseBatchPreviewItem> _batchPreviewItems = [];
   List<Map<String, dynamic>> _recentBatchJobs = [];
   bool _recentBatchJobsLoading = false;
-  bool _recentBatchJobsExpanded = false;
   String? _recentBatchJobsError;
   Timer? _batchJobPollTimer;
 
@@ -598,6 +624,10 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   @override
   List<Map<String, String>> get recentUploads => _recentUploads;
   @override
+  bool get loadingRecentUploads => _loadingRecentUploads;
+  @override
+  set loadingRecentUploads(bool value) => _loadingRecentUploads = value;
+  @override
   Map<String, String>? get selectedRecentExpense => _selectedRecentExpense;
   @override
   set selectedRecentExpense(Map<String, String>? value) =>
@@ -626,7 +656,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
             ? 1
             : widget.initialTabIndex.clamp(0, 1);
     _createTabsController(initialIndex: idx);
-    _createImportTabsController(initialIndex: 0);
+    _createImportTabsController(initialIndex: widget.initialImportTabIndex);
     loadProviders();
     loadRecentUploads();
     if (widget.initialExpenseId?.trim().isNotEmpty == true) {
@@ -884,6 +914,10 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     if (_tabs.index != desiredTabIndex) {
       _tabs.index = desiredTabIndex;
     }
+    if (oldWidget.initialImportTabIndex != widget.initialImportTabIndex &&
+        widget.uploadOnly) {
+      _importTabs.index = widget.initialImportTabIndex.clamp(0, 2);
+    }
   }
 
   void openExpenseEditorById(String expenseId) {
@@ -1114,6 +1148,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     Map<String, dynamic> expense, {
     bool allowAutoMode = false,
   }) {
+    if (allowAutoMode) _jsonSummaryTotalsDraft = null;
     final total = ExpenseFormHelpers.parseNum(expense['total']);
     final tax = ExpenseFormHelpers.parseNum(
           expense['taxTotal'] ?? expense['vatTotal'] ?? expense['tax'],
@@ -1389,6 +1424,9 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       _fileName = fileName;
       _fileBytes = fileBytes;
       _error = null;
+      _manualWizardStep = 1;
+      _manualDataExpanded = true;
+      _manualExpenseSaved = false;
     });
   }
 
@@ -1419,6 +1457,106 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     if (picked == null) return;
     setState(() {
       controller.text = picked;
+    });
+  }
+
+  ({String base, String tax, String total}) _captureTotals(
+    TextEditingController base,
+    TextEditingController tax,
+    TextEditingController total,
+  ) =>
+      (base: base.text, tax: tax.text, total: total.text);
+
+  void _restoreTotals(
+    ({String base, String tax, String total}) snapshot,
+    TextEditingController base,
+    TextEditingController tax,
+    TextEditingController total,
+  ) {
+    _syncingManualSummaryTotals = true;
+    _syncingJsonSummaryTotals = true;
+    base.text = snapshot.base;
+    tax.text = snapshot.tax;
+    total.text = snapshot.total;
+    _syncingManualSummaryTotals = false;
+    _syncingJsonSummaryTotals = false;
+  }
+
+  bool get _hasManualExpenseDraft {
+    return _fileBytes != null ||
+        (_selectedProviderId ?? '').isNotEmpty ||
+        _lines.isNotEmpty ||
+        [
+          _vendorController,
+          _issueDateController,
+          _baseTotalController,
+          _totalController,
+          _vendorTaxIdController,
+          _invoiceNumberController,
+          _dueDateController,
+          _taxTotalController,
+          _notesController,
+          _clientIdController,
+        ].any((controller) => controller.text.trim().isNotEmpty);
+  }
+
+  Future<void> _cancelManualExpenseDraft() async {
+    if (_submitting) return;
+    if (_hasManualExpenseDraft) {
+      final discard = await showHexoraDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Descartar cambios'),
+          content: const Text(
+            'Se limpiarán los datos introducidos y el documento seleccionado.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Seguir editando'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Descartar'),
+            ),
+          ],
+        ),
+      );
+      if (discard != true || !mounted) return;
+    }
+
+    for (final line in _lines) {
+      line.dispose();
+    }
+    setState(() {
+      _lines.clear();
+      _fileName = null;
+      _fileBytes = null;
+      _selectedProviderId = null;
+      _vendorController.clear();
+      _issueDateController.clear();
+      _baseTotalController.clear();
+      _totalController.clear();
+      _vendorTaxIdController.clear();
+      _invoiceNumberController.clear();
+      _dueDateController.clear();
+      _taxTotalController.clear();
+      _currencyController.text = 'EUR';
+      _notesController.clear();
+      _clientIdController.clear();
+      _manualSettlement.loadFromExpenseMap(const <String, dynamic>{});
+      _manualDocumentDiscount.loadFromExpenseMap(
+        const <String, dynamic>{},
+      );
+      _manualWithholding.loadFromExpenseMap(const <String, dynamic>{});
+      _manualUseSummaryTotals = false;
+      _manualSummaryTotalsDraft = null;
+      _vatBreakdown = null;
+      _error = null;
+      _manualWizardStep = 0;
+      _manualDataSection = 'general';
+      _manualDataExpanded = false;
+      _manualExpenseSaved = false;
     });
   }
 
@@ -1766,6 +1904,9 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                 (createdLinesSummary['total'] as num).toStringAsFixed(2),
         });
         _selectedRecentExpense = _recentUploads.first;
+        _manualWizardStep = 3;
+        _manualDataExpanded = false;
+        _manualExpenseSaved = true;
       });
       widget.onUploaded?.call();
       if (!widget.embedded) {
@@ -1825,12 +1966,12 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   Future<void> copyPromptToClipboard();
   Future<void> submitExpenseJsonImport();
   Future<void> pickBatchDocuments();
+  Future<void> pickBatchZip();
   Future<void> applyBatchDocumentData(
     List<({String fileName, Uint8List fileBytes})> files, {
     required int selectedCount,
   });
   Future<void> submitBatchImport();
-  void clearBatchArchive();
   Future<void> inspectSelectedBatchArchive();
   Future<void> cancelBatchPreviewJob();
 
@@ -1839,22 +1980,23 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
-    final filePicker = ExpenseFilePickerCard(
-      fileName: _fileName,
-      fileBytes: _fileBytes,
-      submitting: _submitting,
-      onPick: _pickFile,
-      dropZoneHeight: 240,
-      onPreviewPdf: (_fileName?.toLowerCase().endsWith('.pdf') ?? false)
-          ? _previewSelectedPdf
-          : null,
-    );
+    Widget filePicker({required double height}) => ExpenseFilePickerCard(
+          fileName: _fileName,
+          fileBytes: _fileBytes,
+          submitting: _submitting,
+          onPick: _pickFile,
+          dropZoneHeight: height,
+          onPreviewPdf: (_fileName?.toLowerCase().endsWith('.pdf') ?? false)
+              ? _previewSelectedPdf
+              : null,
+        );
     final providerPicker = ExpenseProviderPicker(
       providers: _providers,
       selectedProviderId: _selectedProviderId,
       providersError: _providersError,
       loading: _loadingProviders,
       onSelectProvider: selectProvider,
+      onRetry: loadProviders,
     );
     final linesEditor = ExpenseLinesEditor(
       lines: _lines,
@@ -1884,7 +2026,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
           )
         : _manualUseSummaryTotals
             ? ExpenseFormHelpers.formatAmount(
-                _parseControllerAmount(_baseTotalController),
+                _parseControllerAmount(_baseTotalController) ?? 0,
               )
             : hasLines
                 ? ExpenseFormHelpers.formatAmount(_linesSubtotal())
@@ -1893,7 +2035,9 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                         ExpenseFormHelpers.parseAmount(_totalController.text);
                     final tax = ExpenseFormHelpers.parseAmount(
                         _taxTotalController.text);
-                    if (total == null) return '-';
+                    if (total == null) {
+                      return ExpenseFormHelpers.formatAmount(0);
+                    }
                     if (tax == null) {
                       return ExpenseFormHelpers.formatAmount(total);
                     }
@@ -1913,24 +2057,25 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
         ? ExpenseFormHelpers.formatAmount(manualDiscountPreview.tax)
         : _manualUseSummaryTotals
             ? ExpenseFormHelpers.formatAmount(
-                _parseControllerAmount(_taxTotalController),
+                _parseControllerAmount(_taxTotalController) ?? 0,
               )
             : hasLines
                 ? ExpenseFormHelpers.formatAmount(_linesTax())
                 : ExpenseFormHelpers.formatAmount(
-                    ExpenseFormHelpers.parseAmount(_taxTotalController.text),
+                    ExpenseFormHelpers.parseAmount(_taxTotalController.text) ??
+                        0,
                   );
     final summaryTotal = manualDiscountPreview != null
         ? ExpenseFormHelpers.formatAmount(manualDiscountPreview.total)
         : _manualUseSummaryTotals
             ? ExpenseFormHelpers.formatAmount(
-                _parseControllerAmount(_totalController),
+                _parseControllerAmount(_totalController) ?? 0,
               )
             : hasLines
                 ? ExpenseFormHelpers.formatAmount(
                     _linesSubtotal() + _linesTax())
                 : ExpenseFormHelpers.formatAmount(
-                    ExpenseFormHelpers.parseAmount(_totalController.text),
+                    ExpenseFormHelpers.parseAmount(_totalController.text) ?? 0,
                   );
     final vatBreakdown = ExpenseVatBreakdownCard(
       breakdown: _vatBreakdown,
@@ -1944,7 +2089,20 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     );
     final displayGroupId = resolveGroupId();
     final hasGroupSelected = displayGroupId.trim().isNotEmpty;
-    final displayGroupName = _resolveGroupName();
+    var canDeleteExpenses = true;
+    try {
+      final group = context.watch<GroupDomain>().currentGroup;
+      final userId = context.watch<AuthProvider>().currentUser?.id.trim() ?? '';
+      if (group != null && userId.isNotEmpty && group.id == displayGroupId) {
+        final role = group.ownerId == userId
+            ? 'owner'
+            : group.userRoles[userId]?.toLowerCase();
+        canDeleteExpenses =
+            role == 'owner' || role == 'admin' || role == 'co-admin';
+      }
+    } catch (_) {
+      // Keep the existing behavior when this embedded screen has no providers.
+    }
     final manualAdvanceOptions = _buildAdvanceOptions(
       providerId: _selectedProviderId,
       vendorName: _vendorController.text.trim(),
@@ -1986,13 +2144,30 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       lockToLines: hasLines,
       validationError: manualSummaryValidationError,
       onSummaryModeChanged: (value) => setState(() {
+        if (!value) {
+          _manualSummaryTotalsDraft = _captureTotals(
+            _baseTotalController,
+            _taxTotalController,
+            _totalController,
+          );
+        }
         _manualUseSummaryTotals = value;
         if (!_manualUseSummaryTotals &&
             hasLines &&
             manualDiscountPreview != null) {
           _applyManualSummaryControllersFromLines(manualDiscountPreview);
         } else if (_manualUseSummaryTotals) {
-          _syncManualSummaryControllers(_ExpenseDocumentTotalField.total);
+          final saved = _manualSummaryTotalsDraft;
+          if (saved != null) {
+            _restoreTotals(
+              saved,
+              _baseTotalController,
+              _taxTotalController,
+              _totalController,
+            );
+          } else {
+            _syncManualSummaryControllers(_ExpenseDocumentTotalField.total);
+          }
         }
       }),
       onBaseChanged: (_) {
@@ -2008,39 +2183,661 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
         setState(() {});
       },
     );
-    final formFields = ExpenseFormFields(
-      groupName: displayGroupName,
-      groupId: displayGroupId,
+    final formFields = ManualExpenseTabbedForm(
       providerPicker: providerPicker,
       vendorController: _vendorController,
-      issueDateController: _issueDateController,
       vendorTaxIdController: _vendorTaxIdController,
       invoiceNumberController: _invoiceNumberController,
-      dueDateController: _dueDateController,
       currencyController: _currencyController,
+      issueDateController: _issueDateController,
+      dueDateController: _dueDateController,
       notesController: _notesController,
-      clientIdController: _clientIdController,
       settlementFields: manualSettlementFields,
       discountFields: manualDiscountFields,
       withholdingFields: manualWithholdingFields,
       totalsFields: manualTotalsFields,
       linesEditor: linesEditor,
       vatBreakdown: vatBreakdown,
-      summaryBar: summaryBar,
-      hasLines: hasLines,
       submitting: _submitting,
+      manualProvider: (_selectedProviderId ?? '').trim().isEmpty,
+      activeSection: _manualDataSection,
       onPickDate: _pickDate,
     );
     final errorsAndSubmit = ExpenseErrorsAndSubmit(
       error: _error,
       submitting: _submitting,
+      onCancel: _cancelManualExpenseDraft,
       onSubmit: _submit,
+      submitLabel:
+          l.localeName.startsWith('es') ? 'Guardar gasto' : 'Save expense',
       canSubmit: hasGroupSelected &&
           !(_manualSettlement.isFinal &&
               (_manualSettlement.selectedAdvanceExpenseId ?? '')
                   .trim()
                   .isEmpty),
     );
+
+    String? manualPreviewLabel() {
+      final fileName = _fileName?.toLowerCase();
+      if (fileName == null) return null;
+      if (fileName.endsWith('.pdf')) return 'Abrir vista previa';
+      if (fileName.endsWith('.png') ||
+          fileName.endsWith('.jpg') ||
+          fileName.endsWith('.jpeg') ||
+          fileName.endsWith('.jpe') ||
+          fileName.endsWith('.webp')) {
+        return 'Ampliar imagen';
+      }
+      return null;
+    }
+
+    Widget railHeading(String label, IconData icon) => Padding(
+          padding: const EdgeInsets.fromLTRB(2, 0, 2, 6),
+          child: Row(
+            children: [
+              Icon(icon, size: 15, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+              ),
+            ],
+          ),
+        );
+
+    Widget railCard({
+      required String title,
+      required IconData icon,
+      required Widget child,
+    }) =>
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.38),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              railHeading(title, icon),
+              const SizedBox(height: 2),
+              child,
+            ],
+          ),
+        );
+
+    Widget manualDocumentPreview({double height = 360}) {
+      final bytes = _fileBytes;
+      final name = (_fileName ?? '').toLowerCase();
+      if (bytes == null || bytes.isEmpty) {
+        return Container(
+          key: const ValueKey('expense-registration-empty-preview'),
+          constraints: const BoxConstraints(minHeight: 112),
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.16),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            l.localeName.startsWith('es')
+                ? 'Selecciona un documento para verlo junto al formulario.'
+                : 'Select a document to view it beside the form.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+          ),
+        );
+      }
+      if (name.endsWith('.pdf')) {
+        return PdfInlinePreview(
+          key: const ValueKey('expense-registration-pdf-preview'),
+          bytes: bytes,
+          height: height,
+        );
+      }
+      if (name.endsWith('.png') ||
+          name.endsWith('.jpg') ||
+          name.endsWith('.jpeg') ||
+          name.endsWith('.jpe') ||
+          name.endsWith('.webp')) {
+        return SizedBox(
+          key: const ValueKey('expense-registration-image-preview'),
+          height: height,
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 8,
+            child: Image.memory(bytes, fit: BoxFit.contain),
+          ),
+        );
+      }
+      return Container(
+        constraints: const BoxConstraints(minHeight: 140),
+        alignment: Alignment.center,
+        child: Text(
+          _fileName ?? '',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    }
+
+    Widget manualSidePanel({required double previewHeight}) =>
+        SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              railCard(
+                title: l.localeName.startsWith('es') ? 'Documento' : 'Document',
+                icon: Icons.description_outlined,
+                child: _fileBytes == null
+                    ? filePicker(height: 118)
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle_outline_rounded,
+                                size: 16,
+                                color: cs.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  _fileName ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: _submitting ? null : _pickFile,
+                                icon: const Icon(Icons.swap_horiz_rounded,
+                                    size: 15),
+                                label: Text(l.localeName.startsWith('es')
+                                    ? 'Cambiar'
+                                    : 'Replace'),
+                                style: TextButton.styleFrom(
+                                  minimumSize: const Size(0, 32),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: manualDocumentPreview(
+                              height: previewHeight,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              const SizedBox(height: 10),
+              railCard(
+                title: l.localeName.startsWith('es')
+                    ? 'Resumen financiero'
+                    : 'Financial summary',
+                icon: Icons.calculate_outlined,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    summaryBar,
+                    if ((manualSummaryValidationError ?? '')
+                        .trim()
+                        .isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: cs.errorContainer.withValues(alpha: 0.35),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: cs.error.withValues(alpha: 0.30),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.error_outline,
+                                size: 16, color: cs.error),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: Text(
+                                manualSummaryValidationError!,
+                                style: TextStyle(color: cs.error, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+
+    final manualWizardSteps = <DocumentWizardStep>[
+      DocumentWizardStep(
+        label: l.localeName.startsWith('es') ? 'Documento' : 'Document',
+        icon: Icons.description_outlined,
+      ),
+      DocumentWizardStep(
+        label: l.localeName.startsWith('es') ? 'Datos' : 'Details',
+        icon: Icons.edit_note_outlined,
+        sections: [
+          const DocumentWizardSection(
+            id: 'general',
+            label: 'General',
+            icon: Icons.description_outlined,
+          ),
+          DocumentWizardSection(
+            id: 'amounts',
+            label: l.localeName.startsWith('es') ? 'Importes' : 'Amounts',
+            icon: Icons.calculate_outlined,
+          ),
+          DocumentWizardSection(
+            id: 'lines',
+            label: l.localeName.startsWith('es')
+                ? 'Líneas (${_lines.length})'
+                : 'Lines (${_lines.length})',
+            icon: Icons.view_list_outlined,
+          ),
+        ],
+      ),
+      DocumentWizardStep(
+        label: l.localeName.startsWith('es') ? 'Revisión' : 'Review',
+        icon: Icons.fact_check_outlined,
+      ),
+      DocumentWizardStep(
+        label: l.localeName.startsWith('es') ? 'Guardado' : 'Saved',
+        icon: Icons.save_outlined,
+      ),
+    ];
+
+    void selectManualStep(int step) {
+      setState(() {
+        _manualWizardStep = step.clamp(0, 3);
+        _manualDataExpanded = _manualWizardStep == 1;
+      });
+    }
+
+    void selectManualSection(String section) {
+      if (!const {'general', 'amounts', 'lines'}.contains(section)) return;
+      setState(() {
+        _manualWizardStep = 1;
+        _manualDataSection = section;
+        _manualDataExpanded = true;
+      });
+    }
+
+    Widget manualReview({required bool saved}) => ListView(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+          children: [
+            Row(
+              children: [
+                Icon(
+                  saved
+                      ? Icons.check_circle_outline
+                      : Icons.fact_check_outlined,
+                  color: saved ? cs.primary : cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    saved
+                        ? (l.localeName.startsWith('es')
+                            ? 'Gasto guardado'
+                            : 'Expense saved')
+                        : (l.localeName.startsWith('es')
+                            ? 'Revisa el gasto antes de guardarlo'
+                            : 'Review the expense before saving'),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            summaryBar,
+            const SizedBox(height: 14),
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.business_outlined, size: 18),
+              title: Text(
+                (_vendorController.text.trim().isEmpty
+                    ? (l.localeName.startsWith('es')
+                        ? 'Proveedor pendiente'
+                        : 'Supplier pending')
+                    : _vendorController.text.trim()),
+              ),
+              subtitle: Text(_invoiceNumberController.text.trim().isEmpty
+                  ? (l.localeName.startsWith('es')
+                      ? 'Sin número de factura'
+                      : 'No invoice number')
+                  : _invoiceNumberController.text.trim()),
+            ),
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.description_outlined, size: 18),
+              title: Text(_fileName ??
+                  (l.localeName.startsWith('es')
+                      ? 'Sin documento'
+                      : 'No document')),
+              subtitle: Text(l.localeName.startsWith('es')
+                  ? '${_lines.length} líneas de gasto'
+                  : '${_lines.length} expense lines'),
+            ),
+          ],
+        );
+
+    Widget manualCenter({required bool compact}) {
+      return switch (_manualWizardStep) {
+        0 => ListView(
+            padding: const EdgeInsets.all(12),
+            children: [
+              if (compact)
+                filePicker(height: 150)
+              else
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: .16),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: .35),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.upload_file_outlined,
+                          size: 20, color: cs.primary),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          l.localeName.startsWith('es')
+                              ? 'Adjunta o sustituye el documento desde el panel derecho. La vista previa permanecerá visible mientras completas el gasto.'
+                              : 'Attach or replace the document from the right panel. The preview stays visible while you complete the expense.',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                    height: 1.35,
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (manualPreviewLabel() != null) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        _submitting ? null : _previewSelectedUploadedFile,
+                    icon: const Icon(Icons.visibility_outlined, size: 16),
+                    label: Text(manualPreviewLabel()!),
+                  ),
+                ),
+              ],
+              if (compact && _fileBytes != null) ...[
+                const SizedBox(height: 10),
+                manualDocumentPreview(height: 260),
+              ],
+            ],
+          ),
+        1 => Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+            child: formFields,
+          ),
+        2 => manualReview(saved: false),
+        _ => manualReview(saved: _manualExpenseSaved),
+      };
+    }
+
+    Widget manualWorkspace({
+      required bool compact,
+      bool collapseRail = false,
+    }) {
+      final content = compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DocumentWizardMobileSelector(
+                  keyPrefix: 'expense-wizard',
+                  steps: manualWizardSteps,
+                  currentStep: _manualWizardStep,
+                  selectedSectionId: _manualDataSection,
+                  onStepSelected: selectManualStep,
+                  onSectionSelected: selectManualSection,
+                ),
+                Expanded(child: manualCenter(compact: true)),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DocumentWizardRail(
+                  keyPrefix: 'expense-wizard',
+                  steps: manualWizardSteps,
+                  currentStep: _manualWizardStep,
+                  selectedSectionId: _manualDataSection,
+                  groupExpanded: _manualDataExpanded,
+                  collapsed: collapseRail || _manualWizardCollapsed,
+                  title: l.localeName.startsWith('es')
+                      ? 'Registro manual'
+                      : 'Manual entry',
+                  onStepSelected: selectManualStep,
+                  onSectionSelected: selectManualSection,
+                  onToggleGroup: () => setState(
+                    () => _manualDataExpanded = !_manualDataExpanded,
+                  ),
+                  onToggleCollapsed: () => setState(
+                    () => _manualWizardCollapsed = !_manualWizardCollapsed,
+                  ),
+                ),
+                Expanded(flex: 9, child: manualCenter(compact: false)),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 11,
+                  child: manualSidePanel(previewHeight: 320),
+                ),
+              ],
+            );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: content),
+          errorsAndSubmit,
+        ],
+      );
+    }
+
+    final jsonWizardSteps = <DocumentWizardStep>[
+      DocumentWizardStep(
+        label: l.localeName.startsWith('es') ? 'Documento' : 'Document',
+        icon: Icons.description_outlined,
+      ),
+      DocumentWizardStep(
+        label: l.localeName.startsWith('es') ? 'Extracci\u00f3n' : 'Extraction',
+        icon: Icons.data_object_rounded,
+      ),
+      DocumentWizardStep(
+        label: l.localeName.startsWith('es') ? 'Revisi\u00f3n' : 'Review',
+        icon: Icons.fact_check_outlined,
+      ),
+      DocumentWizardStep(
+        label: l.localeName.startsWith('es') ? 'Importaci\u00f3n' : 'Import',
+        icon: Icons.save_alt_rounded,
+      ),
+    ];
+
+    bool hasValidJsonPayload() {
+      final raw = _jsonPayloadController.text.trim();
+      if (raw.isEmpty) return false;
+      try {
+        return jsonDecode(raw) is Map;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    String? jsonSummaryValidationError() => _jsonUseSummaryTotals
+        ? ExpenseFormHelpers.validateSummaryTotals(
+            base: _parseControllerAmount(_jsonBaseController),
+            tax: _parseControllerAmount(_jsonTaxController),
+            total: _parseControllerAmount(_jsonTotalController),
+          )
+        : null;
+
+    bool canOpenJsonStep(int step) {
+      if (step == 0) return true;
+      if (!hasValidJsonPayload()) return false;
+      if (step < 3) return true;
+      return jsonSummaryValidationError() == null;
+    }
+
+    bool canUseJsonPrimaryAction() {
+      if (_jsonSubmitting || _jsonPromptLoading) return false;
+      if (_jsonImportStep == 0) return hasValidJsonPayload();
+      if (_jsonImportStep == 1) return hasValidJsonPayload();
+      if (_jsonImportStep == 2) {
+        return hasValidJsonPayload() && jsonSummaryValidationError() == null;
+      }
+      final hasInvoice =
+          (_jsonInvoiceFileName ?? _fileName ?? '').trim().isNotEmpty;
+      return hasGroupSelected &&
+          hasInvoice &&
+          hasValidJsonPayload() &&
+          jsonSummaryValidationError() == null &&
+          !(_jsonSettlement.isFinal &&
+              (_jsonSettlement.selectedAdvanceExpenseId ?? '').trim().isEmpty);
+    }
+
+    Widget jsonBottomActionBar() {
+      final isEs = l.localeName.startsWith('es');
+      final isLast = _jsonImportStep == jsonWizardSteps.length - 1;
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          border: Border(
+            top: BorderSide(
+              color: cs.outlineVariant.withValues(alpha: .42),
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            if (_jsonImportStep > 0)
+              TextButton.icon(
+                onPressed: _jsonSubmitting
+                    ? null
+                    : () => setState(() => _jsonImportStep--),
+                icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                label: Text(isEs ? 'Anterior' : 'Back'),
+              ),
+            const Spacer(),
+            FilledButton.icon(
+              onPressed: canUseJsonPrimaryAction()
+                  ? () {
+                      if (isLast) {
+                        submitExpenseJsonImport();
+                      } else {
+                        setState(() => _jsonImportStep++);
+                      }
+                    }
+                  : null,
+              icon: _jsonSubmitting
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      isLast
+                          ? Icons.playlist_add_check_circle_outlined
+                          : Icons.arrow_forward_rounded,
+                      size: 17,
+                    ),
+              label: Text(isLast
+                  ? (isEs ? 'Importar documento' : 'Import document')
+                  : (isEs ? 'Continuar' : 'Continue')),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 38),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget jsonRailFooter() {
+      final valid = hasValidJsonPayload();
+      Widget metric(String label, String value, {Color? color}) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(label,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontSize: 10.5,
+                            color: cs.onSurfaceVariant,
+                          )),
+                ),
+                Text(value,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: color ?? cs.onSurface,
+                        )),
+              ],
+            ),
+          );
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Divider(color: cs.outlineVariant.withValues(alpha: .35)),
+            metric(l.localeName.startsWith('es') ? 'Listos' : 'Ready',
+                valid ? '1' : '0',
+                color: valid ? Colors.green.shade600 : null),
+            metric(l.localeName.startsWith('es') ? 'Revisi\u00f3n' : 'Review',
+                (_jsonError ?? '').trim().isEmpty ? '0' : '1',
+                color: (_jsonError ?? '').trim().isEmpty
+                    ? null
+                    : Colors.amber.shade700),
+            metric(l.localeName.startsWith('es') ? 'Duplicados' : 'Duplicates',
+                '0'),
+            metric(
+                'JSON',
+                valid
+                    ? (l.localeName.startsWith('es') ? 'Listo' : 'Ready')
+                    : (l.localeName.startsWith('es') ? 'Pendiente' : 'Pending'),
+                color: valid ? cs.primary : cs.onSurfaceVariant),
+          ],
+        ),
+      );
+    }
+
     final uploadWorkspace = AnimatedBuilder(
       animation: _importTabs,
       builder: (context, _) => LayoutBuilder(
@@ -2072,31 +2869,48 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                 ],
               );
 
-          final importTabsHeader = buildImportTabsHeader();
-          final manualWideTab = Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: formFields),
-              errorsAndSubmit,
-            ],
+          final importTabsHeader = widget.hideImportTabs
+              ? const SizedBox.shrink()
+              : buildImportTabsHeader();
+          final manualWideTab = manualWorkspace(
+            compact: false,
+            collapseRail: constraints.maxWidth < 1120,
           );
-          final manualCompactTab = SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                filePicker,
-                const SizedBox(height: 8),
-                formFields,
-                errorsAndSubmit,
-              ],
-            ),
-          );
+          final manualCompactTab = manualWorkspace(compact: true);
+          final currentTab = _importTabs.index;
           if (!isWide) {
+            if (currentTab == 1) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  importTabsHeader,
+                  if (!widget.hideImportTabs) const SizedBox(height: 8),
+                  DocumentWizardMobileSelector(
+                    keyPrefix: 'expense-json-wizard',
+                    steps: jsonWizardSteps,
+                    currentStep: _jsonImportStep,
+                    selectedSectionId: null,
+                    onStepSelected: (step) {
+                      if (!canOpenJsonStep(step)) return;
+                      setState(() => _jsonImportStep = step);
+                    },
+                    onSectionSelected: (_) {},
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 8, 0),
+                      child: _buildJsonStepRightContent(l),
+                    ),
+                  ),
+                  jsonBottomActionBar(),
+                ],
+              );
+            }
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 importTabsHeader,
-                const SizedBox(height: 8),
+                if (!widget.hideImportTabs) const SizedBox(height: 8),
                 Expanded(
                   child: TabBarView(
                     controller: _importTabs,
@@ -2116,7 +2930,6 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
               ],
             );
           }
-          final currentTab = _importTabs.index;
 
           if (currentTab == 2) {
             final batchJobStatus =
@@ -2128,53 +2941,68 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                buildImportTabsHeader(),
-                if (!batchJobCompleted) ...[
-                  const SizedBox(height: 8),
-                  _BatchCompactWorkflowIndicator(
-                    selectedCount: (() {
-                      final jobTotal =
-                          _batchJobInt(_batchJobStatus?['totalFiles']);
-                      if (jobTotal > 0) return jobTotal;
-                      return _batchArchiveName == null
-                          ? _batchDocumentNames.length
-                          : _batchJobInt(
-                              _batchArchiveInspection?['compatibleDocuments']);
-                    })(),
-                    maxDocuments:
-                        _ExpenseUploadScreenStateBase._maxBatchDocuments,
-                    totalBytes: _batchArchiveBytes?.length ??
-                        _batchDocumentBytes.fold<int>(
-                          0,
-                          (sum, bytes) => sum + bytes.length,
-                        ),
-                    submitting: _batchSubmitting ||
-                        _batchGeneratingJson ||
-                        batchJobActive,
-                    hasGroupSelected: hasGroupSelected,
-                    canImport: !batchJobActive &&
-                        !_batchSubmitting &&
-                        !_batchGeneratingJson &&
-                        !batchJobCompleted &&
-                        hasGroupSelected &&
-                        (_batchDocumentNames.isNotEmpty ||
-                            (_batchArchiveBytes != null &&
-                                !_batchArchiveInspecting &&
-                                _batchArchiveInspection?['blocked'] != true &&
-                                _batchJobInt(_batchArchiveInspection?[
-                                        'compatibleDocuments']) >
-                                    0)),
-                    jobActive: batchJobActive,
-                    jobCompleted: batchJobCompleted,
-                    jobFailed: batchJobStatus == 'failed',
-                    readyCount: _batchJobInt(_batchJobStatus?['readyCount']),
-                    reviewCount: _batchJobInt(_batchJobStatus?['warningCount']),
-                    duplicateCount:
-                        _batchJobInt(_batchJobStatus?['duplicateCount']),
-                    onPickDocuments: pickBatchDocuments,
-                    onImport: submitBatchImport,
-                    onClearSelection:
-                        _batchDocumentNames.isEmpty && _batchArchiveName == null
+                importTabsHeader,
+                if (!widget.hideImportTabs) const SizedBox(height: 8),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _BatchCompactWorkflowIndicator(
+                        selectedCount: (() {
+                          final jobTotal =
+                              _batchJobInt(_batchJobStatus?['totalFiles']);
+                          if (jobTotal > 0) return jobTotal;
+                          if (_batchArchiveName == null) {
+                            return _batchDocumentNames.length;
+                          }
+                          final inspected =
+                              (_batchArchiveInspection?['files'] as List? ??
+                                      const [])
+                                  .length;
+                          return inspected > 0 ? inspected : 1;
+                        })(),
+                        maxDocuments:
+                            _ExpenseUploadScreenStateBase._maxBatchDocuments,
+                        totalBytes: _batchArchiveBytes?.length ??
+                            _batchDocumentBytes.fold<int>(
+                              0,
+                              (sum, bytes) => sum + bytes.length,
+                            ),
+                        submitting: _batchSubmitting ||
+                            _batchGeneratingJson ||
+                            _batchArchiveInspecting ||
+                            batchJobActive,
+                        hasGroupSelected: hasGroupSelected,
+                        canImport: !batchJobActive &&
+                            !_batchSubmitting &&
+                            !_batchGeneratingJson &&
+                            !_batchArchiveInspecting &&
+                            !batchJobCompleted &&
+                            hasGroupSelected &&
+                            (_batchDocumentNames.isNotEmpty ||
+                                (_batchArchiveInspection?['blocked'] != true &&
+                                    ((_batchArchiveInspection?['files']
+                                                as List? ??
+                                            const [])
+                                        .isNotEmpty))),
+                        jobActive: batchJobActive,
+                        jobCompleted: batchJobCompleted,
+                        jobFailed: batchJobStatus == 'failed',
+                        inspecting: _batchArchiveInspecting,
+                        selectionReady: _batchDocumentNames.isNotEmpty ||
+                            _batchArchiveInspection != null,
+                        readyCount:
+                            _batchJobInt(_batchJobStatus?['readyCount']),
+                        reviewCount:
+                            _batchJobInt(_batchJobStatus?['warningCount']),
+                        duplicateCount:
+                            _batchJobInt(_batchJobStatus?['duplicateCount']),
+                        collapsed: _batchWizardCollapsed,
+                        onToggleCollapsed: () => setState(() =>
+                            _batchWizardCollapsed = !_batchWizardCollapsed),
+                        onImport: submitBatchImport,
+                        onClearSelection: _batchDocumentNames.isEmpty &&
+                                _batchArchiveName == null
                             ? null
                             : () => setState(() {
                                   _resetBatchJobTracking(
@@ -2183,20 +3011,33 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                                   );
                                   _batchDocumentBytes.clear();
                                   _batchDocumentNames.clear();
-                                  clearBatchArchive();
+                                  _batchArchiveInspectionToken++;
+                                  _batchArchiveBytes = null;
+                                  _batchArchiveName = null;
+                                  _batchArchiveInspecting = false;
+                                  _batchArchiveInspection = null;
+                                  _batchArchiveInspectionError = null;
+                                  _batchArchiveFilesExpanded = false;
                                   _batchSkippedDetails.clear();
                                   _batchVerifyMessage = null;
                                   _batchError = null;
                                   _batchDetectedInvoices = 0;
                                   _batchFileFilterIndex = 0;
                                 }),
-                  ),
-                ],
-                SizedBox(height: batchJobCompleted ? 6 : 10),
-                Expanded(
-                  child: _buildBatchImportTab(
-                    l,
-                    showInlineControls: false,
+                      ),
+                      VerticalDivider(
+                        width: 1,
+                        thickness: 1,
+                        color: cs.outlineVariant.withValues(alpha: .45),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildBatchImportTab(
+                          l,
+                          showInlineControls: false,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -2207,22 +3048,51 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                buildImportTabsHeader(),
-                const SizedBox(height: 8),
-                _JsonCompactWorkflowIndicator(
-                  submitting: _jsonSubmitting || _jsonPromptLoading,
-                  hasGroupSelected: hasGroupSelected,
-                  activeStep: _jsonImportStep,
-                  hasPayload: _jsonPayloadController.text.trim().isNotEmpty,
-                  hasInvoiceFile:
-                      (_jsonInvoiceFileName ?? '').trim().isNotEmpty,
-                  onStepTapped: (step) =>
-                      setState(() => _jsonImportStep = step),
-                  onImport: submitExpenseJsonImport,
-                ),
-                const SizedBox(height: 10),
+                importTabsHeader,
+                if (!widget.hideImportTabs) const SizedBox(height: 8),
                 Expanded(
-                  child: _buildJsonStepRightContent(l),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      DocumentWizardRail(
+                        keyPrefix: 'expense-json-wizard',
+                        steps: jsonWizardSteps,
+                        currentStep: _jsonImportStep,
+                        selectedSectionId: null,
+                        groupExpanded: false,
+                        collapsed:
+                            constraints.maxWidth < 1120 || _jsonWizardCollapsed,
+                        expandedWidth: 208,
+                        title: l.localeName.startsWith('es')
+                            ? 'Importar JSON'
+                            : 'Import JSON',
+                        footer: jsonRailFooter(),
+                        onStepSelected: (step) {
+                          if (!canOpenJsonStep(step)) return;
+                          setState(() => _jsonImportStep = step);
+                        },
+                        onSectionSelected: (_) {},
+                        onToggleGroup: () {},
+                        onToggleCollapsed: () => setState(
+                            () => _jsonWizardCollapsed = !_jsonWizardCollapsed),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(14, 10, 8, 0),
+                                child: _buildJsonStepRightContent(l),
+                              ),
+                            ),
+                            jsonBottomActionBar(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             );
@@ -2231,32 +3101,8 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              buildImportTabsHeader(),
-              const SizedBox(height: 8),
-              _ManualCompactWorkflowIndicator(
-                fileName: _fileName,
-                fileBytes: _fileBytes,
-                submitting: _submitting,
-                hasGroupSelected: hasGroupSelected,
-                onPickFile: _pickFile,
-                onPreviewFile: (_fileName != null && _fileBytes != null)
-                    ? _previewSelectedUploadedFile
-                    : null,
-                previewCtaLabel: (() {
-                  final fileName = _fileName?.toLowerCase();
-                  if (fileName == null) return null;
-                  if (fileName.endsWith('.pdf')) return 'Abrir vista previa';
-                  if (fileName.endsWith('.png') ||
-                      fileName.endsWith('.jpg') ||
-                      fileName.endsWith('.jpeg') ||
-                      fileName.endsWith('.jpe') ||
-                      fileName.endsWith('.webp')) {
-                    return 'Ampliar imagen';
-                  }
-                  return null;
-                })(),
-              ),
-              const SizedBox(height: 10),
+              importTabsHeader,
+              if (!widget.hideImportTabs) const SizedBox(height: 8),
               Expanded(
                 child: manualWideTab,
               ),
@@ -2339,7 +3185,9 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                 padding: const EdgeInsets.all(16),
                 child: ExpenseRecentUploadsTab(
                   recentUploads: _recentUploads,
+                  loadingRecentUploads: _loadingRecentUploads,
                   onDeleteExpense: deleteRecentExpense,
+                  canDeleteExpenses: canDeleteExpenses,
                   selectedExpense: _selectedRecentExpense,
                   autoEditExpenseId: _pendingAutoEditExpenseId,
                   onAutoEditHandled: (id) {
@@ -2408,7 +3256,9 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                   children: [
                     ExpenseRecentUploadsTab(
                       recentUploads: _recentUploads,
+                      loadingRecentUploads: _loadingRecentUploads,
                       onDeleteExpense: deleteRecentExpense,
+                      canDeleteExpenses: canDeleteExpenses,
                       selectedExpense: _selectedRecentExpense,
                       autoEditExpenseId: _pendingAutoEditExpenseId,
                       onAutoEditHandled: (id) {
@@ -2471,6 +3321,10 @@ class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
   @override
   set jsonAdvancedExpanded(bool value) => _jsonAdvancedExpanded = value;
   @override
+  bool get jsonEditorFocused => _jsonEditorFocused;
+  @override
+  set jsonEditorFocused(bool value) => _jsonEditorFocused = value;
+  @override
   TextEditingController get jsonProviderIdOverrideController =>
       _jsonProviderIdOverrideController;
   @override
@@ -2502,12 +3356,25 @@ class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
   @override
   String? get batchArchiveName => _batchArchiveName;
   @override
+  bool get batchArchiveInspecting => _batchArchiveInspecting;
+  @override
+  Map<String, dynamic>? get batchArchiveInspection => _batchArchiveInspection;
+  @override
+  String? get batchArchiveInspectionError => _batchArchiveInspectionError;
+  @override
+  bool get batchArchiveFilesExpanded => _batchArchiveFilesExpanded;
+  @override
+  set batchArchiveFilesExpanded(bool value) =>
+      _batchArchiveFilesExpanded = value;
+  @override
   void clearBatchArchive() {
+    _batchArchiveInspectionToken++;
     _batchArchiveBytes = null;
     _batchArchiveName = null;
+    _batchArchiveInspecting = false;
     _batchArchiveInspection = null;
     _batchArchiveInspectionError = null;
-    _batchArchiveInspecting = false;
+    _batchArchiveFilesExpanded = false;
   }
 
   @override
@@ -2528,6 +3395,8 @@ class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
   Future<void> pickBatchJsonFile() => _pickBatchJsonFile();
   @override
   Future<void> pickBatchDocuments() => _pickBatchDocuments();
+  @override
+  Future<void> pickBatchZip() => _pickBatchZip();
   @override
   Future<void> applyBatchDocumentData(
     List<({String fileName, Uint8List fileBytes})> files, {

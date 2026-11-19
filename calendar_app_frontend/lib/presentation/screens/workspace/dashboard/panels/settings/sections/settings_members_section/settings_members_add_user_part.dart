@@ -84,13 +84,25 @@ extension _SettingsMembersAddUserPart on _SettingsMembersSectionState {
 
           final ctrl = context.watch<AddUserController>();
           final l = AppLocalizations.of(context)!;
-          final cs = Theme.of(context).colorScheme;
-
           return Stack(
             children: [
               AddUsersTab(
                 openPicker: () async {
+                  final useDialog = MediaQuery.sizeOf(context).width >= 720;
+                  if (useDialog) {
+                    await showHexoraDialog<void>(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => ChangeNotifierProvider.value(
+                        value: context.read<AddUserController>(),
+                        child: const AddUsersPickerDialog(),
+                      ),
+                    );
+                    return;
+                  }
+
                   await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
                     context: context,
                     isScrollControlled: true,
                     useSafeArea: true,
@@ -111,6 +123,7 @@ extension _SettingsMembersAddUserPart on _SettingsMembersSectionState {
                   right: 16,
                   bottom: 16,
                   child: FilledButton.icon(
+                    style: ThemedButtons.button(context),
                     onPressed: _sendingInvitations
                         ? null
                         : () => _sendSelectedInvitations(context, ctrl),
@@ -122,17 +135,6 @@ extension _SettingsMembersAddUserPart on _SettingsMembersSectionState {
                           )
                         : const Icon(Icons.check_rounded, size: 20),
                     label: Text(l.done),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: cs.primary,
-                      foregroundColor: cs.onPrimary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
                   ),
                 ),
             ],

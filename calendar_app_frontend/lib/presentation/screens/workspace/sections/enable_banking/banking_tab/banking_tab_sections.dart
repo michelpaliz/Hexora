@@ -30,10 +30,11 @@ extension _BankingTabSections on _BankingTabState {
     final defaultTo = _fmtYmd(now);
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       children: [
         FolderSectionCard(
           label: 'Bancos',
+          showTitle: false,
           leftTabOffset: 0,
           rightTabOffset: 0,
           child: Padding(

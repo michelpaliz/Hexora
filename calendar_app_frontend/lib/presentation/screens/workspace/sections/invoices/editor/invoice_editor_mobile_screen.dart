@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/invoice.dart';
@@ -273,6 +274,7 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
   }
 
   Widget _buildLinesStep() {
+    final l = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 100),
       child: AbsorbPointer(
@@ -287,6 +289,7 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
             onChanged: _c.notifyUi,
             total: _c.total,
             controller: _c,
+            saveDraftLabel: _c.editingIssued ? l.saveChanges : null,
             ocrState: _c.ocrState,
             onPickImageForLineExtraction: () =>
                 _c.extractLinesFromImage(context),
@@ -353,8 +356,6 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final fmt = NumberFormat.currency(locale: l.localeName, symbol: 'EUR ');
-
     final invoiceDate = _c.invoiceDate.value;
     final dueDate = _c.dueDate.value;
     final selectedClientName = _c.clientId == null
@@ -370,53 +371,66 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
             )
             .name;
 
+    final isEs = l.localeName.toLowerCase().startsWith('es');
+    final isDraft = !_c.editingIssued;
+    final invoiceNumberDisplay = isDraft
+        ? (isEs ? 'Pendiente de numeración' : 'Pending numbering')
+        : _c.previewInvoiceNumber;
+    final statusLabel =
+        isDraft ? (isEs ? 'Borrador' : 'Draft') : (isEs ? 'Emitida' : 'Issued');
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l.invoiceSummaryTitle,
-            style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SummaryRow(
-                  label: l.invoiceCustomerTitle,
-                  value: selectedClientName,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  selectedClientName,
+                  style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                _SummaryRow(
-                  label: l.invoiceNumberLabel,
-                  value: _c.previewInvoiceNumber,
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isDraft
+                      ? cs.surfaceContainerHighest
+                      : cs.secondaryContainer,
+                  borderRadius: BorderRadius.circular(999),
                 ),
-                if (invoiceDate != null)
-                  _SummaryRow(
-                    label: l.invoiceDateLabel,
-                    value: DateFormat.yMMMd(l.localeName).format(invoiceDate),
+                child: Text(
+                  statusLabel,
+                  style: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    color:
+                        isDraft ? cs.onSurfaceVariant : cs.onSecondaryContainer,
                   ),
-                if (dueDate != null)
-                  _SummaryRow(
-                    label: l.invoiceDueDateLabel,
-                    value: DateFormat.yMMMd(l.localeName).format(dueDate),
-                  ),
-                _SummaryRow(
-                  label: l.invoiceTotalLabel,
-                  value: fmt.format(_c.total).trim(),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
+          _SummaryRow(
+            label: l.invoiceNumberLabel,
+            value: invoiceNumberDisplay,
+          ),
+          if (invoiceDate != null)
+            _SummaryRow(
+              label: l.invoiceDateLabel,
+              value: DateFormat.yMMMd(l.localeName).format(invoiceDate),
+            ),
+          if (dueDate != null)
+            _SummaryRow(
+              label: l.invoiceDueDateLabel,
+              value: DateFormat.yMMMd(l.localeName).format(dueDate),
+            ),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -445,7 +459,7 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
                 _c.saving
                     ? l.savingLabel
                     : _c.editingIssued
-                        ? 'Guardar cambios'
+                        ? l.saveChanges
                         : l.invoiceSaveDraftCta,
               ),
             ),
@@ -560,7 +574,8 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
                   child: Form(
                     key: _c.formKey,
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 160),
+                      duration:
+                          HexoraMotion.duration(context, HexoraMotion.fast),
                       switchInCurve: Curves.easeOut,
                       switchOutCurve: Curves.easeIn,
                       child: KeyedSubtree(
@@ -638,7 +653,11 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
                               )
                             : const Icon(Icons.save_outlined, size: 18),
                         label: Text(
-                          _c.saving ? l.savingLabel : l.invoiceSaveDraftCta,
+                          _c.saving
+                              ? l.savingLabel
+                              : _c.editingIssued
+                                  ? l.saveChanges
+                                  : l.invoiceSaveDraftCta,
                         ),
                         style: FilledButton.styleFrom(
                           visualDensity: VisualDensity.compact,

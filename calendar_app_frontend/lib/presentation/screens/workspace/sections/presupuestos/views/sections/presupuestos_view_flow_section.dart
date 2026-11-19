@@ -127,6 +127,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
 
           return _presupuestosApi.createDraft(
             groupId: widget.groupId.trim(),
+            conversionTarget: _conversionTarget.apiValue,
             clientId: clientId,
             clientName: clientName,
             addressStreet: _clientAddressCtrl.text.trim(),
@@ -246,7 +247,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
       return;
     }
     if (_detailPreviewForId == id && _detailPreviewPdfBytes != null) return;
-    if (_loadingDetailPreview) return;
+    final requestSerial = ++_detailPreviewRequestSerial;
     setState(() {
       _loadingDetailPreview = true;
       _detailPreviewError = null;
@@ -255,19 +256,19 @@ extension _GroupInvoicesBudgetsViewFlowSection
     try {
       final r = await _presupuestosApi.previewPdf(id);
       final bytes = InvoiceEditorPdf.validatePdf(r);
-      if (!mounted) return;
+      if (!mounted || requestSerial != _detailPreviewRequestSerial) return;
       setState(() {
         _detailPreviewPdfBytes = bytes;
         _detailPreviewForId = id;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestSerial != _detailPreviewRequestSerial) return;
       setState(() {
         _detailPreviewError =
             e.toString().replaceFirst('Exception: ', '').trim();
       });
     } finally {
-      if (mounted) {
+      if (mounted && requestSerial == _detailPreviewRequestSerial) {
         setState(() => _loadingDetailPreview = false);
       }
     }
@@ -349,11 +350,11 @@ extension _GroupInvoicesBudgetsViewFlowSection
         }
       }
       if (!mounted) return;
-      showSuccessSnack(
+      showDocumentSavedSnack(
         context,
-        l.budgetDraftUpdatedSnackMessage,
         title: l.budgetDraftUpdatedSnackTitle,
-        actionLabel: l.invoiceDraftSnackDismiss,
+        message: l.budgetDraftUpdatedSnackMessage,
+        dismissLabel: l.invoiceDraftSnackDismiss,
       );
     } on PresupuestosApiException catch (e) {
       if (!mounted) return;
@@ -484,7 +485,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
     final initial = _issuedEditReasonCtrl.text.trim();
     final controller = TextEditingController(text: initial);
     String? errorText;
-    final result = await showDialog<String>(
+    final result = await showHexoraDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {

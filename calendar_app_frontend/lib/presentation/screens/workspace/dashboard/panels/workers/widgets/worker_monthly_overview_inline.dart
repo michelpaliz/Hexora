@@ -1,18 +1,13 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
-import 'package:hexora/presentation/screens/workspace/sections/workers/worker/monthly_overview/widgets/monthly_grid.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/monthly_overview/widgets/year_switcher.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:hexora/l10n/build_context_locale.dart';
-import 'package:intl/intl.dart';
 
 import 'month_list.dart';
-import 'text_extensions.dart';
 
 class WorkerMonthlyOverviewInline extends StatefulWidget {
   final Group group;
@@ -135,7 +130,6 @@ class _WorkerMonthlyOverviewInlineState
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final isSpanish = context.isSpanishLocale;
     final locale = Localizations.localeOf(context).toString();
     return Column(
       children: [
@@ -143,10 +137,13 @@ class _WorkerMonthlyOverviewInlineState
           child: Padding(
             padding: const EdgeInsets.only(top: 8),
             child: FolderPanel(
-              onBack: widget.onBack,
-              title: isSpanish ? 'Horas' : 'Hours',
-              contentTopPadding: 38,
+              // Back now lives inside the left column's year header (see
+              // YearSwitcher.onBack), so the panel no longer renders its own
+              // standalone toolbar row and the wasted vertical space is gone.
+              showBorder: false,
+              showToolbarDivider: false,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     flex: 3,
@@ -154,6 +151,7 @@ class _WorkerMonthlyOverviewInlineState
                       children: [
                         YearSwitcher(
                           year: _year,
+                          onBack: widget.onBack,
                           onYearChanged: (newYear) {
                             setState(() => _year = newYear);
                             _loadAllMonths();
@@ -163,49 +161,24 @@ class _WorkerMonthlyOverviewInlineState
                         Expanded(
                           child: _loading
                               ? const Center(child: CircularProgressIndicator())
-                              : (kIsWeb
-                                  ? MonthList(
-                                      year: _year,
-                                      locale: locale,
-                                      selectedMonth: _selectedMonth,
-                                      monthlyTotals: _monthlyTotals,
-                                      onTapMonth: (month) => setState(
-                                          () => _selectedMonth = month),
-                                      subtitleBuilder: (totals) {
-                                        final hours =
-                                            totals?['totalHours'] ?? '0.00';
-                                        final pay =
-                                            totals?['totalPay'] ?? '0.00';
-                                        final curr = totals?['currency'] ?? '';
-                                        return l.totalHoursAndPayFormat(
-                                          hours.toString(),
-                                          '$pay $curr',
-                                        );
-                                      },
-                                    )
-                                  : MonthGrid(
-                                      year: _year,
-                                      selectedMonth: _selectedMonth,
-                                      monthlyTotals: _monthlyTotals,
-                                      onTapMonth: (month) => setState(
-                                          () => _selectedMonth = month),
-                                      monthNameBuilder: (month) {
-                                        return DateFormat.MMMM(locale)
-                                            .format(DateTime(_year, month, 1))
-                                            .capitalize();
-                                      },
-                                      subtitleBuilder: (totals) {
-                                        final hours =
-                                            totals?['totalHours'] ?? '0.00';
-                                        final pay =
-                                            totals?['totalPay'] ?? '0.00';
-                                        final curr = totals?['currency'] ?? '';
-                                        return l.totalHoursAndPayFormat(
-                                          hours.toString(),
-                                          '$pay $curr',
-                                        );
-                                      },
-                                    )),
+                              : MonthList(
+                                  year: _year,
+                                  locale: locale,
+                                  selectedMonth: _selectedMonth,
+                                  monthlyTotals: _monthlyTotals,
+                                  onTapMonth: (month) =>
+                                      setState(() => _selectedMonth = month),
+                                  subtitleBuilder: (totals) {
+                                    final hours =
+                                        totals?['totalHours'] ?? '0.00';
+                                    final pay = totals?['totalPay'] ?? '0.00';
+                                    final curr = totals?['currency'] ?? '';
+                                    return l.totalHoursAndPayFormat(
+                                      hours.toString(),
+                                      '$pay $curr',
+                                    );
+                                  },
+                                ),
                         ),
                       ],
                     ),

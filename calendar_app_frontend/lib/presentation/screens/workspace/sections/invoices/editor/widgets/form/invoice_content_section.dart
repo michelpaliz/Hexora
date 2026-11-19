@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/gestures.dart';
 import 'package:hexora/models/invoice/invoice_block.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
@@ -9,6 +10,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/blocks_table_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/widgets/lines_json_import_panel.dart';
+import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -67,6 +69,9 @@ class InvoiceContentSection extends StatefulWidget {
   final Future<void> Function()? onPickImageForLineExtraction;
   final VoidCallback? onApplyExtractedLines;
   final VoidCallback? onClearExtractedLines;
+  final String? contentMode;
+  final ValueChanged<String>? onContentModeChanged;
+  final bool showModeTabs;
 
   const InvoiceContentSection({
     super.key,
@@ -100,6 +105,9 @@ class InvoiceContentSection extends StatefulWidget {
     this.onPickImageForLineExtraction,
     this.onApplyExtractedLines,
     this.onClearExtractedLines,
+    this.contentMode,
+    this.onContentModeChanged,
+    this.showModeTabs = true,
   });
 
   @override
@@ -171,6 +179,15 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
   }
 
   bool _isToolSectionExpanded(String id) => _toolSectionExpanded[id] ?? true;
+
+  String get _activeContentMode => widget.contentMode ?? _contentMode;
+
+  void _selectContentMode(String mode) {
+    if (widget.contentMode == null) {
+      setState(() => _contentMode = mode);
+    }
+    widget.onContentModeChanged?.call(mode);
+  }
 
   void _toggleToolSection(String id) {
     setState(() {
@@ -396,7 +413,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
       final example = cap.example.resolve(currentLang).trim();
 
       Future<void> showDetails() {
-        return showDialog<void>(
+        return showHexoraDialog<void>(
           context: context,
           builder: (dialogContext) {
             return AlertDialog(
@@ -670,7 +687,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
       final isSpanish = currentLang.startsWith('es');
 
       Future<void> showDiscountInfo() {
-        return showDialog<void>(
+        return showHexoraDialog<void>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: Text(isSpanish ? 'Descuento' : 'Discount'),
@@ -931,7 +948,8 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
       required bool selected,
     }) {
       return InkWell(
-        onTap: () => setState(() => _contentMode = id),
+        key: ValueKey('invoice-content-mode-$id'),
+        onTap: () => _selectContentMode(id),
         borderRadius: BorderRadius.circular(10),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1010,24 +1028,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
       return const InvoiceJsonImportUnavailablePanel();
     }
 
-    Widget buildContentBody() {
-      if (_contentMode == 'photo') {
-        return widget.photoExtractionPanel ??
-            InvoicePhotoExtractPanel(
-              state: widget.ocrState,
-              controller: widget.controller,
-              hasImagePreview:
-                  widget.controller?.hasLastOcrImagePreview ?? false,
-              onPreviewImage: null,
-              onPickImage: widget.onPickImageForLineExtraction,
-              onApply: widget.onApplyExtractedLines,
-              onClear: widget.onClearExtractedLines,
-            );
-      }
-      if (_contentMode == 'json') {
-        return buildJsonPanel();
-      }
-
+    Widget buildManualContent() {
       final blocksPanel = Column(
         children: [
           BlocksTableEditor(
@@ -1039,7 +1040,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
             availableBlockTypes: availableBlockTypes,
           ),
           if (widget.controller != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             InvoicePaymentEditor(
               invoice: widget.controller!.paymentEditorInvoice,
               compact: true,
@@ -1048,7 +1049,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
               onSave: (_) async {},
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Row(
             children: [
               if (widget.showSaveDraftButton)
@@ -1078,7 +1079,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
               ),
               const SizedBox(width: 12),
               Text(
-                NumberFormat.simpleCurrency(name: '').format(widget.total),
+                '${formatMoneyEu(widget.total, fallback: '0,00')} €',
                 style: t.titleLarge.copyWith(
                   fontWeight: FontWeight.w900,
                   color: cs.onSurface,
@@ -1093,7 +1094,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
         ),
         child: Column(
@@ -1160,7 +1161,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   actionsPanel,
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   blocksPanel,
                 ],
               ),
@@ -1238,38 +1239,69 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
     }
 
     // ── Layout ────────────────────────────────────────────────────────────────
+    final activeMode = _activeContentMode;
+    final activeModeIndex = switch (activeMode) {
+      'photo' => 1,
+      'json' => 2,
+      _ => 0,
+    };
+    final photoContent = widget.photoExtractionPanel ??
+        InvoicePhotoExtractPanel(
+          state: widget.ocrState,
+          controller: widget.controller,
+          hasImagePreview: widget.controller?.hasLastOcrImagePreview ?? false,
+          onPreviewImage: null,
+          onPickImage: widget.onPickImageForLineExtraction,
+          onApply: widget.onApplyExtractedLines,
+          onClear: widget.onClearExtractedLines,
+        );
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 16, 8, 16),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 10),
-          Center(
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
+          if (widget.showModeTabs) ...[
+            const SizedBox(height: 4),
+            Center(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  modeTab(
+                    id: 'manual',
+                    label: 'Manual',
+                    selected: activeMode == 'manual',
+                  ),
+                  modeTab(
+                    id: 'photo',
+                    label: l.localeName.startsWith('es')
+                        ? 'Foto e IA'
+                        : 'Photo & AI',
+                    selected: activeMode == 'photo',
+                  ),
+                  modeTab(
+                    id: 'json',
+                    label: 'JSON',
+                    selected: activeMode == 'json',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          Expanded(
+            child: IndexedStack(
+              index: activeModeIndex,
+              sizing: StackFit.expand,
               children: [
-                modeTab(
-                  id: 'manual',
-                  label: 'Manual',
-                  selected: _contentMode == 'manual',
-                ),
-                modeTab(
-                  id: 'photo',
-                  label: l.localeName.startsWith('es') ? 'Foto e IA' : 'Photo & AI',
-                  selected: _contentMode == 'photo',
-                ),
-                modeTab(
-                  id: 'json',
-                  label: 'JSON',
-                  selected: _contentMode == 'json',
-                ),
+                buildManualContent(),
+                photoContent,
+                buildJsonPanel(),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          Expanded(child: buildContentBody()),
         ],
       ),
     );

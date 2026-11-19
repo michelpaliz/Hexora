@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/service_catalog/service.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
 
 import '../../widgets/common_views.dart';
+import '../../widgets/search_filters_header.dart';
 import 'service_list_item.dart';
 
 class ServicesTab extends StatefulWidget {
@@ -71,31 +73,31 @@ class _ServicesTabState extends State<ServicesTab> {
     }
 
     return Column(children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-        child: TextField(
-          controller: _search,
-          onChanged: (value) =>
-              setState(() => _query = value.trim().toLowerCase()),
-          decoration: InputDecoration(
-            hintText: l.localeName.startsWith('es')
-                ? 'Buscar servicios…'
-                : 'Search services…',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _search.text.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: l.localeName.startsWith('es')
-                        ? 'Borrar búsqueda'
-                        : 'Clear search',
-                    icon: const Icon(Icons.close),
-                    onPressed: () => setState(() {
-                      _search.clear();
-                      _query = '';
-                    }),
-                  ),
-          ),
+      SearchFiltersHeader(
+        searchController: _search,
+        onSearchChanged: () => setState(
+          () => _query = _search.text.trim().toLowerCase(),
         ),
+        searchHint: l.localeName.startsWith('es')
+            ? 'Buscar servicios…'
+            : 'Search services…',
+        clearSearchTooltip:
+            l.localeName.startsWith('es') ? 'Borrar búsqueda' : 'Clear search',
+        hasFilterOptions: false,
+        hasActiveFilters: false,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+        searchDesktopHeight: 34,
+        topSpacing: 0,
+        trailingActions: [
+          HexoraButton.iconOnly(
+            key: const ValueKey('service-refresh-control'),
+            tooltip: l.refresh,
+            onPressed: loading ? null : onRefresh,
+            icon: Icons.refresh_rounded,
+            variant: HexoraButtonVariant.ghost,
+            size: HexoraButtonSize.standard,
+          ),
+        ],
       ),
       if (items.isEmpty)
         Expanded(
@@ -110,9 +112,9 @@ class _ServicesTabState extends State<ServicesTab> {
           backgroundColor: cs.surface,
           onRefresh: onRefresh,
           child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (_, __) => const SizedBox.shrink(),
             itemBuilder: (_, i) {
               final s = items[i];
               return ServiceListItem(

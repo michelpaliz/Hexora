@@ -1,3 +1,4 @@
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/themes/mobile_theme.dart';
 import 'package:hexora/navigation/fab/contextual_fab.dart';
@@ -52,8 +53,9 @@ class MainScaffold extends StatelessWidget {
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               scrolledUnderElevation: 0,
-              toolbarHeight:
-                  MobileTheme.isActive(context) ? kToolbarHeight : 72,
+              toolbarHeight: MobileTheme.isActive(context)
+                  ? kToolbarHeight
+                  : HexoraDimensions.toolbar,
               titleSpacing: 16,
               centerTitle: centerTitle ?? false,
               leading: leading,

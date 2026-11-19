@@ -3,7 +3,30 @@ import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/clients_search_filters.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+
+enum _SavedClientEmailState { valid, missing, invalid }
+
+class _SavedClientEmail {
+  const _SavedClientEmail(this.value, this.state);
+
+  final String value;
+  final _SavedClientEmailState state;
+}
+
+@immutable
+class ClientUnsentDocumentCounts {
+  const ClientUnsentDocumentCounts({
+    this.invoices = 0,
+    this.receipts = 0,
+  });
+
+  final int invoices;
+  final int receipts;
+
+  int get total => invoices + receipts;
+}
 
 class ClientSearchSelect extends StatefulWidget {
   final List<GroupClient> clients;
@@ -13,6 +36,15 @@ class ClientSearchSelect extends StatefulWidget {
   final String defaultPropertyKind;
   final double maxListHeight;
   final bool showAdvancedFilters;
+  final bool compact;
+  final Map<String, ClientUnsentDocumentCounts> unsentDocumentCounts;
+  final bool unsentDocumentCountsLoading;
+  final String? unsentDocumentCountsError;
+  final double searchDesktopHeight;
+  final TextEditingController? searchController;
+  final bool flatRows;
+  final bool compactToolbar;
+  final bool showVisibleCount;
 
   const ClientSearchSelect({
     super.key,
@@ -23,6 +55,15 @@ class ClientSearchSelect extends StatefulWidget {
     this.defaultPropertyKind = '',
     this.maxListHeight = 520,
     this.showAdvancedFilters = true,
+    this.compact = false,
+    this.unsentDocumentCounts = const {},
+    this.unsentDocumentCountsLoading = false,
+    this.unsentDocumentCountsError,
+    this.searchDesktopHeight = 36,
+    this.searchController,
+    this.flatRows = false,
+    this.compactToolbar = false,
+    this.showVisibleCount = false,
   });
 
   @override
@@ -30,14 +71,18 @@ class ClientSearchSelect extends StatefulWidget {
 }
 
 class _ClientSearchSelectState extends State<ClientSearchSelect> {
-  final TextEditingController _searchCtrl = TextEditingController();
+  late final TextEditingController _searchCtrl;
+  late final bool _ownsSearchController;
   bool _showInactive = false;
   String? _entityFilter;
   String? _propertyFilter;
+  bool _onlyWithUnsentDocuments = false;
 
   @override
   void initState() {
     super.initState();
+    _searchCtrl = widget.searchController ?? TextEditingController();
+    _ownsSearchController = widget.searchController == null;
     _syncDefaultPropertyFilter();
   }
 
@@ -53,9 +98,7 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
 
   String? _resolveDefaultPropertyKind() {
     if (!widget.useDefaultPropertyKind) return null;
-    final match = widget.clients
-        .map((c) => (c.effectivePropertyType ?? '').trim())
-        .firstWhere(
+    final match = widget.clients.map(_propertyTypeValue).firstWhere(
           (v) => v.toLowerCase() == widget.defaultPropertyKind,
           orElse: () => '',
         );
@@ -88,7 +131,7 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
 
   @override
   void dispose() {
-    _searchCtrl.dispose();
+    if (_ownsSearchController) _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -98,12 +141,83 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
     final haystack = <String>[
       c.name,
       c.email ?? '',
+      c.billing?.email ?? '',
       c.phone ?? '',
       c.billing?.legalName ?? '',
+      c.pdfAlias ?? '',
       clientClassificationLabel(c.effectiveCustomerType ?? ''),
       clientClassificationLabel(c.effectivePropertyType ?? ''),
+      c.effectivePropertyRelationship ?? '',
+      c.entityType ?? '',
+      c.propertyKind ?? '',
     ].join(' ').toLowerCase();
     return haystack.contains(q);
+  }
+
+  String _customerTypeValue(GroupClient client) =>
+      (client.effectiveCustomerType ?? client.entityType ?? '').trim();
+
+  String _propertyTypeValue(GroupClient client) =>
+      (client.effectivePropertyType ?? client.propertyKind ?? '').trim();
+
+  // Kept for compatibility with older call sites during migration.
+  // ignore: unused_element
+  String _classificationLabel(String value) =>
+      {
+        'particular': 'Particular',
+        'community': 'Comunidad de propietarios',
+        'company': 'Empresa',
+        'chalet': 'Chalet',
+        'apartment': 'Apartamento',
+        'building': 'Edificio / Urbanización',
+        'hotel': 'Hotel',
+        'commercial_premises': 'Local comercial',
+        'owner': 'Propietario',
+        'administrator': 'Administrador',
+        'tenant': 'Inquilino',
+        'other': 'Otro',
+      }[value.toLowerCase()] ??
+      value;
+
+  _SavedClientEmail _savedEmail(GroupClient client) {
+    final candidates = <String>[
+      (client.billing?.email ?? '').trim(),
+      (client.email ?? '').trim(),
+    ];
+    final emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+    for (final candidate in candidates) {
+      if (candidate.isNotEmpty && emailPattern.hasMatch(candidate)) {
+        return _SavedClientEmail(candidate, _SavedClientEmailState.valid);
+      }
+    }
+    String? invalid;
+    for (final candidate in candidates) {
+      if (candidate.isNotEmpty) {
+        invalid = candidate;
+        break;
+      }
+    }
+    return invalid == null
+        ? const _SavedClientEmail('', _SavedClientEmailState.missing)
+        : _SavedClientEmail(invalid, _SavedClientEmailState.invalid);
+  }
+
+  String _unsentSummary(
+    ClientUnsentDocumentCounts counts, {
+    required bool isSpanish,
+  }) {
+    String invoices() => isSpanish
+        ? '${counts.invoices} ${counts.invoices == 1 ? 'factura' : 'facturas'}'
+        : '${counts.invoices} ${counts.invoices == 1 ? 'invoice' : 'invoices'}';
+    String receipts() => isSpanish
+        ? '${counts.receipts} ${counts.receipts == 1 ? 'recibo' : 'recibos'}'
+        : '${counts.receipts} ${counts.receipts == 1 ? 'receipt' : 'receipts'}';
+
+    final documents = <String>[
+      if (counts.invoices > 0) invoices(),
+      if (counts.receipts > 0) receipts(),
+    ].join(' · ');
+    return isSpanish ? '$documents sin enviar' : '$documents unsent';
   }
 
   @override
@@ -111,32 +225,32 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isSpanish = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
     final entityOptions = widget.showAdvancedFilters
-        ? (widget.clients
-          .map((c) => (c.effectiveCustomerType ?? '').trim())
-          .where((v) => v.isNotEmpty)
-          .toSet()
-          .toList()
-          ..sort())
+        ? sortedClientClassificationOptions(
+            widget.clients.map(_customerTypeValue),
+          )
         : const <String>[];
     final propertyOptions = widget.showAdvancedFilters
-        ? (widget.clients
-          .map((c) => (c.effectivePropertyType ?? '').trim())
-          .where((v) => v.isNotEmpty)
-          .toSet()
-          .toList()
-          ..sort())
+        ? sortedClientClassificationOptions(
+            widget.clients.map(_propertyTypeValue),
+          )
         : const <String>[];
     final filtered = widget.clients.where((c) {
       if (!_showInactive && c.isActive == false) return false;
       if ((_entityFilter ?? '').trim().isNotEmpty &&
-          (c.effectiveCustomerType ?? '').trim() !=
-              (_entityFilter ?? '').trim()) {
+          _customerTypeValue(c) != (_entityFilter ?? '').trim()) {
         return false;
       }
       if ((_propertyFilter ?? '').trim().isNotEmpty &&
-          (c.effectivePropertyType ?? '').trim() !=
-              (_propertyFilter ?? '').trim()) {
+          _propertyTypeValue(c) != (_propertyFilter ?? '').trim()) {
+        return false;
+      }
+      if (_onlyWithUnsentDocuments &&
+          (widget.unsentDocumentCounts[c.id]?.total ?? 0) == 0) {
         return false;
       }
       return _matchesSearch(c);
@@ -153,56 +267,200 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
           )
         : ListView.separated(
             itemCount: filtered.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 4),
+            separatorBuilder: (_, __) => widget.flatRows
+                ? Divider(
+                    height: 1,
+                    indent: 44,
+                    color: cs.outlineVariant.withValues(alpha: 0.28),
+                  )
+                : const SizedBox(height: 4),
             itemBuilder: (_, i) {
               final client = filtered[i];
               final selected = client.id == widget.selectedClientId;
+              final savedEmail = _savedEmail(client);
+              final email = savedEmail.state == _SavedClientEmailState.valid
+                  ? savedEmail.value
+                  : '';
+              final unsent = widget.unsentDocumentCounts[client.id];
+              final hasUnsent = (unsent?.total ?? 0) > 0;
+              final rawAlias = (client.pdfAlias ?? '').trim();
+              // The alias is only useful when it tells us something the name
+              // doesn't; otherwise it is a visible duplicate of the title.
+              final alias =
+                  rawAlias.toLowerCase() == client.name.trim().toLowerCase()
+                      ? ''
+                      : rawAlias;
+              final propertyType = _propertyTypeValue(client);
               final meta = <String>[
-                if ((client.email ?? '').isNotEmpty) client.email!,
+                if (alias.isNotEmpty) alias,
+                if (email.isNotEmpty) email,
                 if ((client.phone ?? '').isNotEmpty) client.phone!,
-                if ((client.effectivePropertyType ?? '').isNotEmpty)
-                  clientClassificationLabel(client.effectivePropertyType!),
+                if (propertyType.isNotEmpty)
+                  clientClassificationLabel(propertyType),
               ].join(' - ');
-              return ListItemCard(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                leading: CircleAvatar(
-                  radius: 14,
-                  backgroundColor: cs.primary.withValues(alpha: 0.1),
-                  child: Text(
-                    client.name.trim().isEmpty
-                        ? '?'
-                        : client.name.trim()[0].toUpperCase(),
-                    style: t.bodySmall.copyWith(
-                      fontSize: 11,
-                      color: cs.primary,
-                      fontWeight: FontWeight.w800,
+              return ConstrainedBox(
+                key: ValueKey('client-select-row-${client.id}'),
+                constraints: BoxConstraints(
+                  // 48 px keeps rows inside the compact target without
+                  // clipping the two-line secondary in warning states.
+                  minHeight: widget.compactToolbar ? 48 : 56,
+                ),
+                child: ListItemCard(
+                  flat: widget.flatRows,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: widget.compact ? 3 : 5,
+                  ),
+                  leading: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: cs.primary.withValues(alpha: 0.1),
+                    child: Text(
+                      client.name.trim().isEmpty
+                          ? '?'
+                          : client.name.trim()[0].toUpperCase(),
+                      style: t.bodySmall.copyWith(
+                        fontSize: 11,
+                        color: cs.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
+                  titleWidget: widget.compact
+                      ? _CompactClientIdentity(
+                          name: client.name,
+                          alias: alias,
+                          email: email,
+                          emailWarning: switch (savedEmail.state) {
+                            _SavedClientEmailState.missing => isSpanish
+                                ? 'Sin correo registrado'
+                                : 'No email registered',
+                            _SavedClientEmailState.invalid =>
+                              isSpanish ? 'Correo no válido' : 'Invalid email',
+                            _SavedClientEmailState.valid => null,
+                          },
+                        )
+                      : Tooltip(
+                          message: client.name,
+                          child: Text(
+                            client.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.bodySmall.copyWith(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                        ),
+                  titleStyle: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    color: cs.onSurface,
+                  ),
+                  subtitleWidget: (widget.compact || meta.isEmpty) && !hasUnsent
+                      ? null
+                      : widget.compact
+                          ? Row(
+                              children: [
+                                Icon(
+                                  Icons.mark_email_unread_outlined,
+                                  size: 12,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Tooltip(
+                                    message: isSpanish
+                                        ? 'Documentos sin enviar disponibles según los datos actuales del negocio'
+                                        : 'Unsent documents available from current business data',
+                                    child: Text(
+                                      _unsentSummary(
+                                        unsent!,
+                                        isSpanish: isSpanish,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: t.bodySmall.copyWith(
+                                        fontFamily: 'Inter',
+                                        fontSize: 11,
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (meta.isNotEmpty)
+                                  Tooltip(
+                                    message: meta,
+                                    child: Text(
+                                      meta,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: t.bodySmall.copyWith(
+                                        fontSize: 10,
+                                        color: cs.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                if (hasUnsent)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 1),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.mark_email_unread_outlined,
+                                          size: 12,
+                                          color: cs.onSurfaceVariant,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Tooltip(
+                                            message: isSpanish
+                                                ? 'Documentos sin enviar disponibles según los datos actuales del negocio'
+                                                : 'Unsent documents available from current business data',
+                                            child: Text(
+                                              _unsentSummary(
+                                                unsent!,
+                                                isSpanish: isSpanish,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: t.bodySmall.copyWith(
+                                                fontFamily: 'Inter',
+                                                fontSize: 11,
+                                                color: cs.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                  subtitleStyle: t.bodySmall.copyWith(
+                    fontSize: 10,
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  selected: selected,
+                  showLeadingStripe: false,
+                  borderRadius: BorderRadius.circular(8),
+                  trailing: selected
+                      ? Icon(
+                          Icons.check_circle_rounded,
+                          color: cs.primary,
+                          size: 18,
+                        )
+                      : null,
+                  onTap: () => widget.onClientChanged(client.id),
                 ),
-                title: client.name,
-                titleStyle: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                  color: cs.onSurface,
-                ),
-                subtitle: meta.isEmpty ? null : meta,
-                subtitleStyle: t.bodySmall.copyWith(
-                  fontSize: 10,
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-                selected: selected,
-                showLeadingStripe: true,
-                borderRadius: BorderRadius.circular(8),
-                trailing: selected
-                    ? Icon(
-                        Icons.check_circle_rounded,
-                        color: cs.primary,
-                        size: 18,
-                      )
-                    : null,
-                onTap: () => widget.onClientChanged(client.id),
               );
             },
           );
@@ -219,6 +477,18 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (widget.showVisibleCount && !widget.compactToolbar)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  '${filtered.length} ${isSpanish ? (filtered.length == 1 ? 'cliente' : 'clientes') : (filtered.length == 1 ? 'client' : 'clients')}',
+                  key: const ValueKey('client-search-visible-count'),
+                  style: t.bodySmall.copyWith(
+                    fontSize: 11,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ),
             Theme(
               data: Theme.of(context).copyWith(
                 chipTheme: ChipTheme.of(context).copyWith(
@@ -238,7 +508,28 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                 searchController: _searchCtrl,
                 onSearchChanged: () => setState(() {}),
                 searchHint: l.clientSearchHint,
+                clearFiltersLabel: widget.compactToolbar
+                    ? (isSpanish ? 'Limpiar filtros' : 'Clear filters')
+                    : null,
                 padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+                trailingActions: widget.showVisibleCount &&
+                        widget.compactToolbar
+                    ? [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Text(
+                            '${filtered.length} ${isSpanish ? (filtered.length == 1 ? 'cliente' : 'clientes') : (filtered.length == 1 ? 'client' : 'clients')}',
+                            key: const ValueKey('client-search-visible-count'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.bodySmall.copyWith(
+                              fontSize: 11,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ]
+                    : const [],
                 clientsForCounts:
                     widget.showAdvancedFilters ? widget.clients : null,
                 activeCountLabel:
@@ -254,11 +545,11 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                     widget.showAdvancedFilters ? l.hideInactiveClients : null,
                 inactiveLabelOff:
                     widget.showAdvancedFilters ? l.showInactiveClients : null,
-                entityLabel:
-                    widget.showAdvancedFilters ? 'Tipo de cliente' : null,
+                entityLabel: widget.showAdvancedFilters
+                    ? (isSpanish ? 'Tipo de cliente' : 'Client type')
+                    : null,
                 entityOptions: entityOptions,
-                entityFilter:
-                    widget.showAdvancedFilters ? _entityFilter : null,
+                entityFilter: widget.showAdvancedFilters ? _entityFilter : null,
                 onToggleEntity: widget.showAdvancedFilters
                     ? (v) => setState(() => _entityFilter = v)
                     : null,
@@ -266,7 +557,7 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                     ? () => setState(() => _entityFilter = null)
                     : null,
                 propertyLabel: widget.showAdvancedFilters
-                    ? 'Tipo de inmueble'
+                    ? (isSpanish ? 'Tipo de inmueble' : 'Property type')
                     : null,
                 propertyOptions: propertyOptions,
                 propertyFilter:
@@ -284,13 +575,169 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                           _showInactive = false;
                           _entityFilter = null;
                           _propertyFilter = defaultKind;
+                          _onlyWithUnsentDocuments = false;
                         });
                       }
                     : null,
+                additionalFilters: widget.showAdvancedFilters
+                    ? CheckboxListTile(
+                        key: const ValueKey(
+                            'client-filter-with-unsent-documents'),
+                        value: _onlyWithUnsentDocuments,
+                        onChanged: widget.unsentDocumentCountsLoading
+                            ? null
+                            : (value) => setState(() =>
+                                _onlyWithUnsentDocuments = value ?? false),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        visualDensity: VisualDensity.compact,
+                        secondary: widget.unsentDocumentCountsLoading
+                            ? const SizedBox.square(
+                                dimension: 14,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : (widget.unsentDocumentCountsError ?? '')
+                                    .trim()
+                                    .isNotEmpty
+                                ? Tooltip(
+                                    message: widget.unsentDocumentCountsError!,
+                                    child: Icon(Icons.info_outline_rounded,
+                                        size: 16, color: cs.onSurfaceVariant),
+                                  )
+                                : null,
+                        title: Text(
+                          isSpanish
+                              ? 'Con documentos sin enviar'
+                              : 'With unsent documents',
+                          style: t.bodySmall.copyWith(fontSize: 12),
+                        ),
+                      )
+                    : null,
+                extraActiveFilterCount: _onlyWithUnsentDocuments ? 1 : 0,
+                moveSummaryIntoFilters: widget.compact,
+                searchDesktopHeight: widget.searchDesktopHeight,
+                searchMaxWidth: widget.compactToolbar ? double.infinity : 450,
+                topSpacing: widget.compactToolbar ? 0 : 6,
+                summaryInToolbar: widget.compactToolbar,
+                filtersInMenu: widget.compactToolbar,
+                additionalFiltersInFilterBody: widget.compactToolbar,
+                compactSummary: widget.compactToolbar,
               ),
             ),
-            const SizedBox(height: 6),
+            SizedBox(
+              height: widget.compactToolbar
+                  ? 4
+                  : widget.compact
+                      ? 2
+                      : 6,
+            ),
             listSlot,
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _CompactClientIdentity extends StatelessWidget {
+  const _CompactClientIdentity({
+    required this.name,
+    required this.alias,
+    required this.email,
+    required this.emailWarning,
+  });
+
+  final String name;
+  final String alias;
+  final String email;
+  final String? emailWarning;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final nameWidget = Tooltip(
+      message: name,
+      child: Text(
+        name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: t.bodySmall.copyWith(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+          color: cs.onSurface,
+        ),
+      ),
+    );
+    final warning = (emailWarning ?? '').trim();
+    // Prefer alias when it adds information beyond the name; otherwise show
+    // the saved email. Never surface a secondary that is literally the name.
+    final cleanAlias =
+        alias.trim().toLowerCase() == name.trim().toLowerCase() ? '' : alias;
+    final secondaryValue = cleanAlias.isNotEmpty ? cleanAlias : email;
+    final secondaryWidget = warning.isNotEmpty && cleanAlias.isEmpty
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 13,
+                color: ThemeColors.warning(context),
+              ),
+              const SizedBox(width: 3),
+              Text(
+                warning,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall.copyWith(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  color: ThemeColors.warning(context),
+                ),
+              ),
+            ],
+          )
+        : Tooltip(
+            message: secondaryValue,
+            child: Text(
+              secondaryValue,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.bodySmall.copyWith(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 10,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+          );
+    if (secondaryValue.isEmpty && warning.isEmpty) return nameWidget;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 260) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              nameWidget,
+              const SizedBox(height: 1),
+              secondaryWidget,
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Flexible(child: nameWidget),
+            const SizedBox(width: 10),
+            if (warning.isNotEmpty && cleanAlias.isEmpty)
+              secondaryWidget
+            else
+              Flexible(child: secondaryWidget),
           ],
         );
       },

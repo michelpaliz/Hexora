@@ -43,7 +43,8 @@ class InsightsChatSheet extends StatefulWidget {
 }
 
 class _InsightsChatSheetState extends InsightsChatSheetStateBase
-    with InsightsSendActions,
+    with
+        InsightsSendActions,
         InsightsLinkedIncomeReview,
         InsightsEventAssistant,
         InsightsRemoteTableData,
@@ -63,8 +64,7 @@ class _InsightsChatSheetState extends InsightsChatSheetStateBase
         InsightsTableView,
         InsightsComposer,
         InsightsEventPreviewUi,
-        InsightsChatSheetShell
- {
+        InsightsChatSheetShell {
   @override
   void initState() {
     super.initState();
@@ -98,6 +98,7 @@ class _InsightsChatSheetState extends InsightsChatSheetStateBase
 
   @override
   void dispose() {
+    closeInlineSurface(notify: false);
     runtime.removeListener(onRuntimeChanged);
     runtime.setSheetOpen(false, notify: false);
     inputCtrl.dispose();

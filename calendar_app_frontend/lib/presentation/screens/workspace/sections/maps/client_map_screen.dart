@@ -1,7 +1,13 @@
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'dart:async';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -12,6 +18,7 @@ import 'package:hexora/services/maps/maps_api.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/geofenced_visits_view.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -72,6 +79,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
   late final MapsApi _mapsApi;
   late final ClientsApi _clientsApi;
   final _clientFilter = TextEditingController();
+  final _clientListScroll = ScrollController();
   final _addressSearch = TextEditingController();
   final _labelController = TextEditingController();
 
@@ -101,8 +109,13 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
   Timer? _tokenTimer;
   Timer? _reverseGeocodeTimer;
   Timer? _mapReadyTimer;
+  Timer? _workerLocationTimer;
+  List<WorkerLiveLocation> _workerLocations = const <WorkerLiveLocation>[];
   late _MapSection _section;
   bool _sideMenuCollapsed = false;
+  bool _clientPanelCollapsed = false;
+  double _panelWidth = 360;
+  String _locationFilter = 'all';
 
   bool get _isSpanish =>
       Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
@@ -121,7 +134,9 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     _tokenTimer?.cancel();
     _reverseGeocodeTimer?.cancel();
     _mapReadyTimer?.cancel();
+    _workerLocationTimer?.cancel();
     _clientFilter.dispose();
+    _clientListScroll.dispose();
     _addressSearch.dispose();
     _labelController.dispose();
     super.dispose();
@@ -152,21 +167,31 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
               .list(groupId: widget.group.id, active: true)
               .catchError((_) => <GroupClient>[])
           : Future<List<GroupClient>>.value(const <GroupClient>[]);
+      final workerLocationsFuture = widget.canEdit
+          ? timeTrackingApi
+              .getActiveWorkerLocations(widget.group.id, authToken)
+              .catchError((_) => <WorkerLiveLocation>[])
+          : Future<List<WorkerLiveLocation>>.value(
+              const <WorkerLiveLocation>[]);
       final results = await Future.wait<dynamic>(<Future<dynamic>>[
         _mapsApi.getToken(forceRefresh: true),
         clientsFuture,
         timeTrackingApi.getClientLocations(widget.group.id, authToken),
+        workerLocationsFuture,
       ]);
       if (!mounted) return;
       final mapToken = results[0] as AzureMapsToken;
       final clients = results[1] as List<GroupClient>;
       final locations = results[2] as List<ClientServiceLocation>;
+      final workerLocs = results[3] as List<WorkerLiveLocation>;
       setState(() {
         _mapToken = mapToken;
         _clients = clients;
         _locations = _mergeLocations(clients, locations);
+        _workerLocations = workerLocs;
         if (needsFreshMap) _mapGeneration++;
       });
+      _startWorkerLocationPolling();
       _scheduleTokenRefresh(mapToken);
       if (needsFreshMap) _startMapReadyTimeout();
       if (!_autoLocationRequested) {
@@ -254,17 +279,51 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     }
   }
 
-  List<AzureMapPin> get _pins => _locations
-      .map(
-        (location) => AzureMapPin(
-          id: location.clientId,
-          title: _clientName(location.clientId, location.clientName),
-          latitude: location.latitude,
-          longitude: location.longitude,
-          radiusMeters: location.radiusMeters,
-        ),
-      )
-      .toList(growable: false);
+  void _startWorkerLocationPolling() {
+    _workerLocationTimer?.cancel();
+    if (!widget.canEdit) return;
+    _workerLocationTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _refreshWorkerLocations(),
+    );
+  }
+
+  Future<void> _refreshWorkerLocations() async {
+    if (!mounted) return;
+    try {
+      final userDomain = context.read<UserDomain>();
+      final api = context.read<ITimeTrackingApiClient>();
+      final token = await userDomain.getAuthToken();
+      final locs = await api.getActiveWorkerLocations(widget.group.id, token);
+      if (!mounted) return;
+      setState(() => _workerLocations = locs);
+    } catch (_) {
+      // Silently ignore — stale data is better than crashing the map.
+    }
+  }
+
+  List<AzureMapPin> get _pins {
+    final clientPins = _locations.map(
+      (location) => AzureMapPin(
+        id: location.clientId,
+        title: _clientName(location.clientId, location.clientName),
+        latitude: location.latitude,
+        longitude: location.longitude,
+        radiusMeters: location.radiusMeters,
+      ),
+    );
+    final workerPins = _workerLocations.map(
+      (w) => AzureMapPin(
+        id: 'worker-${w.workerId}',
+        title: w.workerName,
+        latitude: w.latitude,
+        longitude: w.longitude,
+        radiusMeters: 0,
+        type: AzureMapPinType.worker,
+      ),
+    );
+    return [...clientPins, ...workerPins];
+  }
 
   List<ClientServiceLocation> _mergeLocations(
     List<GroupClient> clients,
@@ -297,9 +356,14 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
 
   List<GroupClient> get _filteredClients {
     final query = _clientFilter.text.trim().toLowerCase();
-    if (query.isEmpty) return _clients;
     return _clients
-        .where((client) => client.name.toLowerCase().contains(query))
+        .where((client) =>
+            client.name.toLowerCase().contains(query) &&
+            (_locationFilter == 'all' ||
+                (_locationFilter == 'located' &&
+                    _locationFor(client.id) != null) ||
+                (_locationFilter == 'missing' &&
+                    _locationFor(client.id) == null)))
         .toList(growable: false);
   }
 
@@ -334,6 +398,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     if (client == null || location == null) return;
     setState(() {
       _selectedClient = client;
+      _clientPanelCollapsed = false;
       _editing = false;
       _selection = null;
       _resolvedAddress = location.label;
@@ -344,11 +409,17 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
         requestId: ++_cameraRequestId,
       );
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _clientListScroll.hasClients) {
+        _clientListScroll.animateTo(0,
+            duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+      }
+    });
   }
 
   Future<void> _chooseClient() async {
     if (!widget.canEdit || _clients.isEmpty) return;
-    final selected = await showDialog<GroupClient>(
+    final selected = await showHexoraDialog<GroupClient>(
       context: context,
       builder: (dialogContext) => _ClientPickerDialog(
         clients: _clients,
@@ -452,7 +523,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       if (autoSelectFirst || results.length == 1) {
         selected = results.first;
       } else {
-        selected = await showDialog<AzureMapSearchResult>(
+        selected = await showHexoraDialog<AzureMapSearchResult>(
           context: context,
           builder: (context) => AlertDialog(
             title: Text(_isSpanish ? 'Elegir dirección' : 'Choose address'),
@@ -626,7 +697,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
 
   Future<void> _removeLocation(GroupClient client) async {
     if (_removingLocation) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(
@@ -642,12 +713,10 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             onPressed: () => Navigator.pop(dialogContext, false),
             child: Text(_isSpanish ? 'Cancelar' : 'Cancel'),
           ),
-          FilledButton(
+          HexoraButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: Text(_isSpanish ? 'Eliminar' : 'Remove'),
+            label: _isSpanish ? 'Eliminar' : 'Remove',
+            variant: HexoraButtonVariant.danger,
           ),
         ],
       ),
@@ -716,18 +785,18 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                 : _buildMapHub(token);
 
     if (widget.embedded) {
-      return Padding(
-        padding: const EdgeInsets.all(4),
-        child: content,
-      );
+      return content;
     }
     return Scaffold(
       appBar: SectionAppBar(
-        title: _isSpanish ? 'Mapa' : 'Map',
+        title: _isSpanish ? 'Mapa y visitas' : 'Maps & visits',
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: MediaQuery.sizeOf(context).width <
+                  CollapsibleSidebar.responsiveBreakpoint
+              ? EdgeInsets.zero
+              : const EdgeInsets.all(16),
           child: content,
         ),
       ),
@@ -813,38 +882,24 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       builder: (context, constraints) {
         final sectionContent = _buildSectionContent(token);
         if (constraints.maxWidth < CollapsibleSidebar.responsiveBreakpoint) {
-          final showGrid = constraints.maxWidth < 600 && navItems.length <= 4;
           return Column(
             children: [
-              if (showGrid)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final item in navItems)
-                        SizedBox(
-                          width: (constraints.maxWidth - 14) / 2,
-                          child: _buildMobileNavButton(context, item, cs),
-                        ),
-                    ],
-                  ),
-                )
-              else
-                SingleChildScrollView(
+              SizedBox(
+                height: 42,
+                child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
+                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
                   child: Row(
                     children: [
                       for (final item in navItems)
                         Padding(
-                          padding: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.only(right: 4),
                           child: _buildMobileNavButton(context, item, cs),
                         ),
                     ],
                   ),
                 ),
+              ),
               Expanded(child: sectionContent),
             ],
           );
@@ -870,8 +925,14 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                   ),
               ],
             ),
-            const SizedBox(width: 10),
-            Expanded(child: sectionContent),
+            Expanded(
+              child: WorkspaceMainContent(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 4, 4, 4),
+                  child: sectionContent,
+                ),
+              ),
+            ),
           ],
         );
       },
@@ -889,28 +950,21 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       child: TextButton(
         onPressed: () => _selectSection(item.section),
         style: TextButton.styleFrom(
-          minimumSize: const Size(0, 44),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          foregroundColor:
-              selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-          backgroundColor:
-              selected ? cs.primaryContainer : cs.surfaceContainerLow,
-          side: BorderSide(
-            color: selected
-                ? cs.primary.withValues(alpha: 0.22)
-                : cs.outlineVariant,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          minimumSize: const Size(0, 38),
+          padding: const EdgeInsets.symmetric(horizontal: 13),
+          foregroundColor: selected ? cs.primary : cs.onSurfaceVariant,
+          backgroundColor: selected
+              ? cs.primary.withValues(alpha: .10)
+              : cs.surfaceContainerLow.withValues(alpha: .65),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
         ),
         child: Text(
           item.mobileLabel,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? cs.primary : cs.onSurfaceVariant,
               ),
         ),
       ),
@@ -919,15 +973,10 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
 
   Widget _buildSectionContent(AzureMapsToken token) {
     return switch (_section) {
-      _MapSection.live => _buildNoticeSection(
-          message: _isSpanish
-              ? 'Ves tus clientes y tu posición. La ubicación en directo de trabajadores aún no está disponible.'
-              : 'See your clients and your location. Live worker locations are not available yet.',
-          child: _buildResponsiveBody(
-            token,
-            canManageLocations: false,
-            showSidePanel: true,
-          ),
+      _MapSection.live => _buildResponsiveBody(
+          token,
+          canManageLocations: widget.canEdit,
+          showSidePanel: true,
         ),
       _MapSection.clientLocations => _buildResponsiveBody(
           token,
@@ -969,42 +1018,6 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
           showVisits: false,
         ),
     };
-  }
-
-  Widget _buildNoticeSection({
-    required String message,
-    required Widget child,
-  }) {
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: cs.primaryContainer.withValues(alpha: 0.35),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: cs.primary.withValues(alpha: 0.16)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.info_outline_rounded, size: 17, color: cs.primary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  message,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(child: child),
-      ],
-    );
   }
 
   Widget _buildUnavailableSection({
@@ -1056,8 +1069,27 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       height: 44,
       child: Row(
         children: [
+          if (canManageLocations) ...[
+            Expanded(
+              child: HexoraButton(
+                onPressed: _chooseClient,
+                icon: Icons.add_location_alt_outlined,
+                label: _isSpanish ? 'Ubicar cliente' : 'Set client location',
+                size: HexoraButtonSize.large,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
           IconButton.filledTonal(
-            tooltip: _isSpanish ? 'Mi ubicación' : 'My location',
+            tooltip: _isSpanish ? 'Actualizar' : 'Refresh',
+            onPressed: _load,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          const SizedBox(width: 8),
+          IconButton.filledTonal(
+            tooltip: _isSpanish
+                ? 'Centrar en mi ubicación'
+                : 'Center on my location',
             onPressed:
                 _locating ? null : () => _loadUserLocation(showErrors: true),
             icon: _locating
@@ -1070,30 +1102,6 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                     color: _userLocation == null ? null : cs.primary,
                   ),
           ),
-          const SizedBox(width: 8),
-          IconButton.filledTonal(
-            tooltip: _isSpanish ? 'Actualizar' : 'Refresh',
-            onPressed: _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-          if (canManageLocations) ...[
-            const SizedBox(width: 8),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: _chooseClient,
-                icon: const Icon(Icons.add_location_alt_outlined, size: 19),
-                label: Text(
-                  _isSpanish ? 'Ubicar cliente' : 'Set client location',
-                ),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -1104,48 +1112,185 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     required bool canManageLocations,
     required bool showSidePanel,
   }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final map = _buildMap(token);
-        final panel = _buildSidePanel(canManageLocations: canManageLocations);
-        if (showSidePanel && constraints.maxWidth >= 900) {
-          return Row(
-            children: [
-              Expanded(child: map),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 360,
-                child: Column(
-                  children: [
-                    _buildActions(canManageLocations: canManageLocations),
-                    const SizedBox(height: 10),
-                    Expanded(child: panel),
-                  ],
-                ),
+    return LayoutBuilder(builder: (context, constraints) {
+      final desktop = constraints.maxWidth >= 900;
+      final map = Stack(children: [
+        Positioned.fill(child: _buildMap(token)),
+        if (desktop)
+          Positioned(
+            top: _editing ? 66 : 12,
+            left: 12,
+            child: _mapSurface(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(HexoraDimensions.radius),
+              child: SizedBox(
+                width: (canManageLocations ? 320.0 : 200.0)
+                    .clamp(0.0, constraints.maxWidth - 24),
+                child: Row(children: [
+                  Expanded(
+                      child: _buildActions(
+                          canManageLocations: canManageLocations)),
+                  if (showSidePanel)
+                    IconButton(
+                      tooltip: _isSpanish ? 'Clientes' : 'Clients',
+                      icon: Icon(_clientPanelCollapsed
+                          ? Icons.people_outline
+                          : Icons.view_sidebar_outlined),
+                      onPressed: () => setState(
+                          () => _clientPanelCollapsed = !_clientPanelCollapsed),
+                    ),
+                ]),
               ),
-            ],
+            ),
+          )
+        else
+          Positioned(
+            top: 12,
+            right: 12,
+            child: _buildMobileMapActions(
+              canManageLocations: canManageLocations,
+              showSidePanel: showSidePanel,
+            ),
+          ),
+      ]);
+      if (!showSidePanel) return map;
+      Widget panel([ScrollController? listScrollController]) => Theme(
+            data: Theme.of(context).brightness == Brightness.dark
+                ? navigationTheme(Theme.of(context))
+                : Theme.of(context),
+            child: Builder(
+              builder: (context) => _buildSidePanel(
+                canManageLocations: canManageLocations,
+                panelContext: context,
+                listScrollController: listScrollController,
+              ),
+            ),
           );
-        }
-        if (!showSidePanel) {
-          return Column(
-            children: [
-              _buildActions(canManageLocations: false),
-              const SizedBox(height: 10),
-              Expanded(child: map),
-            ],
-          );
-        }
-        final phone = constraints.maxWidth < 600;
-        return Column(
-          children: [
-            Expanded(flex: phone ? 4 : 5, child: map),
-            const SizedBox(height: 10),
-            _buildActions(canManageLocations: canManageLocations),
-            const SizedBox(height: 10),
-            Expanded(flex: phone ? 5 : 4, child: panel),
+      if (desktop) {
+        return Row(children: [
+          Expanded(child: map),
+          if (!_clientPanelCollapsed) ...[
+            const SizedBox(width: 4),
+            _PanelResizeHandle(
+              onResize: (delta) => setState(
+                () => _panelWidth = (_panelWidth - delta).clamp(300.0, 560.0),
+              ),
+            ),
+            const SizedBox(width: 4),
+            SizedBox(width: _panelWidth, child: panel()),
           ],
-        );
-      },
+        ]);
+      }
+      return Stack(children: [
+        Positioned.fill(child: map),
+        if (!_clientPanelCollapsed)
+          DraggableScrollableSheet(
+            initialChildSize: .38,
+            minChildSize: .18,
+            maxChildSize: .85,
+            builder: (context, scrollController) => _mapSurface(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
+              child: Column(
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 8, bottom: 4),
+                      width: 34,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  Expanded(child: panel(scrollController)),
+                ],
+              ),
+            ),
+          ),
+      ]);
+    });
+  }
+
+  Widget _mapSurface(
+          {required Color color,
+          BorderRadius? borderRadius,
+          required Widget child}) =>
+      PointerInterceptor(
+          child:
+              Material(color: color, borderRadius: borderRadius, child: child));
+
+  Widget _buildMobileMapActions({
+    required bool canManageLocations,
+    required bool showSidePanel,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    Widget button({
+      required String tooltip,
+      required IconData icon,
+      required VoidCallback? onPressed,
+      bool primary = false,
+    }) {
+      return SizedBox.square(
+        dimension: 42,
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onPressed,
+          style: IconButton.styleFrom(
+            backgroundColor: primary ? cs.primary : cs.surface,
+            foregroundColor: primary ? cs.onPrimary : cs.onSurface,
+            elevation: 3,
+            shadowColor: Colors.black26,
+          ),
+          icon: Icon(icon, size: 20),
+        ),
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          button(
+            tooltip: _isSpanish ? 'Actualizar mapa' : 'Refresh map',
+            icon: Icons.refresh_rounded,
+            onPressed: _load,
+          ),
+          const SizedBox(height: 6),
+          button(
+            tooltip: _isSpanish ? 'Mi ubicación' : 'My location',
+            icon: _locating ? Icons.hourglass_top_rounded : Icons.my_location,
+            onPressed:
+                _locating ? null : () => _loadUserLocation(showErrors: true),
+          ),
+          if (canManageLocations) ...[
+            const SizedBox(height: 6),
+            button(
+              tooltip: _isSpanish ? 'Ubicar cliente' : 'Set client location',
+              icon: Icons.add_location_alt_outlined,
+              onPressed: _chooseClient,
+              primary: true,
+            ),
+          ],
+          if (showSidePanel) ...[
+            const SizedBox(height: 6),
+            button(
+              // Keep the stable "Clientes" label used by the desktop panel
+              // and existing accessibility shortcuts.
+              tooltip: _isSpanish ? 'Clientes' : 'Clients',
+              icon: _clientPanelCollapsed
+                  ? Icons.people_outline
+                  : Icons.keyboard_arrow_down_rounded,
+              onPressed: () => setState(
+                () => _clientPanelCollapsed = !_clientPanelCollapsed,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -1164,6 +1309,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
               child: AzureMapsView(
                 key: ValueKey('azure-map-$_mapGeneration'),
                 clientId: token.clientId,
+                darkMode: Theme.of(context).brightness == Brightness.dark,
                 accessToken: token.accessToken,
                 pins: _pins,
                 selectedPinId: _editing ? null : _selectedClient?.id,
@@ -1171,21 +1317,25 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                 userLocation: _userLocation,
                 cameraTarget: _cameraTarget,
                 onSelectionChanged: _onSelectionChanged,
-                onPinTapped: _selectClient,
+                onPinTapped: (id) {
+                  _clientFilter.clear();
+                  _locationFilter = 'all';
+                  _selectClient(id);
+                },
                 onReady: _handleMapReady,
                 onError: _handleMapError,
               ),
             ),
             if (!_mapReady && _mapError == null)
               Positioned.fill(
-                child: ColoredBox(
+                child: _mapSurface(
                   color: cs.surfaceContainerLow,
                   child: const Center(child: CircularProgressIndicator()),
                 ),
               ),
             if (_mapError != null)
               Positioned.fill(
-                child: ColoredBox(
+                child: _mapSurface(
                   color: cs.surfaceContainerLow,
                   child: Center(
                     child: ConstrainedBox(
@@ -1206,12 +1356,10 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 14),
-                            FilledButton.icon(
+                            HexoraButton(
                               onPressed: _load,
-                              icon: const Icon(Icons.refresh_rounded),
-                              label: Text(
-                                _isSpanish ? 'Reintentar' : 'Retry',
-                              ),
+                              icon: Icons.refresh_rounded,
+                              label: _isSpanish ? 'Reintentar' : 'Retry',
                             ),
                           ],
                         ),
@@ -1248,40 +1396,32 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                   ),
                 ),
               ),
-            if (_userLocation != null && !_editing)
+            if (!_editing &&
+                (_userLocation != null || _workerLocations.isNotEmpty))
               Positioned(
                 left: 12,
                 bottom: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.surface.withValues(alpha: 0.94),
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: const [
-                      BoxShadow(color: Color(0x22000000), blurRadius: 8),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF1677FF),
-                          shape: BoxShape.circle,
-                        ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_userLocation != null)
+                      _buildLegendBadge(
+                        cs: cs,
+                        color: const Color(0xFF1677FF),
+                        label: _isSpanish ? 'Tu ubicación' : 'Your location',
                       ),
-                      const SizedBox(width: 7),
-                      Text(
-                        _isSpanish ? 'Tu ubicación' : 'Your location',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                    if (_workerLocations.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      _buildLegendBadge(
+                        cs: cs,
+                        color: const Color(0xFF16A34A),
+                        label: _isSpanish
+                            ? 'Trabajadores (${_workerLocations.length})'
+                            : 'Workers (${_workerLocations.length})',
                       ),
                     ],
-                  ),
+                  ],
                 ),
               ),
           ],
@@ -1290,8 +1430,41 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     );
   }
 
-  Widget _buildSidePanel({required bool canManageLocations}) {
-    final cs = Theme.of(context).colorScheme;
+  Widget _buildLegendBadge({
+    required ColorScheme cs,
+    required Color color,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: cs.surface.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: const [
+          BoxShadow(color: Color(0x22000000), blurRadius: 8),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 7),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidePanel({
+    required bool canManageLocations,
+    BuildContext? panelContext,
+    ScrollController? listScrollController,
+  }) {
+    final cs = Theme.of(panelContext ?? context).colorScheme;
     return Container(
       decoration: BoxDecoration(
         color: cs.surface,
@@ -1300,19 +1473,57 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       ),
       child: _editing
           ? _buildEditor()
-          : _buildClientBrowser(canManageLocations: canManageLocations),
+          : _buildClientBrowser(
+              canManageLocations: canManageLocations,
+              panelContext: panelContext,
+              listScrollController: listScrollController),
     );
   }
 
-  Widget _buildClientBrowser({required bool canManageLocations}) {
+  Widget _buildClientBrowser({
+    required bool canManageLocations,
+    BuildContext? panelContext,
+    ScrollController? listScrollController,
+  }) {
+    final context = panelContext ?? this.context;
     final cs = Theme.of(context).colorScheme;
-    final selected = _selectedClient;
+    final selected =
+        _filteredClients.any((client) => client.id == _selectedClient?.id)
+            ? _selectedClient
+            : null;
     final selectedLocation =
         selected == null ? null : _locationFor(selected.id);
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(children: [
+            Expanded(
+                child: Text(
+                    '${_isSpanish ? 'Clientes' : 'Clients'} · ${_clients.length}',
+                    style: Theme.of(context).textTheme.titleMedium)),
+            DropdownButton<String>(
+              value: _locationFilter,
+              underline: const SizedBox.shrink(),
+              items: [
+                DropdownMenuItem(
+                    value: 'all', child: Text(_isSpanish ? 'Todos' : 'All')),
+                DropdownMenuItem(
+                    value: 'located',
+                    child:
+                        Text(_isSpanish ? 'Con ubicación' : 'With location')),
+                DropdownMenuItem(
+                    value: 'missing',
+                    child: Text(
+                        _isSpanish ? 'Sin ubicación' : 'Without location')),
+              ],
+              onChanged: (value) =>
+                  setState(() => _locationFilter = value ?? 'all'),
+            ),
+          ]),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8),
           child: TextField(
             controller: _clientFilter,
             onChanged: (_) => setState(() {}),
@@ -1332,7 +1543,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
               isDense: true,
               filled: true,
               fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
-              contentPadding: const EdgeInsets.symmetric(vertical: 13),
+              contentPadding: const EdgeInsets.symmetric(vertical: 8),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
@@ -1369,6 +1580,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                   ),
                 )
               : ListView.builder(
+                  controller: listScrollController ?? _clientListScroll,
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   itemCount: _filteredClients.length +
                       (selected != null && selectedLocation != null ? 1 : 0),
@@ -1465,17 +1677,12 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          OutlinedButton.icon(
+          HexoraButton(
             onPressed: _locating ? null : _useCurrentLocation,
-            icon: _locating
-                ? const SizedBox.square(
-                    dimension: 17,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.my_location_rounded, size: 18),
-            label: Text(
-              _isSpanish ? 'Usar mi ubicación actual' : 'Use my location',
-            ),
+            icon: Icons.my_location_rounded,
+            label: _isSpanish ? 'Usar mi ubicación actual' : 'Use my location',
+            variant: HexoraButtonVariant.secondary,
+            loading: _locating,
           ),
           if (_resolvedAddress?.isNotEmpty == true) ...[
             const SizedBox(height: 12),
@@ -1543,6 +1750,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             title: Text(_isSpanish ? 'Geocerca activa' : 'Geofence enabled'),
           ),
           ExpansionTile(
+            expansionAnimationStyle: HexoraMotion.expansionStyle(context),
             tilePadding: EdgeInsets.zero,
             childrenPadding: EdgeInsets.zero,
             title: Text(
@@ -1565,15 +1773,11 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             ],
           ),
           const SizedBox(height: 14),
-          FilledButton.icon(
+          HexoraButton(
             onPressed: _saving ? null : _saveLocation,
-            icon: _saving
-                ? const SizedBox.square(
-                    dimension: 17,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.check_rounded),
-            label: Text(_isSpanish ? 'Guardar ubicación' : 'Save location'),
+            icon: Icons.check_rounded,
+            label: _isSpanish ? 'Guardar ubicación' : 'Save location',
+            loading: _saving,
           ),
         ],
       ),
@@ -1724,14 +1928,11 @@ class _SelectedClientCard extends StatelessWidget {
                             )
                           : const Icon(Icons.location_off_outlined, size: 19),
                     ),
-                    TextButton.icon(
+                    HexoraButton(
                       onPressed: isRemoving ? null : onEdit,
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                      ),
-                      icon: const Icon(Icons.edit_location_alt_outlined,
-                          size: 17),
-                      label: Text(isSpanish ? 'Editar' : 'Edit'),
+                      icon: Icons.edit_location_alt_outlined,
+                      label: isSpanish ? 'Editar' : 'Edit',
+                      variant: HexoraButtonVariant.ghost,
                     ),
                   ],
                 ),
@@ -1740,50 +1941,17 @@ class _SelectedClientCard extends StatelessWidget {
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
-            child: FilledButton.tonalIcon(
+            child: HexoraButton(
               onPressed: () => _openDirections(context),
-              icon: const Icon(Icons.directions_rounded, size: 18),
-              label: Text(isSpanish ? 'Cómo llegar' : 'Get directions'),
+              icon: Icons.directions_rounded,
+              label: isSpanish ? 'Cómo llegar' : 'Get directions',
+              variant: HexoraButtonVariant.secondary,
             ),
           ),
         ],
       ),
     );
   }
-}
-
-Color _clientAvatarHueColor(
-  BuildContext context,
-  String seed, {
-  required double saturation,
-  required double lightness,
-}) {
-  final trimmed = seed.trim();
-  final hash = trimmed.isEmpty
-      ? 0
-      : trimmed.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
-  final hue = (hash * 47) % 360;
-  return HSLColor.fromAHSL(1, hue.toDouble(), saturation, lightness).toColor();
-}
-
-Color _clientAvatarBackground(BuildContext context, String seed) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  return _clientAvatarHueColor(
-    context,
-    seed,
-    saturation: 0.5,
-    lightness: isDark ? 0.26 : 0.88,
-  );
-}
-
-Color _clientAvatarForeground(BuildContext context, String seed) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  return _clientAvatarHueColor(
-    context,
-    seed,
-    saturation: 0.55,
-    lightness: isDark ? 0.8 : 0.32,
-  );
 }
 
 class _LocationBadge extends StatelessWidget {
@@ -1861,13 +2029,13 @@ class _ClientLocationTile extends StatelessWidget {
                   ),
                 ),
                 CircleAvatar(
-                  radius: 19,
-                  backgroundColor: _clientAvatarBackground(context, name),
+                  radius: 15,
+                  backgroundColor: cs.surfaceContainerHighest,
                   child: Text(
                     initial,
                     style: TextStyle(
-                      color: _clientAvatarForeground(context, name),
-                      fontWeight: FontWeight.w800,
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -1899,7 +2067,13 @@ class _ClientLocationTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _LocationBadge(hasLocation: hasLocation),
+                if (hasLocation)
+                  const _LocationBadge(hasLocation: true)
+                else
+                  TextButton(
+                    onPressed: onTap,
+                    child: Text(isSpanish ? 'Ubicar' : 'Locate'),
+                  ),
               ],
             ),
           ),
@@ -1985,6 +2159,37 @@ class _ClientPickerDialogState extends State<_ClientPickerDialog> {
           child: Text(widget.isSpanish ? 'Cancelar' : 'Cancel'),
         ),
       ],
+    );
+  }
+}
+
+class _PanelResizeHandle extends StatelessWidget {
+  const _PanelResizeHandle({required this.onResize});
+
+  final ValueChanged<double> onResize;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragUpdate: (details) => onResize(details.delta.dx),
+        child: SizedBox(
+          width: 12,
+          child: Center(
+            child: Container(
+              width: 4,
+              height: 48,
+              decoration: BoxDecoration(
+                color: cs.outlineVariant.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

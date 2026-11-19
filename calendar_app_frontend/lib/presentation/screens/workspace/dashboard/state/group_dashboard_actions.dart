@@ -9,7 +9,9 @@ import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram
 import 'package:hexora/services/telegram/domain/telegram_domain.dart';
 import 'package:provider/provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard/access/role_info_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/presentation/screens/profile/view/profile_view_screen.dart';
+import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_preview_screen.dart';
 
 import '../navigation/dashboard_sections.dart';
 import 'group_dashboard_state.dart';
@@ -18,6 +20,7 @@ class DashboardActions {
   static void openSection(GroupDashboardState state, String section) {
     if (section == Sections.chat && !state.canSeeAdmin) return;
     if (section == Sections.services && !state.canSeeAdmin) return;
+    if (section == Sections.workers && !state.canSeeAdmin) return;
     final context = state.context;
 
     if (state.isWide) {
@@ -26,6 +29,13 @@ class DashboardActions {
     }
 
     switch (section) {
+      case Sections.home:
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const DashboardPreviewScreen(),
+          ),
+        );
+        break;
       case Sections.agenda:
         Navigator.pushNamed(context, AppRoutes.agenda, arguments: state.group);
         break;
@@ -69,8 +79,7 @@ class DashboardActions {
         break;
       case Sections.businessChat:
         Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => Scaffold(
-            appBar: AppBar(title: const Text('Chat de la empresa')),
+          builder: (routeContext) => Scaffold(
             body: PremiumFeatureGate(
               group: state.group,
               feature: PremiumFeatureRequest.teamChat,
@@ -78,6 +87,7 @@ class DashboardActions {
               child: BusinessChatScreen(
                 groupId: state.group.id,
                 currentUserId: state.user?.id,
+                onExit: () => Navigator.of(routeContext).pop(),
               ),
             ),
           ),
@@ -101,6 +111,17 @@ class DashboardActions {
           arguments: state.group,
         );
         break;
+      case Sections.invoiceClients:
+        if (!state.canSeeAdmin) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => GroupInvoicesScreen(
+              group: state.group,
+              initialMenu: 'clients_flow',
+            ),
+          ),
+        );
+        break;
       case Sections.budgets:
         if (!state.canSeeAdmin) return;
         Navigator.of(context).push(
@@ -120,12 +141,14 @@ class DashboardActions {
       case Sections.emails:
         if (!state.canSeeAdmin) return;
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => PremiumFeatureGate(
-            group: state.group,
-            feature: PremiumFeatureRequest.email,
-            embedded: false,
-            child: const MailConsoleScreen(),
-          )),
+          MaterialPageRoute(
+            builder: (_) => PremiumFeatureGate(
+              group: state.group,
+              feature: PremiumFeatureRequest.email,
+              embedded: false,
+              child: const MailConsoleScreen(),
+            ),
+          ),
         );
         break;
       case Sections.telegram:
@@ -169,6 +192,7 @@ class DashboardActions {
         );
         break;
       case Sections.workers:
+        if (!state.canSeeAdmin) return;
         Navigator.pushNamed(
           context,
           AppRoutes.groupTimeTracking,
@@ -176,13 +200,13 @@ class DashboardActions {
         );
         break;
       case Sections.profile:
-        if (state.user != null && state.role != null) {
+        if (state.user != null) {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => RoleInfoScreen(
+              builder: (_) => ProfileViewScreen(
                 group: state.group,
                 user: state.user!,
-                role: state.role!,
+                role: state.role,
                 fetchReadSas: state.fetchReadSas,
               ),
             ),

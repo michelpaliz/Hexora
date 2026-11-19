@@ -23,7 +23,7 @@ class _ClientSearchField extends StatelessWidget {
           );
 
   Future<void> _openPicker(BuildContext context) async {
-    final result = await showDialog<String>(
+    final result = await showHexoraDialog<String>(
       context: context,
       builder: (_) => _ClientPickerDialog(
         clients: clients,
@@ -63,6 +63,7 @@ class _ClientSearchField extends StatelessWidget {
       borderRadius: BorderRadius.circular(999),
       onTap: enabled ? () => _openPicker(context) : null,
       child: Container(
+        key: const ValueKey('mail-compose-client-picker-field'),
         padding: const EdgeInsets.only(left: 10, top: 5, bottom: 5, right: 6),
         decoration: BoxDecoration(
           color: hasSelection

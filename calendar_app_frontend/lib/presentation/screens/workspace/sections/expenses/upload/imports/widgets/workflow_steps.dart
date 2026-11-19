@@ -191,58 +191,8 @@ class _StepDropZoneState extends State<_StepDropZone> {
   }
 }
 
-class _ManualCompactWorkflowIndicator extends StatelessWidget {
-  final String? fileName;
-  final Uint8List? fileBytes;
-  final bool submitting;
-  final bool hasGroupSelected;
-  final VoidCallback onPickFile;
-  final VoidCallback? onPreviewFile;
-  final String? previewCtaLabel;
-
-  const _ManualCompactWorkflowIndicator({
-    required this.fileName,
-    required this.fileBytes,
-    required this.submitting,
-    required this.hasGroupSelected,
-    required this.onPickFile,
-    required this.onPreviewFile,
-    required this.previewCtaLabel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = (fileName ?? '').trim().isNotEmpty &&
-        fileBytes != null &&
-        fileBytes!.isNotEmpty;
-    return _CompactImportWorkflowShell(
-      steps: const ['Documento', 'Datos', 'Revision', 'Guardado'],
-      activeStep: selected ? 1 : 0,
-      readyCount: selected ? 1 : 0,
-      reviewCount: selected ? 1 : 0,
-      duplicateCount: 0,
-      hasGroupSelected: hasGroupSelected,
-      actions: [
-        OutlinedButton.icon(
-          onPressed: submitting ? null : onPickFile,
-          style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
-          icon: const Icon(Icons.upload_file_outlined, size: 16),
-          label: Text(selected ? 'Cambiar documento' : 'Elegir documento'),
-        ),
-        if (onPreviewFile != null && previewCtaLabel != null)
-          OutlinedButton.icon(
-            onPressed: onPreviewFile,
-            style:
-                OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
-            icon: const Icon(Icons.visibility_outlined, size: 16),
-            label: Text(previewCtaLabel!),
-          ),
-      ],
-      helper: selected ? fileName!.trim() : 'Ningun documento seleccionado',
-    );
-  }
-}
-
+// Legacy compatibility shell retained for older embedded callers.
+// ignore: unused_element
 class _JsonCompactWorkflowIndicator extends StatelessWidget {
   final bool submitting;
   final bool hasGroupSelected;
@@ -434,12 +384,16 @@ class _BatchCompactWorkflowIndicator extends StatelessWidget {
   final bool jobActive;
   final bool jobCompleted;
   final bool jobFailed;
+  final bool inspecting;
+  final bool selectionReady;
   final int readyCount;
   final int reviewCount;
   final int duplicateCount;
-  final VoidCallback onPickDocuments;
   final VoidCallback onImport;
   final VoidCallback? onClearSelection;
+  final bool collapsed;
+  final VoidCallback? onToggleCollapsed;
+  final bool compact;
 
   const _BatchCompactWorkflowIndicator({
     required this.selectedCount,
@@ -451,19 +405,24 @@ class _BatchCompactWorkflowIndicator extends StatelessWidget {
     required this.jobActive,
     required this.jobCompleted,
     required this.jobFailed,
+    required this.inspecting,
+    required this.selectionReady,
     required this.readyCount,
     required this.reviewCount,
     required this.duplicateCount,
-    required this.onPickDocuments,
     required this.onImport,
     this.onClearSelection,
+    this.collapsed = false,
+    this.onToggleCollapsed,
+    this.compact = false,
   });
 
   int get _activeStep {
-    if (jobActive) return 1;
+    if (jobActive) return 2;
     if (jobCompleted || jobFailed) {
-      return reviewCount > 0 || duplicateCount > 0 ? 2 : 3;
+      return reviewCount > 0 || duplicateCount > 0 ? 3 : 4;
     }
+    if (inspecting || selectionReady) return 1;
     return 0;
   }
 
@@ -475,171 +434,277 @@ class _BatchCompactWorkflowIndicator extends StatelessWidget {
     final activeStep = _activeStep;
     final steps = [
       isEs ? 'Documentos' : 'Documents',
+      isEs ? 'Confirmar' : 'Confirm',
       'OCR',
       isEs ? 'Revisi\u00f3n' : 'Review',
       isEs ? 'Importaci\u00f3n' : 'Import',
     ];
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: cs.surface.withValues(alpha: 0.18),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.28)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 860;
-          final stepper = Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              for (var i = 0; i < steps.length; i++) ...[
-                _CompactWorkflowStep(
-                  label: steps[i],
-                  index: i,
-                  activeIndex: activeStep,
-                  failed: jobFailed,
+    Widget stepRow(int index) {
+      final active = index == activeStep;
+      final completed = !jobFailed && index < activeStep;
+      final future = index > activeStep;
+      final color = active || completed ? cs.primary : cs.onSurfaceVariant;
+      return Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: active ? cs.primary.withValues(alpha: .09) : null,
+          border: Border(
+            left: BorderSide(
+              width: 2,
+              color: active ? cs.primary : Colors.transparent,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: active
+                      ? cs.primary
+                      : completed
+                          ? cs.primaryContainer
+                          : cs.surfaceContainerHighest,
                 ),
-                if (i < steps.length - 1)
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 16,
-                    color: i < activeStep
-                        ? cs.primary.withValues(alpha: 0.55)
-                        : cs.onSurfaceVariant.withValues(alpha: 0.34),
-                  ),
-              ],
-            ],
-          );
+                child: Center(
+                  child: completed
+                      ? Icon(Icons.check_rounded, size: 13, color: cs.primary)
+                      : Text(
+                          '${index + 1}',
+                          style: ts.bodySmall?.copyWith(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: active
+                                ? cs.onPrimary
+                                : color.withValues(alpha: future ? .55 : 1),
+                          ),
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                steps[index],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: ts.bodySmall?.copyWith(
+                  fontSize: 11.5,
+                  fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                  color: color.withValues(alpha: future ? .58 : 1),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
-          final summary = Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
+    Widget metric(String label, String value, {Color? valueColor}) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          child: Row(
             children: [
-              _BatchStatusChip(
-                label: '$readyCount gastos listos',
-                color: Colors.green.shade600,
+              Expanded(
+                child: Text(label,
+                    style: ts.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: cs.onSurfaceVariant,
+                    )),
               ),
-              _BatchStatusChip(
-                label: '$reviewCount revisi\u00f3n',
-                color: Colors.amber.shade700,
-              ),
-              _BatchStatusChip(
-                label: '$duplicateCount duplicados',
-                color: cs.error,
-              ),
-              _InlineMetric(
-                icon: Icons.insert_drive_file_outlined,
-                label: '$selectedCount / $maxDocuments',
-                color: cs.primary,
-              ),
-              _InlineMetric(
-                icon: Icons.data_usage_outlined,
-                label: _formatBatchBytes(totalBytes),
-                color: cs.onSurfaceVariant,
-              ),
+              Text(value,
+                  style: ts.bodySmall?.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: valueColor ?? cs.onSurface,
+                  )),
             ],
-          );
+          ),
+        );
 
-          final actions = Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              OutlinedButton.icon(
-                onPressed: submitting ? null : onPickDocuments,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  side: BorderSide(
-                    color: cs.primary.withValues(alpha: 0.45),
-                  ),
-                  foregroundColor: cs.primary,
-                ),
-                icon: const Icon(Icons.upload_file_outlined, size: 16),
-                label: Text(
-                  isEs ? 'Documentos o ZIP' : 'Documents or ZIP',
-                  style: ts.bodySmall?.copyWith(fontWeight: FontWeight.w800),
-                ),
+    final workflow = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 7),
+          child: Text(
+            isEs ? 'IMPORTACI\u00d3N MASIVA' : 'BULK IMPORT',
+            style: ts.labelSmall?.copyWith(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: .8,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        ),
+        for (var i = 0; i < steps.length; i++) stepRow(i),
+        Divider(height: 17, color: cs.outlineVariant.withValues(alpha: .35)),
+        metric(
+            isEs ? 'Documentos' : 'Documents', '$selectedCount / $maxDocuments',
+            valueColor: cs.primary),
+        metric(isEs ? 'Listos' : 'Ready', '$readyCount',
+            valueColor: Colors.green.shade600),
+        metric(isEs ? 'Revisi\u00f3n' : 'Review', '$reviewCount',
+            valueColor: Colors.amber.shade700),
+        metric(isEs ? 'Duplicados' : 'Duplicates', '$duplicateCount',
+            valueColor: cs.error),
+        metric(isEs ? 'Tama\u00f1o' : 'Size', _formatBatchBytes(totalBytes)),
+        const SizedBox(height: 10),
+        if (onClearSelection != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: TextButton.icon(
+              onPressed: submitting ? null : onClearSelection,
+              style: TextButton.styleFrom(
+                minimumSize: const Size.fromHeight(32),
+                visualDensity: VisualDensity.compact,
               ),
-              if (onClearSelection != null)
-                IconButton.outlined(
-                  tooltip: isEs ? 'Limpiar seleccion' : 'Clear selection',
-                  onPressed: submitting ? null : onClearSelection,
+              icon: const Icon(Icons.close_rounded, size: 14),
+              label: Text(isEs ? 'Limpiar' : 'Clear'),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
+          child: FilledButton.icon(
+            onPressed: canImport ? onImport : null,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(36),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              visualDensity: VisualDensity.compact,
+            ),
+            icon: submitting
+                ? const SizedBox(
+                    width: 13,
+                    height: 13,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.auto_awesome_outlined, size: 15),
+            label: Text(
+              jobCompleted
+                  ? (isEs ? 'Completado' : 'Complete')
+                  : jobActive
+                      ? (isEs ? 'Procesando' : 'Processing')
+                      : inspecting
+                          ? (isEs ? 'Inspeccionando' : 'Inspecting')
+                          : (isEs ? 'Confirmar y analizar' : 'Confirm'),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+        if (!hasGroupSelected)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+            child: Text(
+              isEs ? 'Selecciona un grupo.' : 'Select a group.',
+              style: ts.bodySmall?.copyWith(fontSize: 10.5, color: cs.error),
+            ),
+          ),
+      ],
+    );
+
+    if (compact) {
+      return Container(
+        decoration: BoxDecoration(
+          color: cs.surface,
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: .32)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: ExpansionTile(
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 10),
+          title: Text('${activeStep + 1}. ${steps[activeStep]}'),
+          subtitle: Text(
+            '$selectedCount / $maxDocuments \u00b7 $readyCount listos \u00b7 $reviewCount revisi\u00f3n',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          children: [workflow],
+        ),
+      );
+    }
+
+    return DocumentWizardRail(
+      keyPrefix: 'expense-batch-wizard',
+      steps: [
+        DocumentWizardStep(label: steps[0], icon: Icons.description_outlined),
+        DocumentWizardStep(label: steps[1], icon: Icons.checklist_rounded),
+        DocumentWizardStep(
+            label: steps[2], icon: Icons.document_scanner_outlined),
+        DocumentWizardStep(label: steps[3], icon: Icons.fact_check_outlined),
+        DocumentWizardStep(label: steps[4], icon: Icons.save_alt_rounded),
+      ],
+      currentStep: activeStep,
+      selectedSectionId: null,
+      groupExpanded: false,
+      collapsed: collapsed,
+      expandedWidth: 196,
+      allowCollapse: onToggleCollapsed != null,
+      title: isEs ? 'Importaci\u00f3n masiva' : 'Bulk import',
+      footer: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Divider(color: cs.outlineVariant.withValues(alpha: .35)),
+            metric(isEs ? 'Documentos' : 'Documents',
+                '$selectedCount / $maxDocuments',
+                valueColor: cs.primary),
+            metric(isEs ? 'Listos' : 'Ready', '$readyCount',
+                valueColor: Colors.green.shade600),
+            metric(isEs ? 'Revisi\u00f3n' : 'Review', '$reviewCount',
+                valueColor: Colors.amber.shade700),
+            metric(isEs ? 'Duplicados' : 'Duplicates', '$duplicateCount',
+                valueColor: cs.error),
+            if (onClearSelection != null)
+              TextButton.icon(
+                onPressed: submitting ? null : onClearSelection,
+                style: TextButton.styleFrom(
+                  minimumSize: const Size.fromHeight(30),
                   visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.close_rounded, size: 16),
                 ),
-              FilledButton.icon(
+                icon: const Icon(Icons.close_rounded, size: 14),
+                label: Text(isEs ? 'Limpiar' : 'Clear'),
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: FilledButton.icon(
                 onPressed: canImport ? onImport : null,
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  minimumSize: const Size.fromHeight(36),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  visualDensity: VisualDensity.compact,
                 ),
                 icon: submitting
                     ? const SizedBox(
-                        width: 14,
-                        height: 14,
+                        width: 13,
+                        height: 13,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.auto_awesome_outlined, size: 16),
+                    : const Icon(Icons.auto_awesome_outlined, size: 15),
                 label: Text(
                   jobCompleted
-                      ? (isEs ? 'Lote completado' : 'Batch complete')
+                      ? (isEs ? 'Completado' : 'Complete')
                       : jobActive
-                          ? (isEs ? 'Procesando...' : 'Processing...')
-                          : (isEs ? 'Analizar documentos' : 'Analyze'),
-                  style: ts.bodySmall?.copyWith(fontWeight: FontWeight.w800),
+                          ? (isEs ? 'Procesando' : 'Processing')
+                          : inspecting
+                              ? (isEs ? 'Inspeccionando' : 'Inspecting')
+                              : (isEs ? 'Confirmar' : 'Confirm'),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ],
-          );
-
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                stepper,
-                const SizedBox(height: 8),
-                summary,
-                const SizedBox(height: 8),
-                actions,
-                if (!hasGroupSelected) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    isEs
-                        ? 'Selecciona un grupo antes de importar.'
-                        : 'Select a group before importing.',
-                    style: ts.bodySmall?.copyWith(color: cs.error),
-                  ),
-                ],
-              ],
-            );
-          }
-
-          return Row(
-            children: [
-              Expanded(flex: 5, child: stepper),
-              const SizedBox(width: 12),
-              Expanded(flex: 4, child: summary),
-              const SizedBox(width: 12),
-              actions,
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       ),
+      onStepSelected: (_) {},
+      onSectionSelected: (_) {},
+      onToggleGroup: () {},
+      onToggleCollapsed: onToggleCollapsed ?? () {},
     );
   }
 }
@@ -664,45 +729,48 @@ class _CompactWorkflowStep extends StatelessWidget {
     final completed = !failed && index < activeIndex;
     final active = index == activeIndex;
     final pending = index > activeIndex;
-    final color = active
-        ? cs.primary
-        : completed
-            ? Colors.green.shade600
-            : cs.onSurfaceVariant;
-    final icon = completed
-        ? Icons.check_rounded
-        : active
-            ? Icons.play_arrow_rounded
-            : Icons.circle_outlined;
+    final color = active || completed ? cs.primary : cs.onSurfaceVariant;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: active
-            ? cs.primaryContainer.withValues(alpha: 0.22)
-            : Colors.transparent,
-        border: Border.all(
-          color:
-              active ? cs.primary.withValues(alpha: 0.28) : Colors.transparent,
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: active ? 16 : 14,
-            color: pending ? color.withValues(alpha: 0.55) : color,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: active
+                  ? cs.primary
+                  : completed
+                      ? cs.primaryContainer
+                      : cs.surfaceContainerHighest,
+            ),
+            child: completed
+                ? Icon(Icons.check_rounded, size: 15, color: cs.primary)
+                : Text(
+                    '${index + 1}',
+                    style: ts.bodySmall?.copyWith(
+                      color: active
+                          ? cs.onPrimary
+                          : pending
+                              ? color.withValues(alpha: 0.68)
+                              : color,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
           ),
-          const SizedBox(width: 5),
+          const SizedBox(width: 8),
           Text(
             label,
             style: ts.bodySmall?.copyWith(
               color: pending ? color.withValues(alpha: 0.64) : color,
-              fontWeight: active ? FontWeight.w900 : FontWeight.w700,
-              fontSize: 12,
+              fontWeight: active ? FontWeight.w800 : FontWeight.w700,
+              fontSize: 13,
             ),
           ),
         ],

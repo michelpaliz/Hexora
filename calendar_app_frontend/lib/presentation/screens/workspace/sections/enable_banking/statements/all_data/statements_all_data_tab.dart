@@ -1,4 +1,9 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
+import 'package:hexora/presentation/shared/widgets/panels/hexora_side_panel.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -11,12 +16,13 @@ import '../../widgets/folder_section_card.dart';
 import '../statements_controller.dart';
 import '../statements_formatters.dart';
 import '../statements_shared.dart';
+import '../shared/bank_transaction_link_panel.dart';
+import '../shared/bank_transaction_share_dialog.dart';
 import 'statements_all_data_bulk.dart';
-import 'statements_all_data_details.dart';
+import 'statements_transaction_detail_link_panel.dart';
 import 'statements_all_data_skeleton.dart';
 import 'table/statements_all_data_table.dart';
 import 'table/statements_all_data_table_theme.dart';
-import '../shared/bank_transaction_share_dialog.dart';
 
 class StatementsAllDataTab extends StatefulWidget {
   const StatementsAllDataTab({super.key});
@@ -34,6 +40,8 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       TextEditingController();
   final TextEditingController _notesSearchController = TextEditingController();
   final TextEditingController _clientProviderController =
+      TextEditingController();
+  final TextEditingController _invoiceNumberController =
       TextEditingController();
   final List<int> _sizeOptions = const [50, 100, 200];
   final Set<String> _selectedIds = <String>{};
@@ -61,12 +69,17 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
   @override
   bool get wantKeepAlive => true;
 
-  void _shareEntry(BuildContext context, StatementsController controller,
-      Map<String, dynamic> entry) {
+  void _shareEntry(
+    BuildContext context,
+    StatementsController controller,
+    Map<String, dynamic> entry,
+  ) {
     final groupId = controller.groupId;
     if (groupId == null || groupId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona un negocio antes de compartir.')),
+        const SnackBar(
+          content: Text('Selecciona un negocio antes de compartir.'),
+        ),
       );
       return;
     }
@@ -88,11 +101,23 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     _notesSearchController.dispose();
     _clientProviderController.removeListener(_onClientProviderTyped);
     _clientProviderController.dispose();
+    _invoiceNumberController.dispose();
     super.dispose();
   }
 
   void _onClientProviderTyped() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _disposeDialogController(
+    TextEditingController controller,
+  ) async {
+    // RawDialogRoute completes its Future when pop starts, while the reverse
+    // transition still has the TextField mounted for one more frame. Keep the
+    // temporary controller alive until that shared transition has finished.
+    final duration = HexoraMotion.duration(context, HexoraMotion.dialog);
+    if (duration > Duration.zero) await Future<void>.delayed(duration);
+    controller.dispose();
   }
 
   @override
@@ -248,6 +273,42 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     return description.contains(query);
   }
 
+  bool _entryMatchesInvoiceNumberFilter(Map<String, dynamic> entry) {
+    final query = _invoiceNumberController.text.trim().toLowerCase();
+    if (query.isEmpty) return true;
+    final compactQuery = query.replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+    Iterable<String> values(dynamic raw) sync* {
+      if (raw is Iterable) {
+        for (final value in raw) {
+          final text = value?.toString().trim().toLowerCase() ?? '';
+          if (text.isNotEmpty) yield text;
+        }
+      } else {
+        final text = raw?.toString().trim().toLowerCase() ?? '';
+        if (text.isNotEmpty) yield text;
+      }
+    }
+
+    final searchable = <String>[
+      ...values(entry['invoiceNumbers']),
+      ...values(entry['invoice_numbers']),
+      ...values(entry['invoiceNumber']),
+      ...values(entry['invoice_number']),
+      ...values(entry['expenseDocumentNumbers']),
+      ...values(entry['expenseNumbers']),
+      ...values(entry['expenseDocumentNumber']),
+      ...values(entry['expense_document_number']),
+      ...values(entry['expenseNumber']),
+      ...values(entry['expense_number']),
+    ];
+    return searchable.any((number) {
+      if (number.contains(query)) return true;
+      final compactNumber = number.replaceAll(RegExp(r'[^a-z0-9]'), '');
+      return compactQuery.isNotEmpty && compactNumber.contains(compactQuery);
+    });
+  }
+
   double? _parseAmountInput(String raw) {
     final normalized = raw.trim();
     if (normalized.isEmpty) return null;
@@ -281,7 +342,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     }
 
     var applied = false;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;
@@ -441,200 +502,445 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final yearController = TextEditingController(text: _yearController.text);
     final fromController = TextEditingController(text: _fromController.text);
     final toController = TextEditingController(text: _toController.text);
+    final now = DateTime.now();
     var applied = false;
+    var customExpanded = false;
+    String? selectedPreset;
+
+    DateTime day(DateTime value) =>
+        DateTime(value.year, value.month, value.day);
+    bool sameDay(DateTime? left, DateTime? right) =>
+        left != null && right != null && day(left) == day(right);
+    DateTime threeMonthsAgo(DateTime value) =>
+        DateTime(value.year, value.month - 3, value.day);
+
+    void resolveInitialSelection() {
+      final from = _parseDate(fromController.text);
+      final to = _parseDate(toController.text);
+      if (sameDay(from, DateTime(now.year, now.month, 1)) && sameDay(to, now)) {
+        selectedPreset = 'month';
+      } else if (sameDay(from, now.subtract(const Duration(days: 29))) &&
+          sameDay(to, now)) {
+        selectedPreset = '30days';
+      } else if (sameDay(from, threeMonthsAgo(now)) && sameDay(to, now)) {
+        selectedPreset = '3months';
+      } else if (sameDay(from, DateTime(now.year, 1, 1)) && sameDay(to, now)) {
+        selectedPreset = 'year';
+      } else if (from != null || to != null) {
+        selectedPreset = 'custom';
+        customExpanded = true;
+      } else if (_parseYear(yearController.text) == now.year) {
+        selectedPreset = 'year';
+      }
+    }
+
+    resolveInitialSelection();
+
+    bool customRangeIsValid() {
+      final from = _parseDate(fromController.text);
+      final to = _parseDate(toController.text);
+      return from == null || to == null || !from.isAfter(to);
+    }
 
     Future<void> pickDate({
-      required BuildContext dialogContext,
+      required BuildContext modalContext,
       required TextEditingController target,
-      required StateSetter setDialogState,
+      required StateSetter setModalState,
     }) async {
-      final initial = _parseDate(target.text) ?? DateTime.now();
+      final initial = _parseDate(target.text) ?? now;
       final picked = await showDatePicker(
-        context: dialogContext,
+        context: modalContext,
+        locale: Localizations.localeOf(modalContext),
         initialDate: initial,
         firstDate: DateTime(2000),
-        lastDate: DateTime(DateTime.now().year + 1, 12, 31),
+        lastDate: DateTime(now.year + 1, 12, 31),
       );
       if (picked == null) return;
-      setDialogState(() => target.text = _dateOnly(picked));
+      setModalState(() {
+        target.text = _dateOnly(picked);
+        yearController.clear();
+        selectedPreset = 'custom';
+        customExpanded = true;
+      });
     }
 
-    Future<void> applyAndClose(BuildContext dialogContext) async {
-      _yearController.text = yearController.text.trim();
-      _fromController.text = fromController.text.trim();
-      _toController.text = toController.text.trim();
-      applied = true;
-      Navigator.of(dialogContext).pop();
+    void selectPreset(
+      StateSetter setModalState,
+      String preset,
+      DateTime from,
+      DateTime to,
+    ) {
+      setModalState(() {
+        selectedPreset = preset;
+        customExpanded = false;
+        yearController.clear();
+        fromController.text = _dateOnly(day(from));
+        toController.text = _dateOnly(day(to));
+      });
     }
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        final l = AppLocalizations.of(dialogContext)!;
-        final cs = Theme.of(dialogContext).colorScheme;
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Widget dateTile({
-              required String label,
-              required TextEditingController controller,
-              required IconData icon,
-            }) {
-              final value = controller.text.trim();
-              final parsed = _parseDate(value);
-              final display = parsed == null
-                  ? 'dd/mm/aaaa'
-                  : DateFormat('dd/MM/yyyy').format(parsed);
-              return InkWell(
-                onTap: s.loadingAllEntries
-                    ? null
-                    : () => pickDate(
-                          dialogContext: dialogContext,
-                          target: controller,
-                          setDialogState: setDialogState,
-                        ),
-                borderRadius: BorderRadius.circular(10),
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: label,
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                    prefixIcon: Icon(icon, size: 18),
-                    suffixIcon: value.isEmpty
-                        ? const Icon(Icons.calendar_today_outlined, size: 16)
-                        : IconButton(
-                            tooltip: l.statementsClearFilters,
-                            onPressed: () => setDialogState(controller.clear),
-                            icon: const Icon(Icons.close_rounded, size: 16),
-                          ),
+    void expandCustom(StateSetter setModalState) {
+      setModalState(() {
+        customExpanded = !customExpanded;
+        if (!customExpanded) return;
+        selectedPreset = 'custom';
+        final historicalYear = _parseYear(yearController.text);
+        if (fromController.text.trim().isEmpty &&
+            toController.text.trim().isEmpty &&
+            historicalYear != null) {
+          fromController.text = _dateOnly(DateTime(historicalYear, 1, 1));
+          toController.text = _dateOnly(DateTime(historicalYear, 12, 31));
+          yearController.clear();
+        }
+      });
+    }
+
+    Widget buildContent(
+      BuildContext modalContext,
+      StateSetter setModalState,
+    ) {
+      final l = AppLocalizations.of(modalContext)!;
+      final cs = Theme.of(modalContext).colorScheme;
+      final typo = AppTypography.of(modalContext);
+      final isSpanish =
+          Localizations.localeOf(modalContext).languageCode == 'es';
+      final valid = customRangeIsValid();
+
+      Widget presetTile({
+        required String id,
+        required String label,
+        required DateTime from,
+        required DateTime to,
+      }) {
+        return ChoiceChip(
+          selected: selectedPreset == id,
+          showCheckmark: true,
+          label: SizedBox(
+            width: double.infinity,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          onSelected: s.loadingAllEntries
+              ? null
+              : (_) => selectPreset(setModalState, id, from, to),
+        );
+      }
+
+      Widget dateTile({
+        required String label,
+        required TextEditingController controller,
+      }) {
+        final parsed = _parseDate(controller.text);
+        final display = parsed == null
+            ? 'dd/mm/aaaa'
+            : DateFormat('dd/MM/yyyy', isSpanish ? 'es' : null).format(parsed);
+        return InkWell(
+          onTap: s.loadingAllEntries
+              ? null
+              : () => pickDate(
+                    modalContext: modalContext,
+                    target: controller,
+                    setModalState: setModalState,
                   ),
-                  child: Text(display),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 44),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today_outlined,
+                    size: 16, color: cs.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: typo.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 10.5,
+                        ),
+                      ),
+                      Text(
+                        display,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: typo.bodySmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            }
+                if (controller.text.trim().isNotEmpty)
+                  IconButton(
+                    tooltip: l.statementsClearFilters,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => setModalState(() {
+                      controller.clear();
+                      yearController.clear();
+                      selectedPreset = 'custom';
+                    }),
+                    icon: const Icon(Icons.close_rounded, size: 15),
+                  ),
+              ],
+            ),
+          ),
+        );
+      }
 
-            Widget preset(String label, DateTime from, DateTime to, int? year) {
-              return ActionChip(
-                label: Text(label),
-                onPressed: s.loadingAllEntries
-                    ? null
-                    : () => setDialogState(() {
-                          yearController.text = year?.toString() ?? '';
-                          fromController.text = _dateOnly(from);
-                          toController.text = _dateOnly(to);
-                        }),
-              );
-            }
-
-            final now = DateTime.now();
-            return AlertDialog(
-              backgroundColor: cs.surface,
-              surfaceTintColor: Colors.transparent,
-              title: Text(l.statementsHeaderDate),
-              content: SizedBox(
-                width: 420,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+      final appliedYear = _parseYear(yearController.text);
+      return SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            10,
+            16,
+            12 + MediaQuery.viewInsetsOf(modalContext).bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    TextField(
-                      controller: yearController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: l.statementsFilterYear,
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                        prefixIcon:
-                            const Icon(Icons.calendar_month_outlined, size: 18),
+                    Icon(Icons.date_range_outlined,
+                        size: 18, color: cs.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l.statementsHeaderDate,
+                        style: typo.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: dateTile(
-                            label: l.statementsFilterFrom,
-                            controller: fromController,
-                            icon: Icons.arrow_forward_rounded,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: dateTile(
-                            label: l.statementsFilterTo,
-                            controller: toController,
-                            icon: Icons.arrow_back_rounded,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          preset(
-                            l.statementsPresetThisMonth,
-                            DateTime(now.year, now.month, 1),
-                            DateTime(now.year, now.month + 1, 0),
-                            now.year,
-                          ),
-                          preset(
-                            l.statementsPresetLast30Days,
-                            now.subtract(const Duration(days: 30)),
-                            now,
-                            null,
-                          ),
-                          preset(
-                            l.localeName.toLowerCase().startsWith('es')
-                                ? 'Ultimos 3 meses'
-                                : 'Last 3 months',
-                            DateTime(now.year, now.month - 3, now.day),
-                            now,
-                            null,
-                          ),
-                          preset(
-                            l.statementsPresetThisYear,
-                            DateTime(now.year, 1, 1),
-                            DateTime(now.year, 12, 31),
-                            now.year,
-                          ),
-                        ],
-                      ),
+                    HexoraButton.iconOnly(
+                      onPressed: () => Navigator.of(modalContext).pop(),
+                      icon: Icons.close_rounded,
+                      tooltip: l.close,
+                      variant: HexoraButtonVariant.ghost,
+                      size: HexoraButtonSize.compact,
                     ),
                   ],
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: s.loadingAllEntries
-                      ? null
-                      : () => setDialogState(() {
-                            yearController.clear();
-                            fromController.clear();
-                            toController.clear();
-                          }),
-                  child: const Text('Limpiar'),
+                if (appliedYear != null &&
+                    fromController.text.trim().isEmpty &&
+                    toController.text.trim().isEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    isSpanish
+                        ? 'Filtro aplicado: año $appliedYear'
+                        : 'Applied filter: year $appliedYear',
+                    style: typo.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 3.7,
+                  children: [
+                    presetTile(
+                      id: 'month',
+                      label: l.statementsPresetThisMonth,
+                      from: DateTime(now.year, now.month, 1),
+                      to: now,
+                    ),
+                    presetTile(
+                      id: '30days',
+                      label: l.statementsPresetLast30Days,
+                      from: now.subtract(const Duration(days: 29)),
+                      to: now,
+                    ),
+                    presetTile(
+                      id: '3months',
+                      label: isSpanish ? 'Últimos 3 meses' : 'Last 3 months',
+                      from: threeMonthsAgo(now),
+                      to: now,
+                    ),
+                    presetTile(
+                      id: 'year',
+                      label: l.statementsPresetThisYear,
+                      from: DateTime(now.year, 1, 1),
+                      to: now,
+                    ),
+                  ],
                 ),
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text(l.close),
-                ),
-                FilledButton(
-                  onPressed: s.loadingAllEntries
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: s.loadingAllEntries
                       ? null
-                      : () => applyAndClose(dialogContext),
-                  child: Text(l.statementsApplyFilters),
+                      : () => expandCustom(setModalState),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.tune_rounded,
+                          size: 17,
+                          color:
+                              customExpanded ? cs.primary : cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isSpanish ? 'Personalizar fechas' : 'Custom dates',
+                            style: typo.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: customExpanded ? cs.primary : cs.onSurface,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          customExpanded
+                              ? Icons.expand_less_rounded
+                              : Icons.expand_more_rounded,
+                          size: 20,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                AnimatedSize(
+                  duration:
+                      HexoraMotion.duration(context, HexoraMotion.standard),
+                  curve: HexoraMotion.emphasized,
+                  child: customExpanded
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: dateTile(
+                                      label: l.statementsFilterFrom,
+                                      controller: fromController,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: dateTile(
+                                      label: l.statementsFilterTo,
+                                      controller: toController,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (!valid) ...[
+                                const SizedBox(height: 6),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    isSpanish
+                                        ? 'La fecha Desde no puede ser posterior a Hasta.'
+                                        : 'From cannot be later than To.',
+                                    style: typo.bodySmall.copyWith(
+                                      color: cs.error,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    HexoraButton(
+                      onPressed: s.loadingAllEntries
+                          ? null
+                          : () => setModalState(() {
+                                yearController.clear();
+                                fromController.clear();
+                                toController.clear();
+                                selectedPreset = null;
+                                customExpanded = false;
+                              }),
+                      label: isSpanish ? 'Limpiar' : 'Clear',
+                      variant: HexoraButtonVariant.ghost,
+                      size: HexoraButtonSize.standard,
+                    ),
+                    const Spacer(),
+                    HexoraButton(
+                      onPressed: s.loadingAllEntries || !valid
+                          ? null
+                          : () {
+                              _yearController.text = yearController.text.trim();
+                              _fromController.text = fromController.text.trim();
+                              _toController.text = toController.text.trim();
+                              applied = true;
+                              Navigator.of(modalContext).pop();
+                            },
+                      label: l.statementsApplyFilters,
+                      icon: Icons.check_rounded,
+                      size: HexoraButtonSize.standard,
+                    ),
+                  ],
                 ),
               ],
-            );
-          },
-        );
-      },
-    );
-    yearController.dispose();
-    fromController.dispose();
-    toController.dispose();
+            ),
+          ),
+        ),
+      );
+    }
+
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
+    if (isMobile) {
+      await showModalBottomSheet<void>(
+        sheetAnimationStyle: HexoraMotion.sheetStyle(context),
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (sheetContext) => StatefulBuilder(
+          builder: buildContent,
+        ),
+      );
+    } else {
+      await showHexoraDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) => Dialog(
+          clipBehavior: Clip.antiAlias,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: StatefulBuilder(builder: buildContent),
+          ),
+        ),
+      );
+    }
+
+    await Future.wait([
+      _disposeDialogController(yearController),
+      _disposeDialogController(fromController),
+      _disposeDialogController(toController),
+    ]);
     if (applied && mounted) {
       await _applyFilters(s);
     }
@@ -645,7 +951,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         TextEditingController(text: _descriptionSearchController.text);
     var applied = false;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -712,7 +1018,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         );
       },
     );
-    queryController.dispose();
+    await _disposeDialogController(queryController);
     if (applied && mounted) {
       await _applyFilters(s);
     }
@@ -723,7 +1029,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         TextEditingController(text: _notesSearchController.text);
     var applied = false;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -788,7 +1094,87 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         );
       },
     );
-    queryController.dispose();
+    await _disposeDialogController(queryController);
+    if (applied && mounted) {
+      await _applyFilters(s);
+    }
+  }
+
+  Future<void> _showInvoiceNumberFilterDialog(
+    StatementsController s,
+  ) async {
+    final queryController =
+        TextEditingController(text: _invoiceNumberController.text);
+    var applied = false;
+
+    await showHexoraDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final l = AppLocalizations.of(dialogContext)!;
+        final cs = Theme.of(dialogContext).colorScheme;
+        final isSpanish = l.localeName.toLowerCase().startsWith('es');
+
+        void applyAndClose() {
+          _invoiceNumberController.text = queryController.text.trim();
+          applied = true;
+          Navigator.of(dialogContext).pop();
+        }
+
+        return AlertDialog(
+          backgroundColor: cs.surface,
+          surfaceTintColor: Colors.transparent,
+          title: Text(
+              isSpanish ? 'Buscar factura vinculada' : 'Search linked invoice'),
+          content: SizedBox(
+            width: 400,
+            child: TextField(
+              controller: queryController,
+              enabled: !s.loadingAllEntries,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => applyAndClose(),
+              decoration: InputDecoration(
+                labelText: isSpanish ? 'Número de factura' : 'Invoice number',
+                hintText: isSpanish ? 'Ej. 389-26' : 'E.g. 389-26',
+                helperText: isSpanish
+                    ? 'Busca coincidencias parciales entre facturas vinculadas.'
+                    : 'Finds partial matches among linked invoices.',
+                border: const OutlineInputBorder(),
+                isDense: true,
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                suffixIcon: IconButton(
+                  tooltip: l.statementsClearFilters,
+                  onPressed: queryController.clear,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: s.loadingAllEntries
+                  ? null
+                  : () {
+                      _invoiceNumberController.clear();
+                      applied = true;
+                      Navigator.of(dialogContext).pop();
+                    },
+              child: Text(isSpanish ? 'Limpiar' : 'Clear'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(l.close),
+            ),
+            FilledButton.icon(
+              onPressed: s.loadingAllEntries ? null : applyAndClose,
+              icon: const Icon(Icons.search_rounded, size: 18),
+              label: Text(isSpanish ? 'Buscar' : 'Search'),
+            ),
+          ],
+        );
+      },
+    );
+    await _disposeDialogController(queryController);
     if (applied && mounted) {
       await _applyFilters(s);
     }
@@ -799,7 +1185,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         TextEditingController(text: _clientProviderController.text);
     var applied = false;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -864,7 +1250,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         );
       },
     );
-    queryController.dispose();
+    await _disposeDialogController(queryController);
     if (applied && mounted) {
       await _applyFilters(s);
     }
@@ -884,6 +1270,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       clientProviderQuery: _clientProviderController.text.trim(),
       descriptionSearch: _descriptionSearchController.text.trim(),
       notesSearch: _notesSearchController.text.trim(),
+      invoiceNumberSearch: _invoiceNumberController.text.trim(),
       sort: 'date_desc',
       applyDateFilters: true,
       applyAmountFilters: true,
@@ -989,13 +1376,25 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         ),
       );
     }
+    if ((s.allEntriesInvoiceNumberSearch ?? '').isNotEmpty) {
+      chips.add(
+        InputChip(
+          label: Text(
+            '${l.documentTypeInvoice}: ${s.allEntriesInvoiceNumberSearch}',
+          ),
+          onDeleted: () async {
+            _invoiceNumberController.clear();
+            await _applyFilters(s);
+          },
+        ),
+      );
+    }
     if (chips.isEmpty) {
       return const SizedBox.shrink();
     }
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: chips,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Wrap(spacing: 8, runSpacing: 6, children: chips),
     );
   }
 
@@ -1215,7 +1614,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     await s.loadClients();
     if (!mounted) return;
     String query = '';
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -1329,7 +1728,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final initial = _noProcedeReasonsByEntryId[entryId] ?? '';
     final reasonController = TextEditingController(text: initial);
     String? error;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -1455,19 +1854,51 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     }
   }
 
-  int _sizeIndexFor(int size) {
-    final direct = _sizeOptions.indexOf(size);
-    if (direct >= 0) return direct;
-    var best = 0;
-    var bestDiff = (size - _sizeOptions.first).abs();
-    for (var i = 1; i < _sizeOptions.length; i++) {
-      final diff = (size - _sizeOptions[i]).abs();
-      if (diff < bestDiff) {
-        best = i;
-        bestDiff = diff;
-      }
-    }
-    return best;
+  /// Link panel docked beside the table; `null` while closed. Kept in state
+  /// (not rebuilt from the controller) so the panel survives table rebuilds.
+  Widget? _linkPanel;
+
+  /// Id of the transaction the panel is showing; its table row is highlighted.
+  String? _linkPanelEntryId;
+
+  /// Opens the unified transaction panel (Detalles / Vincular tabs) for
+  /// [entry], defaulting to [initialTab] and, when opening on the Vincular
+  /// tab, [initialLinkMode].
+  void _openTransactionPanel(
+    StatementsController s,
+    Map<String, dynamic> entry, {
+    required StatementsTransactionPanelTab initialTab,
+    BankTransactionLinkMode initialLinkMode =
+        BankTransactionLinkMode.suggestions,
+  }) {
+    final entryId = (entry['_id'] ?? entry['id'])?.toString() ?? '';
+    setState(() {
+      _linkPanelEntryId = entryId;
+      _linkPanel = StatementsTransactionDetailLinkPanel(
+        key: ValueKey('transaction-panel-$entryId'),
+        controller: s,
+        entry: entry,
+        initialTab: initialTab,
+        initialLinkMode: initialLinkMode,
+        onClose: _closeLinkPanel,
+        notApplicableReason: _noProcedeReasonsByEntryId[entryId],
+        // Transactions that are not invoice payments are categorized with
+        // the existing "No procede" flow instead of being linked.
+        onMarkNotApplicable: () async {
+          await _showNoProcedeDialog(entry);
+          final reason = _noProcedeReasonsByEntryId[entryId]?.trim() ?? '';
+          if (reason.isNotEmpty) _closeLinkPanel();
+        },
+      );
+    });
+  }
+
+  void _closeLinkPanel() {
+    if (!mounted || _linkPanel == null) return;
+    setState(() {
+      _linkPanel = null;
+      _linkPanelEntryId = null;
+    });
   }
 
   @override
@@ -1482,9 +1913,10 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         ? StatementsTableTheme.softDark(cs)
         : StatementsTableTheme.light(cs);
 
-    final dateFilteredEntries = s.isUsingAggregatedEntriesPath
-        ? s.allEntries
-        : s.allEntries.where(_entryMatchesDateFilters).toList(growable: false);
+    // Always apply client-side date filtering as a safety net — the aggregated
+    // API path may ignore date_from/date_to when year is also sent.
+    final dateFilteredEntries =
+        s.allEntries.where(_entryMatchesDateFilters).toList(growable: false);
     final descriptionFilteredEntries = s.isUsingAggregatedEntriesPath
         ? dateFilteredEntries
         : dateFilteredEntries
@@ -1498,9 +1930,12 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final partyFilteredEntries = notesFilteredEntries
         .where((entry) => _entryMatchesClientProviderFilter(l, s, entry))
         .toList(growable: false);
+    final invoiceFilteredEntries = partyFilteredEntries
+        .where(_entryMatchesInvoiceNumberFilter)
+        .toList(growable: false);
     final amountFilteredEntries = s.isUsingAggregatedEntriesPath
-        ? partyFilteredEntries
-        : partyFilteredEntries.where((entry) {
+        ? invoiceFilteredEntries
+        : invoiceFilteredEntries.where((entry) {
             if (_amountMinFilter == null &&
                 _amountMaxFilter == null &&
                 _amountTypeFilter == 'all') {
@@ -1553,6 +1988,28 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       });
     final summary = _computeSummary(context, amountFilteredEntries);
 
+    Widget animatedResultsState(String state, Widget child) {
+      final duration = MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 180);
+      return AnimatedSwitcher(
+        duration: duration,
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final offset = Tween<Offset>(
+            begin: const Offset(0, 0.015),
+            end: Offset.zero,
+          ).animate(animation);
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(position: offset, child: child),
+          );
+        },
+        child: KeyedSubtree(key: ValueKey(state), child: child),
+      );
+    }
+
     if (s.allEntriesYear != null &&
         _yearController.text != s.allEntriesYear.toString()) {
       _yearController.text = s.allEntriesYear.toString();
@@ -1590,9 +2047,6 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final freshnessIsStale = freshnessStatus?['stale'] == true;
     final autoImportEnabled =
         auth.currentUser?.autoStatementImportEnabled ?? false;
-    final sizeIndex = _sizeIndexFor(s.allEntriesSize);
-    final canDecSize = sizeIndex > 0;
-    final canIncSize = sizeIndex < _sizeOptions.length - 1;
     final canNextPage = s.isUsingAggregatedEntriesPath
         ? ((s.allEntriesNextCursor != null &&
                 s.allEntriesNextCursor!.isNotEmpty) ||
@@ -1638,224 +2092,460 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         ),
       ],
     );
-    final headerActions = <Widget>[
-      _HeaderActionGroup(
-        children: [
-          _HeaderIconAction(
-            tooltip: infoTooltipText,
-            onPressed: freshnessBatchId == null
-                ? null
-                : () => s.fetchBatchStatus(freshnessBatchId),
-            icon: freshnessIsStale
-                ? Icons.warning_amber_outlined
-                : Icons.info_outline,
-            color: freshnessIsStale ? cs.error : null,
-          ),
-          _HeaderIconAction(
-            tooltip: _isSoftDarkTable ? 'Tema claro' : 'Tema suave oscuro',
-            onPressed: _toggleTableTheme,
-            icon: _isSoftDarkTable
-                ? Icons.light_mode_outlined
-                : Icons.dark_mode_outlined,
-          ),
-          _HeaderIconAction(
-            tooltip: autoImportEnabled
-                ? '${l.autoStatementImportTitle}: ON\n${l.autoStatementImportHelper}'
-                : '${l.autoStatementImportTitle}: OFF\n${l.autoStatementImportHelper}',
-            onPressed: _autoStatementImportLoading
-                ? null
-                : () => _toggleAutoStatementImport(!autoImportEnabled),
-            icon: autoImportEnabled
-                ? Icons.sync_lock_outlined
-                : Icons.sync_disabled_outlined,
-            selected: autoImportEnabled,
-            loading: _autoStatementImportLoading,
-          ),
-          _HeaderIconAction(
-            tooltip: l.refreshAction,
-            onPressed: s.loadingAllEntries ? null : s.loadAllEntries,
-            icon: Icons.refresh,
-          ),
-          _HeaderIconAction(
-            tooltip: 'Exportar Excel',
-            onPressed: _exportingExcel ? null : () => _exportExcel(s),
-            icon: Icons.table_view_outlined,
-            loading: _exportingExcel,
-          ),
-        ],
-      ),
-      _HeaderActionGroup(
-        children: [
-          _HeaderIconAction(
-            tooltip: '${l.statementsPageSize}: ${s.allEntriesSize} (-)',
-            onPressed: canDecSize
-                ? () => s.loadAllEntries(
-                      size: _sizeOptions[sizeIndex - 1],
-                      page: 1,
-                    )
-                : null,
-            icon: Icons.remove_rounded,
-          ),
-          _HeaderPageSizeBadge(label: '${s.allEntriesSize}'),
-          _HeaderIconAction(
-            tooltip: '${l.statementsPageSize}: ${s.allEntriesSize} (+)',
-            onPressed: canIncSize
-                ? () => s.loadAllEntries(
-                      size: _sizeOptions[sizeIndex + 1],
-                      page: 1,
-                    )
-                : null,
-            icon: Icons.add_rounded,
-          ),
-        ],
-      ),
-    ];
+    void handleSecondaryAction(String value) {
+      switch (value) {
+        case 'info':
+          if (freshnessBatchId != null) {
+            s.fetchBatchStatus(freshnessBatchId);
+          }
+          return;
+        case 'theme':
+          _toggleTableTheme();
+          return;
+        case 'auto_import':
+          if (!_autoStatementImportLoading) {
+            _toggleAutoStatementImport(!autoImportEnabled);
+          }
+          return;
+        case 'export':
+          if (!_exportingExcel) _exportExcel(s);
+          return;
+      }
+    }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    final content = ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       children: [
         FolderSectionCard(
           label: l.statementsAllDataTitle,
-          actions: headerActions,
+          showTitle: false,
+          showBorder: false,
           leftTabOffset: 0,
           rightTabOffset: 0,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 26, 16, 16),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                StatementsAllDataBulkBar(
-                  controller: s,
-                  selectedCount: _selectedIds.length,
-                  onBulkSuggest: () => _bulkSuggest(s, l),
-                  onBulkLink: () => _showBulkLinkDialog(s),
-                  onClear: () => setState(_selectedIds.clear),
-                ),
-                const SizedBox(height: 12),
-                _activeFiltersChips(l, s),
-                const SizedBox(height: 12),
-                if (s.loadingAllEntries && s.allEntries.isEmpty)
-                  const StatementsAllDataSkeleton()
-                else if (s.allEntriesError != null)
-                  Text(s.allEntriesError!, style: TextStyle(color: cs.error))
-                else if (s.allEntries.isEmpty)
-                  Text(l.statementsAllDataEmpty)
-                else
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      StatementsAllDataTable(
-                        entries: sortedEntries,
-                        controller: s,
-                        selectedIds: _selectedIds,
-                        tableTheme: tableTheme,
-                        onMarkNoProcede: _showNoProcedeDialog,
-                        noProcedeReasonForEntry: (entry) {
-                          final id = (entry['_id'] ?? entry['id'])?.toString();
-                          if (id == null || id.isEmpty) return null;
-                          return _noProcedeReasonsByEntryId[id];
-                        },
-                        onDateFilterTap: () => _showDateFilterDialog(s),
-                        dateFilterActive: s.allEntriesYear != null ||
-                            (s.allEntriesDateFrom?.isNotEmpty ?? false) ||
-                            (s.allEntriesDateTo?.isNotEmpty ?? false),
-                        onDescriptionFilterTap: () =>
-                            _showDescriptionFilterDialog(s),
-                        descriptionFilterActive:
-                            (s.allEntriesDescriptionSearch?.isNotEmpty ??
-                                false),
-                        onNotesFilterTap: () => _showNotesFilterDialog(s),
-                        notesFilterActive:
-                            (s.allEntriesNotesSearch?.isNotEmpty ?? false),
-                        onAmountFilterTap: _showAmountFilterDialog,
-                        amountFilterActive: _amountMinFilter != null ||
-                            _amountMaxFilter != null ||
-                            _amountTypeFilter != 'all',
-                        onClientProviderFilterTap: () =>
-                            _showClientProviderFilterDialog(s),
-                        clientProviderFilterActive:
-                            _clientProviderController.text.trim().isNotEmpty,
-                        onInvoiceSortTap: () => setState(() {
-                          _invoiceSortMode = (_invoiceSortMode + 1) % 3;
-                        }),
-                        invoiceSortMode: _invoiceSortMode,
-                        onToggleAll: (checked) {
-                          setState(() {
-                            if (checked) {
-                              for (final entry in visibleEntries) {
-                                final id =
-                                    (entry['_id'] ?? entry['id'])?.toString();
-                                if (id != null && id.isNotEmpty) {
-                                  _selectedIds.add(id);
-                                }
-                              }
-                            } else {
-                              for (final entry in visibleEntries) {
-                                final id =
-                                    (entry['_id'] ?? entry['id'])?.toString();
-                                if (id != null) _selectedIds.remove(id);
-                              }
-                            }
-                          });
-                        },
-                        onToggleRow: (entryId) {
-                          setState(() {
-                            if (_selectedIds.contains(entryId)) {
-                              _selectedIds.remove(entryId);
-                            } else {
-                              _selectedIds.add(entryId);
-                            }
-                          });
-                        },
-                        onShowDetails: (entry) =>
-                            StatementsAllDataDetails.show(context, l, entry, s,
-                              onShare: () => _shareEntry(context, s, entry)),
-                        onShare: (entry) => _shareEntry(context, s, entry),
-                        onSuggest: (entry) async {
-                          await StatementsShared.showInvoiceSuggestionsDialog(
-                              context, s, entry);
-                        },
-                        onLink: (entry) async {
-                          await StatementsShared.showClientPickerDialog(
-                              context, s, entry);
-                        },
-                        onLinkInvoice: (entry) async {
-                          final id =
-                              (entry['_id'] ?? entry['id'])?.toString() ?? '';
-                          if (id.isNotEmpty) {
-                            setState(() {
-                              _noProcedeReasonsByEntryId.remove(id);
-                            });
-                          }
-                          final amountText =
-                              StatementsShared.entryText(entry, ['amount']);
-                          final amountValue =
-                              StatementsFormatters.parseAmount(amountText) ?? 0;
-                          final expenseOnly = amountValue < 0;
-                          await StatementsShared.showInvoiceLinkDialog(
-                            context,
-                            s,
-                            entry,
-                            expenseOnly: expenseOnly,
-                          );
-                        },
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: LayoutBuilder(builder: (context, constraints) {
+                    final es = l.localeName.startsWith('es');
+                    final dateLabel = [
+                      s.allEntriesDateFrom,
+                      s.allEntriesDateTo,
+                    ]
+                        .whereType<String>()
+                        .where((v) => v.isNotEmpty)
+                        .map((v) => StatementsFormatters.formatDate(context, v))
+                        .join(' – ');
+                    final dateButton = OutlinedButton.icon(
+                      onPressed: () => _showDateFilterDialog(s),
+                      icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                      label: Text(
+                        dateLabel.isNotEmpty
+                            ? dateLabel
+                            : s.allEntriesYear?.toString() ??
+                                (es ? 'Todas las fechas' : 'All dates'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              resultRangeLabel,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: cs.onSurfaceVariant),
+                      style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 40),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          side: BorderSide(color: tableTheme.border),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10))),
+                    );
+                    final search = TextFormField(
+                      key: ValueKey('statement-search-$descriptionSearch'),
+                      initialValue: descriptionSearch,
+                      style: Theme.of(context).textTheme.bodySmall,
+                      textInputAction: TextInputAction.search,
+                      onFieldSubmitted: (query) {
+                        _descriptionSearchController.text = query.trim();
+                        _applyFilters(s);
+                      },
+                      decoration: InputDecoration(
+                        hintText: es
+                            ? 'Buscar por descripción…'
+                            : 'Search description…',
+                        prefixIcon: const Icon(Icons.search, size: 16),
+                        prefixIconConstraints:
+                            const BoxConstraints(minWidth: 36, minHeight: 36),
+                        isDense: true,
+                        filled: true,
+                        fillColor: tableTheme.headerBg,
+                        constraints: const BoxConstraints(
+                          minHeight: 40,
+                          maxHeight: 40,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 0),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: tableTheme.border)),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: tableTheme.border)),
+                      ),
+                    );
+                    final filters = PopupMenuButton<String>(
+                      tooltip: es ? 'Filtros' : 'Filters',
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'amount':
+                            _showAmountFilterDialog();
+                          case 'contact':
+                            _showClientProviderFilterDialog(s);
+                          case 'notes':
+                            _showNotesFilterDialog(s);
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        NavigationPopupMenuItem(
+                            value: 'amount',
+                            child: Text(l.statementsHeaderAmount)),
+                        NavigationPopupMenuItem(
+                            value: 'contact',
+                            child: Text(es ? 'Contacto' : 'Contact')),
+                        NavigationPopupMenuItem(
+                            value: 'notes',
+                            child: Text(es ? 'Notas' : 'Notes')),
+                      ],
+                      child: constraints.maxWidth < 1040
+                          ? _ToolbarIconSurface(
+                              tooltip: es ? 'Filtros' : 'Filters',
+                              icon: Icons.filter_alt_outlined,
+                            )
+                          : Container(
+                              height: 40,
+                              alignment: Alignment.center,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: tableTheme.border),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.filter_alt_outlined,
+                                      size: 18),
+                                  const SizedBox(width: 8),
+                                  Text(es ? 'Filtros' : 'Filters'),
+                                ],
+                              ),
+                            ),
+                    );
+                    final resultCount = Text(
+                      es ? '$totalResults resultados' : '$totalResults results',
+                      maxLines: 1,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                    );
+                    final refresh = _HeaderIconAction(
+                      tooltip: l.refreshAction,
+                      onPressed: s.loadingAllEntries ? null : s.loadAllEntries,
+                      icon: Icons.refresh,
+                      size: 40,
+                    );
+                    final pageSize = _HeaderPageSizeSelector(
+                      label: l.statementsPageSize,
+                      value: s.allEntriesSize,
+                      options: _sizeOptions,
+                      onSelected: (size) => s.loadAllEntries(
+                        size: size,
+                        page: 1,
+                      ),
+                    );
+                    final secondaryActions = PopupMenuButton<String>(
+                      tooltip: es ? 'Más acciones' : 'More actions',
+                      onSelected: handleSecondaryAction,
+                      itemBuilder: (_) => [
+                        NavigationPopupMenuItem(
+                          value: 'info',
+                          enabled: freshnessBatchId != null,
+                          child: Tooltip(
+                            message: infoTooltipText,
+                            child: _ToolbarMenuLabel(
+                              icon: freshnessIsStale
+                                  ? Icons.warning_amber_outlined
+                                  : Icons.info_outline,
+                              label: es ? 'Información' : 'Information',
+                              color: freshnessIsStale ? cs.error : null,
                             ),
                           ),
-                          pageNavigationActions,
-                        ],
+                        ),
+                        NavigationPopupMenuItem(
+                          value: 'theme',
+                          child: _ToolbarMenuLabel(
+                            icon: _isSoftDarkTable
+                                ? Icons.light_mode_outlined
+                                : Icons.dark_mode_outlined,
+                            label: _isSoftDarkTable
+                                ? (es ? 'Tema claro' : 'Light theme')
+                                : (es
+                                    ? 'Tema suave oscuro'
+                                    : 'Soft dark theme'),
+                          ),
+                        ),
+                        NavigationPopupMenuItem(
+                          value: 'auto_import',
+                          enabled: !_autoStatementImportLoading,
+                          child: _ToolbarMenuLabel(
+                            icon: autoImportEnabled
+                                ? Icons.sync_lock_outlined
+                                : Icons.sync_disabled_outlined,
+                            label:
+                                '${l.autoStatementImportTitle}: ${autoImportEnabled ? 'ON' : 'OFF'}',
+                          ),
+                        ),
+                        NavigationPopupMenuItem(
+                          value: 'export',
+                          enabled: !_exportingExcel,
+                          child: _ToolbarMenuLabel(
+                            icon: Icons.table_view_outlined,
+                            label: es ? 'Exportar Excel' : 'Export Excel',
+                          ),
+                        ),
+                      ],
+                      child: _ToolbarIconSurface(
+                        tooltip: es ? 'Más acciones' : 'More actions',
+                        icon: Icons.more_horiz_rounded,
                       ),
-                    ],
+                    );
+                    final searchWidth =
+                        (constraints.maxWidth * 0.34).clamp(320.0, 450.0);
+                    final constrainedSearch = SizedBox(
+                      width: constraints.maxWidth < 650
+                          ? constraints.maxWidth
+                          : searchWidth,
+                      child: search,
+                    );
+
+                    if (constraints.maxWidth >= 1040) {
+                      return Row(
+                        children: [
+                          constrainedSearch,
+                          const SizedBox(width: 8),
+                          dateButton,
+                          const SizedBox(width: 8),
+                          filters,
+                          const SizedBox(width: 8),
+                          refresh,
+                          const SizedBox(width: 8),
+                          pageSize,
+                          const Spacer(),
+                          resultCount,
+                          const SizedBox(width: 8),
+                          secondaryActions,
+                        ],
+                      );
+                    }
+
+                    final compactSecondary = <Widget>[
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 230),
+                        child: dateButton,
+                      ),
+                      const SizedBox(width: 6),
+                      refresh,
+                      const SizedBox(width: 6),
+                      pageSize,
+                      const SizedBox(width: 8),
+                      resultCount,
+                      const SizedBox(width: 6),
+                      secondaryActions,
+                    ];
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          key: const ValueKey(
+                              'statements-compact-toolbar-primary'),
+                          children: [
+                            Expanded(child: search),
+                            const SizedBox(width: 6),
+                            filters,
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        if (constraints.maxWidth >= 560)
+                          Row(
+                            key: const ValueKey(
+                                'statements-compact-toolbar-secondary'),
+                            children: [
+                              compactSecondary.first,
+                              ...compactSecondary.skip(1).take(4),
+                              const Spacer(),
+                              ...compactSecondary.skip(5),
+                            ],
+                          )
+                        else
+                          SingleChildScrollView(
+                            key: const ValueKey(
+                                'statements-compact-toolbar-secondary'),
+                            scrollDirection: Axis.horizontal,
+                            child: Row(children: compactSecondary),
+                          ),
+                      ],
+                    );
+                  }),
+                ),
+                if (_selectedIds.isNotEmpty)
+                  Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: StatementsAllDataBulkBar(
+                        controller: s,
+                        selectedCount: _selectedIds.length,
+                        onBulkSuggest: () => _bulkSuggest(s, l),
+                        onBulkLink: () => _showBulkLinkDialog(s),
+                        onClear: () => setState(_selectedIds.clear),
+                      )),
+                _activeFiltersChips(l, s),
+                if (s.loadingAllEntries && s.allEntries.isEmpty)
+                  animatedResultsState(
+                    'loading',
+                    const StatementsAllDataSkeleton(),
+                  )
+                else if (s.allEntriesError != null)
+                  animatedResultsState(
+                    'error',
+                    Text(
+                      s.allEntriesError!,
+                      style: TextStyle(color: cs.error),
+                    ),
+                  )
+                else if (s.allEntries.isEmpty)
+                  animatedResultsState(
+                    'empty',
+                    Text(l.statementsAllDataEmpty),
+                  )
+                else
+                  animatedResultsState(
+                    'content',
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        StatementsAllDataTable(
+                          entries: sortedEntries,
+                          controller: s,
+                          selectedIds: _selectedIds,
+                          activeEntryId: _linkPanelEntryId,
+                          tableTheme: tableTheme,
+                          onMarkNoProcede: _showNoProcedeDialog,
+                          noProcedeReasonForEntry: (entry) {
+                            final id =
+                                (entry['_id'] ?? entry['id'])?.toString();
+                            if (id == null || id.isEmpty) return null;
+                            return _noProcedeReasonsByEntryId[id];
+                          },
+                          onDateFilterTap: () => _showDateFilterDialog(s),
+                          dateFilterActive: s.allEntriesYear != null ||
+                              (s.allEntriesDateFrom?.isNotEmpty ?? false) ||
+                              (s.allEntriesDateTo?.isNotEmpty ?? false),
+                          onDescriptionFilterTap: () =>
+                              _showDescriptionFilterDialog(s),
+                          descriptionFilterActive:
+                              (s.allEntriesDescriptionSearch?.isNotEmpty ??
+                                  false),
+                          onNotesFilterTap: () => _showNotesFilterDialog(s),
+                          notesFilterActive:
+                              (s.allEntriesNotesSearch?.isNotEmpty ?? false),
+                          onAmountFilterTap: _showAmountFilterDialog,
+                          amountFilterActive: _amountMinFilter != null ||
+                              _amountMaxFilter != null ||
+                              _amountTypeFilter != 'all',
+                          onClientProviderFilterTap: () =>
+                              _showClientProviderFilterDialog(s),
+                          clientProviderFilterActive:
+                              _clientProviderController.text.trim().isNotEmpty,
+                          onInvoiceFilterTap: () =>
+                              _showInvoiceNumberFilterDialog(s),
+                          invoiceFilterActive:
+                              (s.allEntriesInvoiceNumberSearch?.isNotEmpty ??
+                                  false),
+                          onInvoiceSortTap: () => setState(() {
+                            _invoiceSortMode = (_invoiceSortMode + 1) % 3;
+                          }),
+                          invoiceSortMode: _invoiceSortMode,
+                          onToggleAll: (checked) {
+                            setState(() {
+                              if (checked) {
+                                for (final entry in visibleEntries) {
+                                  final id =
+                                      (entry['_id'] ?? entry['id'])?.toString();
+                                  if (id != null && id.isNotEmpty) {
+                                    _selectedIds.add(id);
+                                  }
+                                }
+                              } else {
+                                for (final entry in visibleEntries) {
+                                  final id =
+                                      (entry['_id'] ?? entry['id'])?.toString();
+                                  if (id != null) _selectedIds.remove(id);
+                                }
+                              }
+                            });
+                          },
+                          onToggleRow: (entryId) {
+                            setState(() {
+                              if (_selectedIds.contains(entryId)) {
+                                _selectedIds.remove(entryId);
+                              } else {
+                                _selectedIds.add(entryId);
+                              }
+                            });
+                          },
+                          onShowDetails: (entry) => _openTransactionPanel(
+                            s,
+                            entry,
+                            initialTab: StatementsTransactionPanelTab.details,
+                          ),
+                          onShare: (entry) => _shareEntry(context, s, entry),
+                          onSuggest: (entry) => _openTransactionPanel(
+                            s,
+                            entry,
+                            initialTab: StatementsTransactionPanelTab.link,
+                            initialLinkMode:
+                                BankTransactionLinkMode.suggestions,
+                          ),
+                          onLinkInvoice: (entry) {
+                            final id =
+                                (entry['_id'] ?? entry['id'])?.toString() ?? '';
+                            if (id.isNotEmpty) {
+                              setState(() {
+                                _noProcedeReasonsByEntryId.remove(id);
+                              });
+                            }
+                            _openTransactionPanel(
+                              s,
+                              entry,
+                              initialTab: StatementsTransactionPanelTab.link,
+                              initialLinkMode: BankTransactionLinkMode.manual,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                resultRangeLabel,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: cs.onSurfaceVariant),
+                              ),
+                            ),
+                            pageNavigationActions,
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),
@@ -1863,6 +2553,8 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         ),
       ],
     );
+
+    return HexoraSidePanelLayout(panel: _linkPanel, child: content);
   }
 }
 
@@ -1878,7 +2570,7 @@ class _HeaderActionGroup extends StatelessWidget {
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.36),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.42)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: children),
@@ -1891,43 +2583,39 @@ class _HeaderIconAction extends StatelessWidget {
     required this.tooltip,
     required this.onPressed,
     required this.icon,
-    this.selected = false,
-    this.loading = false,
-    this.color,
+    this.size = 30,
   });
 
   final String tooltip;
   final VoidCallback? onPressed;
   final IconData icon;
-  final bool selected;
-  final bool loading;
-  final Color? color;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final fg = color ?? (selected ? cs.onPrimary : cs.onSurfaceVariant);
+    final isStandalone = size >= 40;
+    final fg = cs.onSurfaceVariant;
     return Tooltip(
       message: tooltip,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 1),
         child: IconButton(
-          onPressed: loading ? null : onPressed,
-          icon: loading
-              ? const SizedBox(
-                  width: 15,
-                  height: 15,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(icon, size: 17),
+          onPressed: onPressed,
+          icon: Icon(icon, size: 17),
           style: IconButton.styleFrom(
-            minimumSize: const Size(30, 30),
+            minimumSize: Size(size, size),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             foregroundColor: fg,
             disabledForegroundColor: fg.withValues(alpha: 0.35),
-            backgroundColor: selected ? cs.primary : Colors.transparent,
+            backgroundColor: isStandalone ? cs.surface : Colors.transparent,
             disabledBackgroundColor: Colors.transparent,
-            shape: const CircleBorder(),
+            side: isStandalone ? BorderSide(color: cs.outlineVariant) : null,
+            shape: isStandalone
+                ? RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  )
+                : const CircleBorder(),
           ),
         ),
       ),
@@ -1935,29 +2623,129 @@ class _HeaderIconAction extends StatelessWidget {
   }
 }
 
-class _HeaderPageSizeBadge extends StatelessWidget {
-  const _HeaderPageSizeBadge({required this.label});
+class _HeaderPageSizeSelector extends StatelessWidget {
+  const _HeaderPageSizeSelector({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onSelected,
+  });
 
   final String label;
+  final int value;
+  final List<int> options;
+  final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      height: 30,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: cs.surface.withValues(alpha: 0.68),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.of(context).bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    return PopupMenuButton<int>(
+      tooltip: '$label: $value',
+      initialValue: value,
+      onSelected: onSelected,
+      itemBuilder: (_) => options
+          .map(
+            (option) => PopupMenuItem<int>(
+              value: option,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 22,
+                    child: option == value
+                        ? Icon(Icons.check_rounded, size: 17, color: cs.primary)
+                        : null,
+                  ),
+                  Text('$option'),
+                ],
+              ),
             ),
+          )
+          .toList(growable: false),
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$value',
+              style: AppTypography.of(context).bodySmall.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              isEs ? '/ pág.' : '/ page',
+              style: AppTypography.of(context).bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 17,
+              color: cs.onSurfaceVariant,
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _ToolbarIconSurface extends StatelessWidget {
+  const _ToolbarIconSurface({required this.tooltip, required this.icon});
+
+  final String tooltip;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Icon(icon, size: 18, color: cs.onSurfaceVariant),
+      ),
+    );
+  }
+}
+
+class _ToolbarMenuLabel extends StatelessWidget {
+  const _ToolbarMenuLabel({
+    required this.icon,
+    required this.label,
+    this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 10),
+        Flexible(child: Text(label)),
+      ],
     );
   }
 }
@@ -1985,7 +2773,7 @@ class _HeaderPageBadge extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: cs.primaryContainer.withValues(alpha: 0.26),
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: cs.primary.withValues(alpha: 0.28)),
         ),
         child: Text.rich(

@@ -5,6 +5,10 @@ import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/shared/currency_options.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/client_editor_theme.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/client_form_fields.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/input_border.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -46,6 +50,16 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
     _userDomain = context.read<UserDomain>();
   }
 
+  @override
+  void dispose() {
+    _displayNameCtrl.dispose();
+    _userIdCtrl.dispose();
+    _roleCtrl.dispose();
+    _rateCtrl.dispose();
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadMembers() async {
     setState(() {
       _loadingMembers = true;
@@ -55,14 +69,17 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
       final members = await _userDomain.getUsersForGroup(widget.group);
       if (!members.any((member) => member.id == widget.group.ownerId)) {
         try {
-          members.add(await _userDomain.userRepository.getUserById(widget.group.ownerId));
+          members.add(await _userDomain.userRepository
+              .getUserById(widget.group.ownerId));
         } catch (_) {
           // The member list can still be used if the owner profile is unavailable.
         }
       }
       if (mounted) setState(() => _members = members);
     } catch (_) {
-      if (mounted) setState(() => _membersError = 'No se pudieron cargar los miembros.');
+      if (mounted) {
+        setState(() => _membersError = 'No se pudieron cargar los miembros.');
+      }
     } finally {
       if (mounted) setState(() => _loadingMembers = false);
     }
@@ -134,441 +151,274 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
           style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              _HeaderStrip(l: l, t: t),
-              const SizedBox(height: 14),
-              _ModeCard(
-                l: l,
-                t: t,
-                value: _linkToExistingUser,
-                onChanged: (v) {
-                  setState(() => _linkToExistingUser = v);
-                  if (v && _members.isEmpty) _loadMembers();
-                },
-              ),
-              const SizedBox(height: 12),
-              _IdentityCard(
-                l: l,
-                t: t,
-                linkToExistingUser: _linkToExistingUser,
-                userIdCtrl: _userIdCtrl,
-                displayNameCtrl: _displayNameCtrl,
-                members: _members,
-                loadingMembers: _loadingMembers,
-                membersError: _membersError,
-                onRetryMembers: _loadMembers,
-              ),
-              if (_linkToExistingUser) ...[
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _operationalRole,
-                  decoration: const InputDecoration(labelText: 'Rol de trabajador'),
-                  items: const [
-                    DropdownMenuItem(value: 'worker', child: Text('Trabajador')),
-                    DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
-                  ],
-                  onChanged: (value) => setState(() => _operationalRole = value ?? 'worker'),
+      body: Theme(
+        data: clientEditorThemeOf(context),
+        child: Builder(
+          builder: (context) {
+            final text = Theme.of(context).textTheme;
+            return Column(
+              children: [
+                Expanded(
+                  child: Form(
+                    key: _formKey,
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      children: [
+                        _LinkUserToggle(
+                          title: l.linkExistingUserLabel,
+                          subtitle: l.linkExistingUserHint,
+                          value: _linkToExistingUser,
+                          onChanged: (v) {
+                            setState(() => _linkToExistingUser = v);
+                            if (v && _members.isEmpty) _loadMembers();
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        if (_linkToExistingUser)
+                          _buildMemberField(context, l, text)
+                        else
+                          TextFormField(
+                            controller: _displayNameCtrl,
+                            style: text.bodyLarge,
+                            decoration: buildInputDecoration(
+                              context,
+                              label: l.displayNameLabel,
+                              hintText: l.displayNameHint,
+                              prefixIcon: const Icon(Icons.person_outline),
+                              isRequired: true,
+                            ),
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) {
+                                return l.displayNameRequired;
+                              }
+                              return null;
+                            },
+                          ),
+                        if (_linkToExistingUser) ...[
+                          const SizedBox(height: 10),
+                          DropdownButtonFormField<String>(
+                            initialValue: _operationalRole,
+                            isExpanded: true,
+                            style: text.bodyLarge,
+                            decoration: buildInputDecoration(
+                              context,
+                              label: 'Rol de trabajador',
+                              prefixIcon:
+                                  const Icon(Icons.admin_panel_settings_outlined),
+                              isFilled: true,
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                  value: 'worker', child: Text('Trabajador')),
+                              DropdownMenuItem(
+                                  value: 'supervisor',
+                                  child: Text('Supervisor')),
+                            ],
+                            onChanged: (value) => setState(
+                                () => _operationalRole = value ?? 'worker'),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'El rol de empresa del miembro, como Co-Administrador, se conserva.',
+                            style: text.bodySmall
+                                ?.copyWith(color: cs.onSurfaceVariant),
+                          ),
+                        ],
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _roleCtrl,
+                          style: text.bodyLarge,
+                          decoration: buildInputDecoration(
+                            context,
+                            label: l.roleLabel,
+                            hintText: l.roleHint,
+                            prefixIcon: const Icon(Icons.badge_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ClientFormFields(
+                          first: TextFormField(
+                            controller: _rateCtrl,
+                            style: text.bodyLarge,
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            decoration: buildInputDecoration(
+                              context,
+                              label: l.hourlyRateLabel,
+                              hintText: l.hourlyRateHint,
+                              prefixIcon: const Icon(Icons.payments_outlined),
+                            ),
+                          ),
+                          second: DropdownButtonFormField<String>(
+                            initialValue: _selectedCurrency,
+                            isExpanded: true,
+                            style: text.bodyLarge,
+                            decoration: buildInputDecoration(
+                              context,
+                              label: l.currencyLabel,
+                              prefixIcon:
+                                  const Icon(Icons.currency_exchange_outlined),
+                              isFilled: true,
+                            ),
+                            items: workerCurrencyOptions
+                                .map((c) =>
+                                    DropdownMenuItem(value: c, child: Text(c)))
+                                .toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() => _selectedCurrency = value);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _notesCtrl,
+                          style: text.bodyLarge,
+                          maxLines: 3,
+                          decoration: buildInputDecoration(
+                            context,
+                            label: l.notesLabel,
+                            hintText: l.notesHint,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 4),
-                const Text('El rol de empresa del miembro, como Co-Administrador, se conserva.'),
+                _FooterBar(
+                  saving: _saving,
+                  cancelLabel: l.cancel,
+                  saveLabel: _saving ? l.savingLabel : l.saveWorkerCta,
+                  onCancel: () => Navigator.of(context).pop(false),
+                  onSubmit: _submit,
+                ),
               ],
-              const SizedBox(height: 12),
-              _RoleCard(
-                l: l,
-                t: t,
-                roleCtrl: _roleCtrl,
-                rateCtrl: _rateCtrl,
-                selectedCurrency: _selectedCurrency,
-                onCurrencyChanged: (v) => setState(() => _selectedCurrency = v),
-              ),
-              const SizedBox(height: 12),
-              _NotesCard(
-                l: l,
-                t: t,
-                notesCtrl: _notesCtrl,
-              ),
-              const SizedBox(height: 20),
-              _Actions(
-                l: l,
-                saving: _saving,
-                onSubmit: _submit,
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
   }
-}
 
-class _HeaderStrip extends StatelessWidget {
-  const _HeaderStrip({required this.l, required this.t});
-  final AppLocalizations l;
-  final AppTypography t;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: cs.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
+  Widget _buildMemberField(
+    BuildContext context,
+    AppLocalizations l,
+    TextTheme text,
+  ) {
+    if (_loadingMembers) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_membersError != null) {
+      return TextButton(onPressed: _loadMembers, child: Text(_membersError!));
+    }
+    return DropdownButtonFormField<String>(
+      initialValue: _userIdCtrl.text.isEmpty ? null : _userIdCtrl.text,
+      isExpanded: true,
+      style: text.bodyLarge,
+      decoration: buildInputDecoration(
+        context,
+        label: 'Miembro de la empresa',
+        prefixIcon: const Icon(Icons.group_outlined),
+        isRequired: true,
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: cs.primary,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.badge_outlined, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l.createWorkerTitle,
-                  style: t.bodyMedium.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
-                  ),
-                ),
-                Text(
-                  l.addWorkerSubtitle,
-                  style: t.caption.copyWith(
-                    color: ThemeColors.textSecondary(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      items: _members
+          .map((member) => DropdownMenuItem(
+                value: member.id,
+                child: Text(member.displayName ?? member.name),
+              ))
+          .toList(),
+      onChanged: (value) => _userIdCtrl.text = value ?? '',
+      validator: (value) => value == null ? l.userIdRequired : null,
     );
   }
 }
 
-class _ModeCard extends StatelessWidget {
-  const _ModeCard({
-    required this.l,
-    required this.t,
+/// Compact toggle for linking to an existing company member, without a card.
+class _LinkUserToggle extends StatelessWidget {
+  const _LinkUserToggle({
+    required this.title,
+    required this.subtitle,
     required this.value,
     required this.onChanged,
   });
 
-  final AppLocalizations l;
-  final AppTypography t;
+  final String title;
+  final String subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: SwitchListTile(
-        title: Text(
-          l.linkExistingUserLabel,
-          style: t.bodyMedium.copyWith(
-            fontWeight: FontWeight.w700,
-            color: ThemeColors.textPrimary(context),
+    final cs = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Icon(Icons.link_rounded,
+            size: 18, color: value ? cs.primary : cs.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(title,
+                  style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+              Text(subtitle,
+                  style:
+                      text.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+            ],
           ),
         ),
-        subtitle: Text(
-          l.linkExistingUserHint,
-          style: t.bodySmall.copyWith(
-            color: ThemeColors.textSecondary(context),
-          ),
-        ),
-        value: value,
-        onChanged: onChanged,
-      ),
+        Switch.adaptive(value: value, onChanged: onChanged),
+      ],
     );
   }
 }
 
-class _IdentityCard extends StatelessWidget {
-  const _IdentityCard({
-    required this.l,
-    required this.t,
-    required this.linkToExistingUser,
-    required this.userIdCtrl,
-    required this.displayNameCtrl,
-    required this.members,
-    required this.loadingMembers,
-    required this.membersError,
-    required this.onRetryMembers,
-  });
-
-  final AppLocalizations l;
-  final AppTypography t;
-  final bool linkToExistingUser;
-  final TextEditingController userIdCtrl;
-  final TextEditingController displayNameCtrl;
-  final List<User> members;
-  final bool loadingMembers;
-  final String? membersError;
-  final VoidCallback onRetryMembers;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l.detailsSectionTitle,
-              style: t.bodyMedium.copyWith(
-                fontWeight: FontWeight.w800,
-                color: ThemeColors.textPrimary(context),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (linkToExistingUser)
-              if (loadingMembers)
-                const Center(child: CircularProgressIndicator())
-              else if (membersError != null)
-                TextButton(onPressed: onRetryMembers, child: Text(membersError!))
-              else
-                DropdownButtonFormField<String>(
-                  initialValue: userIdCtrl.text.isEmpty ? null : userIdCtrl.text,
-                  decoration: const InputDecoration(labelText: 'Miembro de la empresa'),
-                  items: members.map((member) => DropdownMenuItem(
-                    value: member.id,
-                    child: Text(member.displayName ?? member.name),
-                  )).toList(),
-                  onChanged: (value) => userIdCtrl.text = value ?? '',
-                  validator: (value) => value == null ? l.userIdRequired : null,
-                )
-            else
-              TextFormField(
-                controller: displayNameCtrl,
-                decoration: InputDecoration(
-                  labelText: l.displayNameLabel,
-                  hintText: l.displayNameHint,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                style: t.bodyMedium,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return l.displayNameRequired;
-                  }
-                  return null;
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RoleCard extends StatelessWidget {
-  const _RoleCard({
-    required this.l,
-    required this.t,
-    required this.roleCtrl,
-    required this.rateCtrl,
-    required this.selectedCurrency,
-    required this.onCurrencyChanged,
-  });
-
-  final AppLocalizations l;
-  final AppTypography t;
-  final TextEditingController roleCtrl;
-  final TextEditingController rateCtrl;
-  final String selectedCurrency;
-  final ValueChanged<String> onCurrencyChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l.roleLabel,
-              style: t.bodyMedium.copyWith(
-                fontWeight: FontWeight.w800,
-                color: ThemeColors.textPrimary(context),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: roleCtrl,
-              decoration: InputDecoration(
-                hintText: l.roleHint,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              style: t.bodyMedium,
-            ),
-            const SizedBox(height: 12),
-            LayoutBuilder(builder: (context, constraints) {
-              final stacked = constraints.maxWidth < 400;
-              return Flex(
-                direction: stacked ? Axis.vertical : Axis.horizontal,
-                crossAxisAlignment: stacked
-                    ? CrossAxisAlignment.stretch
-                    : CrossAxisAlignment.center,
-                children: [
-                  Flexible(
-                    flex: stacked ? 0 : 1,
-                    fit: stacked ? FlexFit.loose : FlexFit.tight,
-                    child: TextFormField(
-                      controller: rateCtrl,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        labelText: l.hourlyRateLabel,
-                        hintText: l.hourlyRateHint,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      style: t.bodyMedium,
-                    ),
-                  ),
-                  SizedBox(width: stacked ? 0 : 12, height: stacked ? 12 : 0),
-                  SizedBox(
-                    width: stacked ? double.infinity : 150,
-                    child: DropdownButtonFormField<String>(
-                      isExpanded: true,
-                      initialValue: selectedCurrency,
-                      decoration: InputDecoration(
-                        labelText: l.currencyLabel,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      items: workerCurrencyOptions
-                          .map(
-                            (c) => DropdownMenuItem(
-                              value: c,
-                              child: Text(c),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value != null) onCurrencyChanged(value);
-                      },
-                    ),
-                  ),
-                ],
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NotesCard extends StatelessWidget {
-  const _NotesCard({
-    required this.l,
-    required this.t,
-    required this.notesCtrl,
-  });
-
-  final AppLocalizations l;
-  final AppTypography t;
-  final TextEditingController notesCtrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l.notesLabel,
-              style: t.bodyMedium.copyWith(
-                fontWeight: FontWeight.w800,
-                color: ThemeColors.textPrimary(context),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: notesCtrl,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: l.notesHint,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor:
-                    Theme.of(context).colorScheme.surfaceContainerHighest,
-              ),
-              style: t.bodyMedium.copyWith(
-                color: ThemeColors.textPrimary(context),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Actions extends StatelessWidget {
-  const _Actions({
-    required this.l,
+/// Bottom bar with Cancel + primary Save, right-aligned, matching other forms.
+class _FooterBar extends StatelessWidget {
+  const _FooterBar({
     required this.saving,
+    required this.cancelLabel,
+    required this.saveLabel,
+    required this.onCancel,
     required this.onSubmit,
   });
 
-  final AppLocalizations l;
   final bool saving;
+  final String cancelLabel;
+  final String saveLabel;
+  final VoidCallback onCancel;
   final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: saving ? null : () => Navigator.of(context).pop(false),
-            child: Text(l.cancel),
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(top: BorderSide(color: cs.outlineVariant)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          HexoraButton(
+            onPressed: saving ? null : onCancel,
+            label: cancelLabel,
+            variant: HexoraButtonVariant.secondary,
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: FilledButton.icon(
+          HexoraButton(
+            icon: Icons.save_outlined,
+            label: saveLabel,
+            loading: saving,
             onPressed: saving ? null : onSubmit,
-            icon: saving
-                ? const SizedBox(
-                    height: 16,
-                    width: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_outlined),
-            label: Text(saving ? l.savingLabel : l.saveWorkerCta),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

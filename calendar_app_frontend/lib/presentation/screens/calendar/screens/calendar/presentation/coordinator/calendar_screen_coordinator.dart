@@ -3,6 +3,7 @@ import 'dart:developer' as devtools show log;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/auth/auth_service.dart';
@@ -213,7 +214,7 @@ class CalendarScreenCoordinator {
     bool? added;
 
     if (kIsWeb) {
-      added = await showDialog<bool>(
+      added = await showHexoraDialog<bool>(
         context: context,
         builder: (dialogCtx) {
           final media = MediaQuery.of(dialogCtx).size;

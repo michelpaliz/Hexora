@@ -31,8 +31,8 @@ class ContactSection extends StatelessWidget {
         ),
         NavTile(
           leading:
-              Icon(Icons.receipt_long_outlined, size: 18, color: cs.secondary),
-          iconBgColor: cs.secondary.withValues(alpha: 0.12),
+              Icon(Icons.receipt_long_outlined, size: 18, color: cs.primary),
+          iconBgColor: cs.primary.withValues(alpha: 0.12),
           title: isSpanish
               ? 'Facturación y suscripciones'
               : 'Billing and subscriptions',
@@ -46,8 +46,8 @@ class ContactSection extends StatelessWidget {
         ),
         NavTile(
           leading:
-              Icon(Icons.mail_outline_rounded, size: 18, color: cs.tertiary),
-          iconBgColor: cs.tertiary.withValues(alpha: 0.12),
+              Icon(Icons.mail_outline_rounded, size: 18, color: cs.primary),
+          iconBgColor: cs.primary.withValues(alpha: 0.12),
           title: isSpanish ? 'Consultas generales' : 'General enquiries',
           subtitle: 'hello@hexora.dev',
           onTap: () => onEmail('hello@hexora.dev'),

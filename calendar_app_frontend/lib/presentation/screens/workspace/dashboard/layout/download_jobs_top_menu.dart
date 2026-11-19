@@ -4,10 +4,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/downloads/download_job.dart';
+import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/presentation/shared/downloads/download_job_display.dart';
 import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/services/downloads/downloads_api.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 
 class DownloadJobsTopMenu extends StatefulWidget {
   const DownloadJobsTopMenu({
@@ -63,13 +65,15 @@ class _DownloadJobsTopMenuState extends State<DownloadJobsTopMenu> {
       final response = await _api.downloadFile(job);
       await launchFileDownload(
         response.bodyBytes,
-        fileName: DownloadJobDisplay.downloadFilename(context, job, response.headers),
-        mimeType: job.mimeType.isEmpty ? 'application/octet-stream' : job.mimeType,
+        fileName: job.effectiveFileName,
+        mimeType:
+            job.mimeType.isEmpty ? 'application/octet-stream' : job.mimeType,
       );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(
+            content: Text(error.toString().replaceFirst('Exception: ', ''))),
       );
     }
   }
@@ -91,20 +95,23 @@ class _DownloadJobsTopMenuState extends State<DownloadJobsTopMenu> {
             .where((job) => job.groupId == widget.groupId)
             .take(5)
             .toList(growable: false);
-        final hasActiveJobs = _store.jobs.any((job) =>
-            job.groupId == widget.groupId && job.isActive);
+        final hasActiveJobs = _store.jobs
+            .any((job) => job.groupId == widget.groupId && job.isActive);
         final nextRefreshAt = _store.nextRefreshAt;
         final newReady = _store.newReadyCount;
-        final compact = widget.compact || MediaQuery.sizeOf(context).width < 1200;
-        final menuWidth = math.min(340.0, MediaQuery.sizeOf(context).width - 32.0);
-        final maxListHeight = math.max(64.0,
-            math.min(260.0, MediaQuery.sizeOf(context).height - 160.0));
+        final compact =
+            widget.compact || MediaQuery.sizeOf(context).width < 1200;
+        final menuWidth =
+            math.min(340.0, MediaQuery.sizeOf(context).width - 32.0);
+        final maxListHeight = math.max(
+            64.0, math.min(260.0, MediaQuery.sizeOf(context).height - 160.0));
         return MenuAnchor(
           controller: _menu,
           style: MenuStyle(
             backgroundColor: WidgetStatePropertyAll(colors.surface),
             padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-            maximumSize: WidgetStatePropertyAll(Size(menuWidth, MediaQuery.sizeOf(context).height - 40)),
+            maximumSize: WidgetStatePropertyAll(
+                Size(menuWidth, MediaQuery.sizeOf(context).height - 40)),
           ),
           menuChildren: [
             SizedBox(
@@ -113,23 +120,33 @@ class _DownloadJobsTopMenuState extends State<DownloadJobsTopMenu> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 4, 6, 4),
                   child: Row(children: [
-                    Expanded(child: Text(l.downloadsRecent,
-                        style: Theme.of(context).textTheme.titleSmall)),
+                    Expanded(
+                        child: Text(l.downloadsRecent,
+                            style: Theme.of(context).textTheme.titleSmall)),
                     IconButton(
                       tooltip: l.downloadsRefresh,
-                      onPressed: _store.loading ? null : () => unawaited(_store.refresh()),
+                      onPressed: _store.loading
+                          ? null
+                          : () => unawaited(_store.refresh()),
                       icon: _store.loading
-                          ? const SizedBox(width: 18, height: 18,
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2))
                           : const Icon(Icons.refresh_rounded, size: 19),
                     ),
                   ]),
                 ),
                 if (jobs.isEmpty)
-                  SizedBox(height: 56, child: Center(child: Text(
-                    _store.loading ? l.downloadsChecking : _store.error ?? l.downloadsEmpty,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  )))
+                  SizedBox(
+                      height: 56,
+                      child: Center(
+                          child: Text(
+                        _store.loading
+                            ? l.downloadsChecking
+                            : _store.error ?? l.downloadsEmpty,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      )))
                 else
                   SizedBox(
                     height: math.min(maxListHeight, jobs.length * 52.0),
@@ -161,6 +178,7 @@ class _DownloadJobsTopMenuState extends State<DownloadJobsTopMenu> {
                 controller.open();
               }
             }
+
             final icon = Stack(clipBehavior: Clip.none, children: [
               SizedBox(
                 width: 20,
@@ -184,35 +202,40 @@ class _DownloadJobsTopMenuState extends State<DownloadJobsTopMenu> {
                     ),
                 ]),
               ),
-              if (newReady > 0)
-                Positioned(
-                  right: -9,
-                  top: -8,
-                  child: Container(
-                    constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(
-                      color: colors.error,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(newReady > 9 ? '9+' : '$newReady',
-                        style: TextStyle(color: colors.onError, fontSize: 9,
-                            fontWeight: FontWeight.w700)),
-                  ),
-                ),
             ]);
-            if (compact) {
-              return IconButton(
-                tooltip: l.downloadsTitle,
-                onPressed: toggle,
-                icon: icon,
-              );
-            }
-            return TextButton.icon(
-              onPressed: toggle,
-              icon: icon,
-              label: Text(l.downloadsTitle),
+            return HexoraNavTile(
+              selected: controller.isOpen,
+              tooltip: l.downloadsTitle,
+              semanticLabel: newReady > 0
+                  ? '${l.downloadsTitle}: $newReady'
+                  : l.downloadsTitle,
+              padding: compact
+                  ? EdgeInsets.zero
+                  : const EdgeInsets.symmetric(
+                      horizontal: NavigationTokens.globalItemPadding,
+                    ),
+              onTap: toggle,
+              builder: (context, foreground) => Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  HexoraBadgeAnchor(
+                    count: newReady,
+                    attention: !controller.isOpen,
+                    child: IconTheme(
+                      data: IconThemeData(color: foreground),
+                      child: icon,
+                    ),
+                  ),
+                  if (!compact) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      l.downloadsTitle,
+                      style: NavigationTokens.label(context)
+                          .copyWith(color: foreground),
+                    ),
+                  ],
+                ],
+              ),
             );
           },
         );
@@ -239,27 +262,35 @@ class _DownloadMenuRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(children: [
-          Icon(DownloadJobDisplay.icon(job), size: 20, color: colors.onSurfaceVariant),
+          Icon(DownloadJobDisplay.icon(job),
+              size: 20, color: colors.onSurfaceVariant),
           const SizedBox(width: 10),
-          Expanded(child: Column(
+          Expanded(
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Tooltip(
                 message: job.effectiveFileName,
-                child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                child: Text(name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium),
               ),
-              Text('$type · $status · $time', maxLines: 1,
+              Text('$type · $status · $time',
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: job.status == 'failed' ? colors.error : colors.onSurfaceVariant,
-                  )),
+                        color: job.status == 'failed'
+                            ? colors.error
+                            : colors.onSurfaceVariant,
+                      )),
             ],
           )),
           IconButton(
             tooltip: AppLocalizations.of(context)!.download,
-            onPressed: job.status == 'ready' && job.canDownload ? onDownload : null,
+            onPressed:
+                job.status == 'ready' && job.canDownload ? onDownload : null,
             icon: const Icon(Icons.download_rounded, size: 19),
           ),
         ]),

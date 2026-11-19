@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -544,7 +546,7 @@ class _TelegramChatViewState extends State<TelegramChatView> {
                 onRefresh: _handleRefresh,
                 onExportChat: widget.onExportChat,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 6),
             ],
             if (error != null && messages.isNotEmpty) ...[
               _MessageErrorBanner(
@@ -565,7 +567,7 @@ class _TelegramChatViewState extends State<TelegramChatView> {
                 allowReply: showComposer,
               ),
             ),
-            if (!phone) const SizedBox(height: 12),
+            if (!phone) const SizedBox(height: 6),
             if (showComposer)
               TelegramChatComposer(
                 controller: _composerController,
@@ -631,8 +633,8 @@ class _TelegramChatViewState extends State<TelegramChatView> {
       child: ListView.builder(
         controller: _scrollController,
         padding: phone
-            ? const EdgeInsets.fromLTRB(8, 6, 8, 12)
-            : const EdgeInsets.fromLTRB(14, 10, 14, 16),
+            ? const EdgeInsets.fromLTRB(8, 4, 8, 8)
+            : const EdgeInsets.fromLTRB(10, 6, 10, 10),
         itemCount: items.length + 1, // +1 for load-older slot at index 0
         itemBuilder: (context, index) {
           if (index == 0) {
@@ -648,7 +650,7 @@ class _TelegramChatViewState extends State<TelegramChatView> {
           }
           if (item is _MessageItem) {
             return Padding(
-              padding: EdgeInsets.only(bottom: phone ? 4 : 6),
+              padding: const EdgeInsets.only(bottom: 4),
               child: TelegramMessageItem(
                 message: item.message,
                 onReplyRequested: allowReply
@@ -820,7 +822,7 @@ class _DateSeparator extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           Expanded(
@@ -901,13 +903,11 @@ class TelegramChatMessagesEmptyState extends StatelessWidget {
 }
 
 class TelegramChatEmptyState extends StatelessWidget {
-  const TelegramChatEmptyState({
-    super.key,
-    this.icon = Icons.chat_bubble_outline_rounded,
-    this.title,
-    this.message,
-  });
-
+  const TelegramChatEmptyState(
+      {super.key,
+      this.icon = Icons.chat_bubble_outline_rounded,
+      this.title,
+      this.message});
   final IconData icon;
   final String? title;
   final String? message;
@@ -916,46 +916,107 @@ class TelegramChatEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
+    final es = l.localeName.startsWith('es');
+    final isWelcome = title == null && message == null;
+    Widget feature(IconData icon, String heading, String detail, Color color) =>
+        SizedBox(
+            width: 170,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                      color: color.withValues(alpha: .09),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Icon(icon, size: 20, color: color)),
+              const SizedBox(height: 10),
+              Text(heading,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(detail,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: cs.onSurfaceVariant)),
+            ]));
     return Container(
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
+        color: cs.primary.withValues(alpha: .025),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .3)),
       ),
       child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 46,
-                color: cs.onSurface.withValues(alpha: 0.24),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title ?? l.telegramSelectChatTitle,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                message ?? l.telegramSelectChatBody,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurface.withValues(alpha: 0.5),
-                    ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
+          child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: cs.primary.withValues(alpha: .025)),
+              child: Container(
+                  width: 88,
+                  height: 88,
+                  decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: cs.primary.withValues(alpha: .08)),
+                  child: Icon(isWelcome ? Icons.telegram : icon,
+                      size: 44, color: cs.primary))),
+          const SizedBox(height: 26),
+          Text(title ?? l.telegramSelectChatTitle,
+              textAlign: TextAlign.center,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: Text(message ?? l.telegramSelectChatBody,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant))),
+          if (isWelcome) ...[
+            const SizedBox(height: 32),
+            Wrap(
+                spacing: 16,
+                runSpacing: 20,
+                alignment: WrapAlignment.center,
+                children: [
+                  feature(
+                      Icons.chat_bubble_outline,
+                      es ? 'Conversaciones' : 'Conversations',
+                      es
+                          ? 'Lee y responde desde Hexora'
+                          : 'Read and reply from Hexora',
+                      cs.primary),
+                  feature(
+                      Icons.history,
+                      es ? 'Historial de mensajes' : 'Message history',
+                      es
+                          ? 'Consulta tus conversaciones'
+                          : 'Browse your conversations',
+                      Colors.deepPurple),
+                  feature(
+                      Icons.file_download_outlined,
+                      es ? 'Exportar conversaciones' : 'Export conversations',
+                      es
+                          ? 'Guarda los registros que necesites'
+                          : 'Save the records you need',
+                      Colors.teal),
+                ]),
+          ],
+        ]),
+      )),
     );
   }
 }
-
 // ─── Chat header ─────────────────────────────
 
 class _TelegramChatHeader extends StatelessWidget {
@@ -1228,6 +1289,15 @@ class TelegramChatComposer extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final phone = MediaQuery.sizeOf(context).width < 700;
     final hasAttachment = attachments.isNotEmpty;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final attachmentCountLabel = isSpanish
+        ? '${attachments.length} ${attachments.length == 1 ? 'archivo adjunto' : 'archivos adjuntos'}'
+        : '${attachments.length} ${attachments.length == 1 ? 'attachment' : 'attachments'}';
+    final sendAttachmentLabel = attachments.length > 1
+        ? (isSpanish
+            ? 'Enviar ${attachments.length} archivos'
+            : 'Send ${attachments.length} files')
+        : l.chatComposerSendFile;
     final canSend = enabled &&
         !isSending &&
         (controller.text.trim().isNotEmpty || hasAttachment);
@@ -1244,21 +1314,14 @@ class TelegramChatComposer extends StatelessWidget {
             )
           : BoxDecoration(
               color: cs.surface,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: cs.outlineVariant.withValues(alpha: 0.3),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
       padding: phone
-          ? const EdgeInsets.fromLTRB(12, 10, 12, 10)
-          : const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
+          : const EdgeInsets.all(8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1270,24 +1333,57 @@ class TelegramChatComposer extends StatelessWidget {
             const SizedBox(height: 8),
           ],
           if (hasAttachment) ...[
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 190),
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    for (final (index, attachment) in attachments.indexed) ...[
-                      if (index > 0) const SizedBox(height: 6),
-                      TelegramAttachmentComposerPreview(
-                        key: ValueKey(attachment),
-                        attachment: attachment,
-                        onClear: () => onRemoveAttachment(attachment),
-                      ),
-                    ],
-                  ],
+            Container(
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.42),
                 ),
               ),
+              child: ExpansionTile(
+                expansionAnimationStyle: HexoraMotion.expansionStyle(context),
+                key: const PageStorageKey('telegram-composer-attachments'),
+                initiallyExpanded: true,
+                maintainState: true,
+                dense: true,
+                visualDensity: VisualDensity.compact,
+                minTileHeight: 36,
+                tilePadding: const EdgeInsets.symmetric(horizontal: 10),
+                childrenPadding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
+                shape: const RoundedRectangleBorder(),
+                collapsedShape: const RoundedRectangleBorder(),
+                leading: const Icon(Icons.attach_file_rounded, size: 17),
+                title: Text(
+                  attachmentCountLabel,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                children: [
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 152),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          for (final (index, attachment)
+                              in attachments.indexed) ...[
+                            TelegramAttachmentComposerPreview(
+                              key: ValueKey(attachment),
+                              attachment: attachment,
+                              onClear: () => onRemoveAttachment(attachment),
+                            ),
+                            if (index != attachments.length - 1)
+                              const SizedBox(height: 3),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
           ],
           if (error != null && error!.trim().isNotEmpty) ...[
             _ComposerErrorBanner(message: error!),
@@ -1331,11 +1427,11 @@ class TelegramChatComposer extends StatelessWidget {
                           vertical: 12,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(color: cs.outlineVariant),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(color: cs.outlineVariant),
                         ),
                         focusedBorder: OutlineInputBorder(
@@ -1348,9 +1444,8 @@ class TelegramChatComposer extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
-                  tooltip: hasAttachment
-                      ? l.chatComposerSendFile
-                      : l.chatComposerSend,
+                  tooltip:
+                      hasAttachment ? sendAttachmentLabel : l.chatComposerSend,
                   onPressed: canSend ? onSend : null,
                   icon: isSending
                       ? const SizedBox.square(
@@ -1410,13 +1505,13 @@ class TelegramChatComposer extends StatelessWidget {
                     vertical: 14,
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(
                       color: cs.outlineVariant.withValues(alpha: 0.26),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(
                       color: cs.outlineVariant.withValues(alpha: 0.28),
                     ),
@@ -1464,25 +1559,12 @@ class TelegramChatComposer extends StatelessWidget {
                   onPressed: attachEnabled ? onPickIssuedPresupuesto : null,
                   cs: cs,
                 ),
-                // ── Hint ───────────────────────────────────────
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    hasAttachment
-                        ? l.chatComposerHintAttachment
-                        : l.chatComposerHintBody,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: cs.onSurface.withValues(alpha: 0.38),
-                          height: 1.3,
-                        ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+                const Spacer(),
                 // ── Send button ────────────────────────────────
                 const SizedBox(width: 10),
                 AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
+                  duration:
+                      HexoraMotion.duration(context, HexoraMotion.standard),
                   child: FilledButton.icon(
                     key: ValueKey(isSending),
                     onPressed: canSend ? onSend : null,
@@ -1502,7 +1584,7 @@ class TelegramChatComposer extends StatelessWidget {
                               ? l.chatComposerUploading
                               : l.chatComposerSending)
                           : (hasAttachment
-                              ? l.chatComposerSendFile
+                              ? sendAttachmentLabel
                               : l.chatComposerSend),
                     ),
                     style: FilledButton.styleFrom(
@@ -1512,11 +1594,11 @@ class TelegramChatComposer extends StatelessWidget {
                           _kTelegramBlue.withValues(alpha: 0.35),
                       disabledForegroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 11,
+                        horizontal: 14,
+                        vertical: 9,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                   ),
@@ -1533,6 +1615,7 @@ class TelegramChatComposer extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     FocusManager.instance.primaryFocus?.unfocus();
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {
@@ -1594,16 +1677,16 @@ class _AttachButton extends StatelessWidget {
       message: tooltip,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          width: 36,
-          height: 36,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             color: onPressed != null
                 ? _kTelegramBlue.withValues(alpha: 0.10)
                 : cs.onSurface.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: onPressed != null
                   ? _kTelegramBlue.withValues(alpha: 0.16)
@@ -1709,82 +1792,59 @@ class TelegramAttachmentComposerPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
-    final subtitleParts = attachment.isPresupuesto
-        ? <String>[
-            isSpanish
-                ? 'Presupuesto · el PDF se genera al enviar'
-                : 'Budget · PDF is generated when sent',
-          ]
-        : <String>[
-            if (attachment.mimeType?.trim().isNotEmpty ?? false)
-              attachment.mimeType!.trim(),
-            if (attachment.fileSize != null)
-              _telegramFormatFileSize(attachment.fileSize!),
-          ];
+    final technicalDetails = <String>[
+      attachment.fileName,
+      if (attachment.mimeType?.trim().isNotEmpty ?? false)
+        attachment.mimeType!.trim(),
+      if (attachment.fileSize != null)
+        _telegramFormatFileSize(attachment.fileSize!),
+    ].join(' · ');
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-      decoration: BoxDecoration(
-        color: cs.tertiaryContainer.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.tertiary.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: cs.tertiaryContainer.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
+    return Tooltip(
+      message: technicalDetails,
+      child: Container(
+        height: 36,
+        padding: const EdgeInsetsDirectional.only(start: 8, end: 2),
+        decoration: BoxDecoration(
+          color: cs.tertiaryContainer.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
               attachment.isPresupuesto
                   ? Icons.request_quote_outlined
                   : attachment.isPdf
                       ? Icons.picture_as_pdf_outlined
                       : Icons.insert_drive_file_outlined,
-              size: 18,
+              size: 17,
               color: cs.onTertiaryContainer,
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  attachment.fileName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                if (subtitleParts.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitleParts.join(' | '),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurface.withValues(alpha: 0.55),
-                        ),
-                  ),
-                ],
-              ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                attachment.fileName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: onClear,
-            tooltip: AppLocalizations.of(context)!.telegramRemoveAttachment,
-            icon: const Icon(Icons.close_rounded, size: 16),
-            visualDensity: VisualDensity.compact,
-          ),
-        ],
+            IconButton(
+              onPressed: onClear,
+              tooltip: AppLocalizations.of(context)!.telegramRemoveAttachment,
+              icon: const Icon(Icons.close_rounded, size: 15),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(
+                width: 32,
+                height: 32,
+              ),
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1855,31 +1915,16 @@ class TelegramMessageItem extends StatelessWidget {
         : isDark
             ? cs.outlineVariant.withValues(alpha: 0.18)
             : cs.outlineVariant.withValues(alpha: phone ? 0.72 : 0.5);
-    final shadowColor = isDark
-        ? Colors.black.withValues(alpha: 0.08)
-        : const Color(0xFF315D8E).withValues(alpha: 0.075);
-
     return Align(
       alignment: Alignment.centerLeft,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 760),
         child: Container(
-          padding: phone
-              ? const EdgeInsets.fromLTRB(12, 10, 12, 9)
-              : const EdgeInsets.fromLTRB(12, 11, 12, 9),
+          padding: const EdgeInsets.fromLTRB(9, 8, 9, 7),
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius: BorderRadius.circular(phone ? 14 : 17),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(color: borderColor),
-            boxShadow: phone
-                ? null
-                : [
-                    BoxShadow(
-                      color: shadowColor,
-                      blurRadius: isDark ? 10 : 18,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1890,8 +1935,8 @@ class TelegramMessageItem extends StatelessWidget {
                 children: [
                   // Sender avatar
                   Container(
-                    width: 28,
-                    height: 28,
+                    width: 26,
+                    height: 26,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
@@ -1902,15 +1947,6 @@ class TelegramMessageItem extends StatelessWidget {
                           avatarColor,
                         ],
                       ),
-                      boxShadow: phone
-                          ? null
-                          : [
-                              BoxShadow(
-                                color: avatarColor.withValues(alpha: 0.22),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
                     ),
                     child: Center(
                       child: Text(
@@ -1936,46 +1972,30 @@ class TelegramMessageItem extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Edited badge
                   if (message.isEdited && phone)
                     Padding(
-                      padding: const EdgeInsets.only(right: 4),
+                      padding: const EdgeInsetsDirectional.only(end: 3),
                       child: Tooltip(
                         message: l.telegramEdited,
                         child: Icon(
                           Icons.edit_outlined,
-                          size: 15,
+                          size: 13,
                           color: cs.onSurfaceVariant,
                         ),
                       ),
-                    )
-                  else if (message.isEdited)
-                    Container(
-                      margin: const EdgeInsets.only(right: 5),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? cs.onSurface.withValues(alpha: 0.08)
-                            : const Color(0xFFE9EDF4),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        AppLocalizations.of(context)!.telegramEdited,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                      ),
                     ),
                   Text(
-                    timeLabel,
+                    phone
+                        ? timeLabel
+                        : [
+                            if (message.isEdited) l.telegramEdited,
+                            timeLabel,
+                          ].where((value) => value.isNotEmpty).join(' · '),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
                   ),
-                  if (phone && onReplyRequested != null)
+                  if (onReplyRequested != null)
                     IconButton(
                       tooltip: replying ? l.telegramReplying : l.telegramReply,
                       onPressed: onReplyRequested,
@@ -1985,8 +2005,8 @@ class TelegramMessageItem extends StatelessWidget {
                         color: replying ? _kTelegramBlue : cs.onSurfaceVariant,
                       ),
                       constraints: const BoxConstraints.tightFor(
-                        width: 40,
-                        height: 36,
+                        width: 34,
+                        height: 32,
                       ),
                       padding: EdgeInsets.zero,
                     ),
@@ -2026,68 +2046,6 @@ class TelegramMessageItem extends StatelessWidget {
                         color: cs.onSurface.withValues(alpha: 0.45),
                         fontStyle: FontStyle.italic,
                       ),
-                ),
-              ],
-              if (!phone && onReplyRequested != null) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Builder(
-                    builder: (context) {
-                      final l = AppLocalizations.of(context)!;
-                      final replyColor = replying
-                          ? _kTelegramBlue
-                          : cs.onSurface.withValues(alpha: 0.62);
-                      return Tooltip(
-                        message:
-                            replying ? l.telegramReplying : l.telegramReply,
-                        child: InkWell(
-                          onTap: onReplyRequested,
-                          borderRadius: BorderRadius.circular(999),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: replying
-                                  ? _kTelegramBlue.withValues(alpha: 0.11)
-                                  : cs.surfaceContainerHighest
-                                      .withValues(alpha: isDark ? 0.18 : 0.44),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: replying
-                                    ? _kTelegramBlue.withValues(alpha: 0.18)
-                                    : cs.outlineVariant
-                                        .withValues(alpha: isDark ? 0.12 : 0.2),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.reply_rounded,
-                                  size: 14,
-                                  color: replyColor,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  l.telegramReply,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelMedium
-                                      ?.copyWith(
-                                        color: replyColor,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
                 ),
               ],
             ],
@@ -2313,7 +2271,7 @@ class _MediaPlaceholder extends StatelessWidget {
     });
 
     if (!context.mounted) return;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -2441,9 +2399,12 @@ class _MediaPlaceholder extends StatelessWidget {
       message.documentSubtitleLabel,
       if (message.isPdfDocument && !hasDocumentUrl)
         AppLocalizations.of(context)!.telegramPreviewUnavailable,
-      if (!message.isPdfDocument && mimeType.isNotEmpty) mimeType,
-      if (fileSize != null) _telegramFormatFileSize(fileSize),
     ];
+    final technicalDetails = <String>[
+      title,
+      if (mimeType.isNotEmpty) mimeType,
+      if (fileSize != null) _telegramFormatFileSize(fileSize),
+    ].join(' · ');
 
     final (icon, color) = _iconAndColor(
       rawType,
@@ -2465,13 +2426,13 @@ class _MediaPlaceholder extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: canPreviewPdf ? () => _previewPdf(context) : null,
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(8),
         child: Ink(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
           decoration: BoxDecoration(
             color: attachmentBg,
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(color: attachmentBorder),
           ),
           child: Row(
@@ -2490,17 +2451,20 @@ class _MediaPlaceholder extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: (phone
-                              ? Theme.of(context).textTheme.bodyMedium
-                              : Theme.of(context).textTheme.bodySmall)
-                          ?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: cs.onSurface,
+                    Tooltip(
+                      message: technicalDetails,
+                      child: Text(
+                        title,
+                        style: (phone
+                                ? Theme.of(context).textTheme.bodyMedium
+                                : Theme.of(context).textTheme.bodySmall)
+                            ?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     if (subtitleParts.isNotEmpty)
                       Text(

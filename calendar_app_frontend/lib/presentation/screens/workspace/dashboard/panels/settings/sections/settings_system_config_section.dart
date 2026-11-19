@@ -10,8 +10,10 @@ import 'package:hexora/presentation/screens/settings/dialogs/change_password_dia
 import 'package:hexora/presentation/screens/settings/dialogs/change_username_dialog.dart';
 import 'package:hexora/presentation/screens/settings/widgets/account_section.dart';
 import 'package:hexora/presentation/screens/settings/widgets/language_sheet.dart';
+import 'package:hexora/presentation/screens/profile/edit/profile_edit_dialog.dart';
 import 'package:hexora/presentation/screens/settings/widgets/nav_tile.dart';
 import 'package:hexora/presentation/screens/settings/widgets/preferences_section.dart';
+import 'package:hexora/presentation/screens/preferences/user_preferences_screen.dart';
 import 'package:hexora/presentation/screens/settings/widgets/section_card.dart';
 import 'package:hexora/state/locale_provider.dart';
 import 'package:hexora/theme/theme_provider.dart';
@@ -200,80 +202,232 @@ class _SettingsSystemConfigSectionState
     );
 
     return Consumer2<ThemeModeProvider, AuthProvider>(
-      builder: (_, themeModeProv, authProvider, __) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (_, themeModeProv, authProvider, __) => Align(
+        alignment: Alignment.topLeft,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(
+                  title: loc.accountSectionTitle,
+                  subtitle: _sectionDescription(context, 'account'),
+                  textStyle: sectionTitleStyle,
+                  subtitleStyle: sectionSubtitleStyle,
+                  showDivider: false,
+                  padding: const EdgeInsets.only(bottom: 12),
+                ),
+                SectionCard(
+                  compact: true,
+                  child: AccountSection(
+                    userName: userName,
+                    userSubtitle: authProvider.currentUser?.email,
+                    onEditUsername: () async {
+                      final successMessage =
+                          AppLocalizations.of(context)!.successChangingUsername;
+                      final newName = await showChangeUsernameDialog(context);
+                      if (newName == null) return;
+                      final err = await _changeUsername(newName);
+                      if (!mounted) return;
+                      _snack(err ?? successMessage);
+                    },
+                    onEditProfile: () => showProfileEditDialog(context),
+                    onChangePassword: () async {
+                      final result = await showChangePasswordDialog(context);
+                      if (result == null) return;
+                      await _changePassword(
+                          result.current, result.newPass, result.confirm);
+                    },
+                    compact: true,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SectionHeader(
+                  title: loc.preferencesSectionTitle,
+                  subtitle: _sectionDescription(context, 'preferences'),
+                  textStyle: sectionTitleStyle,
+                  subtitleStyle: sectionSubtitleStyle,
+                  showDivider: false,
+                  padding: const EdgeInsets.only(bottom: 12),
+                ),
+                SectionCard(
+                  compact: true,
+                  child: Column(
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 14, 16, 6),
+                        child: UserPreferencesView(
+                          maxWidth: double.infinity,
+                          padding: EdgeInsets.zero,
+                          scrollable: false,
+                          showLanguage: false,
+                        ),
+                      ),
+                      Divider(
+                        height: 0,
+                        indent: 16,
+                        color: cs.outlineVariant.withValues(alpha: 0.4),
+                      ),
+                      // Keep the existing application-language control and
+                      // automatic statement import in this same user-scoped
+                      // settings surface.
+                      const _LanguageTile(),
+                      Divider(
+                        height: 0,
+                        indent: 63,
+                        color: cs.outlineVariant.withValues(alpha: 0.4),
+                      ),
+                      PreferencesSection(
+                        isDark: themeModeProv.mode == ThemeMode.dark,
+                        onToggleDark: () => themeModeProv.toggleLightDark(),
+                        languageName: _languageName(context),
+                        onChangeLanguage: _openLanguageSheet,
+                        showDisplayPreferences: false,
+                        autoStatementImportEnabled: authProvider
+                                .currentUser?.autoStatementImportEnabled ??
+                            false,
+                        autoStatementImportBusy: _autoStatementImportLoading,
+                        onToggleAutoStatementImport: _toggleAutoStatementImport,
+                        autoStatementImportTitle:
+                            Localizations.localeOf(context).languageCode == 'es'
+                                ? 'Importación automática'
+                                : 'Automatic import',
+                        autoStatementImportSubtitle: Localizations.localeOf(
+                                        context)
+                                    .languageCode ==
+                                'es'
+                            ? 'Importar diariamente el extracto bancario de Caixa'
+                            : 'Import the Caixa bank statement daily',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SectionHeader(
+                  title: Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Seguridad'
+                      : 'Security',
+                  subtitle: _sectionDescription(context, 'security'),
+                  textStyle: sectionTitleStyle,
+                  subtitleStyle: sectionSubtitleStyle,
+                  showDivider: false,
+                  padding: const EdgeInsets.only(bottom: 12),
+                ),
+                SectionCard(
+                  compact: true,
+                  child: Column(
+                    children: [
+                      NavTile(
+                        compact: true,
+                        leading: Icon(Icons.lock_outline_rounded,
+                            size: 18, color: cs.primary),
+                        iconBgColor: cs.primary.withValues(alpha: 0.12),
+                        title: loc.changePassword,
+                        onTap: () async {
+                          final result =
+                              await showChangePasswordDialog(context);
+                          if (result == null) return;
+                          await _changePassword(
+                              result.current, result.newPass, result.confirm);
+                        },
+                      ),
+                      Divider(
+                          height: 0,
+                          indent: 63,
+                          color: cs.outlineVariant.withValues(alpha: 0.4)),
+                      NavTile(
+                        compact: true,
+                        leading: Icon(Icons.logout_rounded,
+                            size: 18, color: cs.error),
+                        iconBgColor: cs.error.withValues(alpha: 0.10),
+                        title: loc.logout,
+                        subtitle:
+                            Localizations.localeOf(context).languageCode == 'es'
+                                ? 'Salir de esta cuenta en este dispositivo.'
+                                : 'Sign out of this account on this device.',
+                        onTap: _confirmLogout,
+                        danger: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Inline language switch (ES / EN) shown in the Settings preferences card, so
+/// the language can be changed without opening the separate preferences screen.
+class _LanguageTile extends StatelessWidget {
+  const _LanguageTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final current = isEs ? 'es' : 'en';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
         children: [
-          SectionHeader(
-            title: loc.accountSectionTitle,
-            subtitle: _sectionDescription(context, 'account'),
-            textStyle: sectionTitleStyle,
-            subtitleStyle: sectionSubtitleStyle,
-            showDivider: false,
-            padding: const EdgeInsets.only(bottom: 12),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.language_rounded, size: 18, color: cs.primary),
           ),
-          SectionCard(
-            child: AccountSection(
-              userName: userName,
-              userSubtitle: authProvider.currentUser?.email,
-              onEditUsername: () async {
-                final successMessage =
-                    AppLocalizations.of(context)!.successChangingUsername;
-                final newName = await showChangeUsernameDialog(context);
-                if (newName == null) return;
-                final err = await _changeUsername(newName);
-                if (!mounted) return;
-                _snack(err ?? successMessage);
-              },
-              onChangePassword: () async {
-                final result = await showChangePasswordDialog(context);
-                if (result == null) return;
-                await _changePassword(
-                    result.current, result.newPass, result.confirm);
-              },
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEs ? 'Idioma' : 'Language',
+                  style: theme.textTheme.bodyMedium!.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isEs ? 'Idioma de la aplicación' : 'Application language',
+                  style: theme.textTheme.bodySmall!
+                      .copyWith(color: cs.onSurfaceVariant),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
-          SectionHeader(
-            title: loc.preferencesSectionTitle,
-            subtitle: _sectionDescription(context, 'preferences'),
-            textStyle: sectionTitleStyle,
-            subtitleStyle: sectionSubtitleStyle,
-            showDivider: false,
-            padding: const EdgeInsets.only(bottom: 12),
-          ),
-          SectionCard(
-            child: PreferencesSection(
-              isDark: themeModeProv.mode == ThemeMode.dark,
-              onToggleDark: () => themeModeProv.toggleLightDark(),
-              languageName: _languageName(context),
-              onChangeLanguage: _openLanguageSheet,
-              autoStatementImportEnabled:
-                  authProvider.currentUser?.autoStatementImportEnabled ?? false,
-              autoStatementImportBusy: _autoStatementImportLoading,
-              onToggleAutoStatementImport: _toggleAutoStatementImport,
-            ),
-          ),
-          const SizedBox(height: 24),
-          SectionHeader(
-            title: Localizations.localeOf(context).languageCode == 'es'
-                ? 'Seguridad'
-                : 'Security',
-            subtitle: _sectionDescription(context, 'security'),
-            textStyle: sectionTitleStyle,
-            subtitleStyle: sectionSubtitleStyle,
-            showDivider: false,
-            padding: const EdgeInsets.only(bottom: 12),
-          ),
-          SectionCard(
-            child: NavTile(
-              leading: Icon(Icons.logout_rounded, size: 18, color: cs.error),
-              iconBgColor: cs.error.withValues(alpha: 0.10),
-              title: loc.logout,
-              subtitle: Localizations.localeOf(context).languageCode == 'es'
-                  ? 'Salir de esta cuenta en este dispositivo.'
-                  : 'Sign out of this account on this device.',
-              onTap: _confirmLogout,
-              danger: true,
+          const SizedBox(width: 8),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'es', label: Text('ES')),
+              ButtonSegment(value: 'en', label: Text('EN')),
+            ],
+            selected: {current},
+            onSelectionChanged: (selection) => context
+                .read<LocaleProvider>()
+                .setLocale(Locale(selection.first)),
+            showSelectedIcon: false,
+            style: const ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              ),
             ),
           ),
         ],

@@ -11,6 +11,16 @@ class _ThreadRow extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  String _initials(String value) {
+    final words = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .take(2);
+    final initials = words.map((word) => word[0].toUpperCase()).join();
+    return initials.isEmpty ? '?' : initials;
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
@@ -22,7 +32,8 @@ class _ThreadRow extends StatelessWidget {
         : thread.subject.trim();
     final sender = _friendlySender(thread.participants, l);
     final snippet = thread.snippet?.trim() ?? '';
-    final dateLabel = _formatRelativeDate(thread.latestDate, locale: l.localeName);
+    final dateLabel =
+        _formatRelativeDate(thread.latestDate, locale: l.localeName);
     final fullDateLabel = _formatFullDate(thread.latestDate);
 
     final isUnread = thread.unreadCount > 0;
@@ -31,7 +42,7 @@ class _ThreadRow extends StatelessWidget {
     final background = selected
         ? cs.primaryContainer.withValues(alpha: 0.18)
         : isUnread
-            ? cs.primaryContainer.withValues(alpha: 0.07)
+            ? cs.primaryContainer.withValues(alpha: 0.06)
             : Colors.transparent;
 
     return Stack(
@@ -44,7 +55,7 @@ class _ThreadRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             onTap: onTap,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 44),
+              constraints: const BoxConstraints(minHeight: 76),
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -66,13 +77,29 @@ class _ThreadRow extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                           ),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          margin: const EdgeInsets.only(right: 10),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainerHighest,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            _initials(sender),
+                            style: t.bodySmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
                         Expanded(
                           child: Text(
                             sender,
                             style: t.bodySmall.copyWith(
-                              fontWeight: isUnread
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
+                              fontWeight:
+                                  isUnread ? FontWeight.w700 : FontWeight.w500,
                               fontSize: 12,
                               color: cs.onSurface,
                             ),
@@ -85,13 +112,12 @@ class _ThreadRow extends StatelessWidget {
                           message: fullDateLabel,
                           preferBelow: true,
                           child: SizedBox(
-                            width: 32,
+                            width: 48,
                             child: Text(
                               dateLabel,
                               style: t.bodySmall.copyWith(
-                                color: isUnread
-                                    ? cs.primary
-                                    : cs.onSurfaceVariant,
+                                color:
+                                    isUnread ? cs.primary : cs.onSurfaceVariant,
                                 fontSize: 11,
                                 fontWeight: isUnread
                                     ? FontWeight.w600
@@ -106,78 +132,83 @@ class _ThreadRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     // ── Row 2: subject + badges ───────────────────────
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            subject,
-                            style: t.bodySmall.copyWith(
-                              fontWeight: isUnread
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              fontSize: 13,
-                              color: isUnread
-                                  ? cs.onSurface
-                                  : cs.onSurface
-                                      .withValues(alpha: 0.75),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        if (thread.hasAttachments)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: Icon(
-                              Icons.attach_file,
-                              size: 13,
-                              color: cs.onSurfaceVariant
-                                  .withValues(alpha: 0.6),
-                            ),
-                          ),
-                        if (thread.messageCount > 1)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 4),
+                    Padding(
+                      padding: EdgeInsets.only(left: isUnread ? 61 : 50),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
                             child: Text(
-                              '${thread.messageCount}',
+                              subject,
                               style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontSize: 11,
+                                fontWeight: isUnread
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                fontSize: 13,
+                                color: isUnread
+                                    ? cs.onSurface
+                                    : cs.onSurface.withValues(alpha: 0.75),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          if (thread.hasAttachments)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: Icon(
+                                Icons.attach_file,
+                                size: 13,
+                                color:
+                                    cs.onSurfaceVariant.withValues(alpha: 0.6),
                               ),
                             ),
-                          ),
-                        if (hasExtraUnread)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 5, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: cs.primary,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              '${thread.unreadCount}',
-                              style: t.bodySmall.copyWith(
-                                color: cs.onPrimary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
+                          if (thread.messageCount > 1)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: Text(
+                                '${thread.messageCount}',
+                                style: t.bodySmall.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
-                          ),
-                      ],
+                          if (hasExtraUnread)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: cs.primary,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '${thread.unreadCount}',
+                                style: t.bodySmall.copyWith(
+                                  color: cs.onPrimary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                     // ── Row 3: snippet (only if non-empty) ───────────
                     if (snippet.isNotEmpty) ...[
                       const SizedBox(height: 2),
-                      Text(
-                        snippet,
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                          fontSize: 12,
+                      Padding(
+                        padding: EdgeInsets.only(left: isUnread ? 61 : 50),
+                        child: Text(
+                          snippet,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ],

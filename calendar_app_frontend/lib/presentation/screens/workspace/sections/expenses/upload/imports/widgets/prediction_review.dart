@@ -220,6 +220,7 @@ class _PredictionEditSection extends StatelessWidget {
         child: Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
+            expansionAnimationStyle: HexoraMotion.expansionStyle(context),
             initiallyExpanded: false,
             tilePadding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
             childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -408,7 +409,7 @@ class _BatchExpensePreviewReviewPanelState
         onSelected: (value) => setState(() => _queue = value),
         itemBuilder: (context) => [
           for (final option in queueOptions)
-            PopupMenuItem(
+            NavigationPopupMenuItem(
               value: option.queue,
               child: Row(
                 children: [

@@ -1,12 +1,15 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:convert';
+import 'package:hexora/services/config/api_constants.dart';
+import 'package:hexora/services/emails/email_api.dart';
+import '../invoice_email_widgets.dart';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
-import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
-import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:provider/provider.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/invoice/client_billing.dart';
 import 'package:hexora/models/invoice/invoice.dart';
@@ -14,6 +17,7 @@ import 'package:hexora/models/invoice/invoice_line.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
 import 'package:hexora/services/shared/content_disposition.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_billing_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_dates.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_header.dart';
@@ -21,22 +25,28 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_lines.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_party.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_public_link_card.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_payment_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/invoice_bank_link_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
+import 'package:hexora/app/premium/premium_required_handler.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 part 'invoice_detail_sheet_logic_mixin.dart';
-
-String _truncateId(String id) =>
-    id.length <= 12 ? id : '${id.substring(0, 8)}…';
 
 class InvoiceDetailSheet extends StatefulWidget {
   final Invoice invoice;
@@ -44,10 +54,18 @@ class InvoiceDetailSheet extends StatefulWidget {
   final BillingProfile? billingProfile;
   final Group group;
   final ValueChanged<String>? onOpenRecurringSeries;
+  final VoidCallback? onOpenDeliveryRecord;
   final VoidCallback? onInvoiceChanged;
   final VoidCallback? onEditInvoice;
+  final Future<void> Function(Invoice invoice)? onIssueInvoice;
+  final VoidCallback? onClose;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
 
   final bool fullPage;
+  final VoidCallback? onExpand;
+  final bool isExpanded;
+  final bool actionsInHeader;
 
   const InvoiceDetailSheet({
     super.key,
@@ -57,8 +75,16 @@ class InvoiceDetailSheet extends StatefulWidget {
     required this.billingProfile,
     required this.group,
     this.onOpenRecurringSeries,
+    this.onOpenDeliveryRecord,
     this.onInvoiceChanged,
     this.onEditInvoice,
+    this.onIssueInvoice,
+    this.onClose,
+    this.onPrevious,
+    this.onNext,
+    this.onExpand,
+    this.isExpanded = false,
+    this.actionsInHeader = false,
   });
 
   @override
@@ -67,6 +93,81 @@ class InvoiceDetailSheet extends StatefulWidget {
 
 class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     with InvoiceDetailSheetLogic {
+  bool _previewMenuOpen = false;
+  int _inlineTabIndex = 0;
+  bool _issuingInvoice = false;
+  bool _savingInternalNotes = false;
+
+  String get _pdfLink {
+    final url = _invoice.pdfUrl?.trim();
+    return url != null && url.isNotEmpty
+        ? url
+        : '${ApiConstants.baseUrl}/invoices/${_invoice.id}/pdf';
+  }
+
+  Future<void> _copyPdfLink() async {
+    await Clipboard.setData(ClipboardData(text: _pdfLink));
+    if (!mounted) return;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(isEs ? 'Enlace PDF copiado' : 'PDF link copied'),
+    ));
+  }
+
+  Future<void> _openSendInvoice({required bool canSend}) async {
+    if (!canSend) return;
+    if (!hasPremiumFeature(widget.group, PremiumFeature.email)) {
+      PremiumRequiredHandler.handle('email', widget.group.id);
+      return;
+    }
+    await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => SendInvoiceSheet(
+        invoice: _invoice,
+        client: widget.client,
+        emailApi: EmailApi(),
+        pdfLink: _pdfLink,
+        onSent: () async {
+          if (!mounted) return;
+          await _loadInvoiceDetail();
+          if (!mounted) return;
+          await _loadInvoiceHistory();
+          if (mounted) await _notifyInvoiceChanged();
+        },
+      ),
+    );
+  }
+
+  void _openBankTransactions() {
+    if (!canManagePremiumFeature(
+      widget.group,
+      context.read<UserDomain?>()?.user?.id,
+      PremiumFeature.banking,
+    )) {
+      PremiumRequiredHandler.handle('banking', widget.group.id);
+      return;
+    }
+    final dashboard = Provider.of<GroupDashboardState?>(context, listen: false);
+    if (dashboard != null) {
+      dashboard.openSection(Sections.enableBanking);
+      return;
+    }
+    Navigator.of(context).pushNamed(
+      AppRoutes.enableBanking,
+      arguments: widget.group,
+    );
+  }
+
+  void _afterClosingDetails(VoidCallback action, BuildContext sheetContext) {
+    Navigator.of(sheetContext).pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) action();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -83,11 +184,14 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     final previous = oldWidget.invoice;
     final current = widget.invoice;
     final differentInvoice = previous.id != current.id;
+    final documentChanged = previous.status != current.status ||
+        previous.invoiceNumber != current.invoiceNumber ||
+        previous.issueDate != current.issueDate;
     final paymentChanged = previous.paymentStatus != current.paymentStatus ||
         previous.paidAmount != current.paidAmount ||
         previous.paidAt != current.paidAt ||
         previous.paymentSource != current.paymentSource;
-    if (!differentInvoice && !paymentChanged) return;
+    if (!differentInvoice && !documentChanged && !paymentChanged) return;
     _currentInvoice = null;
     if (differentInvoice) {
       _lines = current.lines;
@@ -96,6 +200,121 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     }
     _loadInvoiceDetail();
     if (!widget.fullPage) _loadInlinePdfPreview();
+  }
+
+  Future<void> _issueSelectedInvoice() async {
+    if (_issuingInvoice || !mounted) return;
+    final callback = widget.onIssueInvoice;
+    final invoice = _invoice;
+    if (callback == null || !invoice.isDraft) return;
+    setState(() => _issuingInvoice = true);
+    try {
+      await callback(invoice);
+      if (mounted) await _loadInvoiceDetail();
+    } finally {
+      if (mounted) setState(() => _issuingInvoice = false);
+    }
+  }
+
+  Future<void> _editInternalNotes({required bool isEs}) async {
+    if (_savingInternalNotes) return;
+    final controller =
+        TextEditingController(text: _invoice.internalNotes ?? '');
+    final notes = await showDialog<String?>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Nota interna' : 'Internal note'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: TextField(
+            controller: controller,
+            autofocus: true,
+            minLines: 4,
+            maxLines: 8,
+            maxLength: 1000,
+            decoration: InputDecoration(
+              hintText: isEs
+                  ? 'Visible solo para el equipo de tu negocio'
+                  : 'Visible only to your business team',
+              helperText: isEs
+                  ? 'Esta nota no se incluye en el PDF ni se comparte con el cliente.'
+                  : 'This note is not included in the PDF or shared with the client.',
+              helperMaxLines: 2,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(isEs ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
+            child: Text(isEs ? 'Guardar' : 'Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (notes == null || !mounted) return;
+    await _saveInternalNotes(notes, isEs: isEs);
+  }
+
+  Future<void> _removeInternalNotes({required bool isEs}) async {
+    if (_savingInternalNotes) return;
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title:
+                Text(isEs ? 'Eliminar nota interna' : 'Remove internal note'),
+            content: Text(isEs
+                ? 'La nota se eliminará de esta factura.'
+                : 'The note will be removed from this invoice.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(isEs ? 'Cancelar' : 'Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(isEs ? 'Eliminar' : 'Remove'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !mounted) return;
+    await _saveInternalNotes('', isEs: isEs);
+  }
+
+  Future<void> _saveInternalNotes(String notes, {required bool isEs}) async {
+    setState(() => _savingInternalNotes = true);
+    try {
+      await _invoicesApi.updateInternalNotes(
+        _invoice.id,
+        notes.trim().isEmpty ? null : notes.trim(),
+      );
+      await _loadInvoiceDetail();
+      await _notifyInvoiceChanged();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              isEs ? 'Nota interna actualizada.' : 'Internal note updated.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _savingInternalNotes = false);
+    }
   }
 
   // ── Computed helpers ────────────────────────────────────────────────────────
@@ -136,21 +355,35 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
 
   void _openDetailsDialog(BuildContext context) {
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => DraggableScrollableSheet(
+      builder: (sheetContext) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: .82,
         minChildSize: .4,
         maxChildSize: .96,
-        builder: (_, scrollCtrl) =>
-            _buildDetailsContent(scrollCtrl: scrollCtrl),
+        builder: (_, scrollCtrl) => _buildDetailsContent(
+          scrollCtrl: scrollCtrl,
+          onOpenPayments: () =>
+              _afterClosingDetails(_openBankTransactions, sheetContext),
+          onOpenDelivery: widget.onOpenDeliveryRecord == null
+              ? null
+              : () => _afterClosingDetails(
+                    widget.onOpenDeliveryRecord!,
+                    sheetContext,
+                  ),
+        ),
       ),
     );
   }
 
-  Widget _buildDetailsContent({ScrollController? scrollCtrl}) {
+  Widget _buildDetailsContent({
+    ScrollController? scrollCtrl,
+    VoidCallback? onOpenPayments,
+    VoidCallback? onOpenDelivery,
+  }) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final invoice = _invoice;
@@ -182,8 +415,6 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         ? _invoiceHistory
         : invoice.updateHistory.map((entry) => entry.toJson()).toList();
     final deliveryStatus = normalizeDeliveryStatus(invoice.deliveryStatus);
-    final canChangeDelivery =
-        (invoice.status ?? '').toLowerCase().contains('issue');
     final sentAtLabel = invoice.sentAt == null
         ? '-'
         : DateFormat.yMMMd(l.localeName)
@@ -197,7 +428,11 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     final moneyFormat =
         NumberFormat.currency(locale: l.localeName, symbol: 'EUR ');
     final isEs = l.localeName.toLowerCase().startsWith('es');
-
+    final userId = context.read<UserDomain?>()?.user?.id;
+    final canUseEmail =
+        canManagePremiumFeature(widget.group, userId, PremiumFeature.email);
+    final canUseBanking =
+        canManagePremiumFeature(widget.group, userId, PremiumFeature.banking);
     return ListView(
       controller: scrollCtrl,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
@@ -217,7 +452,8 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             child: TextButton.icon(
               onPressed: widget.onEditInvoice,
               icon: const Icon(Icons.edit_outlined, size: 18),
-              label: Text(isEs ? 'Modificar factura emitida' : 'Edit issued invoice'),
+              label: Text(
+                  isEs ? 'Modificar factura emitida' : 'Edit issued invoice'),
             ),
           ),
           const SizedBox(height: 4),
@@ -253,7 +489,9 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                               ),
                         ),
                         Text(
-                          invoice.displayNumber(draftLabel: l.statusDraft),
+                          invoice.invoiceNumber.trim().isEmpty
+                              ? (isEs ? 'Factura' : 'Invoice')
+                              : invoice.invoiceNumber.trim(),
                           style: AppTypography.of(context).bodySmall.copyWith(
                                 color: cs.onSurfaceVariant,
                                 fontWeight: FontWeight.w600,
@@ -377,9 +615,12 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         ),
 
         const SizedBox(height: 12),
-        InvoicePaymentEditor(
+        _PaymentStatusSection(
           invoice: invoice,
-          onSave: _updateInvoicePayment,
+          localeName: l.localeName,
+          showBankingDetails: canUseBanking,
+          onOpenPayments:
+              canUseBanking ? onOpenPayments ?? _openBankTransactions : null,
         ),
         if ((invoice.status ?? '').toLowerCase() == 'issued') ...[
           const SizedBox(height: 12),
@@ -387,20 +628,25 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         ],
 
         // Delivery status
-        if (canManagePremiumFeature(widget.group,
-            context.read<UserDomain?>()?.user?.id, PremiumFeature.email)) ...[
+        if (canUseEmail) ...[
           const SizedBox(height: 12),
           _DeliverySection(
             invoice: invoice,
             deliveryStatus: deliveryStatus,
             sentAtLabel: sentAtLabel,
             channelLabel: channelLabel,
-            canChangeDelivery: canChangeDelivery,
-            updatingDelivery: _updatingDelivery,
-            onMarkSent: _markInvoiceSent,
-            onMarkUnsent: _markInvoiceUnsent,
+            onOpenDelivery: onOpenDelivery ?? widget.onOpenDeliveryRecord,
           ),
         ],
+
+        const SizedBox(height: 12),
+        _InternalNotesSection(
+          notes: invoice.internalNotes,
+          saving: _savingInternalNotes,
+          isEs: isEs,
+          onEdit: () => _editInternalNotes(isEs: isEs),
+          onRemove: () => _removeInternalNotes(isEs: isEs),
+        ),
 
         // History
         const SizedBox(height: 12),
@@ -462,15 +708,156 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         : DateFormat.yMMMd(l.localeName)
             .add_Hm()
             .format(invoice.occurrenceDate!);
-    final issuedByName = invoice.issuedByDisplayName;
-    final issuedByLabel = issuedByName == null
-        ? (isEs ? 'Emisor no registrado' : 'Issuer not recorded')
-        : (isEs ? 'Emitida por $issuedByName' : 'Issued by $issuedByName');
-    final issuedAtLabel = invoice.issuedAtResolved == null
-        ? null
-        : DateFormat.yMMMd(l.localeName)
-            .add_Hm()
-            .format(invoice.issuedAtResolved!.toLocal());
+    final issueDate = invoice.issueDate ?? invoice.registeredAt;
+    final issueDateLabel = issueDate == null ||
+            (invoice.status ?? '').trim().toLowerCase() != 'issued'
+        ? ''
+        : '${isEs ? 'Emitida el' : 'Issued'} ${DateFormat.yMMMd(l.localeName).format(issueDate.toLocal())}';
+    final currentUserId = context.watch<UserDomain?>()?.user?.id;
+    final role =
+        currentUserId == null ? null : widget.group.userRoles[currentUserId];
+    final canSend = role == 'owner' || role == 'co-admin';
+    final canIssue = invoice.isDraft &&
+        widget.onIssueInvoice != null &&
+        (currentUserId == widget.group.ownerId ||
+            role == 'owner' ||
+            role == 'admin' ||
+            role == 'co-admin');
+    final canEditDraft = invoice.isDraft && widget.onEditInvoice != null;
+    final canUseBanking = canManagePremiumFeature(
+      widget.group,
+      currentUserId,
+      PremiumFeature.banking,
+    );
+
+    final headerMenu = ListTileTheme(
+      data: const ListTileThemeData(
+        dense: true,
+        visualDensity: VisualDensity(horizontal: -2, vertical: -2),
+        minVerticalPadding: 0,
+        contentPadding: EdgeInsets.zero,
+      ),
+      child: PopupMenuButton<String>(
+        menuPadding: const EdgeInsets.symmetric(vertical: 4),
+        constraints: const BoxConstraints(minWidth: 250, maxWidth: 270),
+        tooltip: isEs ? 'Más acciones' : 'More actions',
+        position: PopupMenuPosition.under,
+        onOpened: () => setState(() => _previewMenuOpen = true),
+        onCanceled: () => setState(() => _previewMenuOpen = false),
+        onSelected: (value) {
+          setState(() => _previewMenuOpen = false);
+          switch (value) {
+            case 'issue':
+              _issueSelectedInvoice();
+            case 'edit':
+              widget.onEditInvoice?.call();
+            case 'details':
+              _openDetailsDialog(context);
+            case 'send':
+              _openSendInvoice(canSend: canSend);
+            case 'download':
+              _downloadPdf();
+            case 'preview':
+              _previewPdf();
+            case 'copy':
+              _copyPdfLink();
+            case 'recurrence':
+              widget.onOpenRecurringSeries?.call(invoice.recurringSeriesId!);
+          }
+        },
+        itemBuilder: (_) => [
+          if (widget.actionsInHeader && canIssue)
+            NavigationPopupMenuItem(
+              value: 'issue',
+              enabled: !_issuingInvoice,
+              child: ListTile(
+                leading: const Icon(Icons.publish_outlined),
+                title: Text(isEs ? 'Emitir' : 'Issue'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          if (widget.actionsInHeader && canEditDraft)
+            NavigationPopupMenuItem(
+              value: 'edit',
+              child: ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: Text(isEs ? 'Editar' : 'Edit'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          if (widget.actionsInHeader)
+            NavigationPopupMenuItem(
+              value: 'details',
+              child: ListTile(
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: Text(isEs ? 'Ver detalles' : 'Details'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          if (widget.actionsInHeader)
+            NavigationPopupMenuItem(
+              value: 'send',
+              enabled: canSend,
+              child: ListTile(
+                leading: const Icon(Icons.mail_outline_rounded),
+                title: Text(isEs ? 'Enviar' : 'Send'),
+                subtitle: canSend
+                    ? null
+                    : Text(isEs
+                        ? 'Solo propietarios y coadministradores'
+                        : 'Owners and co-admins only'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          if (widget.actionsInHeader) const PopupMenuDivider(height: 1),
+          NavigationPopupMenuItem(
+            value: 'download',
+            enabled: !_downloadingPdf,
+            child: ListTile(
+              leading: const Icon(Icons.download_outlined),
+              title: Text('${l.download} PDF'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          NavigationPopupMenuItem(
+            value: 'preview',
+            enabled: !_previewing,
+            child: ListTile(
+              leading: const Icon(Icons.open_in_full_rounded),
+              title: Text(l.invoicePreviewCta),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          NavigationPopupMenuItem(
+            value: 'copy',
+            child: ListTile(
+              leading: const Icon(Icons.copy_outlined),
+              title: Text(isEs ? 'Copiar enlace PDF' : 'Copy PDF link'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          if (hasRecurrence)
+            NavigationPopupMenuItem(
+              value: 'recurrence',
+              enabled: widget.onOpenRecurringSeries != null,
+              child: ListTile(
+                leading: const Icon(Icons.repeat_rounded),
+                title: Text(recurrenceLabel),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+        ],
+        style: IconButton.styleFrom(
+          fixedSize: const Size(28, 28),
+          minimumSize: const Size(28, 28),
+          padding: EdgeInsets.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          foregroundColor: cs.onSurfaceVariant,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        icon: const Icon(Icons.more_horiz_rounded, size: 19),
+      ),
+    );
 
     return ColoredBox(
       color: Theme.of(context).canvasColor,
@@ -480,75 +867,72 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
               ? constraints.maxHeight
               : MediaQuery.of(context).size.height * 0.85;
 
-          // Reserve: top padding(6) + header(~72) + gap(8) + footer(56) + bottom(8) = ~150
-          final pdfHeight = (availableH - 150).clamp(240.0, double.infinity);
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Header ──────────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-                child: InvoiceDetailHeader(
+          return SizedBox(
+            height: availableH,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Header ──────────────────────────────────────────────────
+                InvoiceDetailHeader(
                   clientName: widget.client.name,
                   invoiceNumber:
                       invoice.displayNumber(draftLabel: l.statusDraft),
-                  hasRecurrence: hasRecurrence,
-                  recurrenceLabel: recurrenceLabel,
-                  occurrenceLabel: occurrenceLabel,
-                  recurrenceButtonLabel: l.invoiceRecurringLabel,
-                  onOpenRecurringSeries: widget.onOpenRecurringSeries,
-                  recurringSeriesId: invoice.recurringSeriesId,
                   statusLabel: _resolveStatus(status),
                   statusColor: _statusColor(cs, status),
                   statusIcon: _statusIcon(status),
-                  total: _total.toDouble(),
+                  issueDateLabel: issueDateLabel,
                   invoiceType: invoice.invoiceType,
-                  issuedByLabel:
-                      status.contains('issue') ? issuedByLabel : null,
-                  issuedAtLabel:
-                      status.contains('issue') ? issuedAtLabel : null,
+                  moreActions: headerMenu,
+                  onPrevious: widget.onPrevious,
+                  onNext: widget.onNext,
+                  onClose: widget.onClose,
+                  onExpand: widget.onExpand,
+                  isExpanded: widget.isExpanded,
                 ),
-              ),
+                _InvoiceDetailTabs(
+                  selectedIndex: _inlineTabIndex,
+                  isEs: isEs,
+                  showLinkTab: widget.actionsInHeader &&
+                      !invoice.isDraft &&
+                      canUseBanking,
+                  onSelected: (index) =>
+                      setState(() => _inlineTabIndex = index),
+                ),
+                // ── PDF Preview ──────────────────────────────────────────────
+                Expanded(
+                  child: HexoraMenuContentTransition.tab(
+                    transitionKey: _inlineTabIndex,
+                    preserveState: true,
+                    child: _buildInlineTabContent(
+                      cs,
+                      l,
+                      selectedIndex: _inlineTabIndex,
+                      isEs: isEs,
+                    ),
+                  ),
+                ),
 
-              // ── PDF Preview ──────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    height: pdfHeight,
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: cs.outlineVariant.withValues(alpha: 0.3),
+                // ── Footer bar ───────────────────────────────────────────────
+                if (!widget.actionsInHeader)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                    child: SafeArea(
+                      top: false,
+                      child: _buildFooterBar(
+                        context,
+                        cs,
+                        l,
+                        isEs: isEs,
+                        isLinked: isLinked,
+                        linkedEntriesCount: linkedEntriesCount,
+                        hasRecurrence: hasRecurrence,
+                        recurrenceLabel: recurrenceLabel,
+                        occurrenceLabel: occurrenceLabel,
                       ),
                     ),
-                    child: _buildPdfArea(cs, l),
                   ),
-                ),
-              ),
-
-              // ── Footer bar ───────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                child: SafeArea(
-                  top: false,
-                  child: _buildFooterBar(
-                    context,
-                    cs,
-                    l,
-                    isEs: isEs,
-                    isLinked: isLinked,
-                    linkedEntriesCount: linkedEntriesCount,
-                    hasRecurrence: hasRecurrence,
-                    recurrenceLabel: recurrenceLabel,
-                    occurrenceLabel: occurrenceLabel,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
@@ -556,6 +940,334 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
   }
 
   // ── PDF area widget ─────────────────────────────────────────────────────────
+
+  Widget _buildInlineTabContent(
+    ColorScheme cs,
+    AppLocalizations l, {
+    required int selectedIndex,
+    required bool isEs,
+  }) {
+    // Tab 0 = Resumen
+    if (selectedIndex == 0) {
+      return _buildResumenTab(cs, l, isEs: isEs);
+    }
+    // Tab 2 = Historial
+    if (selectedIndex == 2) {
+      return ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          InvoiceDetailHistoryCard(
+            title: l.invoiceChangeHistoryTitle,
+            showHeader: false,
+            history: _invoiceHistory,
+            localeName: l.localeName,
+            currency: _invoice.currency ?? 'EUR',
+            loading: _historyLoading,
+            error: _historyError,
+            onRetry: _loadInvoiceHistory,
+          ),
+        ],
+      );
+    }
+    // Tab 3 = Vincular. Reuses the bank transaction linking workflow with
+    // this invoice already selected.
+    if (selectedIndex == 3) {
+      final userId = context.read<UserDomain?>()?.user?.id;
+      if (!canManagePremiumFeature(
+        widget.group,
+        userId,
+        PremiumFeature.banking,
+      )) {
+        return PremiumFeatureRequestScreen(
+          feature: PremiumFeatureRequest.banking,
+          group: widget.group,
+          embedded: true,
+        );
+      }
+      return InvoiceBankLinkPanel(
+        key: ValueKey('invoice-bank-link-tab-${_invoice.id}'),
+        groupId: widget.group.id,
+        invoice: _invoice,
+        embeddedTab: true,
+        onLinked: () async {
+          await _loadInvoiceDetail();
+          if (mounted) await _notifyInvoiceChanged();
+        },
+      );
+    }
+
+    // Tab 1 = Vista previa
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            border: Border(
+              bottom: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: .4),
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Text(
+                isEs ? 'Vista previa PDF' : 'PDF preview',
+                style: AppTypography.of(context).bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: _downloadingPdf ? null : _downloadPdf,
+                tooltip: l.download,
+                icon: _downloadingPdf
+                    ? const SizedBox(
+                        width: 15,
+                        height: 15,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.download_outlined, size: 18),
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(32, 32),
+                  minimumSize: const Size(32, 32),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: _previewing ? null : _previewPdf,
+                tooltip: l.invoicePreviewCta,
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(32, 32),
+                  minimumSize: const Size(32, 32),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: _buildPdfArea(cs, l),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Resumen tab ──────────────────────────────────────────────────────────────
+
+  Widget _buildResumenTab(ColorScheme cs, AppLocalizations l,
+      {required bool isEs}) {
+    final invoice = _invoice;
+    final userId = context.read<UserDomain?>()?.user?.id;
+    final canUseEmail =
+        canManagePremiumFeature(widget.group, userId, PremiumFeature.email);
+    final canUseBanking =
+        canManagePremiumFeature(widget.group, userId, PremiumFeature.banking);
+    final t = AppTypography.of(context);
+    final money = NumberFormat.currency(locale: l.localeName, symbol: '€ ');
+    final status = (invoice.status ?? '').toLowerCase();
+    final deliveryStatus = normalizeDeliveryStatus(invoice.deliveryStatus);
+    final sentAtLine = invoice.sentAt != null
+        ? DateFormat('d MMM y · HH:mm', l.localeName)
+            .format(invoice.sentAt!.toLocal())
+        : null;
+    final channelLabel = invoiceDeliveryChannelLabelEs(invoice.deliveryChannel);
+
+    final issueDate = invoice.issuedAtResolved ?? invoice.registeredAt;
+    final issueDateStr = issueDate != null
+        ? DateFormat('d MMM y', l.localeName).format(issueDate.toLocal())
+        : '-';
+
+    final settlement = invoice.finalSettlement;
+    final showFinalSettlement =
+        (invoice.invoiceType ?? '').toLowerCase() == 'final' &&
+            settlement != null;
+    final moneyFormat =
+        NumberFormat.currency(locale: l.localeName, symbol: 'EUR ');
+
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        // ── Total + status header ──
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: cs.primaryContainer.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isEs ? 'Total factura' : 'Invoice total',
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      money.format(invoice.total ?? 0),
+                      style: t.titleLarge.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
+                        fontSize: 22,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _statusColor(cs, status).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: _statusColor(cs, status).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_statusIcon(status),
+                        size: 12, color: _statusColor(cs, status)),
+                    const SizedBox(width: 4),
+                    Text(
+                      _resolveStatus(status),
+                      style: t.bodySmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                        color: _statusColor(cs, status),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        // ── Client + Date rows ──
+        _SummaryRow(
+          icon: Icons.person_outline_rounded,
+          label: isEs ? 'Cliente' : 'Client',
+          value: widget.client.name,
+        ),
+        _SummaryRow(
+          icon: Icons.calendar_today_rounded,
+          label: isEs ? 'Fecha' : 'Date',
+          value: issueDateStr,
+        ),
+
+        const SizedBox(height: 10),
+
+        // ── Payment section ──
+        _PaymentStatusSection(
+          invoice: invoice,
+          localeName: l.localeName,
+          showBankingDetails: canUseBanking,
+          onOpenPayments: invoice.isLinkedResolved ||
+                  (invoice.linkedEntryId ?? '').trim().isNotEmpty
+              ? _openBankTransactions
+              : null,
+        ),
+
+        if (canUseEmail) ...[
+          const SizedBox(height: 10),
+          _DeliverySection(
+            invoice: invoice,
+            deliveryStatus: deliveryStatus,
+            sentAtLabel: sentAtLine ?? '-',
+            channelLabel: channelLabel,
+            onOpenDelivery: widget.onOpenDeliveryRecord,
+          ),
+        ],
+
+        const SizedBox(height: 10),
+        _InternalNotesSection(
+          notes: invoice.internalNotes,
+          saving: _savingInternalNotes,
+          isEs: isEs,
+          onEdit: () => _editInternalNotes(isEs: isEs),
+          onRemove: () => _removeInternalNotes(isEs: isEs),
+        ),
+
+        // ── Final settlement ──
+        if (showFinalSettlement) ...[
+          const SizedBox(height: 10),
+          _DetailSection(
+            icon: Icons.account_balance_outlined,
+            iconColor: cs.secondary,
+            title: isEs ? 'Liquidación final' : 'Final settlement',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if ((settlement.advanceInvoiceNumber ?? '').trim().isNotEmpty)
+                  _DetailRow(
+                    label: isEs ? 'Factura anticipo' : 'Advance invoice',
+                    value: settlement.advanceInvoiceNumber ?? '',
+                  ),
+                if (settlement.deductedTotal != null)
+                  _DetailRow(
+                    label: isEs ? 'Total deducido' : 'Deducted total',
+                    value: moneyFormat.format(settlement.deductedTotal),
+                    bold: true,
+                  ),
+                if (settlement.remainingTotal != null)
+                  _DetailRow(
+                    label: isEs ? 'Total restante' : 'Remaining total',
+                    value: moneyFormat.format(settlement.remainingTotal),
+                    bold: true,
+                    accent: cs.primary,
+                  ),
+              ],
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 10),
+
+        // ── Invoice lines ──
+        InvoiceDetailLines(
+          loading: _loading,
+          error: _error,
+          lines: _lines,
+          onRefresh: _fetchLines,
+          subtotal: _invoice.subtotal,
+          taxTotal: _invoice.taxTotal,
+          total: _invoice.total,
+          discountAmount: _invoice.discountAmount,
+          discountPercent: _invoice.discountPercent,
+        ),
+      ],
+    );
+  }
 
   Widget _buildPdfArea(ColorScheme cs, AppLocalizations l) {
     if (_inlinePdfLoading) {
@@ -592,7 +1304,12 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
           final h =
               constraints.maxHeight.isFinite ? constraints.maxHeight : 400.0;
           return Stack(children: [
-            PdfInlinePreview(bytes: _inlinePdfBytes!, height: h),
+            PdfInlinePreview(
+              bytes: _inlinePdfBytes!,
+              height: h,
+              showToolbar: false,
+              interactive: !_previewMenuOpen,
+            ),
             Positioned(
               top: 8,
               right: 8,
@@ -707,105 +1424,175 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     required String recurrenceLabel,
     required String? occurrenceLabel,
   }) {
-    return SizedBox(
-      height: 48,
-      child: Row(
-        children: [
-          // Details – primary CTA (expands)
-          Expanded(
-            child: FilledButton.icon(
-              onPressed: () => _openDetailsDialog(context),
-              icon: const Icon(Icons.receipt_long_outlined, size: 16),
-              label: Text(isEs ? 'Ver detalles' : 'Details'),
-              style: FilledButton.styleFrom(
-                backgroundColor: cs.primaryContainer,
-                foregroundColor: cs.onPrimaryContainer,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
+    final currentUserId = context.watch<UserDomain?>()?.user?.id;
+    final role =
+        currentUserId == null ? null : widget.group.userRoles[currentUserId];
+    final canSend = role == 'owner' || role == 'co-admin';
+    final canIssue = _invoice.isDraft &&
+        widget.onIssueInvoice != null &&
+        (currentUserId == widget.group.ownerId ||
+            role == 'owner' ||
+            role == 'admin' ||
+            role == 'co-admin');
+    final canEditDraft = _invoice.isDraft && widget.onEditInvoice != null;
+
+    final details = HexoraButton(
+      onPressed: () => _openDetailsDialog(context),
+      icon: Icons.receipt_long_outlined,
+      label: isEs ? 'Ver detalles' : 'Details',
+      variant: HexoraButtonVariant.secondary,
+    );
+    final send = HexoraButton(
+      onPressed: canSend ? () => _openSendInvoice(canSend: canSend) : null,
+      icon: Icons.mail_outline_rounded,
+      label: isEs ? 'Enviar' : 'Send',
+      variant: HexoraButtonVariant.secondary,
+      tooltip: canSend
+          ? l.invoiceSendCta
+          : (isEs
+              ? 'Solo propietarios y coadministradores pueden enviar facturas'
+              : 'Only owners and co-admins can send invoices'),
+    );
+    final edit = HexoraButton(
+      key: const ValueKey('invoice-detail-edit-draft-button'),
+      onPressed: canEditDraft ? widget.onEditInvoice : null,
+      icon: Icons.edit_outlined,
+      label: isEs ? 'Editar' : 'Edit',
+      variant: HexoraButtonVariant.secondary,
+    );
+    final overflow = ListTileTheme(
+      data: const ListTileThemeData(
+        dense: true,
+        visualDensity: VisualDensity(horizontal: -2, vertical: -2),
+        minVerticalPadding: 0,
+        contentPadding: EdgeInsets.zero,
+      ),
+      child: PopupMenuButton<String>(
+        menuPadding: const EdgeInsets.symmetric(vertical: 4),
+        constraints: const BoxConstraints(minWidth: 250, maxWidth: 270),
+        tooltip: isEs ? 'Más acciones' : 'More actions',
+        onOpened: () => setState(() => _previewMenuOpen = true),
+        onCanceled: () => setState(() => _previewMenuOpen = false),
+        icon: const Icon(Icons.more_horiz_rounded, size: 18),
+        style: IconButton.styleFrom(
+          fixedSize: const Size(
+              HexoraDimensions.buttonStandard, HexoraDimensions.buttonStandard),
+          minimumSize: const Size(
+              HexoraDimensions.buttonStandard, HexoraDimensions.buttonStandard),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          side: BorderSide(color: cs.outlineVariant),
+        ),
+        onSelected: (value) {
+          setState(() => _previewMenuOpen = false);
+          switch (value) {
+            case 'download':
+              _downloadPdf();
+            case 'preview':
+              _previewPdf();
+            case 'copy':
+              _copyPdfLink();
+            case 'recurrence':
+              widget.onOpenRecurringSeries?.call(_invoice.recurringSeriesId!);
+          }
+        },
+        itemBuilder: (_) => [
+          NavigationPopupMenuItem(
+            value: 'download',
+            enabled: !_downloadingPdf,
+            child: ListTile(
+              leading: const Icon(Icons.download_outlined),
+              title: Text('${l.download} PDF'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          NavigationPopupMenuItem(
+            value: 'preview',
+            enabled: !_previewing,
+            child: ListTile(
+              leading: const Icon(Icons.open_in_full_rounded),
+              title: Text(l.invoicePreviewCta),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          NavigationPopupMenuItem(
+            value: 'copy',
+            child: ListTile(
+              leading: const Icon(Icons.copy_outlined),
+              title: Text(isEs ? 'Copiar enlace PDF' : 'Copy PDF link'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          if (hasRecurrence)
+            NavigationPopupMenuItem(
+              value: 'recurrence',
+              enabled: widget.onOpenRecurringSeries != null,
+              child: ListTile(
+                leading: const Icon(Icons.repeat_rounded),
+                title: Text(recurrenceLabel),
+                subtitle:
+                    occurrenceLabel == null ? null : Text(occurrenceLabel),
+                contentPadding: EdgeInsets.zero,
               ),
             ),
-          ),
-          const SizedBox(width: 6),
-
-          // Recurrence badge
-          if (hasRecurrence) ...[
-            _FooterIconBtn(
-              icon: Icons.repeat_rounded,
-              color: cs.primary,
-              tooltip: occurrenceLabel == null
-                  ? recurrenceLabel
-                  : '$recurrenceLabel · $occurrenceLabel',
-              onTap: () {},
-            ),
-          ],
-
-          // Link status
-          if (canManagePremiumFeature(widget.group,
-              context.read<UserDomain?>()?.user?.id, PremiumFeature.banking)) _FooterIconBtn(
-            icon: isLinked ? Icons.link_rounded : Icons.link_off_rounded,
-            color: isLinked ? cs.primary : cs.onSurfaceVariant,
-            tooltip: isLinked
-                ? '${l.statementsInvoiceAlreadyLinkedBadge} ($linkedEntriesCount)'
-                : l.statementsUnlinked,
-            onTap: () {},
-          ),
-
-          // Download
-          _FooterIconBtn(
-            icon: _downloadingPdf
-                ? Icons.hourglass_empty_rounded
-                : Icons.download_outlined,
-            color: cs.onSurfaceVariant,
-            tooltip: '${l.download} PDF',
-            onTap: _downloadingPdf ? null : _downloadPdf,
-          ),
-
-          // Preview PDF
-          _FooterIconBtn(
-            icon: Icons.open_in_full_rounded,
-            color: cs.onSurfaceVariant,
-            tooltip: l.invoicePreviewCta,
-            onTap: _previewing ? null : _previewPdf,
-          ),
         ],
       ),
     );
-  }
-}
 
-// ── Footer icon button ─────────────────────────────────────────────────────────
+    if (_invoice.isDraft) {
+      final draftActions = <Widget>[
+        if (canIssue)
+          HexoraButton(
+            key: const ValueKey('invoice-detail-issue-button'),
+            onPressed: _issuingInvoice ? null : _issueSelectedInvoice,
+            icon: Icons.publish_outlined,
+            label: isEs ? 'Emitir' : 'Issue',
+            loading: _issuingInvoice,
+          ),
+        if (canEditDraft) edit,
+        details,
+        send,
+      ];
 
-class _FooterIconBtn extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String tooltip;
-  final VoidCallback? onTap;
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          const gap = 8.0;
+          if (constraints.maxWidth >= 560) {
+            return Row(
+              children: [
+                for (var index = 0; index < draftActions.length; index++) ...[
+                  if (index > 0) const SizedBox(width: gap),
+                  Expanded(child: draftActions[index]),
+                ],
+              ],
+            );
+          }
 
-  const _FooterIconBtn({
-    required this.icon,
-    required this.color,
-    required this.tooltip,
-    this.onTap,
-  });
+          final itemWidth = (constraints.maxWidth - gap) / 2;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final action in draftActions)
+                SizedBox(width: itemWidth, child: action),
+            ],
+          );
+        },
+      );
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: IconButton(
-        onPressed: onTap,
-        icon: Icon(icon, size: 18),
-        color: onTap == null ? color.withValues(alpha: 0.4) : color,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-      ),
+    return Row(
+      children: [
+        Expanded(flex: 3, child: details),
+        const SizedBox(width: 8),
+        Expanded(flex: 2, child: send),
+        const SizedBox(width: 8),
+        overflow,
+      ],
     );
   }
 }
-
-// ── Detail section wrapper ─────────────────────────────────────────────────────
 
 class _DetailSection extends StatelessWidget {
   final IconData icon;
@@ -913,201 +1700,506 @@ class _DetailRow extends StatelessWidget {
 
 // ── Delivery section (extracted to avoid massive build method) ─────────────────
 
-class _DeliverySection extends StatelessWidget {
-  final Invoice invoice;
-  final String deliveryStatus;
-  final String sentAtLabel;
-  final String channelLabel;
-  final bool canChangeDelivery;
-  final bool updatingDelivery;
-  final Future<void> Function({required String channel}) onMarkSent;
-  final VoidCallback onMarkUnsent;
+class _PaymentStatusSection extends StatelessWidget {
+  const _PaymentStatusSection({
+    required this.invoice,
+    required this.localeName,
+    this.showBankingDetails = true,
+    this.onOpenPayments,
+  });
 
+  final Invoice invoice;
+  final String localeName;
+  final bool showBankingDetails;
+  final VoidCallback? onOpenPayments;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isEs = localeName.toLowerCase().startsWith('es');
+    final status = (invoice.paymentStatus ?? '').trim().toLowerCase();
+    final isPaid = const {'paid', 'pagada', 'pagado'}.contains(status);
+    final isPartial =
+        const {'partial', 'partially_paid', 'parcial'}.contains(status);
+    final color = isPaid
+        ? (Theme.of(context).brightness == Brightness.light
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFF81C784))
+        : isPartial
+            ? cs.tertiary
+            : cs.onSurfaceVariant;
+    final label = isPaid
+        ? (isEs ? 'Pagada' : 'Paid')
+        : isPartial
+            ? (isEs ? 'Pago fraccionado' : 'Split payment')
+            : (isEs ? 'Pendiente' : 'Pending');
+    final total = invoice.total?.toDouble();
+    final paid =
+        invoice.paidAmount?.toDouble() ?? (isPaid && total != null ? total : 0);
+    final outstanding = total == null ? null : (total - paid).clamp(0, total);
+    final progress = total != null && total > 0
+        ? (paid / total).clamp(0.0, 1.0).toDouble()
+        : null;
+    final money = NumberFormat.simpleCurrency(
+      locale: localeName,
+      name: invoice.currency ?? 'EUR',
+    );
+    final paidAt = invoice.paidAt == null
+        ? null
+        : DateFormat.yMMMd(localeName)
+            .add_Hm()
+            .format(invoice.paidAt!.toLocal());
+    final method = _paymentMethodLabel(invoice.paymentMethod, isEs: isEs);
+    final source = showBankingDetails
+        ? _paymentSourceLabel(invoice.paymentSource, isEs: isEs)
+        : null;
+    final linkedCount = showBankingDetails ? invoice.linkedEntriesCountSafe : 0;
+    final linkedEntryId =
+        showBankingDetails ? (invoice.linkedEntryId ?? '').trim() : '';
+    final canOpenPayments =
+        onOpenPayments != null && (linkedCount > 0 || linkedEntryId.isNotEmpty);
+
+    return _CompactStatusSection(
+      icon: isPaid
+          ? Icons.check_circle_outline_rounded
+          : isPartial
+              ? Icons.timelapse_rounded
+              : Icons.schedule_outlined,
+      title: isEs ? 'Pago' : 'Payment',
+      color: color,
+      status: label,
+      body: progress == null
+          ? null
+          : _PaymentProgress(
+              paid: paid,
+              total: total!,
+              progress: progress,
+              money: money,
+              color: color,
+            ),
+      metadata: [
+        _MetaChip(
+          icon: Icons.payments_outlined,
+          label: '${isEs ? 'Pagado' : 'Paid'}: ${money.format(paid)}',
+        ),
+        if (outstanding != null)
+          _MetaChip(
+            icon: Icons.account_balance_wallet_outlined,
+            label:
+                '${isEs ? 'Pendiente' : 'Outstanding'}: ${money.format(outstanding)}',
+          ),
+        if (paidAt != null)
+          _MetaChip(icon: Icons.event_available_outlined, label: paidAt),
+        if (method != null)
+          _MetaChip(icon: Icons.credit_card_outlined, label: method),
+        if (source != null)
+          _MetaChip(icon: Icons.source_outlined, label: source),
+        if (linkedCount > 0)
+          _MetaChip(
+            icon: Icons.account_tree_outlined,
+            label: isEs
+                ? '$linkedCount movimientos vinculados'
+                : '$linkedCount linked transactions',
+          ),
+      ],
+      action: canOpenPayments
+          ? HexoraButton(
+              onPressed: onOpenPayments,
+              icon: Icons.open_in_new_rounded,
+              label: isEs ? 'Ver pago' : 'View payment',
+              variant: HexoraButtonVariant.ghost,
+              size: HexoraButtonSize.compact,
+            )
+          : null,
+    );
+  }
+
+  static String? _paymentMethodLabel(String? value, {required bool isEs}) {
+    final raw = (value ?? '').trim();
+    if (raw.isEmpty) return null;
+    return switch (raw.toLowerCase()) {
+      'transfer' => isEs ? 'Transferencia' : 'Transfer',
+      'cash' => isEs ? 'Efectivo' : 'Cash',
+      'card' => isEs ? 'Tarjeta' : 'Card',
+      'check' => isEs ? 'Cheque' : 'Check',
+      'bizum' => 'Bizum',
+      _ => raw,
+    };
+  }
+
+  static String? _paymentSourceLabel(String? value, {required bool isEs}) {
+    final raw = (value ?? '').trim();
+    if (raw.isEmpty) return null;
+    return switch (raw.toLowerCase()) {
+      'manual' || 'manual_entry' => isEs ? 'Registro manual' : 'Manual entry',
+      'bank' ||
+      'bank_transaction' ||
+      'statement' ||
+      'reconciliation' =>
+        isEs ? 'Conciliación bancaria' : 'Bank reconciliation',
+      _ => raw,
+    };
+  }
+}
+
+class _PaymentProgress extends StatelessWidget {
+  const _PaymentProgress({
+    required this.paid,
+    required this.total,
+    required this.progress,
+    required this.money,
+    required this.color,
+  });
+
+  final double paid;
+  final double total;
+  final double progress;
+  final NumberFormat money;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${money.format(paid)} / ${money.format(total)}',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                '${(progress * 100).round()}%',
+                style: t.bodySmall.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              color: color,
+              backgroundColor: cs.outlineVariant.withValues(alpha: 0.35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InternalNotesSection extends StatelessWidget {
+  const _InternalNotesSection({
+    required this.notes,
+    required this.saving,
+    required this.isEs,
+    required this.onEdit,
+    required this.onRemove,
+  });
+
+  final String? notes;
+  final bool saving;
+  final bool isEs;
+  final VoidCallback onEdit;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final value = (notes ?? '').trim();
+    final hasNotes = value.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
+              Icons.lock_outline_rounded,
+              size: 15,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEs ? 'Nota interna' : 'Internal note',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  hasNotes
+                      ? value
+                      : (isEs
+                          ? 'Añade información privada para tu equipo.'
+                          : 'Add private information for your team.'),
+                  style: t.bodySmall.copyWith(
+                    color: hasNotes
+                        ? cs.onSurface
+                        : cs.onSurfaceVariant.withValues(alpha: 0.8),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          if (saving)
+            const Padding(
+              padding: EdgeInsets.all(8),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            PopupMenuButton<String>(
+              tooltip:
+                  isEs ? 'Acciones de nota interna' : 'Internal note actions',
+              onSelected: (action) {
+                if (action == 'edit') onEdit();
+                if (action == 'remove') onRemove();
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      hasNotes ? Icons.edit_outlined : Icons.add_rounded,
+                    ),
+                    title: Text(hasNotes
+                        ? (isEs ? 'Editar' : 'Edit')
+                        : (isEs ? 'Añadir nota' : 'Add note')),
+                  ),
+                ),
+                if (hasNotes)
+                  PopupMenuItem(
+                    value: 'remove',
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading:
+                          Icon(Icons.delete_outline_rounded, color: cs.error),
+                      title: Text(
+                        isEs ? 'Eliminar' : 'Remove',
+                        style: TextStyle(color: cs.error),
+                      ),
+                    ),
+                  ),
+              ],
+              icon: const Icon(Icons.more_horiz_rounded, size: 18),
+              style: IconButton.styleFrom(
+                fixedSize: const Size(32, 32),
+                minimumSize: const Size(32, 32),
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeliverySection extends StatelessWidget {
   const _DeliverySection({
     required this.invoice,
     required this.deliveryStatus,
     required this.sentAtLabel,
     required this.channelLabel,
-    required this.canChangeDelivery,
-    required this.updatingDelivery,
-    required this.onMarkSent,
-    required this.onMarkUnsent,
+    this.onOpenDelivery,
   });
+
+  final Invoice invoice;
+  final String deliveryStatus;
+  final String sentAtLabel;
+  final String channelLabel;
+  final VoidCallback? onOpenDelivery;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final delivered = deliveryStatus == 'delivered';
+    final sent = deliveryStatus == 'sent';
+    final failed = deliveryStatus == 'failed';
+    final color = delivered
+        ? (Theme.of(context).brightness == Brightness.light
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFF81C784))
+        : sent
+            ? cs.primary
+            : failed
+                ? cs.error
+                : cs.onSurfaceVariant;
+    final hasDeliveryRecord =
+        invoice.sentAt != null || sent || delivered || failed;
+    final canOpenDelivery = onOpenDelivery != null && hasDeliveryRecord;
 
+    return _CompactStatusSection(
+      icon: delivered
+          ? Icons.done_all_rounded
+          : sent
+              ? Icons.send_rounded
+              : failed
+                  ? Icons.error_outline_rounded
+                  : Icons.mark_email_unread_outlined,
+      title: isEs ? 'Envío' : 'Delivery',
+      color: color,
+      status: deliveryStatusLabel(invoice.deliveryStatus, feminine: true),
+      metadata: [
+        if (invoice.sentAt != null)
+          _MetaChip(icon: Icons.schedule_outlined, label: sentAtLabel),
+        if ((invoice.deliveryChannel ?? '').trim().isNotEmpty &&
+            channelLabel != '-')
+          _MetaChip(
+            icon: channelLabel.toLowerCase().contains('email')
+                ? Icons.email_outlined
+                : Icons.send_outlined,
+            label: channelLabel,
+          ),
+        if (failed && (invoice.deliveryError ?? '').trim().isNotEmpty)
+          _MetaChip(
+            icon: Icons.error_outline_rounded,
+            label: invoice.deliveryError!.trim(),
+          ),
+      ],
+      action: canOpenDelivery
+          ? HexoraButton(
+              onPressed: onOpenDelivery,
+              icon: Icons.open_in_new_rounded,
+              label: isEs ? 'Ver envío' : 'View delivery',
+              variant: HexoraButtonVariant.ghost,
+              size: HexoraButtonSize.compact,
+            )
+          : null,
+    );
+  }
+}
+
+class _CompactStatusSection extends StatelessWidget {
+  const _CompactStatusSection({
+    required this.icon,
+    required this.title,
+    required this.color,
+    required this.status,
+    required this.metadata,
+    this.body,
+    this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final Color color;
+  final String status;
+  final List<Widget> metadata;
+  final Widget? body;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
-            child: Row(
-              children: [
-                Icon(Icons.send_rounded, size: 14, color: cs.onSurfaceVariant),
-                const SizedBox(width: 8),
-                Text(
-                  'Estado de envío',
-                  style: AppTypography.of(context).bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
+          Row(
+            children: [
+              Icon(icon, size: 15, color: color),
+              const SizedBox(width: 7),
+              Text(
+                title,
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
                 ),
-                const Spacer(),
-                DeliveryStatusBadge(
-                  groupId: invoice.groupId,
-                  status: invoice.deliveryStatus,
-                  channel: invoice.deliveryChannel,
-                  sentAt: invoice.sentAt,
-                  deliveryError: invoice.deliveryError,
-                  feminine: true,
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(999),
                 ),
-              ],
-            ),
+                child: Text(
+                  status,
+                  style: t.bodySmall.copyWith(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
-
-          // Meta
-          if (invoice.sentAt != null ||
-              (invoice.deliveryChannel ?? '').trim().isNotEmpty ||
-              (invoice.sentBy ?? '').trim().isNotEmpty) ...[
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 4,
-                children: [
-                  if (invoice.sentAt != null)
-                    _MetaChip(
-                        icon: Icons.schedule_outlined, label: sentAtLabel),
-                  if ((invoice.deliveryChannel ?? '').trim().isNotEmpty)
-                    _MetaChip(
-                      icon: channelLabel.toLowerCase().contains('email')
-                          ? Icons.email_outlined
-                          : Icons.send_outlined,
-                      label: channelLabel,
-                    ),
-                  if ((invoice.sentBy ?? '').trim().isNotEmpty)
-                    _MetaChip(
-                      icon: Icons.person_outline,
-                      label: _truncateId(invoice.sentBy!.trim()),
-                    ),
-                ],
-              ),
-            ),
-          ],
-
-          // Error
-          if (deliveryStatus == 'failed' &&
-              (invoice.deliveryError ?? '').trim().isNotEmpty) ...[
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline, size: 13, color: cs.error),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      invoice.deliveryError!.trim(),
-                      style: AppTypography.of(context)
-                          .bodySmall
-                          .copyWith(color: cs.error),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          // Actions
-          if (canChangeDelivery) ...[
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: PopupMenuButton<String>(
-                      tooltip: 'Marcar como enviada',
-                      enabled: !updatingDelivery,
-                      onSelected: (value) => onMarkSent(channel: value),
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'manual', child: Text('Manual')),
-                        PopupMenuItem(value: 'email', child: Text('Email')),
-                        PopupMenuItem(
-                            value: 'whatsapp', child: Text('WhatsApp')),
-                      ],
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: cs.secondaryContainer.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: cs.outlineVariant.withValues(alpha: 0.4)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (updatingDelivery)
-                              SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: cs.onSecondaryContainer,
-                                ),
-                              )
-                            else
-                              Icon(
-                                Icons.mark_email_read_outlined,
-                                size: 15,
-                                color: cs.onSecondaryContainer,
-                              ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Marcar enviada',
-                              style:
-                                  AppTypography.of(context).bodySmall.copyWith(
-                                        color: cs.onSecondaryContainer,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(Icons.arrow_drop_down,
-                                size: 16, color: cs.onSecondaryContainer),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 36,
-                    height: 36,
-                    child: Tooltip(
-                      message: 'Marcar como no enviada',
-                      child: OutlinedButton(
-                        onPressed: updatingDelivery ? null : onMarkUnsent,
-                        style: OutlinedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        child: const Icon(Icons.mark_email_unread_outlined,
-                            size: 16),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          if (body != null) body!,
+          if (metadata.isNotEmpty || action != null) ...[
+            const SizedBox(height: 6),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final stackAction = constraints.maxWidth < 420 ||
+                    MediaQuery.textScalerOf(context).scale(12) > 17;
+                final meta = Wrap(
+                  spacing: 10,
+                  runSpacing: 4,
+                  children: metadata,
+                );
+                if (action == null) return meta;
+                if (stackAction) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (metadata.isNotEmpty) meta,
+                      if (metadata.isNotEmpty) const SizedBox(height: 4),
+                      action!,
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(child: meta),
+                    const SizedBox(width: 8),
+                    action!,
+                  ],
+                );
+              },
             ),
           ],
         ],
@@ -1137,6 +2229,131 @@ class _MetaChip extends StatelessWidget {
               .copyWith(color: cs.onSurfaceVariant),
         ),
       ],
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _SummaryRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: cs.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: t.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const Spacer(),
+          Flexible(
+            child: Text(
+              value,
+              style: t.bodySmall.copyWith(
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
+              ),
+              textAlign: TextAlign.end,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InvoiceDetailTabs extends StatelessWidget {
+  const _InvoiceDetailTabs({
+    required this.selectedIndex,
+    required this.isEs,
+    required this.showLinkTab,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final bool isEs;
+  final bool showLinkTab;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final labels = isEs
+        ? [
+            'Resumen',
+            'Vista previa',
+            'Historial',
+            if (showLinkTab) 'Vincular',
+          ]
+        : [
+            'Summary',
+            'Preview',
+            'History',
+            if (showLinkTab) 'Link',
+          ];
+
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        scrollDirection: Axis.horizontal,
+        itemCount: labels.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final selected = selectedIndex == index;
+          return Semantics(
+            selected: selected,
+            button: true,
+            label: labels[index],
+            child: InkWell(
+              onTap: () => onSelected(index),
+              borderRadius: BorderRadius.circular(6),
+              child: AnimatedContainer(
+                duration: HexoraMotion.duration(
+                  context,
+                  HexoraMotion.tabIndicator,
+                ),
+                curve: HexoraMotion.navigationCurve,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      width: 1.5,
+                      color: selected ? cs.primary : Colors.transparent,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  labels[index],
+                  style: t.bodySmall.copyWith(
+                    color: selected ? cs.primary : cs.onSurfaceVariant,
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

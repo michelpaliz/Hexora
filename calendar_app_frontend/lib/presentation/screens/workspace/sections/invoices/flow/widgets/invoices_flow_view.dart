@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -77,7 +78,7 @@ class _InvoicesViewState extends State<InvoicesView> {
     setState(() => _confirmingIssueAll = true);
     bool? confirmed;
     try {
-      confirmed = await showDialog<bool>(
+      confirmed = await showHexoraDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
           icon: const Icon(Icons.publish_outlined, size: 28),

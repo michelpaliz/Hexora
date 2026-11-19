@@ -1,8 +1,11 @@
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../presentation/routes/app_routes.dart';
@@ -50,72 +53,27 @@ Widget menuItem(
   IconData iconData,
   bool selected,
 ) {
-  final t = AppTypography.of(context);
-  final cs = Theme.of(context).colorScheme;
-
-  final title = _getTranslatedTitle(context, section);
-
-  // Colors: selected gets container colors; otherwise subtle surface/outline mix.
-  final bg = selected
-      ? cs.secondaryContainer.withValues(alpha: 0.85)
-      : Colors.transparent;
-  final onBg =
-      selected ? cs.onSecondaryContainer : ThemeColors.textPrimary(context);
-  final iconColor = selected ? cs.onSecondaryContainer : cs.secondary;
-
   return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-    child: InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () {
-        switch (section) {
-          case DrawerSections.calendar:
-            Navigator.pushNamed(context, AppRoutes.homePage);
-            break;
-          case DrawerSections.settings:
-            Navigator.pushNamed(context, AppRoutes.settings);
-            break;
-          case DrawerSections.logOut:
-            _handleLogout(context);
-            break;
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected
-                ? Colors.transparent
-                : cs.outlineVariant.withValues(alpha: 0.35),
-            width: 1,
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(right: 12.0, left: 7),
-              child: Icon(iconData, size: 20, color: iconColor),
-            ),
-            Expanded(
-              child: Text(
-                title,
-                style: t.bodyLarge.copyWith(
-                  color: onBg,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ),
-            if (section != DrawerSections.logOut)
-              Icon(Icons.chevron_right_rounded,
-                  size: 18, color: onBg.withValues(alpha: 0.6)),
-          ],
-        ),
-      ),
-    ),
-  );
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      child: SidebarItem(
+        icon: iconData,
+        label: _getTranslatedTitle(context, section),
+        isSelected: selected,
+        collapsed: false,
+        onTap: () {
+          switch (section) {
+            case DrawerSections.calendar:
+              Navigator.pushNamed(context, AppRoutes.homePage);
+              break;
+            case DrawerSections.settings:
+              Navigator.pushNamed(context, AppRoutes.settings);
+              break;
+            case DrawerSections.logOut:
+              _handleLogout(context);
+              break;
+          }
+        },
+      ));
 }
 
 String _getTranslatedTitle(BuildContext context, DrawerSections section) {
@@ -154,12 +112,10 @@ Future<void> _handleLogout(BuildContext context) async {
 Future<bool> showLogOutDialog(BuildContext context) {
   final loc = AppLocalizations.of(context)!;
   final t = AppTypography.of(context);
-  final cs = Theme.of(context).colorScheme;
-
   final dialogBg = ThemeColors.cardBg(context);
   final onDialog = ThemeColors.textPrimary(context);
 
-  return showDialog<bool>(
+  return showHexoraDialog<bool>(
     context: context,
     builder: (ctx) {
       return AlertDialog(
@@ -179,18 +135,15 @@ Future<bool> showLogOutDialog(BuildContext context) {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            style: TextButton.styleFrom(foregroundColor: cs.secondary),
+            style: ThemedButtons.button(
+              ctx,
+              variant: ButtonVariant.ghost,
+            ),
             child: Text(loc.cancel, style: t.buttonText),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: cs.primary,
-              foregroundColor: ThemeColors.contrastOn(cs.primary),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
+            style: ThemedButtons.button(ctx),
             child: Text(loc.logout, style: t.buttonText),
           ),
         ],

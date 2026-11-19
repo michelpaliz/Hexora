@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/mobile_navigation_components.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -11,8 +13,6 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/add_users_flow/widgets/add_user_bottom_sheet.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -76,8 +76,6 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
 
     return MultiProvider(
@@ -98,61 +96,17 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
             final ctrl = context.watch<AddUserController>();
             final gd = context.watch<GroupDomain>();
 
-            final Color primary = cs.primary;
-            final Color selectedText = ThemeColors.contrastOn(primary);
-            final Color unselectedText =
-                ThemeColors.textPrimary(context).withValues(alpha: 0.7);
-            final Color trackBg = ThemeColors.cardBg(context);
-
             return Scaffold(
-              appBar: AppBar(
-                title: Text(
-                  l.membersTitle,
-                  style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
-                ),
+              appBar: HexoraMobileAppBar(
+                title: l.membersTitle,
                 // 🔻 Removed the AppBar "Done" text button
-                backgroundColor: cs.surface,
-                iconTheme:
-                    IconThemeData(color: ThemeColors.textPrimary(context)),
-                elevation: 0,
                 bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(64),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: trackBg,
-                        borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
-                      ),
-                      child: TabBar(
-                        isScrollable: true,
-                        tabAlignment: TabAlignment.start,
-                        tabs: [
-                          Tab(text: l.tabUpdateRoles),
-                          Tab(text: l.tabAddUsers),
-                        ],
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        dividerColor: Colors.transparent,
-                        labelColor: selectedText,
-                        unselectedLabelColor: unselectedText,
-                        labelStyle: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: .2,
-                        ),
-                        unselectedLabelStyle: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: .2,
-                        ),
-                        indicator: BoxDecoration(
-                          color: primary,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        splashBorderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
+                  preferredSize: const Size.fromHeight(48),
+                  child: HexoraMobileTabs(
+                    tabs: [
+                      Tab(text: l.tabUpdateRoles),
+                      Tab(text: l.tabAddUsers),
+                    ],
                   ),
                 ),
               ),
@@ -169,7 +123,8 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
                             GroupRole.owner,
                           ];
                       final currentUserId = context.read<UserDomain>().user?.id;
-                      final actorIsOwner = gd.currentGroup?.ownerId == currentUserId;
+                      final actorIsOwner =
+                          gd.currentGroup?.ownerId == currentUserId;
                       return ValueListenableBuilder<Map<String, String>>(
                         valueListenable: gd.userRoles,
                         builder: (_, rolesMap, __) {
@@ -180,8 +135,9 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
                           return UpdateRolesTab(
                             rolesByUserId: mappedRoles,
                             membersById: port.membersById,
-                            assignableRoles:
-                                roles.where((r) => r != GroupRole.owner).toList(),
+                            assignableRoles: roles
+                                .where((r) => r != GroupRole.owner)
+                                .toList(),
                             canEditRole: (userId) => port.canEditRole(userId),
                             setRole: (userId, r) => port.setRole(userId, r),
                             actorIsOwner: actorIsOwner,
@@ -193,6 +149,7 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
                   AddUsersTab(
                     openPicker: () async {
                       await showModalBottomSheet<void>(
+                        sheetAnimationStyle: HexoraMotion.sheetStyle(context),
                         context: context,
                         isScrollControlled: true,
                         useSafeArea: true,

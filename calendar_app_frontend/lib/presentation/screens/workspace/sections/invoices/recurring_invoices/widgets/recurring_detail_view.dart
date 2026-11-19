@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -380,6 +382,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       ),
     );
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -672,6 +675,14 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     try {
       await widget.api.update(id, payload);
       await widget.onUpdated();
+      if (!mounted) return;
+      final locale = Localizations.localeOf(context).languageCode;
+      final successText = locale.toLowerCase().startsWith('es')
+          ? 'Plantilla guardada'
+          : 'Template saved';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(successText)),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -886,7 +897,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     Future<void> handleCancel() async {
       final isEs = l.localeName.toLowerCase().startsWith('es');
       final messenger = ScaffoldMessenger.of(context);
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
           icon: const Icon(Icons.cancel_outlined, size: 28),
@@ -940,7 +951,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
         final l = AppLocalizations.of(context)!;
         final isEs = l.localeName.toLowerCase().startsWith('es');
         if (_hasUnsavedRuleChanges()) {
-          final shouldSaveAndRun = await showDialog<bool>(
+          final shouldSaveAndRun = await showHexoraDialog<bool>(
                 context: context,
                 builder: (dialogContext) => AlertDialog(
                   title: Text(isEs
@@ -1076,80 +1087,66 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       setState(() => _endDate = date);
     }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-      child: FolderPanel(
-        title: l.recurringInvoicesTitle,
-        onBack: widget.onBack,
-        showTab: true,
-        contentTopPadding: 56,
-        actions: [
-          _RecurringDetailActionBar(
-            status: status,
-            onPreview: () => previewSeries(context, widget.series, widget.api),
-            previewTooltip: l.recurringInvoicesPreviewCta,
-            canManage: widget.canManage,
-            isPaused: isPaused,
-            onTogglePause: handleTogglePause,
-            togglePauseTooltip: isPaused
-                ? l.recurringInvoicesResumeCta
-                : l.recurringInvoicesPauseCta,
-            onCancel: handleCancel,
-            cancelTooltip: l.recurringInvoicesCancelCta,
-            onRunNow: handleRunNow,
-            runNowTooltip: l.recurringInvoicesRunNowCta,
-            runningNow: _runningNow,
-          ),
+    Widget tabs(BuildContext context) {
+      return TabBar(
+        labelColor: cs.primary,
+        unselectedLabelColor: cs.onSurfaceVariant,
+        labelStyle:
+            t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 12),
+        unselectedLabelStyle: t.bodySmall.copyWith(fontSize: 12),
+        indicator: UnderlineTabIndicator(
+          borderSide: BorderSide(color: cs.primary, width: 2),
+          insets: const EdgeInsets.symmetric(horizontal: 8),
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+        dividerColor: Colors.transparent,
+        tabs: [
+          Tab(text: l.recurringInvoicesRuleTab),
+          Tab(text: l.recurringInvoicesTemplateTab),
+          Tab(text: l.recurringInvoicesGeneratedTab),
+          Tab(text: l.recurringInvoicesActivityTab),
         ],
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: DefaultTabController(
-                  length: 4,
+      );
+    }
+
+    return DefaultTabController(
+      length: 4,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: FolderPanel(
+          title: l.recurringInvoicesTitle,
+          onBack: widget.onBack,
+          showTab: true,
+          contentTopPadding: 0,
+          tabContent: tabs(context),
+          actions: [
+            _RecurringDetailActionBar(
+              status: status,
+              onPreview: () =>
+                  previewSeries(context, widget.series, widget.api),
+              previewTooltip: l.recurringInvoicesPreviewCta,
+              canManage: widget.canManage,
+              isPaused: isPaused,
+              onTogglePause: handleTogglePause,
+              togglePauseTooltip: isPaused
+                  ? l.recurringInvoicesResumeCta
+                  : l.recurringInvoicesPauseCta,
+              onCancel: handleCancel,
+              cancelTooltip: l.recurringInvoicesCancelCta,
+              onRunNow: handleRunNow,
+              runNowTooltip: l.recurringInvoicesRunNowCta,
+              runningNow: _runningNow,
+            ),
+          ],
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
                   child: Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        child: TabBar(
-                          labelColor: cs.onPrimaryContainer,
-                          unselectedLabelColor: cs.onSurfaceVariant,
-                          labelStyle: t.bodySmall.copyWith(
-                              fontWeight: FontWeight.w800, fontSize: 13),
-                          unselectedLabelStyle:
-                              t.bodySmall.copyWith(fontSize: 13),
-                          indicator: BoxDecoration(
-                            color: cs.primaryContainer,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          labelPadding:
-                              const EdgeInsets.symmetric(horizontal: 24),
-                          dividerColor:
-                              cs.outlineVariant.withValues(alpha: 0.4),
-                          tabs: [
-                            Tab(
-                              height: 40,
-                              text: l.recurringInvoicesRuleTab,
-                            ),
-                            Tab(
-                              height: 40,
-                              text: l.recurringInvoicesTemplateTab,
-                            ),
-                            Tab(
-                              height: 40,
-                              text: l.recurringInvoicesGeneratedTab,
-                            ),
-                            Tab(
-                              height: 40,
-                              text: l.recurringInvoicesActivityTab,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
                       Expanded(
                         child: TabBarView(
                           children: [
@@ -1259,8 +1256,8 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

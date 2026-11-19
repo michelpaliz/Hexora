@@ -1,6 +1,7 @@
 // presentation/d-log-user-section/shared_utilities/auth_gate.dart
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:provider/provider.dart';
 
@@ -44,14 +45,15 @@ class _AuthGateState extends State<AuthGate> {
                   const SizedBox(height: 8),
                   Text('Failed to start: ${snapshot.error}'),
                   const SizedBox(height: 8),
-                  TextButton(
+                  HexoraButton(
                     onPressed: () {
                       setState(() {
                         // retry: clear cached future and re-run
                         _initFuture = context.read<AuthService>().initialize();
                       });
                     },
-                    child: const Text('Retry'),
+                    label: 'Retry',
+                    variant: HexoraButtonVariant.ghost,
                   ),
                 ],
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -23,7 +24,7 @@ class AnimatedUsersList extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant),
       ),
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
+        duration: HexoraMotion.duration(context, HexoraMotion.standard),
         child: users.isEmpty
             ? Center(
                 key: const ValueKey('empty'),

@@ -613,6 +613,7 @@ class StatementsApi {
     String? clientProviderQuery,
     String? descriptionSearch,
     String? notesSearch,
+    String? invoiceNumberSearch,
     String sort = 'date_desc',
   }) async {
     final boundedSize = size < 1 ? 50 : (size > 200 ? 200 : size);
@@ -633,6 +634,8 @@ class StatementsApi {
         'descriptionSearch': descriptionSearch.trim(),
       if (notesSearch != null && notesSearch.trim().isNotEmpty)
         'notesSearch': notesSearch.trim(),
+      if (invoiceNumberSearch != null && invoiceNumberSearch.trim().isNotEmpty)
+        'invoiceNumberSearch': invoiceNumberSearch.trim(),
       if (sort.trim().isNotEmpty) 'sort': sort.trim(),
     };
 
@@ -705,14 +708,20 @@ class StatementsApi {
     String? aiConversationId,
   }) async {
     final uri = _u('/entries/invoices/bulk-link');
+    final payload = <String, dynamic>{'links': links};
+    final normalizedConversationId = aiConversationId?.trim() ?? '';
+    if (normalizedConversationId.isNotEmpty) {
+      payload['aiConversationId'] = normalizedConversationId;
+    }
     final r = await AuthenticatedHttpClient.post(
       uri,
       headers: {
         ...await _headers(),
         if (aiConversationId != null) 'X-Hexora-Ai-Action': '1',
-        if (aiConversationId != null) 'X-Hexora-Ai-Conversation': aiConversationId,
+        if (aiConversationId != null)
+          'X-Hexora-Ai-Conversation': aiConversationId,
       },
-      body: jsonEncode(<String, dynamic>{'links': links}),
+      body: jsonEncode(payload),
     );
     return _decode<Map<String, dynamic>>(
       r,

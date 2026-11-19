@@ -1,6 +1,10 @@
 // presentation/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'widgets/calendar_details_empty.dart';
+import 'package:intl/intl.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/weather/day_summary.dart';
@@ -25,11 +29,13 @@ import 'package:hexora/presentation/screens/events/screens/actions/edit_screen/s
 import 'package:hexora/presentation/screens/events/screens/event_screen/event_detail/event_detail_screen.dart';
 import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/pulsing_ring_avatar.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/presentation/shared/utils/weather/weather_summary_localizer.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -45,6 +51,19 @@ class CalendarDashboardActions {
     required this.leftPanelCollapsed,
     required this.canAddEvents,
   });
+}
+
+@visibleForTesting
+String calendarViewModeForSideMenu(String menu) {
+  switch (menu) {
+    case 'day':
+    case 'week':
+    case 'agenda':
+    case 'month':
+      return menu;
+    default:
+      return 'week';
+  }
 }
 
 class MainCalendarView extends StatefulWidget {
@@ -80,6 +99,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   String? _selectedUserFilter;
   _SidePanelView _panelView = _SidePanelView.upcoming;
   bool _leftCollapsed = false;
+  bool _rightPanelCollapsed = false;
   final ValueNotifier<bool> _leftCollapsedNotifier = ValueNotifier(false);
   bool _canAddEvents = false;
   Event? _editingEvent;
@@ -136,6 +156,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     if (isWideNow) {
       final now = DateTime.now();
       setState(() {
+        _rightPanelCollapsed = false;
         _panelView = _SidePanelView.addEvent;
         _pendingAddEventStart = now;
         _pendingAddEventEnd = now.add(const Duration(hours: 1));
@@ -145,6 +166,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
     if (widget.embedded && kIsWeb) {
       setState(() {
+        _rightPanelCollapsed = false;
         _panelView = _SidePanelView.addEvent;
       });
       return;
@@ -152,7 +174,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
     if (kIsWeb) {
       // On web, keep the 3-column layout in place by showing a dialog instead of full navigation.
-      added = await showDialog<bool>(
+      added = await showHexoraDialog<bool>(
         context: context,
         builder: (dialogCtx) {
           final media = MediaQuery.of(dialogCtx).size;
@@ -196,6 +218,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
   void _openAddEventForRange(DateTime start, DateTime end) {
     setState(() {
+      _rightPanelCollapsed = false;
       _panelView = _SidePanelView.addEvent;
       _pendingAddEventStart = start;
       _pendingAddEventEnd = end;
@@ -228,10 +251,8 @@ class _MainCalendarViewState extends State<MainCalendarView> {
       case 'week':
       case 'day':
       case 'agenda':
-        // These view modes are handled by the main calendar
-        break;
       case 'month':
-        // Month is still a calendar view in the main area.
+        _c.calendarUI?.setViewMode(menu);
         break;
       case 'upcoming':
         _setPanelView(_SidePanelView.upcoming);
@@ -253,6 +274,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   void _openViewEventInline(Event event) {
     setState(() {
       _viewingEvent = event;
+      _rightPanelCollapsed = false;
       _panelView = _SidePanelView.viewEvent;
     });
   }
@@ -260,6 +282,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   void _openEditEventInline(Event event) {
     setState(() {
       _editingEvent = event;
+      _rightPanelCollapsed = false;
       _panelView = _SidePanelView.editEvent;
     });
   }
@@ -413,7 +436,167 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
         List<Widget> calendarHeaderActions() {
           final connectedUsers = _c.buildPresenceFor(currentGroup);
+          final viewMode = _c.calendarUI?.currentViewMode ??
+              calendarViewModeForSideMenu(_selectedSideMenu);
+          final locale = Localizations.localeOf(context).toLanguageTag();
+          final selectedDate =
+              _c.calendarUI?.selectedDateNotifier.value ?? DateTime.now();
+          final formattedDate =
+              DateFormat('MMMM yyyy', locale).format(selectedDate);
+          final dateLabel =
+              '${formattedDate[0].toUpperCase()}${formattedDate.substring(1)}';
+          final yearStart = DateTime(selectedDate.year, 1, 1);
+          final weekNumber = ((selectedDate.difference(yearStart).inDays +
+                      yearStart.weekday -
+                      1) ~/
+                  7) +
+              1;
+          void movePeriod(int direction) {
+            final amount = viewMode == 'week' ? 7 : 1;
+            final next = viewMode == 'month'
+                ? DateTime(selectedDate.year, selectedDate.month + direction,
+                    selectedDate.day)
+                : selectedDate.add(Duration(days: direction * amount));
+            _c.calendarUI?.jumpTo(next);
+          }
+
+          final periodToolbar = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: 'Previous period',
+                constraints:
+                    const BoxConstraints.tightFor(width: 30, height: 30),
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+                onPressed: () => movePeriod(-1),
+                icon: const Icon(Icons.chevron_left_rounded, size: 18),
+              ),
+              IconButton(
+                tooltip: 'Next period',
+                constraints:
+                    const BoxConstraints.tightFor(width: 30, height: 30),
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+                onPressed: () => movePeriod(1),
+                icon: const Icon(Icons.chevron_right_rounded, size: 18),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                dateLabel,
+                style: typo.bodyMedium.copyWith(
+                    fontSize: 16,
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(width: 8),
+              Chip(
+                label: Text('Semana $weekNumber'),
+                visualDensity: VisualDensity.compact,
+                labelStyle: typo.bodySmall.copyWith(
+                  fontSize: 12,
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+                side: BorderSide.none,
+                backgroundColor: cs.surfaceContainerHighest,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              const SizedBox(width: 6),
+              OutlinedButton(
+                onPressed: _c.jumpToToday,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 32),
+                  foregroundColor: cs.primary,
+                  side: BorderSide(color: cs.primary.withValues(alpha: 0.55)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: Text(loc.today),
+              ),
+            ],
+          );
+          final viewSelector = Container(
+            height: 34,
+            decoration: BoxDecoration(
+              color: cs.surface,
+              border:
+                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SegmentedButton<String>(
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                  value: 'day',
+                  label: Text(loc.tabDay),
+                  icon: const Icon(Icons.calendar_view_day_outlined, size: 15),
+                ),
+                ButtonSegment(
+                  value: 'week',
+                  label: Text(loc.tabWeek),
+                  icon: const Icon(Icons.calendar_view_week_outlined, size: 15),
+                ),
+                ButtonSegment(
+                  value: 'month',
+                  label: Text(loc.tabMonth),
+                  icon: const Icon(Icons.calendar_today_outlined, size: 15),
+                ),
+                ButtonSegment(
+                  value: 'agenda',
+                  label: Text(loc.tabAgenda),
+                  icon: const Icon(Icons.view_agenda_outlined, size: 15),
+                ),
+              ],
+              selected: {viewMode},
+              onSelectionChanged: (selection) =>
+                  _onSideMenuChanged(selection.first),
+              style: ButtonStyle(
+                side: const WidgetStatePropertyAll(BorderSide.none),
+                shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8))),
+                foregroundColor: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.selected)
+                        ? cs.primary
+                        : cs.onSurface),
+                backgroundColor: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.selected)
+                        ? cs.primary.withValues(alpha: 0.10)
+                        : cs.surface),
+                minimumSize: const WidgetStatePropertyAll(Size(0, 34)),
+                textStyle: WidgetStatePropertyAll(typo.bodySmall.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                )),
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
+            ),
+          );
           final actions = <Widget>[
+            viewSelector,
+            const SizedBox(width: 8),
+            periodToolbar,
+            const SizedBox(width: 10),
+            IconButton(
+              key: const ValueKey('calendar-details-toggle'),
+              tooltip: Localizations.localeOf(context).languageCode == 'es'
+                  ? (_rightPanelCollapsed
+                      ? 'Mostrar detalles'
+                      : 'Ocultar detalles')
+                  : (_rightPanelCollapsed ? 'Show details' : 'Hide details'),
+              onPressed: () =>
+                  setState(() => _rightPanelCollapsed = !_rightPanelCollapsed),
+              icon: Icon(
+                  _rightPanelCollapsed
+                      ? Icons.view_sidebar_outlined
+                      : Icons.chevron_right_rounded,
+                  size: 18),
+            ),
             Tooltip(
               message: 'All',
               child: InkWell(
@@ -451,28 +634,27 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                   borderRadius: BorderRadius.circular(999),
                   onTap: () => _onUserFilterChanged(user.userId),
                   child: Container(
-                    width: 30,
-                    height: 30,
-                    padding: const EdgeInsets.all(1.6),
+                    width: 28,
+                    height: 28,
+                    padding: const EdgeInsets.all(1.5),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: isSelected
                             ? cs.primary
-                            : cs.outlineVariant.withValues(alpha: 0.55),
-                        width: 1.8,
+                            : cs.outlineVariant.withValues(alpha: 0.65),
+                        width: isSelected ? 2 : 1,
                       ),
                     ),
                     child: PulsingRingAvatar(
-                      radius: 12,
+                      radius: 11,
                       image: AvatarUtils.profileImageProvider(
                         user.photoUrl,
                         assetFallback: 'assets/images/default_profile.png',
                       ),
                       isOnline: user.isOnline,
-                      onlineColor: isSelected ? cs.primary : cs.secondary,
-                      offlineBorderColor:
-                          cs.outlineVariant.withValues(alpha: 0.55),
+                      onlineColor: cs.primary,
+                      offlineBorderColor: cs.outlineVariant,
                       backgroundColor: cs.surfaceContainerHighest,
                     ),
                   ),
@@ -489,13 +671,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
         }) {
           final calendarUI = _c.calendarUI;
 
-          // Determine the view mode based on side menu selection
-          String viewMode = 'week'; // default
-          if (_selectedSideMenu == 'day' ||
-              _selectedSideMenu == 'week' ||
-              _selectedSideMenu == 'agenda') {
-            viewMode = _selectedSideMenu;
-          }
+          final viewMode = calendarViewModeForSideMenu(_selectedSideMenu);
 
           return Column(
             children: [
@@ -512,7 +688,9 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 child: calendarUI?.buildCalendar(
                       context,
                       forcedViewMode: viewMode,
+                      showMonthAgenda: viewMode != 'month',
                       onTimeRangeSelected: _openAddEventForRange,
+                      onEventTap: _openViewEventInline,
                     ) ??
                     const SizedBox(),
               ),
@@ -569,6 +747,8 @@ class _MainCalendarViewState extends State<MainCalendarView> {
         }
 
         Widget calendarSidebar() {
+          final members = _c.buildPresenceFor(currentGroup);
+          final es = Localizations.localeOf(context).languageCode == 'es';
           return CalendarSideMenu(
             group: currentGroup,
             collapsed: _leftCollapsed,
@@ -584,6 +764,97 @@ class _MainCalendarViewState extends State<MainCalendarView> {
             onToggleInsightsExpanded: () =>
                 setState(() => _insightsExpanded = !_insightsExpanded),
             selectedMenu: _selectedSideMenu,
+            calendarFilters: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                  child: Row(children: [
+                    Icon(Icons.event_available_rounded,
+                        size: 18, color: AppDarkColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: Text(currentGroup.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: typo.bodySmall.copyWith(
+                                color: AppColors.navigationForeground,
+                                fontWeight: FontWeight.w600))),
+                    const SizedBox(width: 6),
+                    Icon(Icons.circle, size: 6, color: AppDarkColors.primary),
+                  ]),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: es ? 'Filtrar por miembro' : 'Filter by member',
+                  onSelected: (id) =>
+                      _onUserFilterChanged(id.isEmpty ? null : id),
+                  itemBuilder: (_) => [
+                    CheckedPopupMenuItem(
+                        value: '',
+                        checked: _selectedUserFilter == null,
+                        child: Text(es ? 'Todos los miembros' : 'All members')),
+                    for (final member in members)
+                      CheckedPopupMenuItem(
+                          value: member.userId,
+                          checked: _selectedUserFilter == member.userId,
+                          child: Text(member.userName)),
+                  ],
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    child: Row(children: [
+                      Icon(Icons.people_outline,
+                          size: 18, color: AppDarkColors.textSecondary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          child: Text(
+                              members
+                                      .where((m) =>
+                                          m.userId == _selectedUserFilter)
+                                      .isEmpty
+                                  ? (es ? 'Todos los miembros' : 'All members')
+                                  : members
+                                      .firstWhere((m) =>
+                                          m.userId == _selectedUserFilter)
+                                      .userName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: typo.bodySmall.copyWith(
+                                  color: AppColors.navigationForeground))),
+                      Icon(Icons.expand_more,
+                          size: 16, color: AppDarkColors.textSecondary),
+                    ]),
+                  ),
+                ),
+              ],
+            ),
+            dateNavigator: _c.calendarUI == null
+                ? null
+                : ValueListenableBuilder<DateTime>(
+                    valueListenable: _c.calendarUI!.selectedDateNotifier,
+                    builder: (context, date, _) => FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.topCenter,
+                      child: SizedBox(
+                        width: 300,
+                        height: 310,
+                        child: CalendarDatePicker(
+                          key: ValueKey('calendar-navigator-$date'),
+                          initialDate: date,
+                          firstDate: DateTime(date.year - 100),
+                          lastDate: DateTime(date.year + 100, 12, 31),
+                          onDateChanged: (selected) {
+                            _c.calendarUI?.jumpTo(selected);
+                            if (!const ['day', 'week', 'month', 'agenda']
+                                .contains(_selectedSideMenu)) {
+                              _onSideMenuChanged('week');
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
             onMenuChanged: _onSideMenuChanged,
             onAddEvent: canAddEvents ? () => _openAddEvent(currentGroup) : null,
             canAddEvents: canAddEvents,
@@ -616,8 +887,11 @@ class _MainCalendarViewState extends State<MainCalendarView> {
           }) {
             return Container(
               decoration: BoxDecoration(
-                color: cs.surface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(16),
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.28),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -676,6 +950,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                       setState(() {
                         _viewingEvent = _editingEvent;
                         _editingEvent = null;
+                        _rightPanelCollapsed = false;
                         _panelView = _SidePanelView.viewEvent;
                       });
                     },
@@ -813,90 +1088,47 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
                         // ── Empty workspace with CTAs ──────────────────
                         Widget emptyDayWorkspace() {
-                          return Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 300),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 52,
-                                    height: 52,
-                                    decoration: BoxDecoration(
-                                      color: cs.primary.withValues(alpha: 0.09),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Icon(
+                          return Align(
+                            alignment: Alignment.topCenter,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 28),
+                              child: ConstrainedBox(
+                                constraints:
+                                    const BoxConstraints(maxWidth: 300),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
                                       Icons.calendar_today_outlined,
-                                      size: 26,
-                                      color: cs.primary.withValues(alpha: 0.65),
+                                      size: 22,
+                                      color: cs.onSurfaceVariant
+                                          .withValues(alpha: 0.55),
                                     ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    isSpanish
-                                        ? 'No hay eventos para este día'
-                                        : 'No events for this day',
-                                    textAlign: TextAlign.center,
-                                    style: typo.bodyLarge.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: cs.onSurface,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    isSpanish
-                                        ? 'Organiza tu jornada creando un evento o recordatorio.'
-                                        : 'Plan your day by creating an event or reminder.',
-                                    textAlign: TextAlign.center,
-                                    style: typo.bodySmall.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                  if (canAddEvents) ...[
-                                    const SizedBox(height: 24),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: FilledButton.icon(
-                                        onPressed: () =>
-                                            _openAddEventForSlot(selectedDate),
-                                        icon: const Icon(Icons.add_rounded,
-                                            size: 16),
-                                        label: Text(
-                                          isSpanish
-                                              ? 'Crear evento'
-                                              : 'Create event',
-                                          style: typo.bodySmall.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                            color: cs.onPrimary,
-                                          ),
-                                        ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      isSpanish
+                                          ? 'No hay eventos para este día'
+                                          : 'No events for this day',
+                                      textAlign: TextAlign.center,
+                                      style: typo.bodyLarge.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        color: cs.onSurface,
+                                        fontSize: 15,
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: OutlinedButton.icon(
-                                        onPressed: () =>
-                                            _openAddEventForSlot(selectedDate),
-                                        icon: const Icon(
-                                            Icons.notifications_outlined,
-                                            size: 16),
-                                        label: Text(
-                                          isSpanish
-                                              ? 'Crear recordatorio'
-                                              : 'Create reminder',
-                                          style: typo.bodySmall.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                            color: cs.primary,
-                                          ),
-                                        ),
+                                    Text(
+                                      isSpanish
+                                          ? 'Organiza tu jornada creando un evento o recordatorio.'
+                                          : 'Plan your day by creating an event or reminder.',
+                                      textAlign: TextAlign.center,
+                                      style: typo.bodySmall.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                        height: 1.4,
                                       ),
                                     ),
                                   ],
-                                ],
+                                ),
                               ),
                             ),
                           );
@@ -995,8 +1227,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                         ),
                                       ),
                                       // Quick-add action
-                                      if (canAddEvents &&
-                                          eventsForDay.isNotEmpty) ...[
+                                      if (canAddEvents) ...[
                                         const SizedBox(width: 6),
                                         FilledButton.tonal(
                                           onPressed: () => _openAddEventForSlot(
@@ -1018,7 +1249,9 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                                   size: 14),
                                               const SizedBox(width: 3),
                                               Text(
-                                                isSpanish ? 'Nuevo' : 'New',
+                                                isSpanish
+                                                    ? 'Nuevo evento'
+                                                    : 'New event',
                                                 style: typo.bodySmall.copyWith(
                                                   fontWeight: FontWeight.w700,
                                                   fontSize: 11,
@@ -1251,18 +1484,22 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 children: [
                   // Calendar panel — fixed 30%
                   Expanded(
-                    flex: 3,
+                    flex: 12,
                     child: miniPanelShell(
                       title: loc.sectionOverview,
                       child: miniMonthGrid(),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  Container(
+                    width: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 10),
+                    color: cs.outlineVariant.withValues(alpha: 0.35),
+                  ),
                   // Dynamic workspace — 70%
                   // No event: full workspace (date header + events/empty+CTA)
                   // Event active: events list | detail panel split
                   Expanded(
-                    flex: 7,
+                    flex: 13,
                     child: noEventSelected
                         ? miniPanelShell(
                             title: 'Eventos del dia',
@@ -1284,7 +1521,10 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                 child: miniPanelShell(
                                   title: miniCalendarDetailTitle(),
                                   trailing: detailTrailing,
-                                  child: miniCalendarDetailPanel(),
+                                  child: HexoraMenuContentTransition.tab(
+                                    transitionKey: _panelView,
+                                    child: miniCalendarDetailPanel(),
+                                  ),
                                 ),
                               ),
                             ],
@@ -1305,7 +1545,9 @@ class _MainCalendarViewState extends State<MainCalendarView> {
             case _SidePanelView.editEvent:
               return loc.edit;
             default:
-              return loc.calendarTitle;
+              return Localizations.localeOf(context).languageCode == 'es'
+                  ? 'Detalles del evento'
+                  : 'Event details';
           }
         }
 
@@ -1371,13 +1613,65 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 ),
               );
             default:
-              return Center(
-                child: Text(
-                  loc.noEventsFoundForDate,
-                  style: typo.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
+              final es = Localizations.localeOf(context).languageCode == 'es';
+              Widget quickAction(
+                  IconData icon, String label, VoidCallback action) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: OutlinedButton.icon(
+                    onPressed: action,
+                    icon: Icon(icon, size: 18),
+                    label: Text(label),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(42),
+                      foregroundColor: cs.primary,
+                      backgroundColor:
+                          cs.surfaceContainerLow.withValues(alpha: .55),
+                      side: BorderSide(
+                          color: cs.outlineVariant.withValues(alpha: .35)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      textStyle:
+                          typo.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                    ),
                   ),
-                ),
+                );
+              }
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+                children: [
+                  const SizedBox(height: 38),
+                  const CalendarDetailsIllustration(),
+                  const SizedBox(height: 16),
+                  Text(es ? 'Sin evento seleccionado' : 'No event selected',
+                      textAlign: TextAlign.center,
+                      style: typo.bodyMedium
+                          .copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 10),
+                  Text(
+                    es
+                        ? 'Selecciona un evento en el calendario para ver sus detalles.'
+                        : 'Select an event in the calendar to see its details.',
+                    textAlign: TextAlign.center,
+                    style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 24),
+                  Divider(
+                      height: 1,
+                      color: cs.outlineVariant.withValues(alpha: .3)),
+                  const SizedBox(height: 18),
+                  Text(es ? 'Acciones rápidas' : 'Quick actions',
+                      style: typo.bodyMedium
+                          .copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 12),
+                  if (canAddEvents)
+                    quickAction(Icons.add_rounded, loc.addEvent,
+                        () => _openAddEvent(currentGroup)),
+                  quickAction(Icons.alarm_rounded, loc.sectionUpcoming,
+                      () => _onSideMenuChanged('upcoming')),
+                  quickAction(Icons.edit_calendar_outlined, loc.tasks,
+                      () => _onSideMenuChanged('tasks')),
+                ],
               );
           }
         }
@@ -1543,50 +1837,103 @@ class _MainCalendarViewState extends State<MainCalendarView> {
           body: SafeArea(
             child: isWide
                 ? Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                    padding: EdgeInsets.zero,
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         calendarSidebar(),
-                        const SizedBox(width: 10),
                         Expanded(
-                          child: isCalendarSection
-                              ? Row(
-                                  children: [
-                                    Expanded(
-                                      child: FolderPanel(
-                                        title: sectionTitle(),
-                                        showTab: true,
-                                        actions: calendarHeaderActions(),
-                                        child: calendarContent(
-                                          showActions: false,
-                                          showPresenceStrip: false,
+                          child: WorkspaceMainContent(
+                            child: HexoraMenuContentTransition.submenu(
+                              transitionKey: _selectedSideMenu,
+                              child: isCalendarSection
+                                  ? Row(
+                                      children: [
+                                        Expanded(
+                                          child: FolderPanel(
+                                            title: sectionTitle(),
+                                            showTab: true,
+                                            actions: calendarHeaderActions(),
+                                            child: calendarContent(
+                                              showActions: false,
+                                              showPresenceStrip: false,
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                        if (!_rightPanelCollapsed)
+                                          const SizedBox(width: 8),
+                                        Visibility(
+                                            visible: !_rightPanelCollapsed,
+                                            maintainState: true,
+                                            child: SizedBox(
+                                              width: HexoraDimensions
+                                                  .calendarPanel,
+                                              child: FolderPanel(
+                                                title:
+                                                    calendarRightPanelTitle(),
+                                                tabContent: Row(children: [
+                                                  Icon(
+                                                      Icons
+                                                          .event_available_rounded,
+                                                      size: 18,
+                                                      color: cs.primary),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                      child: Text(
+                                                          calendarRightPanelTitle(),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: typo.bodySmall
+                                                              .copyWith(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700))),
+                                                  IconButton(
+                                                    tooltip:
+                                                        MaterialLocalizations
+                                                                .of(context)
+                                                            .closeButtonTooltip,
+                                                    onPressed: () => setState(
+                                                        () =>
+                                                            _rightPanelCollapsed =
+                                                                true),
+                                                    icon: const Icon(
+                                                        Icons.close_rounded,
+                                                        size: 18),
+                                                    visualDensity:
+                                                        VisualDensity.compact,
+                                                  ),
+                                                ]),
+                                                showToolbarDivider: false,
+                                                showTab: true,
+                                                child:
+                                                    HexoraMenuContentTransition
+                                                        .tab(
+                                                  transitionKey: _panelView,
+                                                  child:
+                                                      calendarRightPanelContent(),
+                                                ),
+                                              ),
+                                            )),
+                                      ],
+                                    )
+                                  : FolderPanel(
+                                      title: sectionTitle(),
+                                      showTab: true,
+                                      child: sectionContent(),
                                     ),
-                                    const SizedBox(width: 10),
-                                    SizedBox(
-                                      width: 360,
-                                      child: FolderPanel(
-                                        title: calendarRightPanelTitle(),
-                                        showTab: true,
-                                        child: calendarRightPanelContent(),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : FolderPanel(
-                                  title: sectionTitle(),
-                                  showTab: true,
-                                  child: sectionContent(),
-                                ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   )
-                : Padding(
-                    padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
-                    child: compactCalendarContent(),
+                : WorkspaceMainContent(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+                      child: compactCalendarContent(),
+                    ),
                   ),
           ),
         );

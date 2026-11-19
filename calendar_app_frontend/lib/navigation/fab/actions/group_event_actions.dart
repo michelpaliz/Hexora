@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -37,6 +38,7 @@ Future<void> pickGroupAndAddEvent(BuildContext context) async {
 
   if (!context.mounted) return;
   final selected = await showModalBottomSheet<Group>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
     context: context,
     showDragHandle: true,
     builder: (ctx) => SafeArea(

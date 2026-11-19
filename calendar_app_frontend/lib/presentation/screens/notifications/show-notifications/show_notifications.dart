@@ -1,4 +1,6 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
 import 'utils/event_args_helper.dart';
@@ -12,6 +14,7 @@ import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/downloads/downloads_api.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/groups/invite/domain/invite_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -74,6 +77,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
       groupDomain: groupDomain,
       notificationDomain: notifMgmt,
       notificationService: NotificationApiClient(),
+      invitationDomain: context.read<InvitationDomain>(),
     );
 
     _notificationsStream = notifMgmt.notificationStream;
@@ -128,7 +132,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
     if (_clearing) return;
     final t = Theme.of(context).textTheme;
 
-    final confirm = await showDialog<bool>(
+    final confirm = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(
@@ -205,7 +209,13 @@ class _ShowNotificationsState extends State<ShowNotifications>
       await _notificationViewModel.handleConfirmation(notification);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.confirm)),
+        SnackBar(
+          content: Text(
+            loc.localeName.startsWith('es')
+                ? 'Invitación aceptada. Ya puedes acceder al negocio.'
+                : 'Invitation accepted. You can now access the business.',
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -401,17 +411,20 @@ class _ShowNotificationsState extends State<ShowNotifications>
 
   Future<void> _openNotificationDestination(
       NotificationUser notification) async {
-    final chatId = (notification.args['conversationId'] ?? '').toString().trim();
+    final chatId =
+        (notification.args['conversationId'] ?? '').toString().trim();
     if (chatId.isNotEmpty) {
-      final groupId = (notification.args['groupId'] ?? notification.groupId).toString().trim();
+      final groupId = (notification.args['groupId'] ?? notification.groupId)
+          .toString()
+          .trim();
       if (groupId.isEmpty) throw StateError('Missing chat group');
       await Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text('Hexora Chat')),
+        builder: (routeContext) => Scaffold(
           body: BusinessChatScreen(
             groupId: groupId,
             currentUserId: widget.user.id,
             initialConversationId: chatId,
+            onExit: () => Navigator.of(routeContext).pop(),
           ),
         ),
       ));
@@ -486,7 +499,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
     // text instead of linking to an unrelated page or silently doing nothing.
     if (!mounted) return;
     final loc = AppLocalizations.of(context)!;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
               title: Text(notification.getLocalizedTitle(loc)),
@@ -683,7 +696,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
             }
           },
           itemBuilder: (context) => [
-            PopupMenuItem(
+            NavigationPopupMenuItem(
                 value: 'refresh',
                 child: Row(children: [
                   const Icon(Icons.refresh),
@@ -693,7 +706,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
                       : 'Refresh'),
                 ])),
             const PopupMenuDivider(),
-            PopupMenuItem(
+            NavigationPopupMenuItem(
                 value: 'clear',
                 child: Row(children: [
                   Icon(Icons.delete_outline,

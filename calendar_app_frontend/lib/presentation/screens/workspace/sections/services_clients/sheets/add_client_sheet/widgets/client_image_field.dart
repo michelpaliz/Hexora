@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/widgets/client_property_image.dart';
 
 class ClientImageField extends StatefulWidget {
@@ -78,18 +79,19 @@ class _ClientImageFieldState extends State<ClientImageField> {
                     style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, runSpacing: 8, children: [
-                  OutlinedButton.icon(
+                  HexoraButton(
                       onPressed: widget.disabled || _picking ? null : _pick,
-                      icon: const Icon(Icons.add_photo_alternate_outlined),
-                      label: Text(
-                          hasImage ? l.clientImageReplace : l.clientImageAdd)),
+                      icon: Icons.add_photo_alternate_outlined,
+                      label: hasImage ? l.clientImageReplace : l.clientImageAdd,
+                      variant: HexoraButtonVariant.secondary),
                   if (hasImage)
-                    TextButton.icon(
+                    HexoraButton(
                         onPressed: widget.disabled || _picking
                             ? null
                             : widget.onRemove,
-                        icon: const Icon(Icons.delete_outline),
-                        label: Text(l.clientImageRemove)),
+                        icon: Icons.delete_outline,
+                        label: l.clientImageRemove,
+                        variant: HexoraButtonVariant.ghost),
                 ]),
               ])),
         ]),

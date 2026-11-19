@@ -1,6 +1,7 @@
 // lib/presentation/home/widgets/see_all_groups_button.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_screen/group_list_section.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -35,13 +36,13 @@ class SeeAllGroupsButton extends StatelessWidget {
         borderRadius: radius,
         onTap: () {
           if (kIsWeb) {
-            showDialog<void>(
+            showHexoraDialog<void>(
               context: context,
               builder: (_) => Dialog(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
-                insetPadding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 24),
+                insetPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                 child: ConstrainedBox(
                   constraints:
                       const BoxConstraints(maxWidth: 640, maxHeight: 860),
@@ -83,7 +84,8 @@ class SeeAllGroupsButton extends StatelessWidget {
                 ),
               ),
               SizedBox(width: compact ? 2 : 6),
-              Icon(Icons.chevron_right_rounded, size: compact ? 18 : 20, color: fg),
+              Icon(Icons.chevron_right_rounded,
+                  size: compact ? 18 : 20, color: fg),
             ],
           ),
         ),

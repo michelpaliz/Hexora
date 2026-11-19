@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import '../utils/notification_destination.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
@@ -9,6 +10,7 @@ import 'package:hexora/presentation/screens/notifications/show-notifications/uti
 import 'package:hexora/presentation/shared/widgets/buttons/rounded_action_button.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
@@ -112,7 +114,7 @@ class NotificationCard extends StatelessWidget {
   }
 
   Future<bool> _confirmDismiss(BuildContext context, AppLocalizations loc) =>
-      showDialog<bool>(
+      showHexoraDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
           title: Text(loc.confirmation),
@@ -171,23 +173,24 @@ class _DefaultCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final title = notification.getLocalizedTitle(loc);
     final isUnread = !notification.isRead;
+    final meta = resolveNotifMeta(notification, cs);
 
     final actionable = resolveNotificationDestination(notification) ==
             NotificationDestination.invitation &&
         (onConfirm != null || onNegate != null);
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
-      color: isUnread ? cs.primary.withValues(alpha: 0.04) : null,
+      margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 12),
+      color: isUnread ? cs.primary.withValues(alpha: 0.025) : cs.surface,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         side: isSelected
             ? BorderSide(color: cs.primary.withValues(alpha: 0.45), width: 1.2)
             : isUnread
                 ? BorderSide(
                     color: cs.primary.withValues(alpha: 0.20), width: 1)
-                : BorderSide.none,
+                : BorderSide(color: cs.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: InkWell(
         onTap: onTap,
@@ -196,58 +199,52 @@ class _DefaultCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(
-                spacing: 12,
-                runSpacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
+              Row(
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    width: 30,
+                    height: 30,
                     decoration: BoxDecoration(
-                      color: cs.primary.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(999),
-                      border:
-                          Border.all(color: cs.primary.withValues(alpha: 0.18)),
+                      color: meta.color.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(8),
                     ),
+                    child: Icon(meta.icon, size: 16, color: meta.color),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
                     child: Text(
                       title,
-                      style: typo.caption.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: cs.primary,
-                        letterSpacing: .2,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: typo.bodySmall.copyWith(
+                        fontWeight:
+                            isUnread ? FontWeight.w800 : FontWeight.w600,
+                        color: cs.onSurface,
                       ),
                     ),
                   ),
-                  Text.rich(
-                    TextSpan(children: [
-                      if (isUnread)
-                        WidgetSpan(
-                          alignment: PlaceholderAlignment.middle,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child:
-                                Icon(Icons.circle, size: 7, color: cs.primary),
-                          ),
-                        ),
-                      TextSpan(
-                        text: formatTimeDifference(
-                            notification.timestamp, context),
-                      ),
-                    ]),
+                  if (isUnread) ...[
+                    const SizedBox(width: 6),
+                    Icon(Icons.circle, size: 7, color: cs.primary),
+                  ],
+                  const SizedBox(width: 8),
+                  Text(
+                    formatTimeDifference(notification.timestamp, context),
                     style: typo.caption.copyWith(
                       color: ThemeColors.textSecondary(context),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 4),
               Text(
                 notification.getLocalizedMessage(loc),
                 style: typo.bodySmall.copyWith(
                   color: ThemeColors.textSecondary(context),
                   fontWeight: isUnread ? FontWeight.w500 : FontWeight.normal,
                 ),
+                maxLines: actionable ? 2 : 1,
+                overflow: TextOverflow.ellipsis,
               ),
               if (isUnread && onMarkRead != null)
                 Align(
@@ -257,7 +254,8 @@ class _DefaultCard extends StatelessWidget {
                             ? 'Marcar como leída'
                             : 'Mark as read',
                         onPressed: onMarkRead,
-                        icon: const Icon(Icons.done))),
+                        icon: const Icon(Icons.mark_email_read_outlined,
+                            size: 18))),
               if (actionable) ...[
                 const SizedBox(height: 6),
                 Wrap(
@@ -734,6 +732,7 @@ class _EventCard extends StatelessWidget {
         child:
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           ExpansionTile(
+            expansionAnimationStyle: HexoraMotion.expansionStyle(context),
             tilePadding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
             childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             shape: const Border(),

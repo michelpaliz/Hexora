@@ -58,9 +58,10 @@ class _BankTransactionShareDialogState
   void initState() {
     super.initState();
     _message = TextEditingController(
-        text: widget.initialMessage ?? (_amount < 0
-            ? '¿Alguien sabe a qué corresponde este gasto?'
-            : '¿Alguien sabe de dónde viene este ingreso?'));
+        text: widget.initialMessage ??
+            (_amount < 0
+                ? '¿Alguien sabe a qué corresponde este gasto?'
+                : '¿Alguien sabe de dónde viene este ingreso?'));
     _loadChats();
   }
 

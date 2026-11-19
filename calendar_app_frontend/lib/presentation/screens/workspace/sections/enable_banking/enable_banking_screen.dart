@@ -1,8 +1,9 @@
-import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/models/groups/group.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
 import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
@@ -10,7 +11,6 @@ import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:provider/provider.dart';
 
-import 'banking_tab.dart';
 import 'enable_banking_controller.dart';
 import 'enable_banking_left_nav.dart';
 import 'enable_banking_link_store.dart';
@@ -22,6 +22,7 @@ import 'statements/analytics/statements_analytics_copy.dart';
 import 'statements/analytics/statements_analytics_controller.dart';
 import 'statements/analytics/statements_analytics_view.dart';
 import 'statements/statements_controller.dart';
+import 'statements/statements_shared.dart';
 import 'statements/statements_history_tab.dart';
 import 'statements/statements_import_view.dart';
 import 'truelayer_controller.dart';
@@ -60,8 +61,134 @@ class EnableBankingScreen extends StatelessWidget {
           create: (_) => StatementsAnalyticsController(groupId: group?.id),
         ),
       ],
-      child: _EnableBankingView(group: group, embedded: embedded,
-          initialEntry: initialEntry, initialReviewLink: initialReviewLink),
+      child: _EnableBankingView(
+          group: group,
+          embedded: embedded,
+          initialEntry: initialEntry,
+          initialReviewLink: initialReviewLink),
+    );
+  }
+}
+
+class _SourceDataTabsView extends StatelessWidget {
+  const _SourceDataTabsView({
+    required this.initialIndex,
+    required this.isMobile,
+    required this.isSpanish,
+    required this.historyLabel,
+  });
+
+  final int initialIndex;
+  final bool isMobile;
+  final bool isSpanish;
+  final String historyLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tabs = [
+      Tab(text: isSpanish ? 'Movimientos' : 'Movements'),
+      Tab(text: isSpanish ? 'Importar' : 'Import'),
+      Tab(text: historyLabel),
+    ];
+    return DefaultTabController(
+      length: tabs.length,
+      initialIndex: initialIndex,
+      child: Column(
+        children: [
+          Material(
+            color: cs.surface,
+            child: SizedBox(
+              height: 44,
+              child: TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: tabs,
+                labelColor: cs.primary,
+                unselectedLabelColor: cs.onSurfaceVariant,
+                labelStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+                indicatorColor: cs.primary,
+                dividerColor: cs.outlineVariant.withValues(alpha: .35),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                isMobile
+                    ? const StatementsMobileView()
+                    : const StatementsAllDataTab(),
+                const StatementsImportView(),
+                const _SourceHistoryView(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SourceHistoryView extends StatelessWidget {
+  const _SourceHistoryView();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final s = context.watch<StatementsController>();
+    final cs = Theme.of(context).colorScheme;
+    Widget thresholdButton(int value) {
+      final selected = s.statusThreshold == value;
+      return OutlinedButton(
+        onPressed: () => s.setStatusThreshold(value),
+        style: OutlinedButton.styleFrom(
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          minimumSize: const Size(0, 30),
+          backgroundColor: selected ? cs.primaryContainer : null,
+        ),
+        child: Text('$value'),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+      child: FolderSectionCard(
+        label: l.statementsHistoryTabTitle,
+        showTitle: false,
+        leftTabOffset: 0,
+        actions: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              thresholdButton(3),
+              const SizedBox(width: 4),
+              thresholdButton(5),
+              const SizedBox(width: 4),
+              thresholdButton(7),
+            ],
+          ),
+          IconButton(
+            tooltip: l.refreshAction,
+            onPressed: s.loadingImports ? null : s.listImports,
+            icon: const Icon(Icons.refresh, size: 18),
+            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+            padding: EdgeInsets.zero,
+          ),
+        ],
+        child: const Padding(
+          padding: EdgeInsets.only(top: 12),
+          child: StatementsHistoryTab(),
+        ),
+      ),
     );
   }
 }
@@ -128,11 +255,11 @@ class _EnableBankingViewState extends State<_EnableBankingView>
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     switch (menu) {
       case EnableBankingMenu.imports:
-        return isSpanish ? 'Importar Excel' : 'Import Excel';
+        return isSpanish ? 'Importar' : 'Import';
       case EnableBankingMenu.history:
         return l.statementsHistoryTabTitle;
       case EnableBankingMenu.banking:
-        return 'Bank';
+        return isSpanish ? 'Movimientos' : 'Movements';
       case EnableBankingMenu.allData:
         return isSpanish ? 'Movimientos' : l.statementsAllDataTitle;
       case EnableBankingMenu.analyticsOverview:
@@ -188,9 +315,9 @@ class _EnableBankingViewState extends State<_EnableBankingView>
         if (widget.initialReviewLink) {
           final entry = widget.initialEntry!;
           final amount = num.tryParse(entry['amount']?.toString() ?? '') ?? 0;
-          StatementsShared.showInvoiceLinkDialog(context,
-            context.read<StatementsController>(), entry,
-            expenseOnly: amount < 0);
+          StatementsShared.showInvoiceLinkDialog(
+              context, context.read<StatementsController>(), entry,
+              expenseOnly: amount < 0);
           return;
         }
         StatementsAllDataDetails.show(
@@ -238,10 +365,29 @@ class _EnableBankingViewState extends State<_EnableBankingView>
     EnableBankingMenu? forMenu,
     bool isMobile = false,
   }) {
-    switch (forMenu ?? _selectedMenu) {
-      case EnableBankingMenu.imports:
-        return const StatementsImportView();
+    final sourceMenu = forMenu ?? _selectedMenu;
+    if (sourceMenu == EnableBankingMenu.banking ||
+        sourceMenu == EnableBankingMenu.imports ||
+        sourceMenu == EnableBankingMenu.history) {
+      return _SourceDataTabsView(
+        initialIndex: sourceMenu == EnableBankingMenu.imports
+            ? 1
+            : sourceMenu == EnableBankingMenu.history
+                ? 2
+                : 0,
+        isMobile: isMobile,
+        isSpanish: Localizations.localeOf(context).languageCode == 'es',
+        historyLabel: l.statementsHistoryTabTitle,
+      );
+    }
 
+    switch (sourceMenu) {
+      case EnableBankingMenu.imports:
+      case EnableBankingMenu.history:
+      case EnableBankingMenu.banking:
+        return const SizedBox.shrink();
+
+      /*
       case EnableBankingMenu.history:
         return Builder(builder: (context) {
           final s = context.watch<StatementsController>();
@@ -252,9 +398,9 @@ class _EnableBankingViewState extends State<_EnableBankingView>
               onPressed: () => s.setStatusThreshold(value),
               style: OutlinedButton.styleFrom(
                 visualDensity: VisualDensity.compact,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                minimumSize: const Size(36, 30),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: HexoraTableTokens.cellPadding, vertical: 6),
+                minimumSize: const Size(0, HexoraDimensions.buttonCompact),
                 backgroundColor:
                     sel ? cs.primaryContainer.withValues(alpha: 0.9) : null,
               ),
@@ -266,6 +412,7 @@ class _EnableBankingViewState extends State<_EnableBankingView>
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
             child: FolderSectionCard(
               label: l.statementsHistoryTabTitle,
+              showTitle: false,
               leftTabOffset: 0,
               actions: [
                 Tooltip(
@@ -297,6 +444,7 @@ class _EnableBankingViewState extends State<_EnableBankingView>
             ),
           );
         });
+      */
 
       case EnableBankingMenu.allData:
         return isMobile
@@ -316,9 +464,6 @@ class _EnableBankingViewState extends State<_EnableBankingView>
         return isMobile
             ? const StatementsMobileAnalyticsView()
             : StatementsAnalyticsView(section: forMenu ?? _selectedMenu);
-
-      case EnableBankingMenu.banking:
-        return const BankingTab();
     }
   }
 
@@ -335,6 +480,13 @@ class _EnableBankingViewState extends State<_EnableBankingView>
       );
     }
     final l = AppLocalizations.of(context)!;
+    if (!hasPremiumFeature(widget.group, PremiumFeature.banking)) {
+      return PremiumFeatureRequestScreen(
+        group: widget.group,
+        feature: PremiumFeatureRequest.banking,
+        embedded: widget.embedded,
+      );
+    }
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final group = widget.group;
     final isMobile = MediaQuery.sizeOf(context).width < 700;
@@ -342,15 +494,14 @@ class _EnableBankingViewState extends State<_EnableBankingView>
     // ── Mobile layout ─────────────────────────────────────────────────────────
     if (isMobile) {
       final cs = Theme.of(context).colorScheme;
-      final t = AppTypography.of(context);
       final tabBar = PreferredSize(
-        preferredSize: const Size.fromHeight(56),
+        preferredSize: const Size.fromHeight(48),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Container(
             height: 40,
             decoration: BoxDecoration(
-              color: ThemeColors.cardBg(context),
+              color: cs.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
             ),
@@ -364,20 +515,19 @@ class _EnableBankingViewState extends State<_EnableBankingView>
               ],
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
-              labelColor: ThemeColors.contrastOn(cs.primary),
-              unselectedLabelColor:
-                  ThemeColors.textPrimary(context).withValues(alpha: 0.7),
-              labelStyle: t.bodySmall.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: .2,
-              ),
-              unselectedLabelStyle: t.bodySmall.copyWith(
-                fontWeight: FontWeight.w600,
-                letterSpacing: .2,
-              ),
-              indicator: BoxDecoration(
-                color: cs.primary,
-                borderRadius: BorderRadius.circular(10),
+              labelColor: cs.primary,
+              unselectedLabelColor: cs.onSurfaceVariant,
+              labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: .2,
+                  ),
+              unselectedLabelStyle:
+                  Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: .2,
+                      ),
+              indicator: UnderlineTabIndicator(
+                borderSide: BorderSide(color: cs.primary, width: 2),
               ),
               splashBorderRadius: BorderRadius.circular(10),
             ),
@@ -424,8 +574,11 @@ class _EnableBankingViewState extends State<_EnableBankingView>
               onToggleCollapse: () =>
                   setState(() => _sidebarCollapsedManual = !collapsed),
             ),
-            const SizedBox(width: 8),
-            Expanded(child: _buildContentArea(context, l, isMobile: false)),
+            Expanded(
+              child: WorkspaceMainContent(
+                child: _buildContentArea(context, l, isMobile: false),
+              ),
+            ),
             const SizedBox(width: 12),
           ],
         );

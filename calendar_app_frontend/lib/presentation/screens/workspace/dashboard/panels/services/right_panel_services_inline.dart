@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/service_catalog/service.dart';
@@ -9,8 +11,10 @@ import 'package:hexora/presentation/screens/workspace/sections/services_clients/
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/tabs/clients/clients_tab.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/tabs/services/services_tab.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class ServicesClientsInlinePanel extends StatefulWidget {
@@ -42,7 +46,9 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
   bool _creatingClient = false;
   Service? _editingService;
   bool _creatingService = false;
-  String? _propertyKindFilter;
+  String? _propertyTypeFilter;
+  String? _customerTypeFilter;
+  double _editorFraction = 0.60;
 
   @override
   void initState() {
@@ -95,7 +101,15 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
     }
   }
 
-  bool _useSidePanel(double width) => width >= 820;
+  bool _useSidePanel(double width) => width >= 1050;
+
+  void _resizePanels(double delta, double availableWidth) {
+    if (availableWidth <= 0) return;
+    setState(() {
+      _editorFraction =
+          (_editorFraction - delta / availableWidth).clamp(0.50, 0.70);
+    });
+  }
 
   void _startAddClient() {
     setState(() {
@@ -127,6 +141,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   Future<void> _openAddClientSheet() async {
     final created = await showModalBottomSheet<GroupClient>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -157,6 +172,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   Future<void> _openAddServiceSheet() async {
     final created = await showModalBottomSheet<Service>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -178,6 +194,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   Future<void> _openEditClientSheet(GroupClient c) async {
     final updated = await showModalBottomSheet<GroupClient>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -207,6 +224,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   Future<void> _openEditServiceSheet(Service s) async {
     final updated = await showModalBottomSheet<Service>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -287,17 +305,19 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   Future<void> _confirmDeleteClient(GroupClient client) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.remove),
         content: Text(l.removeClientConfirm(client.name)),
         actions: [
           TextButton(
+            style: ThemedButtons.button(context, variant: ButtonVariant.ghost),
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(l.cancel),
           ),
           FilledButton(
+            style: ThemedButtons.button(context, variant: ButtonVariant.danger),
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(l.remove),
           ),
@@ -335,17 +355,19 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   Future<void> _confirmDeleteService(Service service) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.remove),
         content: Text(l.removeServiceConfirm(service.name)),
         actions: [
           TextButton(
+            style: ThemedButtons.button(context, variant: ButtonVariant.ghost),
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(l.cancel),
           ),
           FilledButton(
+            style: ThemedButtons.button(context, variant: ButtonVariant.danger),
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(l.remove),
           ),
@@ -401,61 +423,134 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
         .toSet()
         .toList()
       ..sort();
+    final customerTypeOptions = _clients
+        .map((c) => (c.effectiveCustomerType ?? '').trim())
+        .where((v) => v.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final useSidePanel = _useSidePanel(constraints.maxWidth);
         final left = Column(
           children: [
-            Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: trackBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
-              ),
-              child: TabBar(
-                controller: _tab,
-                tabs: [
-                  Tab(text: clientsTabLabel),
-                  Tab(text: servicesTabLabel),
+            if (!useSidePanel)
+              Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                  child: AnimatedBuilder(
+                      animation: _tab,
+                      builder: (context, _) => Row(children: [
+                            Expanded(
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                  Text(
+                                      _tab.index == 0
+                                          ? '${l.tabClients}  ${_clients.length}'
+                                          : '${l.tabServices}  ${_services.length}',
+                                      style: t.bodyMedium.copyWith(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w700)),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                      _tab.index == 0
+                                          ? 'Gestiona tus clientes y su información de facturación.'
+                                          : 'Gestiona tu catálogo de servicios.',
+                                      style: t.bodySmall),
+                                ])),
+                            const SizedBox(width: 8),
+                            HexoraButton(
+                              onPressed: _tab.index == 0
+                                  ? (useSidePanel
+                                      ? _startAddClient
+                                      : _openAddClientSheet)
+                                  : (useSidePanel
+                                      ? _startAddService
+                                      : _openAddServiceSheet),
+                              icon: Icons.add_rounded,
+                              label:
+                                  _tab.index == 0 ? l.addClient : l.addService,
+                              size: HexoraButtonSize.standard,
+                            ),
+                          ]))),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+              child: Row(children: [
+                Expanded(
+                    child: Container(
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: trackBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                        Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
+                  ),
+                  child: TabBar(
+                    controller: _tab,
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    tabs: [
+                      Tab(text: clientsTabLabel),
+                      Tab(text: servicesTabLabel),
+                    ],
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    dividerColor: Colors.transparent,
+                    labelColor: selectedText,
+                    unselectedLabelColor: unselectedText,
+                    labelStyle: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: .2,
+                    ),
+                    unselectedLabelStyle: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: .2,
+                    ),
+                    indicator: BoxDecoration(
+                      color: primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    splashBorderRadius: BorderRadius.circular(10),
+                  ),
+                )),
+                if (useSidePanel) ...[
+                  const SizedBox(width: 12),
+                  AnimatedBuilder(
+                    animation: _tab,
+                    builder: (context, _) => HexoraButton(
+                      onPressed:
+                          _tab.index == 0 ? _startAddClient : _startAddService,
+                      icon: Icons.add_rounded,
+                      label: _tab.index == 0 ? l.addClient : l.addService,
+                      size: HexoraButtonSize.standard,
+                    ),
+                  ),
                 ],
-                indicatorSize: TabBarIndicatorSize.tab,
-                dividerColor: Colors.transparent,
-                labelColor: selectedText,
-                unselectedLabelColor: unselectedText,
-                labelStyle: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: .2,
-                ),
-                unselectedLabelStyle: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: .2,
-                ),
-                indicator: BoxDecoration(
-                  color: primary,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                splashBorderRadius: BorderRadius.circular(10),
-              ),
+              ]),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 2),
             Expanded(
               child: TabBarView(
                 controller: _tab,
                 children: [
                   ClientsTab(
                     items: _clients,
+                    selectedClientId: _editingClient?.id,
                     loading: _loadingClients,
                     error: _errClients,
                     onRefresh: _loadClients,
                     showInactive: _showInactiveClients,
                     onToggleInactive: (v) =>
                         setState(() => _showInactiveClients = v),
-                    propertyTypeFilter: _propertyKindFilter,
+                    propertyTypeFilter: _propertyTypeFilter,
                     propertyTypeOptions: propertyTypeOptions,
                     onPropertyTypeChanged: (v) =>
-                        setState(() => _propertyKindFilter = v),
+                        setState(() => _propertyTypeFilter = v),
+                    customerTypeFilter: _customerTypeFilter,
+                    customerTypeOptions: customerTypeOptions,
+                    onCustomerTypeChanged: (v) =>
+                        setState(() => _customerTypeFilter = v),
                     onDelete: _confirmDeleteClient,
                     showInlineCTA: true,
                     onAddTap: () => useSidePanel
@@ -517,12 +612,11 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
           );
         }
 
-        final panelWidth =
-            (constraints.maxWidth * 0.48).clamp(420.0, 620.0).toDouble();
-
         final right = AnimatedBuilder(
           animation: _tab,
           builder: (context, _) {
+            final cs = Theme.of(context).colorScheme;
+            final t = AppTypography.of(context);
             final isClients = _tab.index == 0;
             final showClientEditor =
                 isClients && (_creatingClient || _editingClient != null);
@@ -540,6 +634,10 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                 client: _editingClient,
                 existingClients: _clients,
                 closeOnSave: false,
+                onCancel: () => setState(() {
+                  _editingClient = null;
+                  _creatingClient = false;
+                }),
                 onSaved: _handleClientSaved,
                 onOpenExisting: _startEditClient,
               );
@@ -603,13 +701,18 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 14),
-                          OutlinedButton.icon(
-                            onPressed:
-                                isClients ? _startAddClient : _startAddService,
-                            icon: const Icon(Icons.add_rounded, size: 18),
-                            label: Text(isClients ? l.addClient : l.addService),
-                          ),
+                          if (!showClientsEmptyState) ...[
+                            const SizedBox(height: 14),
+                            OutlinedButton.icon(
+                              style: ThemedButtons.button(
+                                context,
+                                variant: ButtonVariant.secondary,
+                              ),
+                              onPressed: _startAddService,
+                              icon: const Icon(Icons.add_rounded, size: 18),
+                              label: Text(l.addService),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -619,15 +722,33 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                 content = Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Text(
-                      isClients
-                          ? l.selectClientFirst
-                          : l.createServicesSubtitle,
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          isClients
+                              ? l.selectClientFirst
+                              : l.createServicesSubtitle,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (isClients) ...[
+                          const SizedBox(height: 14),
+                          FilledButton.icon(
+                            onPressed: _startAddClient,
+                            icon: const Icon(Icons.person_add_alt_1_rounded,
+                                size: 18),
+                            label: Text(l.addClient),
+                            style: ThemedButtons.button(
+                              context,
+                              variant: ButtonVariant.primary,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 );
@@ -650,43 +771,57 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
           padding: const EdgeInsets.all(12),
           child: FolderPanel(
             title: '${l.tabServices} · ${l.tabClients}',
-            showTab: true,
-            actions: [
-              AnimatedBuilder(
-                animation: _tab,
-                builder: (context, _) {
-                  final isClients = _tab.index == 0;
-                  return Tooltip(
-                    message: isClients ? l.addClient : l.addService,
-                    child: FilledButton(
-                      onPressed: isClients ? _startAddClient : _startAddService,
-                      style: FilledButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(40, 36),
+            showTab: false,
+            contentTopPadding: 8,
+            child: LayoutBuilder(
+              builder: (context, splitConstraints) {
+                const dividerWidth = 12.0;
+                final availableWidth =
+                    (splitConstraints.maxWidth - dividerWidth)
+                        .clamp(0.0, double.infinity);
+                final minListWidth = availableWidth >= 1150 ? 420.0 : 380.0;
+                final maxEditorWidth =
+                    (availableWidth - minListWidth).clamp(0.0, double.infinity);
+                final minEditorWidth =
+                    maxEditorWidth < 520.0 ? maxEditorWidth : 520.0;
+                final editorWidth = (availableWidth * _editorFraction)
+                    .clamp(minEditorWidth, maxEditorWidth)
+                    .toDouble();
+                final listWidth = availableWidth - editorWidth;
+
+                return Row(
+                  children: [
+                    SizedBox(width: listWidth, child: left),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.resizeColumn,
+                      child: GestureDetector(
+                        key: const ValueKey('customers-split-divider'),
+                        behavior: HitTestBehavior.opaque,
+                        onHorizontalDragUpdate: (details) => _resizePanels(
+                          details.delta.dx,
+                          availableWidth,
+                        ),
+                        child: SizedBox(
+                          width: dividerWidth,
+                          child: Center(
+                            child: Container(
+                              width: 1,
+                              color: cs.outlineVariant.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
                       ),
-                      child: const Icon(Icons.add_rounded, size: 18),
                     ),
-                  );
-                },
-              ),
-            ],
-            child: Row(
-              children: [
-                Expanded(child: left),
-                Container(
-                  width: panelWidth,
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    border: Border(
-                      left: BorderSide(
-                        color: cs.outlineVariant.withValues(alpha: 0.4),
+                    SizedBox(
+                      width: editorWidth,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: ColoredBox(color: cs.surface, child: right),
                       ),
                     ),
-                  ),
-                  child: right,
-                ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
         );

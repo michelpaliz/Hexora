@@ -1,4 +1,6 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
@@ -24,11 +26,11 @@ class StatementsAllDataTableRow extends StatelessWidget {
     required this.isTablet,
     required this.controller,
     required this.selectedIds,
+    this.activeEntryId,
     required this.onToggleRow,
     required this.onShowDetails,
     this.onShare,
     required this.onSuggest,
-    required this.onLink,
     required this.onLinkInvoice,
     required this.onMarkNoProcede,
     required this.noProcedeReason,
@@ -41,11 +43,11 @@ class StatementsAllDataTableRow extends StatelessWidget {
   final bool isTablet;
   final StatementsController controller;
   final Set<String> selectedIds;
+  final String? activeEntryId;
   final ValueChanged<String> onToggleRow;
   final ValueChanged<Map<String, dynamic>> onShowDetails;
   final ValueChanged<Map<String, dynamic>>? onShare;
   final ValueChanged<Map<String, dynamic>> onSuggest;
-  final ValueChanged<Map<String, dynamic>> onLink;
   final ValueChanged<Map<String, dynamic>> onLinkInvoice;
   final ValueChanged<Map<String, dynamic>> onMarkNoProcede;
   final String? noProcedeReason;
@@ -70,20 +72,19 @@ class StatementsAllDataTableRow extends StatelessWidget {
               (emphasize ? typography.bodySmall : typography.bodySmall))
           .copyWith(
         fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
-        fontSize: emphasize ? 13 : 12.5,
+        fontSize: 12,
         color: amountColor,
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
     if (!asPill) return text;
     return Container(
-      height: 32,
+      height: 28,
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: 9),
       decoration: BoxDecoration(
         color: amountColor.withValues(alpha: 0.11),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: amountColor.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: text,
     );
@@ -95,21 +96,14 @@ class StatementsAllDataTableRow extends StatelessWidget {
     required VoidCallback? onPressed,
     Color? activeColor,
   }) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon, size: 17),
-      padding: EdgeInsets.zero,
-      style: IconButton.styleFrom(
-        minimumSize: const Size(28, 28),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        foregroundColor: activeColor,
-        disabledForegroundColor: activeColor?.withValues(alpha: 0.35),
-        backgroundColor: activeColor?.withValues(alpha: 0.09),
-        disabledBackgroundColor: activeColor?.withValues(alpha: 0.04),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+    return Builder(
+        builder: (context) => IconButton(
+              tooltip: tooltip,
+              onPressed: onPressed,
+              icon: Icon(icon, size: 17),
+              padding: EdgeInsets.zero,
+              style: ThemedButtons.iconAction(context, color: activeColor),
+            ));
   }
 
   String _displayDescription(String value) {
@@ -129,6 +123,9 @@ class StatementsAllDataTableRow extends StatelessWidget {
     final balanceMaxWidth =
         isWide ? 200.0 : StatementsAllDataTableLayout.balanceMaxWidth;
     final isDesktop = !isCompact && !isTablet;
+    // Show notes in the expanded tablet layout only. The fully expanded
+    // desktop layout already exposes the wider primary columns.
+    final showNotes = !isCompact && isTablet;
     final actionsWidth = isDesktop
         ? StatementsAllDataTableLayout.actionsWidth
         : StatementsAllDataTableLayout.compactActionsWidth;
@@ -212,23 +209,32 @@ class StatementsAllDataTableRow extends StatelessWidget {
     final notes = StatementsShared.entryText(entry, ['notes']).trim();
     final hasNotes = notes.isNotEmpty;
     final savingNotes = controller.savingEntryNotes[entryId] == true;
-    final linking = controller.linkingClient[entryId] == true;
     final suggestLoading = controller.loadingSuggestions[entryId] == true ||
         controller.loadingInvoiceSuggestions[entryId] == true;
     final isSelected = entryId.isNotEmpty && selectedIds.contains(entryId);
     final isUnlinked = entry['clientId'] == null ||
         entry['clientId'].toString().trim().isEmpty;
-    final rowColor = isSelected ? tableTheme.rowSelected : tableTheme.rowBg;
+    final isActive = entryId.isNotEmpty && entryId == activeEntryId;
+    final rowColor = isActive
+        ? tableTheme.rowActive
+        : isSelected
+            ? tableTheme.rowSelected
+            : tableTheme.rowBg;
     final rowAccent =
         isNegative ? tableTheme.amountNegative : tableTheme.amountPositive;
     final amountAbs = (amountValue ?? 0).abs();
     final canLinkInvoice = amountAbs > 0;
     final canSuggest = (amountValue ?? 0) != 0;
-    final aiSuggestActionLabel =
-        isEs ? 'Sugerir coincidencias IA' : 'Suggest AI matches';
-    final manualLinkActionLabel = isNegative
-        ? (isEs ? 'Vincular gasto' : 'Link expense')
-        : (isEs ? 'Vincular factura' : 'Link invoice');
+    // A single link action, shared with the insights chat: unlinked rows open
+    // the suggested matches (which also offer "Vincular manualmente"); linked
+    // rows edit the existing link in the manual wizard.
+    final linkActionLabel = hasLinkedDocument
+        ? (isEs ? 'Editar vínculo' : 'Edit link')
+        : (isEs ? 'Vincular' : 'Link');
+    final linkActionEnabled = entryId.isNotEmpty &&
+        (hasLinkedDocument ? canLinkInvoice : (canSuggest && !suggestLoading));
+    void openLinkAction() =>
+        hasLinkedDocument ? onLinkInvoice(entry) : onSuggest(entry);
     final previewActionLabel = isNegative
         ? (isEs ? 'Ver gasto vinculado' : 'View linked expense')
         : (isEs ? 'Ver factura vinculada' : 'View linked invoice');
@@ -291,36 +297,22 @@ class StatementsAllDataTableRow extends StatelessWidget {
       );
     }
 
-    List<PopupMenuEntry<String>> rowMenuItems({
-      bool includePrimaryActions = true,
-    }) {
+    List<PopupMenuEntry<String>> rowMenuItems() {
       return [
-        if (includePrimaryActions)
-          PopupMenuItem(
-            value: 'suggest',
-            enabled: entryId.isNotEmpty && !suggestLoading && canSuggest,
-            child: menuLabel(Icons.auto_awesome, aiSuggestActionLabel),
-          ),
-        PopupMenuItem(
-          value: 'link_client',
-          enabled: entryId.isNotEmpty && !linking,
+        NavigationPopupMenuItem(
+          value: 'link',
+          enabled: linkActionEnabled,
           child: menuLabel(
-            Icons.person_add_alt_1_outlined,
-            isEs ? 'Vincular cliente' : 'Link client',
+            Icons.link_rounded,
+            linkActionLabel,
           ),
         ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: 'preview',
           enabled: hasLinkedDocument,
           child: menuLabel(Icons.visibility_outlined, previewActionLabel),
         ),
-        if (includePrimaryActions)
-          PopupMenuItem(
-            value: 'link_invoice',
-            enabled: entryId.isNotEmpty && canLinkInvoice,
-            child: menuLabel(Icons.receipt_long, manualLinkActionLabel),
-          ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: 'notes',
           enabled: entryId.isNotEmpty && !savingNotes,
           child: menuLabel(
@@ -330,7 +322,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                 : (isEs ? 'Añadir nota' : 'Add note'),
           ),
         ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: 'not_applicable',
           enabled: entryId.isNotEmpty,
           child: menuLabel(
@@ -341,13 +333,13 @@ class StatementsAllDataTableRow extends StatelessWidget {
           ),
         ),
         if (onShare != null)
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: 'share_chat',
             enabled: entryId.isNotEmpty,
             child: menuLabel(Icons.forum_outlined,
                 isEs ? 'Compartir en chat' : 'Share to chat'),
           ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: 'details',
           child: menuLabel(Icons.info_outline, l.statementsViewDetails),
         ),
@@ -355,16 +347,10 @@ class StatementsAllDataTableRow extends StatelessWidget {
     }
 
     void handleRowMenuSelection(String result) {
-      if (result == 'suggest') {
-        if (entryId.isNotEmpty && !suggestLoading && canSuggest) {
-          onSuggest(entry);
-        }
-      } else if (result == 'link_client') {
-        if (entryId.isNotEmpty && !linking) onLink(entry);
+      if (result == 'link') {
+        openLinkAction();
       } else if (result == 'preview') {
         if (hasLinkedDocument) previewLinkedInvoice();
-      } else if (result == 'link_invoice') {
-        if (entryId.isNotEmpty && canLinkInvoice) onLinkInvoice(entry);
       } else if (result == 'notes') {
         if (entryId.isNotEmpty && !savingNotes) {
           StatementEntryNotesDialog.show(context, controller, entry);
@@ -395,13 +381,20 @@ class StatementsAllDataTableRow extends StatelessWidget {
     final amountColor =
         isNegative ? tableTheme.amountNegative : tableTheme.amountPositive;
 
+    final rowTransitionDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 150);
+
     return _StatementRowSurface(
-      borderColor: isSelected
-          ? rowAccent.withValues(alpha: 0.65)
-          : tableTheme.border.withValues(alpha: 0.82),
+      borderColor: isActive
+          ? cs.primary
+          : isSelected
+              ? rowAccent.withValues(alpha: 0.65)
+              : tableTheme.border.withValues(alpha: 0.82),
       child: Material(
         color: rowColor,
-        borderRadius: BorderRadius.circular(12),
+        animationDuration: rowTransitionDuration,
+        borderRadius: BorderRadius.zero,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onSecondaryTapDown: (details) => showRowMenu(details.globalPosition),
@@ -409,7 +402,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
           child: InkWell(
             hoverColor: tableTheme.rowHover,
             hoverDuration: const Duration(milliseconds: 150),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.zero,
             onTap: () => onShowDetails(entry),
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -564,7 +557,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                         overflow: TextOverflow.ellipsis,
                                         style: typography.bodySmall.copyWith(
                                           fontWeight: FontWeight.w600,
-                                          fontSize: 13.5,
+                                          fontSize: 12.5,
                                         ),
                                       ),
                                     ),
@@ -679,7 +672,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                 );
                               }(),
                             ),
-                            if (isDesktop) ...[
+                            if (showNotes) ...[
                               const SizedBox(
                                   width: StatementsAllDataTableLayout
                                       .columnGapWide),
@@ -931,27 +924,6 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
                                     if (!isDesktop) ...[
-                                      _actionButton(
-                                        tooltip: aiSuggestActionLabel,
-                                        onPressed: (!canSuggest ||
-                                                suggestLoading ||
-                                                entryId.isEmpty)
-                                            ? null
-                                            : () => onSuggest(entry),
-                                        icon: Icons.auto_awesome,
-                                        activeColor: cs.primary,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      _actionButton(
-                                        tooltip: manualLinkActionLabel,
-                                        onPressed:
-                                            (!canLinkInvoice || entryId.isEmpty)
-                                                ? null
-                                                : () => onLinkInvoice(entry),
-                                        icon: Icons.receipt_long,
-                                        activeColor: cs.primary,
-                                      ),
-                                      const SizedBox(width: 4),
                                       PopupMenuButton<String>(
                                         tooltip: isEs
                                             ? 'Más acciones'
@@ -979,40 +951,17 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                           Icons.more_horiz_rounded,
                                           size: 17,
                                         ),
-                                        itemBuilder: (_) => rowMenuItems(
-                                          includePrimaryActions: false,
-                                        ),
+                                        itemBuilder: (_) => rowMenuItems(),
                                         onSelected: handleRowMenuSelection,
                                       ),
                                     ],
                                     if (isDesktop) ...[
-                                      _actionButton(
-                                        tooltip: aiSuggestActionLabel,
-                                        onPressed: (!canSuggest ||
-                                                suggestLoading ||
-                                                entryId.isEmpty)
-                                            ? null
-                                            : () => onSuggest(entry),
-                                        icon: Icons.auto_awesome,
-                                        activeColor: cs.primary,
-                                      ),
-                                      const SizedBox(width: 4),
                                       _actionButton(
                                         tooltip: previewActionLabel,
                                         onPressed: hasLinkedDocument
                                             ? previewLinkedInvoice
                                             : null,
                                         icon: Icons.visibility_outlined,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      _actionButton(
-                                        tooltip: manualLinkActionLabel,
-                                        onPressed:
-                                            (!canLinkInvoice || entryId.isEmpty)
-                                                ? null
-                                                : () => onLinkInvoice(entry),
-                                        icon: Icons.receipt_long,
-                                        activeColor: cs.primary,
                                       ),
                                       const SizedBox(width: 4),
                                       _actionButton(
@@ -1035,24 +984,25 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                             hasNotes ? cs.primary : null,
                                       ),
                                       const SizedBox(width: 4),
-                                      _actionButton(
-                                        tooltip: hasNoProcede
-                                            ? 'Editar no procede'
-                                            : 'Marcar no procede',
-                                        onPressed: entryId.isEmpty
-                                            ? null
-                                            : () => onMarkNoProcede(entry),
-                                        icon: hasNoProcede
-                                            ? Icons.block
-                                            : Icons.block_outlined,
-                                        activeColor:
-                                            hasNoProcede ? cs.tertiary : null,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      _actionButton(
-                                        tooltip: l.statementsViewDetails,
-                                        onPressed: () => onShowDetails(entry),
-                                        icon: Icons.info_outline,
+                                      PopupMenuButton<String>(
+                                        tooltip: isEs
+                                            ? 'Más acciones'
+                                            : 'More actions',
+                                        padding: EdgeInsets.zero,
+                                        style: IconButton.styleFrom(
+                                          minimumSize: const Size(28, 28),
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          backgroundColor: tableTheme.chipBg,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8)),
+                                        ),
+                                        icon: const Icon(
+                                            Icons.more_horiz_rounded,
+                                            size: 17),
+                                        itemBuilder: (_) => rowMenuItems(),
+                                        onSelected: handleRowMenuSelection,
                                       ),
                                     ],
                                   ],
@@ -1106,29 +1056,19 @@ class _StatementRowSurface extends StatefulWidget {
 }
 
 class _StatementRowSurfaceState extends State<_StatementRowSurface> {
-  bool _hovering = false;
-
   @override
   Widget build(BuildContext context) {
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 150);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: duration,
         curve: Curves.easeOut,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: widget.borderColor),
-          boxShadow: _hovering
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.075),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : const [],
+          borderRadius: BorderRadius.zero,
+          border: Border(bottom: BorderSide(color: widget.borderColor)),
         ),
         child: widget.child,
       ),

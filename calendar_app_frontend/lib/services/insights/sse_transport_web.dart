@@ -80,7 +80,8 @@ Stream<String> postSseLines({
 
   req.onError.listen((event) {
     if (!controller.isClosed) {
-      controller.addError(Exception('Streaming request failed (network error)'));
+      controller
+          .addError(Exception('Streaming request failed (network error)'));
       controller.close();
     }
   });

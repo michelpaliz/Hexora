@@ -8,11 +8,15 @@ class _MailComposeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final inputFill =
+        theme.inputDecorationTheme.fillColor ?? cs.surfaceContainerLow;
     final l = AppLocalizations.of(context)!;
     final compact = MediaQuery.sizeOf(context).width < 600;
-    final isWideEmbedded =
-        state.widget.embedded && MediaQuery.of(context).size.width >= 1200;
+    // The embedded composer shares the viewport with the mail navigation.
+    // Reserve the split preparation/editor layout for genuinely wide screens.
+    final isWideEmbedded = MediaQuery.of(context).size.width >= 1400;
     final canSend = state._hasRecipientCandidate() &&
         state._quillController.document.toPlainText().trim().isNotEmpty &&
         state._subjectCtrl.text.trim().isNotEmpty;
@@ -20,8 +24,7 @@ class _MailComposeView extends StatelessWidget {
     final hasSubject = state._subjectCtrl.text.trim().isNotEmpty;
     final hasMessage =
         state._quillController.document.toPlainText().trim().isNotEmpty;
-    final replyTarget = state.widget.replyToMessage;
-    final isReply = replyTarget != null;
+    final isReply = state.widget.replyToMessage != null;
     final composeTitle = isReply
         ? (state._isSpanishLocale ? 'Responder' : 'Reply')
         : l.mailComposeTitle;
@@ -49,7 +52,7 @@ class _MailComposeView extends StatelessWidget {
 
     final inputDecoration = InputDecoration(
       filled: true,
-      fillColor: cs.surfaceContainerLow,
+      fillColor: inputFill,
       isDense: true,
       labelStyle:
           t.bodySmall.copyWith(color: cs.onSurfaceVariant, fontSize: 12),
@@ -71,7 +74,7 @@ class _MailComposeView extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     );
 
-    final recipientInput = !state._useClientMode
+    final recipientInput = (!state._useClientMode || isWideEmbedded)
         ? _EmailChipsInput(
             controller: state._toCtrl,
             values: state._toList,
@@ -93,74 +96,33 @@ class _MailComposeView extends StatelessWidget {
             selectedClientId: state._recipientClientId,
             loading: state._loadingRecipientClients,
             enabled: !state._sending && state._recipientClientError == null,
-            onChanged: (value) => state.update(
-              () => state._recipientClientId = value,
-            ),
+            onChanged: (value) {
+              if (value != null) state._selectRecipientClient(value);
+            },
           );
-    final recipientMode = _RecipientModeToggle(
-      clientMode: state._useClientMode,
-      enabled: !state._sending && !isReply,
-      emailLabel: 'Email',
-      clientLabel: 'Cliente',
-      recentLabel: state._isSpanishLocale ? 'Recientes' : 'Recent',
-      recentLoading: state._loadingRecentInvoices,
-      onChanged: (v) {
-        state.update(() => state._useClientMode = v);
-        if (v) state._loadRecipientClientsIfNeeded();
-      },
-      onRecentTap: state._openRecentIssuedInvoicesPicker,
-    );
+    final recipientMode = isWideEmbedded
+        ? const SizedBox.shrink()
+        : _RecipientModeToggle(
+            clientMode: state._useClientMode,
+            enabled: !state._sending && !isReply,
+            emailLabel: state._isSpanishLocale ? 'Manual' : 'Manual',
+            clientLabel: state._isSpanishLocale ? 'Selectivo' : 'Selective',
+            recentLabel: state._isSpanishLocale ? 'Recientes' : 'Recent',
+            recentLoading: state._loadingRecentInvoices,
+            onChanged: (v) {
+              state._setRecipientSelectionMode(
+                v,
+                loadClientWorkflow: !v,
+              );
+              if (v) unawaited(state._openDocumentSelectionWorkflow());
+            },
+            onRecentTap: state._openRecentIssuedInvoicesPicker,
+          );
 
-    final content = SingleChildScrollView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (replyTarget != null) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: cs.primaryContainer.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Expanded(child: Text(
-                      state._isSpanishLocale ? 'Respondiendo al correo de' : 'Replying to',
-                      style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                    )),
-                    IconButton(
-                      tooltip: state._isSpanishLocale ? 'Cancelar respuesta' : 'Cancel reply',
-                      onPressed: state._sending ? null : state.widget.onClose,
-                      icon: const Icon(Icons.close, size: 18),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ]),
-                  Text((replyTarget.folder ?? '').toLowerCase().contains('sent')
-                          ? replyTarget.to.map((address) => address.display).join(', ')
-                          : (replyTarget.replyTo?.display ?? replyTarget.fromAddress),
-                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w600)),
-                  if (replyTarget.subject.trim().isNotEmpty)
-                    Text(replyTarget.subject,
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                  if ((replyTarget.snippet ?? '').trim().isNotEmpty)
-                    Text(replyTarget.snippet!,
-                        maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (state.widget.embedded && !compact) ...[
-            const SizedBox(height: 2),
-            Divider(color: cs.outlineVariant.withValues(alpha: 0.4)),
-            const SizedBox(height: 16),
-          ],
+    final content = LayoutBuilder(
+      builder: (context, viewport) {
+        final editorMinHeight = compact ? 160.0 : 220.0;
+        final fields = <Widget>[
           // ── Recipients card ──────────────────────────────────────────────
           _composeRecipientsCard(
               state: state,
@@ -173,36 +135,93 @@ class _MailComposeView extends StatelessWidget {
               inputDecoration: inputDecoration,
               recipientInput: recipientInput,
               recipientMode: recipientMode),
-          const SizedBox(height: 16),
+          if (!isReply &&
+              !state._useClientMode &&
+              !state._manualRecipientHintDismissed) ...[
+            const SizedBox(height: 4),
+            _ManualRecipientHint(
+              isSpanish: state._isSpanishLocale,
+              onSelectClients: () => state._setRecipientSelectionMode(true),
+              onDismiss: () => state
+                  .update(() => state._manualRecipientHintDismissed = true),
+            ),
+          ],
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .45)),
           // ── Subject card ────────────────────────────────────────────────
           _composeSubjectCard(
               state: state, t: t, cs: cs, l: l, compact: compact),
-          const SizedBox(height: 16),
-          _composeMessageToolbar(
-              state: state, t: t, cs: cs, l: l, compact: compact),
-          _composeMessageEditor(
-              state: state,
-              t: t,
-              cs: cs,
-              l: l,
-              compact: compact,
-              isWideEmbedded: isWideEmbedded,
-              inputDecoration: inputDecoration),
-
-          const SizedBox(height: 16),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .45)),
           _composeAttachmentsCard(
-              state: state, t: t, cs: cs, l: l, compact: compact), // Container
-          if (!isWideEmbedded) ...[
-            const SizedBox(height: 8),
-            _composeInvoiceOptions(
-                state: state,
-                t: t,
-                cs: cs,
-                l: l,
-                inputDecoration: inputDecoration), // Container
-          ],
-        ],
-      ),
+              state: state, t: t, cs: cs, l: l, compact: compact),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .45)),
+        ];
+
+        if (isWideEmbedded && viewport.hasBoundedHeight) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...fields,
+                _composeMessageToolbar(
+                    state: state,
+                    t: t,
+                    cs: cs,
+                    l: l,
+                    compact: compact,
+                    inputFill: inputFill),
+                Expanded(
+                  child: _composeMessageEditor(
+                      state: state,
+                      t: t,
+                      cs: cs,
+                      l: l,
+                      compact: compact,
+                      expands: true,
+                      minHeight: 0,
+                      inputDecoration: inputDecoration),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ...fields,
+              _composeMessageToolbar(
+                  state: state,
+                  t: t,
+                  cs: cs,
+                  l: l,
+                  compact: compact,
+                  inputFill: inputFill),
+              _composeMessageEditor(
+                  state: state,
+                  t: t,
+                  cs: cs,
+                  l: l,
+                  compact: compact,
+                  expands: false,
+                  minHeight: editorMinHeight,
+                  inputDecoration: inputDecoration),
+              if (!isWideEmbedded) ...[
+                const SizedBox(height: 8),
+                _composeInvoiceOptions(
+                    state: state,
+                    t: t,
+                    cs: cs,
+                    l: l,
+                    inputDecoration: inputDecoration), // Container
+              ],
+            ],
+          ),
+        );
+      },
     );
 
     if (compact) {
@@ -222,47 +241,164 @@ class _MailComposeView extends StatelessWidget {
       );
     }
 
-    if (state.widget.embedded) {
-      if (isWideEmbedded) {
-        return FolderSectionCard(
-          label: composeTitle,
-          leftTabOffset: 0,
-          child: Column(
+    if (isWideEmbedded) {
+      Widget composeHeader(BuildContext headerContext) {
+        final headerTypography = AppTypography.of(headerContext);
+        final headerColors = Theme.of(headerContext).colorScheme;
+        return SizedBox(
+          key: const ValueKey('mail-compose-editor-header'),
+          height: 48,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              if (state.widget.onClose != null ||
+                  Navigator.of(context).canPop())
+                IconButton(
+                  tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                  onPressed: state.widget.onClose ??
+                      () => Navigator.of(context).maybePop(),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
+                  style: IconButton.styleFrom(
+                    foregroundColor: headerColors.onSurface,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    minimumSize: const Size(32, 32),
+                  ),
+                ),
               Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 6,
-                      child: content,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 5,
-                      child: _InlineInvoiceFlowPanel(state: state),
-                    ),
-                  ],
+                child: Text(
+                  composeTitle,
+                  style: headerTypography.bodySmall.copyWith(
+                    color: headerColors.onSurface,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              _ComposeBottomBar(
-                sending: state._sending,
-                enabled: canSend,
-                onSend: state._send,
-                label: state._sending ? l.mailComposeSending : sendLabel,
-                disabledHint: disabledSendHint,
-              ),
+              if (!isReply)
+                _ComposeRecipientModeSelector(
+                  selective: state._useClientMode,
+                  enabled: !state._sending,
+                  onChanged: state._setRecipientSelectionMode,
+                ),
             ],
           ),
         );
       }
+
+      final desktopBody = ColoredBox(
+        key: const ValueKey('mail-compose-desktop-frame'),
+        color: cs.surfaceContainerLowest,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final selectorWidth =
+                        (constraints.maxWidth * .42).clamp(360.0, 560.0);
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: Container(
+                            key: const ValueKey('mail-compose-editor-surface'),
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              color: cs.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: cs.outlineVariant.withValues(alpha: .4),
+                              ),
+                            ),
+                            child: Builder(
+                              builder: (editorContext) => Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10),
+                                    child: composeHeader(editorContext),
+                                  ),
+                                  Divider(
+                                    height: 1,
+                                    color: Theme.of(editorContext)
+                                        .colorScheme
+                                        .outlineVariant
+                                        .withValues(alpha: .35),
+                                  ),
+                                  Expanded(child: content),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 190),
+                          curve: Curves.easeInOutCubic,
+                          width: state._useClientMode ? 12 : 0,
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 190),
+                          curve: Curves.easeInOutCubic,
+                          width: state._useClientMode ? selectorWidth : 0,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: ColoredBox(
+                              key: const ValueKey(
+                                  'mail-compose-options-surface'),
+                              color: cs.surface,
+                              child: Offstage(
+                                offstage: !state._useClientMode,
+                                child: _InlineInvoiceFlowPanel(
+                                  state: state,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+              _ComposeBottomBar(
+                  sending: state._sending,
+                  enabled: canSend,
+                  onSend: state._send,
+                  label: state._sending ? l.mailComposeSending : sendLabel,
+                  disabledHint: disabledSendHint),
+            ],
+          ),
+        ),
+      );
+      if (state.widget.embedded) return desktopBody;
+      return Scaffold(body: SafeArea(child: desktopBody));
+    }
+    if (state.widget.embedded) {
       return Column(
         children: [
           Expanded(
             child: FolderSectionCard(
               label: composeTitle,
+              showTitle: false,
               leftTabOffset: 0,
               child: Column(
                 children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                      child: Text(
+                        composeTitle,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ),
+                  ),
                   Expanded(child: content),
                   _ComposeBottomBar(
                     sending: state._sending,
@@ -287,6 +423,7 @@ class _MailComposeView extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: FolderSectionCard(
           label: composeTitle,
+          showTitle: false,
           leftTabOffset: 0,
           child: content,
         ),

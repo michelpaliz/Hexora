@@ -1,6 +1,9 @@
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat_fab.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
 
@@ -16,8 +19,12 @@ class BottomBar extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final isEmailSection = state.activeSection == Sections.emails;
     final emailAllowed = canManagePremiumFeature(
-      state.group, state.user?.id, PremiumFeature.email);
+      state.group,
+      state.user?.id,
+      PremiumFeature.email,
+    );
     final compose = state.mailBarActions?.onCompose;
+    final primaryButtonStyle = ThemedButtons.button(context);
 
     return DecoratedBox(
       decoration: BoxDecoration(color: state.backdrop),
@@ -27,35 +34,37 @@ class BottomBar extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: isEmailSection && !emailAllowed
+              child: isEmailSection
                   ? FilledButton.icon(
-                      icon: const Icon(Icons.lock_outline_rounded),
-                      label: Text(l.localeName.startsWith('es')
-                          ? 'Solicitar correo premium' : 'Request premium email'),
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => PremiumFeatureRequestScreen(
-                            group: state.group,
-                            feature: PremiumFeatureRequest.email,
-                          ),
-                        ),
-                      ),
-                    )
-                  : isEmailSection
-                  ? FilledButton.icon(
-                      icon: const Icon(Icons.edit_outlined),
-                      label: Text(l.mailComposeTitle),
-                      onPressed: compose,
+                      style: primaryButtonStyle,
+                      icon: Icon(emailAllowed
+                          ? Icons.edit_outlined
+                          : Icons.lock_outline_rounded),
+                      label: Text(emailAllowed
+                          ? l.mailComposeTitle
+                          : (l.localeName.startsWith('es')
+                              ? 'Solicitar correo premium'
+                              : 'Request premium email')),
+                      onPressed: emailAllowed
+                          ? compose
+                          : () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => PremiumFeatureRequestScreen(
+                                    group: state.group,
+                                    feature: PremiumFeatureRequest.email,
+                                  ),
+                                ),
+                              ),
                     )
                   : FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48)),
-                      icon: const Icon(Icons.calendar_month_rounded),
+                      style: primaryButtonStyle,
+                      icon: const Icon(Icons.calendar_month_rounded,
+                          size: NavigationTokens.iconSize),
                       label: Text(l.goToCalendar),
                       onPressed: () => state.openSection('calendar'),
                     ),
             ),
-            if (state.canSeeAdmin) ...[
+            if (!kIsWeb && state.canSeeAdmin) ...[
               const SizedBox(width: 12),
               SizedBox(
                 width: 48,

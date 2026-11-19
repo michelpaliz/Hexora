@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:hexora/services/suspects/suspect_expenses_api.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
@@ -260,7 +261,7 @@ class _SuspectExpensesViewState extends State<SuspectExpensesView> {
   // ── Delete action ─────────────────────────────────────────────────────────
 
   Future<void> _deleteExpense(String expenseId) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;

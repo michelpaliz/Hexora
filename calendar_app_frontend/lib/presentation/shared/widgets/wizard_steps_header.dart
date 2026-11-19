@@ -79,6 +79,7 @@ class WizardStepsHeader extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           for (int i = 0; i < steps.length; i++) ...[
             if (i > 0)
@@ -109,7 +110,21 @@ class WizardStepsHeader extends StatelessWidget {
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
-        child: body,
+        child: LayoutBuilder(
+          builder: (context, constraints) => ClipRect(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [body],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

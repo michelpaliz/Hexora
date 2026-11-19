@@ -862,22 +862,13 @@ class ExpensesApi {
     return _getMap(uri);
   }
 
-  Future<Map<String, dynamic>> getBatchExpensePreviewJobStatus(
-      String jobId) async {
-    final trimmedJobId = jobId.trim();
-    if (trimmedJobId.isEmpty) {
-      throw ArgumentError('jobId is required');
-    }
-    final uri = _u('/import-json-batch/preview/jobs/$trimmedJobId');
-    return _getMap(uri);
-  }
-
   Future<List<Map<String, dynamic>>> listBatchExpensePreviewJobs(
       String groupId) async {
     final trimmedGroupId = groupId.trim();
     if (trimmedGroupId.isEmpty) return const [];
-    final uri = _u(
-        '/import-json-batch/preview/jobs?groupId=${Uri.encodeQueryComponent(trimmedGroupId)}');
+    final uri = _u('/import-json-batch/preview/jobs', {
+      'groupId': trimmedGroupId,
+    });
     final payload = await _getMap(uri);
     return (payload['jobs'] as List? ?? const [])
         .whereType<Map>()
@@ -904,6 +895,16 @@ class ExpensesApi {
           '/import-json-batch/preview/history/${Uri.encodeComponent(jobId)}', {
         'groupId': groupId,
       }));
+
+  Future<Map<String, dynamic>> getBatchExpensePreviewJobStatus(
+      String jobId) async {
+    final trimmedJobId = jobId.trim();
+    if (trimmedJobId.isEmpty) {
+      throw ArgumentError('jobId is required');
+    }
+    final uri = _u('/import-json-batch/preview/jobs/$trimmedJobId');
+    return _getMap(uri);
+  }
 
   Future<Map<String, dynamic>> cancelBatchExpensePreviewJob(
       String jobId) async {

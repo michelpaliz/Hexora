@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -58,6 +59,7 @@ class ServicesWrap extends StatelessWidget {
             side: BorderSide(color: cs.outlineVariant, width: 0.6),
             onPressed: () {
               showModalBottomSheet(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
                 context: context,
                 showDragHandle: true,
                 backgroundColor: Theme.of(context).colorScheme.surface,

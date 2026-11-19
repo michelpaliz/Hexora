@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 import '../widgets/insights_async_icon_button.dart';
@@ -223,6 +225,7 @@ mixin InsightsBankIncomeGroupedDetails on InsightsChatSheetStateBase {
     final narrow = MediaQuery.sizeOf(sourceContext).width < 700;
     if (narrow) {
       await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: sourceContext,
         showDragHandle: true,
         isScrollControlled: true,
@@ -239,7 +242,7 @@ mixin InsightsBankIncomeGroupedDetails on InsightsChatSheetStateBase {
       );
       return;
     }
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: sourceContext,
       builder: (context) => AlertDialog(
         title: Text(isEs ? 'Facturas incluidas' : 'Included invoices'),
@@ -260,5 +263,4 @@ mixin InsightsBankIncomeGroupedDetails on InsightsChatSheetStateBase {
       ),
     );
   }
-
 }

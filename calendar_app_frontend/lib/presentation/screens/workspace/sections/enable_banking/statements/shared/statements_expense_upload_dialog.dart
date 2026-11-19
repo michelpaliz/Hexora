@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -63,7 +64,7 @@ class StatementsExpenseUploadDialog {
       });
     }
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -87,7 +88,8 @@ class StatementsExpenseUploadDialog {
                           ),
                           const SizedBox(width: 8),
                           TextButton(
-                            onPressed: submitting ? null : () => pickFile(setState),
+                            onPressed:
+                                submitting ? null : () => pickFile(setState),
                             child: const Text('Elegir archivo'),
                           ),
                         ],
@@ -238,7 +240,9 @@ class StatementsExpenseUploadDialog {
               ),
               actions: [
                 TextButton(
-                  onPressed: submitting ? null : () => Navigator.of(dialogContext).pop(),
+                  onPressed: submitting
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
                   child: Text(l.close),
                 ),
                 FilledButton(
@@ -255,7 +259,8 @@ class StatementsExpenseUploadDialog {
                               issueDateController.text.trim().isEmpty ||
                               totalController.text.trim().isEmpty) {
                             setState(() {
-                              error = 'Proveedor, fecha y total son obligatorios';
+                              error =
+                                  'Proveedor, fecha y total son obligatorios';
                             });
                             return;
                           }
@@ -264,8 +269,10 @@ class StatementsExpenseUploadDialog {
                             error = null;
                           });
                           try {
-                            final issueDate = DateTime.tryParse(issueDateController.text.trim());
-                            final dueDate = DateTime.tryParse(dueDateController.text.trim());
+                            final issueDate = DateTime.tryParse(
+                                issueDateController.text.trim());
+                            final dueDate = DateTime.tryParse(
+                                dueDateController.text.trim());
                             if (issueDate == null) {
                               throw Exception('Fecha de emisión inválida');
                             }
@@ -275,12 +282,14 @@ class StatementsExpenseUploadDialog {
                               vendorName: vendorController.text.trim(),
                               issueDate: issueDate.toIso8601String(),
                               total: totalController.text.trim(),
-                              vendorTaxId: vendorTaxIdController.text.trim().isEmpty
-                                  ? null
-                                  : vendorTaxIdController.text.trim(),
-                              invoiceNumber: invoiceNumberController.text.trim().isEmpty
-                                  ? null
-                                  : invoiceNumberController.text.trim(),
+                              vendorTaxId:
+                                  vendorTaxIdController.text.trim().isEmpty
+                                      ? null
+                                      : vendorTaxIdController.text.trim(),
+                              invoiceNumber:
+                                  invoiceNumberController.text.trim().isEmpty
+                                      ? null
+                                      : invoiceNumberController.text.trim(),
                               dueDate: dueDate?.toIso8601String(),
                               taxTotal: taxTotalController.text.trim().isEmpty
                                   ? null

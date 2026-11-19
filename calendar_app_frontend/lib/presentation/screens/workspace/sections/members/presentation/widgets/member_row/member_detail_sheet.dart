@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -34,6 +36,7 @@ Future<void> showMemberDetailSheet({
       currentUserId != user.id;
 
   await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -48,7 +51,7 @@ Future<void> showMemberDetailSheet({
           ? null
           : () async {
               final l = AppLocalizations.of(sheetContext)!;
-              final selected = await showDialog<GroupRole>(
+              final selected = await showHexoraDialog<GroupRole>(
                 context: sheetContext,
                 builder: (dialogContext) => SimpleDialog(
                   title: Text(l.changeRole),
@@ -90,7 +93,7 @@ Future<void> showMemberDetailSheet({
           ? null
           : () async {
               final l = AppLocalizations.of(sheetContext)!;
-              final confirmed = await showDialog<bool>(
+              final confirmed = await showHexoraDialog<bool>(
                 context: sheetContext,
                 builder: (dialogContext) => AlertDialog(
                   title: Text(l.remove),

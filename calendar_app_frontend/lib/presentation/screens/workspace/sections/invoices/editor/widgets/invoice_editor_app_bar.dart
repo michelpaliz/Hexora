@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 
 class InvoiceEditorAppBar extends StatelessWidget
     implements PreferredSizeWidget {
   final TextStyle? titleStyle;
   final bool saving;
+  final String? saveLabel;
   final VoidCallback onSaveDraft;
   final bool showClose;
   final VoidCallback? onClose;
@@ -13,6 +15,7 @@ class InvoiceEditorAppBar extends StatelessWidget
     super.key,
     this.titleStyle,
     required this.saving,
+    this.saveLabel,
     required this.onSaveDraft,
     this.showClose = false,
     this.onClose,
@@ -36,9 +39,11 @@ class InvoiceEditorAppBar extends StatelessWidget
             )
           : null,
       actions: [
-        TextButton(
-          onPressed: saving ? null : onSaveDraft,
-          child: Text(saving ? l.saving : l.invoiceSaveDraftCta),
+        HexoraButton(
+          onPressed: onSaveDraft,
+          label: saveLabel ?? l.invoiceSaveDraftCta,
+          variant: HexoraButtonVariant.ghost,
+          loading: saving,
         ),
       ],
     );

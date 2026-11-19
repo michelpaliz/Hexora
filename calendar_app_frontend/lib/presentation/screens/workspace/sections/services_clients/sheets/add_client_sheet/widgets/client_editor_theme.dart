@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-/// A single font family for the client form, without changing other screens.
+/// Keep the shared heading/body font roles while adapting form labels.
 ThemeData clientEditorThemeOf(BuildContext context) {
   final base = Theme.of(context);
   final cs = base.colorScheme;
-  final text = GoogleFonts.manropeTextTheme(base.textTheme);
+  final text = base.textTheme.copyWith(
+      bodyLarge: base.textTheme.bodyLarge?.copyWith(fontSize: 12),
+      bodyMedium: base.textTheme.bodyMedium?.copyWith(fontSize: 12));
   final label = text.bodyLarge!.copyWith(fontWeight: FontWeight.w500);
   final floatingLabel = WidgetStateTextStyle.resolveWith((states) {
     final color = states.contains(WidgetState.error)
@@ -14,14 +15,13 @@ ThemeData clientEditorThemeOf(BuildContext context) {
             ? cs.primary
             : cs.onSurfaceVariant;
     // InputDecorator scales floating labels to 75%: 18 becomes 13.5 logical px.
-    return label.copyWith(fontSize: 18, color: color);
+    return label.copyWith(fontSize: 15, color: color);
   });
 
   return base.copyWith(
     textTheme: text,
     appBarTheme: base.appBarTheme.copyWith(
-      titleTextStyle: GoogleFonts.manrope(
-        textStyle: base.appBarTheme.titleTextStyle ?? text.titleLarge,
+      titleTextStyle: text.titleLarge?.copyWith(
         fontWeight: FontWeight.w600,
         color: cs.onSurface,
       ),

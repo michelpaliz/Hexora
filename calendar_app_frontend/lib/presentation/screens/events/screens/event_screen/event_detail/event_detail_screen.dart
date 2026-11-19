@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/clients/client_api.dart';
@@ -684,7 +685,7 @@ class _DeleteButton extends StatelessWidget {
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final cs = Theme.of(context).colorScheme;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

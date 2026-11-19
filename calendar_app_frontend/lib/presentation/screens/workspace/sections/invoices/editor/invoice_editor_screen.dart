@@ -3,15 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_controller.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_editor_app_bar.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_dates_step.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/form/invoice_content_section.dart';
-import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_wizard_navigation.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
+import 'package:hexora/presentation/shared/widgets/motion/hexora_step_transition.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab_scope.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
@@ -31,6 +39,7 @@ class InvoiceEditorScreen extends StatefulWidget {
   final ValueChanged<bool>? onClose;
   final VoidCallback? onDataChanged;
   final ValueChanged<bool>? onUnsavedStateChanged;
+  final ValueChanged<Invoice>? onSavedInvoiceChanged;
 
   const InvoiceEditorScreen({
     super.key,
@@ -42,6 +51,7 @@ class InvoiceEditorScreen extends StatefulWidget {
     this.onClose,
     this.onDataChanged,
     this.onUnsavedStateChanged,
+    this.onSavedInvoiceChanged,
   });
 
   @override
@@ -54,9 +64,13 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
   bool _changed = false;
   String? _lastSavedInvoiceId;
   String? _lastSavedInvoiceStatus;
+  String? _lastReportedSavedInvoiceId;
   bool _lastReportedUnsaved = false;
   int _lastDataRevision = 0;
   late final TabController _tabController;
+  String _lineInputMode = 'manual';
+  bool _lineMethodsExpanded = false;
+  bool _wizardRailCollapsed = false;
 
   @override
   void initState() {
@@ -68,12 +82,19 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
       initialInvoice: widget.initialInvoice,
     );
     _c.addListener(_handleControllerChange);
+    _lineMethodsExpanded = _c.currentStepIndex == 2;
     _tabController = TabController(
       length: 4,
       vsync: this,
       initialIndex: _c.currentStepIndex.clamp(0, 3),
     );
     _tabController.addListener(_handleTabChange);
+    final initialInvoice = widget.initialInvoice;
+    if (initialInvoice != null && widget.onSavedInvoiceChanged != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onSavedInvoiceChanged?.call(initialInvoice);
+      });
+    }
   }
 
   @override
@@ -90,6 +111,10 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
     if (!_changed && saved != null) {
       _changed = true;
     }
+    if (saved != null && saved.id != _lastReportedSavedInvoiceId) {
+      _lastReportedSavedInvoiceId = saved.id;
+      widget.onSavedInvoiceChanged?.call(saved);
+    }
     if (saved != null && widget.onDataChanged != null) {
       if (saved.id != _lastSavedInvoiceId ||
           saved.status != _lastSavedInvoiceStatus ||
@@ -102,8 +127,18 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
     }
     if (_lastReportedUnsaved != _c.draftDirty) {
       _lastReportedUnsaved = _c.draftDirty;
+      WorkspaceTabScope.maybeOf(context)?.setDirty(
+        dirty: _c.draftDirty,
+        onSave: _c.draftDirty ? _saveWorkspaceDraft : null,
+      );
       widget.onUnsavedStateChanged?.call(_c.draftDirty);
     }
+  }
+
+  Future<bool> _saveWorkspaceDraft() async {
+    if (!mounted || _c.saving) return false;
+    await _c.handleSaveDraft(context, confirmIfEditing: false);
+    return mounted && !_c.draftDirty;
   }
 
   void _closeNow() {
@@ -121,7 +156,7 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
     }
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final result = await showDialog<String>(
+    final result = await showHexoraDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Tienes cambios sin guardar' : 'Unsaved changes'),
@@ -165,6 +200,36 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
         mounted) {
       _c.previewPdf(context);
     }
+  }
+
+  void _goToStep(int index) {
+    final next = index.clamp(0, 3);
+    if (next == 2 && !_lineMethodsExpanded) {
+      setState(() => _lineMethodsExpanded = true);
+    }
+    _c.setCurrentStepIndex(next);
+    _tabController.animateTo(
+      next,
+      duration: HexoraMotion.duration(context, HexoraMotion.navigation),
+      curve: HexoraMotion.enter,
+    );
+  }
+
+  void _selectLineInputMode(String mode) {
+    if (!const {'manual', 'photo', 'json'}.contains(mode)) return;
+    setState(() {
+      _lineInputMode = mode;
+      _lineMethodsExpanded = true;
+    });
+    if (_tabController.index != 2) _goToStep(2);
+  }
+
+  void _toggleLineMethods() {
+    setState(() => _lineMethodsExpanded = !_lineMethodsExpanded);
+  }
+
+  void _toggleWizardRail() {
+    setState(() => _wizardRailCollapsed = !_wizardRailCollapsed);
   }
 
   @override

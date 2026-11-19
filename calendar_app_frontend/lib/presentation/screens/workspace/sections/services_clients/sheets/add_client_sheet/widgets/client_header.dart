@@ -33,6 +33,7 @@ class ClientHeader extends StatelessWidget {
             isEdit ? l.editClient : l.createClient,
             style: text.titleLarge!.copyWith(
               fontWeight: FontWeight.w600,
+              fontSize: 16,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

@@ -4,280 +4,123 @@
 part of '../../expense_upload_screen.dart';
 
 extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
-  Widget _buildRecentBatchJobs(ColorScheme cs) {
-    final jobs = _recentBatchJobs
-        .take(_recentBatchJobsExpanded ? 5 : 1)
-        .toList(growable: false);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+  /// Compact header action that keeps batch history out of the active
+  /// workflow: the recent-jobs list now lives behind a "Historial" dialog
+  /// instead of a card stacked above every step.
+  Widget _buildBatchHistorialBar(ColorScheme cs) {
+    final count = _recentBatchJobs.length;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: TextButton.icon(
+        onPressed: _openBatchHistorialDialog,
+        style: TextButton.styleFrom(
+          foregroundColor: cs.onSurfaceVariant,
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        ),
+        icon: const Icon(Icons.history_rounded, size: 16),
+        label: Text(count > 0 ? 'Historial ($count)' : 'Historial'),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          const Expanded(
-              child: Text('Lotes recientes',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
-          if (_recentBatchJobs.length > 1)
-            TextButton(
-              onPressed: () => _updateImportState(
-                  () => _recentBatchJobsExpanded = !_recentBatchJobsExpanded),
-              child: Text(_recentBatchJobsExpanded
-                  ? 'Mostrar menos'
-                  : 'Ver todos (${_recentBatchJobs.length})'),
-            ),
-          IconButton(
-            tooltip: 'Actualizar lotes',
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.refresh, size: 17),
-            onPressed: _recentBatchJobsLoading ? null : _loadRecentBatchJobs,
-          ),
-        ]),
-        if (_recentBatchJobsLoading && jobs.isEmpty)
-          const LinearProgressIndicator(minHeight: 2)
-        else if (_recentBatchJobsError != null && jobs.isEmpty)
-          Text('No se pudo cargar el historial: $_recentBatchJobsError',
-              style: TextStyle(fontSize: 11, color: cs.error))
-        else if (jobs.isEmpty)
-          Text(
-              'Los ZIP aparecen aqui tras pulsar «Confirmar y analizar». Si solo seleccionaste el archivo, vuelve a elegirlo.',
-              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant))
-        else
-          for (final job in jobs) ...[
-            Builder(builder: (context) {
-              final fileNames = (job['fileNames'] as List? ?? const [])
-                  .map((name) => name.toString())
-                  .where((name) => name.isNotEmpty);
-              final archiveName = _batchJobText(job['sourceArchiveName']);
-              final count = _batchJobInt(job['totalFiles']);
-              final title = archiveName.isNotEmpty
-                  ? archiveName
-                  : 'Lote de $count facturas';
-              final created =
-                  DateTime.tryParse(_batchJobText(job['createdAt']));
-              final date = created == null
-                  ? ''
-                  : DateFormat.yMMMd('es').add_Hm().format(created.toLocal());
-              final status = _batchJobText(job['status']);
-              final statusLabel = switch (status) {
-                'completed' => 'Analizado',
-                'processing' => 'Procesando',
-                'queued' || 'staging' => 'En cola',
-                'failed' => 'Error',
-                'cancelled' => 'Cancelado',
-                _ => status,
-              };
-              final firstFile =
-                  fileNames.isEmpty ? '' : ' · ${fileNames.first}';
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(children: [
-                  Icon(Icons.folder_zip_outlined, size: 16, color: cs.primary),
-                  const SizedBox(width: 7),
-                  Expanded(
-                      child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.w600)),
-                      Text(
-                          '$date · $statusLabel$firstFile${job['canResume'] == true ? '' : ' · archivo temporal no disponible'}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: 10, color: cs.onSurfaceVariant)),
-                    ],
-                  )),
-                  if (job['canResume'] == true)
-                    TextButton(
-                        onPressed: () => _openRecentBatchJob(job),
-                        child: const Text('Abrir')),
-                ]),
-              );
-            }),
-          ],
-      ]),
     );
   }
 
-  String _zipReasonLabel(String code) => switch (code) {
-        'system_file' => 'Metadatos del sistema',
-        'unsupported_type' => 'Formato no compatible',
-        'oversized' => 'Supera 10 MB',
-        'nested_archive' => 'Archivo comprimido interno',
-        'encrypted' => 'Archivo cifrado',
-        'corrupt_file' => 'Archivo dañado',
-        'unsafe_path' => 'Ruta no segura',
-        'symlink' => 'Enlace simbólico',
-        _ => 'No compatible',
-      };
+  Future<void> _openBatchHistorialDialog() async {
+    if (_recentBatchJobs.isEmpty && !_recentBatchJobsLoading) {
+      await _loadRecentBatchJobs();
+    }
+    if (!mounted) return;
+    await showHexoraDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        final cs = Theme.of(dialogCtx).colorScheme;
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            Future<void> refresh() async {
+              await _loadRecentBatchJobs();
+              if (ctx.mounted) setLocal(() {});
+            }
 
-  String _zipTypeLabel(String type) => switch (type) {
-        'application/pdf' => 'PDF',
-        'image/jpeg' => 'JPEG',
-        'image/png' => 'PNG',
-        'image/webp' => 'WebP',
-        'application/zip' => 'ZIP',
-        'directory' => 'Carpeta',
-        'not_inspected' => 'Sin analizar',
-        _ => 'Desconocido',
-      };
-
-  Widget _buildZipInspectionPanel(ColorScheme cs) {
-    if (_batchArchiveInspecting) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: LinearProgressIndicator(minHeight: 3),
-      );
-    }
-    final error = _batchArchiveInspectionError;
-    if (error != null) {
-      return Row(children: [
-        Expanded(
-            child: Text('No se pudo inspeccionar el ZIP: $error',
-                style: TextStyle(color: cs.error, fontSize: 12))),
-        TextButton(
-            onPressed: inspectSelectedBatchArchive,
-            child: const Text('Reintentar')),
-      ]);
-    }
-    final inspection = _batchArchiveInspection;
-    if (inspection == null) return const SizedBox.shrink();
-    final entries = (inspection['entries'] as List? ?? const [])
-        .whereType<Map>()
-        .map((entry) => Map<String, dynamic>.from(entry))
-        .toList(growable: false);
-    final entryCount = _batchJobInt(inspection['archiveEntries']);
-    final fileCount = _batchJobInt(inspection['actualFiles']);
-    final compatible = _batchJobInt(inspection['compatibleDocuments']);
-    final omitted = _batchJobInt(inspection['omittedFiles']);
-    final blocked = inspection['blocked'] == true;
-    final reasons = <String, int>{};
-    for (final entry in entries) {
-      if (entry['entryType'] != 'file' || entry['compatible'] == true) continue;
-      final code = (entry['exclusionCode'] ?? 'unsupported_type').toString();
-      reasons[code] = (reasons[code] ?? 0) + 1;
-    }
-    final textStyle =
-        Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxHeight: 280),
-      child: SingleChildScrollView(
-          child: Container(
-        margin: const EdgeInsets.only(top: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Wrap(spacing: 14, runSpacing: 3, children: [
-            Text('$entryCount entradas', style: textStyle),
-            Text('$fileCount archivos · ${entryCount - fileCount} carpetas',
-                style: textStyle),
-            Text('$compatible compatibles',
-                style: textStyle?.copyWith(
-                    fontWeight: FontWeight.w700, color: cs.primary)),
-            Text('$omitted omitidos', style: textStyle),
-          ]),
-          if (reasons.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-                reasons.entries
-                    .map((entry) =>
-                        '${_zipReasonLabel(entry.key)}: ${entry.value}')
-                    .join(' · '),
-                style: textStyle?.copyWith(color: cs.onSurfaceVariant)),
-          ],
-          if (compatible == 0 || blocked) ...[
-            const SizedBox(height: 5),
-            Text(
-                blocked
-                    ? 'El ZIP contiene entradas no seguras, dañadas o comprimidas internamente. No se puede analizar.'
-                    : 'No hay documentos compatibles para analizar. Revisa los motivos y selecciona otro ZIP.',
-                style: textStyle?.copyWith(
-                    color: cs.onSurface, fontWeight: FontWeight.w600)),
-          ],
-          ExpansionTile(
-            dense: true,
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: EdgeInsets.zero,
-            title: Text('Ver detalle de archivos',
-                style: textStyle?.copyWith(fontWeight: FontWeight.w600)),
-            children: [
-              Row(children: [
-                Expanded(
-                    flex: 5,
-                    child: Text('Ruta',
-                        style:
-                            textStyle?.copyWith(fontWeight: FontWeight.w700))),
-                Expanded(
-                    flex: 2,
-                    child: Text('Tipo',
-                        style:
-                            textStyle?.copyWith(fontWeight: FontWeight.w700))),
-                Expanded(
-                    flex: 3,
-                    child: Text('Resultado',
-                        style:
-                            textStyle?.copyWith(fontWeight: FontWeight.w700))),
-              ]),
-              const Divider(height: 8),
-              SizedBox(
-                height: entries.length > 4 ? 144 : entries.length * 36.0,
-                child: ListView.builder(
-                  itemCount: entries.length,
-                  itemBuilder: (context, index) {
-                    final entry = entries[index];
-                    final path = (entry['filename'] ?? '').toString();
-                    final status = entry['entryType'] == 'directory'
-                        ? 'Carpeta'
-                        : entry['compatible'] == true
-                            ? 'Listo para analizar'
-                            : _zipReasonLabel(
-                                (entry['exclusionCode'] ?? '').toString());
-                    return SizedBox(
-                        height: 36,
-                        child: Row(children: [
-                          Expanded(
-                              flex: 5,
-                              child: Tooltip(
-                                  message: path,
-                                  child: Text(path,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: textStyle))),
-                          Expanded(
-                              flex: 2,
-                              child: Text(
-                                  _zipTypeLabel(
-                                      (entry['detectedType'] ?? '').toString()),
-                                  style: textStyle)),
-                          Expanded(
-                              flex: 3,
-                              child: Tooltip(
-                                message: (entry['exclusionReason'] ?? status)
-                                    .toString(),
-                                child: Text(status,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: textStyle),
-                              )),
-                        ]));
-                  },
+            Widget body;
+            if (_recentBatchJobsLoading && _recentBatchJobs.isEmpty) {
+              body = const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: LinearProgressIndicator(minHeight: 2),
+              );
+            } else if (_recentBatchJobsError != null &&
+                _recentBatchJobs.isEmpty) {
+              body = Text(
+                'No se pudo cargar el historial: $_recentBatchJobsError',
+                style: TextStyle(fontSize: 12, color: cs.error),
+              );
+            } else if (_recentBatchJobs.isEmpty) {
+              body = Text(
+                'Los lotes aparecen aquí tras pulsar «Confirmar y analizar».',
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+              );
+            } else {
+              body = SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final job in _recentBatchJobs.take(10))
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.folder_zip_outlined,
+                            size: 18, color: cs.primary),
+                        title: Text(
+                          _batchJobText(job['sourceArchiveName']).isEmpty
+                              ? 'Lote de ${_batchJobText(job['totalFiles'])} facturas'
+                              : _batchJobText(job['sourceArchiveName']),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          _batchJobText(job['status']),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: job['canResume'] == true
+                            ? TextButton(
+                                onPressed: () {
+                                  Navigator.of(dialogCtx).pop();
+                                  _openRecentBatchJob(job);
+                                },
+                                child: const Text('Abrir'),
+                              )
+                            : null,
+                      ),
+                  ],
                 ),
+              );
+            }
+
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.history_rounded, size: 18, color: cs.primary),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('Lotes recientes')),
+                  IconButton(
+                    tooltip: 'Actualizar',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    onPressed: _recentBatchJobsLoading ? null : refresh,
+                  ),
+                ],
               ),
-            ],
-          ),
-        ]),
-      )),
+              content: SizedBox(width: 460, child: body),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(),
+                  child: const Text('Cerrar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -286,9 +129,11 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
     {
       final cs = Theme.of(context).colorScheme;
       final hasGroup = resolveGroupId().trim().isNotEmpty;
+      final inspectedArchiveCount =
+          (batchArchiveInspection?['files'] as List? ?? const []).length;
       final selectedCount = batchArchiveName == null
           ? batchDocumentNames.length
-          : _batchJobInt(_batchArchiveInspection?['compatibleDocuments']);
+          : (inspectedArchiveCount > 0 ? inspectedArchiveCount : 1);
       const maxBatchDocs = _ExpenseUploadScreenStateBase._maxBatchDocuments;
       final jobStatusName = _expenseBatchJobStatusFromPayload(_batchJobStatus);
       final hasTrackedJob = (_batchJobId ?? '').trim().isNotEmpty;
@@ -304,6 +149,16 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
           _batchJobInt(_batchJobStatus?['duplicateCount']) +
           _batchJobInt(_batchJobStatus?['failedCount']);
       final hasPreviewItems = _batchPreviewItems.isNotEmpty;
+      final archiveFiles =
+          (batchArchiveInspection?['files'] as List? ?? const [])
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList(growable: false);
+      final archiveSkipped =
+          (batchArchiveInspection?['skipped'] as List? ?? const [])
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList(growable: false);
       final selectedPreviewCount =
           _batchPreviewItems.where((item) => item.selected).length;
       final useCompletedPreviewFocus = jobCompleted && hasPreviewItems;
@@ -384,9 +239,18 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
                 return _BatchExecutionFileStatus.error;
               }
               if (warningKeys.contains(key)) {
-                return _BatchExecutionFileStatus.warning;
+                return _BatchExecutionFileStatus.review;
               }
-              return _BatchExecutionFileStatus.success;
+              if (jobCompleted) return _BatchExecutionFileStatus.completed;
+              if (jobActive) {
+                if (index < jobProcessedFiles) {
+                  return _BatchExecutionFileStatus.completed;
+                }
+                if (index == jobProcessedFiles) {
+                  return _BatchExecutionFileStatus.processing;
+                }
+              }
+              return _BatchExecutionFileStatus.pending;
             })(),
             detail: (() {
               final key = batchDocumentNames[index].toLowerCase().trim();
@@ -414,15 +278,16 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
           ),
       ];
       final warningIndexes = files
-          .where((file) => file.status == _BatchExecutionFileStatus.warning)
+          .where((file) => file.status == _BatchExecutionFileStatus.review)
           .map((file) => file.originalIndex)
           .toSet();
       final filteredFiles = files.where((file) {
         switch (_batchFileFilterIndex) {
           case 1:
-            return file.status == _BatchExecutionFileStatus.success;
+            return file.status == _BatchExecutionFileStatus.completed;
           case 2:
-            return file.status != _BatchExecutionFileStatus.success;
+            return file.status == _BatchExecutionFileStatus.review ||
+                file.status == _BatchExecutionFileStatus.error;
           default:
             return true;
         }
@@ -439,7 +304,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
       Widget executionPanel = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildRecentBatchJobs(cs),
+          _buildBatchHistorialBar(cs),
           if (_batchStartingJob && batchArchiveName != null) ...[
             Text('Subiendo y extrayendo facturas del ZIP…',
                 style: Theme.of(context).textTheme.bodySmall),
@@ -447,44 +312,45 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
             const LinearProgressIndicator(minHeight: 3),
             const SizedBox(height: 6),
           ],
-          _BatchCollapsibleSummary(
-            collapsed: _batchSummaryCollapsed,
-            onToggle: () => _updateImportState(() {
-              _batchSummaryCollapsed = !_batchSummaryCollapsed;
-            }),
-            loadedCount: headerLoadedCount,
-            maxCount: maxBatchDocs,
-            totalBytes: totalBytes,
-            remainingSlots: remainingSlots,
-            uploadRatio: uploadRatio,
-            status: jobStatusName,
-            hasTrackedJob: hasTrackedJob,
-            totalFiles: jobTotalFiles > 0 ? jobTotalFiles : headerLoadedCount,
-            processedFiles: jobProcessedFiles,
-            importedCount: jobImportedCount,
-            skippedCount: jobSkippedCount,
-            reviewCount: _batchJobInt(_batchJobStatus?['warningCount']) +
-                _batchJobInt(_batchJobStatus?['failedCount']),
-            duplicateCount: _batchJobInt(_batchJobStatus?['duplicateCount']),
-            currentStep: _batchJobText(_batchJobStatus?['currentStep']),
-            message: _batchJobText(_batchJobStatus?['message']),
-            loadingResult: _batchResultLoading,
-            warningDetails: batchSkippedDetails,
-            warningsExpanded: _batchErrorsExpanded,
-            onToggleWarnings: () => _updateImportState(() {
-              _batchErrorsExpanded = !_batchErrorsExpanded;
-            }),
-            onCopyWarnings: batchSkippedDetails.isEmpty
-                ? null
-                : () => copyTextWithManualFallbackDialog(
-                      context,
-                      text: copyIssuesText,
-                      successMessage: 'Lista copiada',
-                      dialogTitle: 'Copiar incidencias manualmente',
-                      dialogMessage:
-                          'Tu navegador bloqueo la copia automatica. Selecciona la lista y copiala manualmente.',
-                    ),
-          ),
+          if (hasTrackedJob)
+            _BatchCollapsibleSummary(
+              collapsed: _batchSummaryCollapsed,
+              onToggle: () => _updateImportState(() {
+                _batchSummaryCollapsed = !_batchSummaryCollapsed;
+              }),
+              loadedCount: headerLoadedCount,
+              maxCount: maxBatchDocs,
+              totalBytes: totalBytes,
+              remainingSlots: remainingSlots,
+              uploadRatio: uploadRatio,
+              status: jobStatusName,
+              hasTrackedJob: hasTrackedJob,
+              totalFiles: jobTotalFiles > 0 ? jobTotalFiles : headerLoadedCount,
+              processedFiles: jobProcessedFiles,
+              importedCount: jobImportedCount,
+              skippedCount: jobSkippedCount,
+              reviewCount: _batchJobInt(_batchJobStatus?['warningCount']) +
+                  _batchJobInt(_batchJobStatus?['failedCount']),
+              duplicateCount: _batchJobInt(_batchJobStatus?['duplicateCount']),
+              currentStep: _batchJobText(_batchJobStatus?['currentStep']),
+              message: _batchJobText(_batchJobStatus?['message']),
+              loadingResult: _batchResultLoading,
+              warningDetails: batchSkippedDetails,
+              warningsExpanded: _batchErrorsExpanded,
+              onToggleWarnings: () => _updateImportState(() {
+                _batchErrorsExpanded = !_batchErrorsExpanded;
+              }),
+              onCopyWarnings: batchSkippedDetails.isEmpty
+                  ? null
+                  : () => copyTextWithManualFallbackDialog(
+                        context,
+                        text: copyIssuesText,
+                        successMessage: 'Lista copiada',
+                        dialogTitle: 'Copiar incidencias manualmente',
+                        dialogMessage:
+                            'Tu navegador bloqueo la copia automatica. Selecciona la lista y copiala manualmente.',
+                      ),
+            ),
           if ((batchError ?? '').trim().isNotEmpty &&
               batchSkippedDetails.isEmpty) ...[
             const SizedBox(height: 6),
@@ -501,102 +367,172 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
             const SizedBox(height: 6),
             Text('ZIP: $batchArchiveName',
                 style: Theme.of(context).textTheme.bodySmall),
-            _buildZipInspectionPanel(cs),
           ],
           if (jobActive && !batchSubmitting) ...[
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton.icon(
+              child: HexoraButton(
                 onPressed: cancelBatchPreviewJob,
-                icon: const Icon(Icons.close_rounded, size: 16),
-                label: const Text('Cancelar lote'),
+                icon: Icons.close_rounded,
+                label: 'Cancelar lote',
+                variant: HexoraButtonVariant.ghost,
+                size: HexoraButtonSize.compact,
               ),
             ),
           ],
           const SizedBox(height: 6),
           Expanded(
-            child: useCompletedPreviewFocus
-                ? _BatchExpensePreviewReviewPanel(
-                    items: _batchPreviewItems,
-                    selectedCount: selectedPreviewCount,
-                    confirming: batchSubmitting,
-                    confirmResult: _batchConfirmResult,
-                    canExportIncidents: hasIncidentExport,
-                    exportingIncidents: _batchExportingIncidents,
-                    onExportIncidents: exportBatchIncidentExcel,
-                    onToggle: (item, selected) => _updateImportState(() {
-                      if (!item.canSelect) return;
-                      item.selected = selected;
+            child: batchArchiveName != null && !hasTrackedJob
+                ? _BatchArchiveConfirmation(
+                    archiveName: batchArchiveName!,
+                    archiveSizeBytes: batchArchiveBytes?.length ?? 0,
+                    inspecting: batchArchiveInspecting,
+                    files: archiveFiles,
+                    skipped: archiveSkipped,
+                    warnings: batchSkippedDetails,
+                    inspectionError: batchArchiveInspectionError,
+                    blocked: batchArchiveInspection?['blocked'] == true,
+                    expanded: batchArchiveFilesExpanded,
+                    canAnalyze: hasGroup &&
+                        !batchArchiveInspecting &&
+                        batchArchiveInspection?['blocked'] != true &&
+                        archiveFiles.isNotEmpty,
+                    analyzing: batchSubmitting || _batchStartingJob,
+                    onToggleExpanded: () => _updateImportState(() {
+                      batchArchiveFilesExpanded = !batchArchiveFilesExpanded;
                     }),
-                    onEdit: (item) => _showBatchPreviewEditDialog(item),
-                    onConfirm: confirmBatchPreviewImport,
-                  )
-                : hasPreviewItems
-                    ? DefaultTabController(
-                        length: 3,
-                        initialIndex: 1,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _BatchReviewTabHeader(
-                              fileCount: files.length,
-                              selectedCount: selectedPreviewCount,
-                              hasIssue: verifyHasIssue,
-                              looksOk: verifyLooksOk,
+                    onRemove: () async {
+                      final isEs =
+                          Localizations.localeOf(context).languageCode == 'es';
+                      final confirmed = await showHexoraDialog<bool>(
+                        context: context,
+                        builder: (dialogCtx) => AlertDialog(
+                          title: Row(children: [
+                            Icon(Icons.delete_outline_rounded,
+                                size: 20,
+                                color: Theme.of(dialogCtx).colorScheme.error),
+                            const SizedBox(width: 8),
+                            Text(isEs ? 'Eliminar ZIP' : 'Remove ZIP'),
+                          ]),
+                          content: Text(
+                            isEs
+                                ? 'Se eliminará "${batchArchiveName!}" y todos los documentos pendientes detectados de esta sesión de importación. No se eliminarán los registros ya importados en contabilidad.'
+                                : 'The file "${batchArchiveName!}" and all pending detected documents will be removed from this import session. Already-imported accounting records will not be deleted.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(dialogCtx).pop(false),
+                              child: Text(isEs ? 'Cancelar' : 'Cancel'),
                             ),
-                            const SizedBox(height: 8),
-                            Expanded(
-                              child: TabBarView(
-                                children: [
-                                  _buildBatchFileListView(
-                                    filteredFiles: filteredFiles,
-                                    totalCount: files.length,
-                                    warningCount: warningIndexes.length,
-                                    warningIndexes: warningIndexes,
-                                    selectedCount: selectedCount,
-                                    hasTrackedJob: hasTrackedJob,
-                                    jobActive: jobActive,
-                                  ),
-                                  _BatchExpensePreviewReviewPanel(
-                                    items: _batchPreviewItems,
-                                    selectedCount: selectedPreviewCount,
-                                    confirming: batchSubmitting,
-                                    confirmResult: _batchConfirmResult,
-                                    canExportIncidents: hasIncidentExport,
-                                    exportingIncidents:
-                                        _batchExportingIncidents,
-                                    onExportIncidents: exportBatchIncidentExcel,
-                                    onToggle: (item, selected) =>
-                                        _updateImportState(() {
-                                      if (!item.canSelect) return;
-                                      item.selected = selected;
-                                    }),
-                                    onEdit: (item) =>
-                                        _showBatchPreviewEditDialog(item),
-                                    onConfirm: confirmBatchPreviewImport,
-                                  ),
-                                  _BatchVerificationTabPanel(
-                                    title:
-                                        l.expenseUploadBatchVerificationTitle,
-                                    message: verifyText,
-                                    hasIssue: verifyHasIssue,
-                                    looksOk: verifyLooksOk,
-                                  ),
-                                ],
+                            FilledButton(
+                              onPressed: () =>
+                                  Navigator.of(dialogCtx).pop(true),
+                              style: FilledButton.styleFrom(
+                                backgroundColor:
+                                    Theme.of(dialogCtx).colorScheme.error,
                               ),
+                              child: Text(isEs ? 'Eliminar' : 'Remove'),
                             ),
                           ],
                         ),
+                      );
+                      if (confirmed == true) {
+                        _updateImportState(() {
+                          clearBatchArchive();
+                          _batchSkippedDetails.clear();
+                          _batchVerifyMessage = null;
+                          _batchError = null;
+                        });
+                      }
+                    },
+                    onReplace: pickBatchZip,
+                    onConfirm: submitBatchImport,
+                    onRetry: inspectSelectedBatchArchive,
+                  )
+                : useCompletedPreviewFocus
+                    ? _BatchExpensePreviewReviewPanel(
+                        items: _batchPreviewItems,
+                        selectedCount: selectedPreviewCount,
+                        confirming: batchSubmitting,
+                        confirmResult: _batchConfirmResult,
+                        canExportIncidents: hasIncidentExport,
+                        exportingIncidents: _batchExportingIncidents,
+                        onExportIncidents: exportBatchIncidentExcel,
+                        onToggle: (item, selected) => _updateImportState(() {
+                          if (!item.canSelect) return;
+                          item.selected = selected;
+                        }),
+                        onEdit: (item) => _showBatchPreviewEditDialog(item),
+                        onConfirm: confirmBatchPreviewImport,
                       )
-                    : _buildBatchFileListView(
-                        filteredFiles: filteredFiles,
-                        totalCount: files.length,
-                        warningCount: warningIndexes.length,
-                        warningIndexes: warningIndexes,
-                        selectedCount: selectedCount,
-                        hasTrackedJob: hasTrackedJob,
-                        jobActive: jobActive,
-                      ),
+                    : hasPreviewItems
+                        ? DefaultTabController(
+                            length: 3,
+                            initialIndex: 1,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _BatchReviewTabHeader(
+                                  fileCount: files.length,
+                                  selectedCount: selectedPreviewCount,
+                                  hasIssue: verifyHasIssue,
+                                  looksOk: verifyLooksOk,
+                                ),
+                                const SizedBox(height: 8),
+                                Expanded(
+                                  child: TabBarView(
+                                    children: [
+                                      _buildBatchFileListView(
+                                        filteredFiles: filteredFiles,
+                                        totalCount: files.length,
+                                        warningCount: warningIndexes.length,
+                                        warningIndexes: warningIndexes,
+                                        selectedCount: selectedCount,
+                                        hasTrackedJob: hasTrackedJob,
+                                        jobActive: jobActive,
+                                      ),
+                                      _BatchExpensePreviewReviewPanel(
+                                        items: _batchPreviewItems,
+                                        selectedCount: selectedPreviewCount,
+                                        confirming: batchSubmitting,
+                                        confirmResult: _batchConfirmResult,
+                                        canExportIncidents: hasIncidentExport,
+                                        exportingIncidents:
+                                            _batchExportingIncidents,
+                                        onExportIncidents:
+                                            exportBatchIncidentExcel,
+                                        onToggle: (item, selected) =>
+                                            _updateImportState(() {
+                                          if (!item.canSelect) return;
+                                          item.selected = selected;
+                                        }),
+                                        onEdit: (item) =>
+                                            _showBatchPreviewEditDialog(item),
+                                        onConfirm: confirmBatchPreviewImport,
+                                      ),
+                                      _BatchVerificationTabPanel(
+                                        title: l
+                                            .expenseUploadBatchVerificationTitle,
+                                        message: verifyText,
+                                        hasIssue: verifyHasIssue,
+                                        looksOk: verifyLooksOk,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : _buildBatchFileListView(
+                            filteredFiles: filteredFiles,
+                            totalCount: files.length,
+                            warningCount: warningIndexes.length,
+                            warningIndexes: warningIndexes,
+                            selectedCount: selectedCount,
+                            hasTrackedJob: hasTrackedJob,
+                            jobActive: jobActive,
+                          ),
           ),
           if (!hasGroup) ...[
             const SizedBox(height: 10),
@@ -615,37 +551,36 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _BatchLeftControlPanel(
-            selectedCount: batchArchiveName == null ? headerLoadedCount : 1,
+          _BatchCompactWorkflowIndicator(
+            selectedCount: headerLoadedCount,
             maxDocuments: maxBatchDocs,
             totalBytes: totalBytes,
             submitting: batchSubmitting ||
                 batchGeneratingJson ||
+                batchArchiveInspecting ||
                 jobActive ||
                 _batchStartingJob,
             hasGroupSelected: hasGroup,
             canImport: !jobActive &&
                 !batchSubmitting &&
                 !batchGeneratingJson &&
+                !batchArchiveInspecting &&
                 !jobCompleted &&
                 !hasPreviewItems &&
                 hasGroup &&
-                (batchDocumentNames.isNotEmpty ||
-                    (batchArchiveBytes != null &&
-                        !_batchArchiveInspecting &&
-                        _batchArchiveInspection?['blocked'] != true &&
-                        _batchJobInt(_batchArchiveInspection?[
-                                'compatibleDocuments']) >
-                            0)),
+                (batchDocumentNames.isNotEmpty || archiveFiles.isNotEmpty),
             jobActive: jobActive,
             jobCompleted: jobCompleted,
             jobFailed: jobFailed,
-            statusMessage: hasTrackedJob ? verifyText : null,
-            warningCount: warningIndexes.length,
-            importedCount: jobImportedCount,
-            skippedCount: jobSkippedCount,
-            onPickDocuments: pickBatchDocuments,
+            inspecting: batchArchiveInspecting,
+            selectionReady:
+                batchDocumentNames.isNotEmpty || batchArchiveInspection != null,
+            readyCount: jobImportedCount,
+            reviewCount: _batchJobInt(_batchJobStatus?['warningCount']) +
+                _batchJobInt(_batchJobStatus?['failedCount']),
+            duplicateCount: _batchJobInt(_batchJobStatus?['duplicateCount']),
             onImport: submitBatchImport,
+            compact: true,
             onClearSelection:
                 batchDocumentNames.isEmpty && batchArchiveName == null
                     ? null

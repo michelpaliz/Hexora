@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'dart:typed_data';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/models/receipt/receipt_line.dart';
-import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
+import 'package:hexora/presentation/shared/widgets/feedback/error_message.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 
 class ReceiptDetailCard extends StatefulWidget {
   final Receipt receipt;
@@ -26,6 +29,11 @@ class ReceiptDetailCard extends StatefulWidget {
   final VoidCallback? onMarkUnsent;
   final Future<Uint8List?> Function() onLoadInlinePdf;
   final bool previewInteractive;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+  final VoidCallback? onClose;
+  final VoidCallback? onExpand;
+  final bool isExpanded;
 
   final bool fullPage;
 
@@ -45,6 +53,11 @@ class ReceiptDetailCard extends StatefulWidget {
     this.onMarkUnsent,
     required this.onLoadInlinePdf,
     this.previewInteractive = true,
+    this.onPrevious,
+    this.onNext,
+    this.onClose,
+    this.onExpand,
+    this.isExpanded = false,
   });
 
   @override
@@ -55,6 +68,13 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
   bool _loadingPreview = false;
   Uint8List? _previewBytes;
   String? _previewError;
+  int _detailTabIndex = 0;
+
+  bool _hasEmailAccess() => canManagePremiumFeatureForGroupId(
+        context,
+        widget.receipt.groupId,
+        PremiumFeature.email,
+      );
 
   @override
   void initState() {
@@ -84,8 +104,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
       setState(() => _previewBytes = bytes);
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().replaceFirst('Exception: ', '').trim();
-      setState(() => _previewError = msg);
+      setState(() => _previewError = describeError(context, e).message);
     } finally {
       if (mounted) setState(() => _loadingPreview = false);
     }
@@ -93,6 +112,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
 
   void _openDetailsSheet() {
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -254,7 +274,8 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
                     widget.onEdit();
                   },
                   icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: Text(isEs ? 'Editar recibo emitido' : 'Edit issued receipt'),
+                  label: Text(
+                      isEs ? 'Editar recibo emitido' : 'Edit issued receipt'),
                   style: OutlinedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                   ),
@@ -275,8 +296,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
             ],
           ),
 
-        if (isIssued && canManagePremiumFeatureForGroupId(
-          context, widget.receipt.groupId, PremiumFeature.email)) ...[
+        if (isIssued && _hasEmailAccess()) ...[
           const SizedBox(height: 16),
           _SheetSection(
             icon: Icons.send_outlined,
@@ -471,7 +491,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
                 backgroundColor: cs.primaryContainer,
                 foregroundColor: cs.onPrimaryContainer,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(HexoraDimensions.radius),
                 ),
                 elevation: 0,
               ),
@@ -549,111 +569,210 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Header ──────────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      // Status icon box
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(statusIcon, size: 18, color: statusColor),
+              HexoraDocumentDetailHeader(
+                title: number,
+                clientName: widget.client.name,
+                statusLabel: statusLabel,
+                statusColor: statusColor,
+                statusIcon: statusIcon,
+                dateLabel: issueLabel ?? '',
+                onPrevious: widget.onPrevious,
+                onNext: widget.onNext,
+                onClose: widget.onClose,
+                onExpand: widget.onExpand,
+                isExpanded: widget.isExpanded,
+                moreActions: PopupMenuButton<String>(
+                  tooltip: isEs ? 'Más acciones' : 'More actions',
+                  icon: const Icon(Icons.more_horiz_rounded, size: 18),
+                  onSelected: (action) {
+                    switch (action) {
+                      case 'edit':
+                        widget.onEdit();
+                      case 'issue':
+                        widget.onIssue();
+                      case 'download':
+                        widget.onDownloadPdf();
+                      case 'delete':
+                        widget.onDeleteDraft();
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Text(
+                        issued
+                            ? (isEs
+                                ? 'Editar recibo emitido'
+                                : 'Edit issued receipt')
+                            : l.edit,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    number,
+                    ),
+                    if (!issued)
+                      PopupMenuItem(
+                        value: 'issue',
+                        child: Text(l.receiptIssueCta),
+                      ),
+                    PopupMenuItem(
+                      value: 'download',
+                      child: Text('${l.download} PDF'),
+                    ),
+                    if (!issued)
+                      PopupMenuItem(value: 'delete', child: Text(l.delete)),
+                  ],
+                ),
+              ),
+              // ── Header ──────────────────────────────────────────────────
+              if (widget.fullPage)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        // Status icon box
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: statusColor.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(statusIcon, size: 18, color: statusColor),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      number,
+                                      style: t.bodyLarge.copyWith(
+                                        fontWeight: FontWeight.w900,
+                                        color: cs.onSurface,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    moneyFmt.format(totalsTotal),
                                     style: t.bodyLarge.copyWith(
                                       fontWeight: FontWeight.w900,
                                       color: cs.onSurface,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  moneyFmt.format(totalsTotal),
-                                  style: t.bodyLarge.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    color: cs.onSurface,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 5),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 4,
-                              children: [
-                                _HeaderChip(
-                                  icon: Icons.person_outline,
-                                  label: widget.client.name,
-                                ),
-                                if (issueLabel != null)
+                                ],
+                              ),
+                              const SizedBox(height: 5),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                children: [
                                   _HeaderChip(
-                                    icon: Icons.event_outlined,
-                                    label: issueLabel,
+                                    icon: Icons.person_outline,
+                                    label: widget.client.name,
                                   ),
-                                _HeaderChip(
-                                  icon: Icons.format_list_numbered,
-                                  label:
-                                      '${l.receiptLinesTitle}: ${widget.receipt.lines.length}',
-                                ),
-                                _StatusChip(
-                                  issued: issued,
-                                  label: statusLabel,
-                                ),
-                                if (issued)
-                                  DeliveryStatusBadge(
-                                    groupId: widget.receipt.groupId,
-                                    status: widget.receipt.deliveryStatus,
-                                    channel: widget.receipt.deliveryChannel,
-                                    sentAt: widget.receipt.sentAt,
-                                    deliveryError: widget.receipt.deliveryError,
+                                  if (issueLabel != null)
+                                    _HeaderChip(
+                                      icon: Icons.event_outlined,
+                                      label: issueLabel,
+                                    ),
+                                  _HeaderChip(
+                                    icon: Icons.format_list_numbered,
+                                    label:
+                                        '${l.receiptLinesTitle}: ${widget.receipt.lines.length}',
                                   ),
-                              ],
-                            ),
-                          ],
+                                  _StatusChip(
+                                    issued: issued,
+                                    label: statusLabel,
+                                  ),
+                                  if (issued)
+                                    DeliveryStatusBadge(
+                                      groupId: widget.receipt.groupId,
+                                      status: widget.receipt.deliveryStatus,
+                                      channel: widget.receipt.deliveryChannel,
+                                      sentAt: widget.receipt.sentAt,
+                                      deliveryError:
+                                          widget.receipt.deliveryError,
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // ── PDF Preview ──────────────────────────────────────────────
+              SizedBox(
+                height: 38,
+                child: Row(
+                  children: [
+                    for (final tab in [
+                      (0, isEs ? 'Vista previa' : 'Preview'),
+                      (1, isEs ? 'Datos' : 'Details'),
+                      (2, isEs ? 'Líneas' : 'Lines'),
+                    ])
+                      TextButton(
+                        onPressed: () =>
+                            setState(() => _detailTabIndex = tab.$1),
+                        style: TextButton.styleFrom(
+                          foregroundColor: _detailTabIndex == tab.$1
+                              ? cs.primary
+                              : cs.onSurfaceVariant,
+                        ),
+                        child: Text(
+                          tab.$2,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (_detailTabIndex == 0)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      height: pdfHeight,
+                      decoration: BoxDecoration(
+                        color:
+                            cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: _buildPdfArea(cs, l),
+                    ),
+                  ),
+                ),
+              if (_detailTabIndex == 1) Expanded(child: _buildDetailsContent()),
+              if (_detailTabIndex == 2)
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(12),
+                    children: [
+                      _LinesTable(lines: widget.receipt.lines),
+                      const SizedBox(height: 12),
+                      _Totals(
+                        subtotal: widget.receipt.subtotal ?? totalsTotal,
+                        total: totalsTotal,
                       ),
                     ],
                   ),
                 ),
-              ),
-
-              // ── PDF Preview ──────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    height: pdfHeight,
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: _buildPdfArea(cs, l),
-                  ),
-                ),
-              ),
 
               // ── Footer bar ───────────────────────────────────────────────
               Padding(

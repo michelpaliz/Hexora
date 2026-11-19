@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_resizable_split.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/client_detail_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/clients_list_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/client_classification_store.dart';
@@ -16,9 +18,31 @@ class GroupInvoicesClientsView extends StatefulWidget {
   final VoidCallback onCreateReceipt;
   final VoidCallback onEditSelectedClient;
   final ValueChanged<Invoice> onOpenInvoiceDetail;
+  final ValueChanged<Invoice>? onEditInvoice;
+  final ValueChanged<Receipt> onEditReceipt;
+  final Widget Function(
+    BuildContext context,
+    Invoice invoice,
+    VoidCallback onClose,
+    VoidCallback? onPrevious,
+    VoidCallback? onNext,
+  ) invoicePreviewBuilder;
+  final Widget Function(
+    BuildContext context,
+    Receipt receipt,
+    VoidCallback onClose,
+    VoidCallback? onPrevious,
+    VoidCallback? onNext,
+  ) receiptPreviewBuilder;
   final ValueChanged<Invoice> onDeleteInvoice;
   final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
   final int initialDetailTabIndex;
+  final VoidCallback? onAddClient;
+  final VoidCallback? onRefresh;
+  final bool refreshing;
+
+  /// Replaces the client detail panel, e.g. with the inline client form.
+  final Widget? detailOverride;
   final Future<void> Function(
     GroupClient client, {
     String? entityType,
@@ -37,9 +61,17 @@ class GroupInvoicesClientsView extends StatefulWidget {
     required this.onCreateReceipt,
     required this.onEditSelectedClient,
     required this.onOpenInvoiceDetail,
+    this.onEditInvoice,
+    required this.onEditReceipt,
+    required this.invoicePreviewBuilder,
+    required this.receiptPreviewBuilder,
     required this.onDeleteInvoice,
     required this.onDownloadVisibleInvoices,
     this.initialDetailTabIndex = 0,
+    this.detailOverride,
+    this.onAddClient,
+    this.onRefresh,
+    this.refreshing = false,
     required this.onUpdateClientClassification,
   });
 
@@ -49,8 +81,8 @@ class GroupInvoicesClientsView extends StatefulWidget {
 }
 
 class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
-  String? _customerTypeFilter;
-  String? _propertyTypeFilter;
+  String? _entityFilter;
+  String? _propertyFilter;
   bool _assignBusy = false;
   bool _hideInactive = true;
   bool _missingCurrentMonthInvoiceOnly = false;
@@ -75,8 +107,8 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
   void didUpdateWidget(covariant GroupInvoicesClientsView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.groupId != widget.groupId) {
-      _customerTypeFilter = null;
-      _propertyTypeFilter = null;
+      _entityFilter = null;
+      _propertyFilter = null;
       _missingCurrentMonthInvoiceOnly = false;
       _hideInactive = true;
       _search.clear();
@@ -132,16 +164,17 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
       if (!haystack.contains(q)) return false;
     }
 
-    return (_customerTypeFilter == null ||
-            c.effectiveCustomerType == _customerTypeFilter) &&
-        (_propertyTypeFilter == null ||
-            c.effectivePropertyType == _propertyTypeFilter);
+    final entityOk = _entityFilter == null ||
+        (c.effectiveCustomerType ?? '').trim() == _entityFilter!;
+    final propertyOk = _propertyFilter == null ||
+        (c.effectivePropertyType ?? '').trim() == _propertyFilter!;
+    return entityOk && propertyOk;
   }
 
   void _clearFilters() {
     setState(() {
-      _customerTypeFilter = null;
-      _propertyTypeFilter = null;
+      _entityFilter = null;
+      _propertyFilter = null;
       _missingCurrentMonthInvoiceOnly = false;
     });
   }
@@ -175,17 +208,17 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
       fromClients: widget.clients.map((c) => c.propertyKind),
     );
     final customerTypeOptions = widget.clients
-        .map((c) => c.effectiveCustomerType)
+        .map((client) => client.effectiveCustomerType)
         .whereType<String>()
+        .where((value) => value.trim().isNotEmpty)
         .toSet()
-        .toList()
-      ..sort();
+        .toList();
     final propertyTypeOptions = widget.clients
-        .map((c) => c.effectivePropertyType)
+        .map((client) => client.effectivePropertyType)
         .whereType<String>()
+        .where((value) => value.trim().isNotEmpty)
         .toSet()
-        .toList()
-      ..sort();
+        .toList();
 
     final filteredClients = widget.clients.where(_matchesFilters).toList();
     final selectedHiddenByFilters = widget.selectedClient != null &&
@@ -198,48 +231,46 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: ClientsListPanel(
-                    allClients: widget.clients,
-                    filteredClients: filteredClients,
-                    selectedClient: widget.selectedClient,
-                    selectedHiddenByFilters: selectedHiddenByFilters,
-                    hideInactive: _hideInactive,
-                    onToggleHideInactive: () =>
-                        setState(() => _hideInactive = !_hideInactive),
-                    missingCurrentMonthInvoiceOnly:
-                        _missingCurrentMonthInvoiceOnly,
-                    onToggleMissingCurrentMonthInvoiceOnly: (value) =>
-                        setState(() {
-                      _missingCurrentMonthInvoiceOnly = value;
-                    }),
-                    searchController: _search,
-                    onSearchChanged: () => setState(() {}),
-                    entityFilter: _customerTypeFilter,
-                    propertyFilter: _propertyTypeFilter,
-                    entityOptions: customerTypeOptions,
-                    propertyOptions: propertyTypeOptions,
-                    onClearFilters: _clearFilters,
-                    onToggleEntityFilter: (v) => setState(() {
-                      _customerTypeFilter = _customerTypeFilter == v ? null : v;
-                    }),
-                    onTogglePropertyFilter: (v) => setState(() {
-                      _propertyTypeFilter = _propertyTypeFilter == v ? null : v;
-                    }),
-                    onClearEntityFilter: () =>
-                        setState(() => _customerTypeFilter = null),
-                    onClearPropertyFilter: () =>
-                        setState(() => _propertyTypeFilter = null),
-                    onSelectClient: widget.onSelectClient,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 3,
-                  child: ClientDetailPanel(
+            child: HexoraResizableSplit(
+              preferenceKey: 'invoices_clients_split_fraction_v2',
+              initialFraction: 0.30,
+              minStartWidth: 280,
+              minEndWidth: 520,
+              start: ClientsListPanel(
+                allClients: widget.clients,
+                filteredClients: filteredClients,
+                selectedClient: widget.selectedClient,
+                selectedHiddenByFilters: selectedHiddenByFilters,
+                hideInactive: _hideInactive,
+                onToggleHideInactive: () =>
+                    setState(() => _hideInactive = !_hideInactive),
+                missingCurrentMonthInvoiceOnly: _missingCurrentMonthInvoiceOnly,
+                onToggleMissingCurrentMonthInvoiceOnly: (value) => setState(() {
+                  _missingCurrentMonthInvoiceOnly = value;
+                }),
+                searchController: _search,
+                onSearchChanged: () => setState(() {}),
+                entityFilter: _entityFilter,
+                propertyFilter: _propertyFilter,
+                entityOptions: customerTypeOptions,
+                propertyOptions: propertyTypeOptions,
+                onClearFilters: _clearFilters,
+                onToggleEntityFilter: (v) => setState(() {
+                  _entityFilter = _entityFilter == v ? null : v;
+                }),
+                onTogglePropertyFilter: (v) => setState(() {
+                  _propertyFilter = _propertyFilter == v ? null : v;
+                }),
+                onClearEntityFilter: () => setState(() => _entityFilter = null),
+                onClearPropertyFilter: () =>
+                    setState(() => _propertyFilter = null),
+                onSelectClient: widget.onSelectClient,
+                onAddClient: widget.onAddClient,
+                onRefresh: widget.onRefresh,
+                refreshing: widget.refreshing,
+              ),
+              end: widget.detailOverride ??
+                  ClientDetailPanel(
                     groupId: widget.groupId,
                     clients: widget.clients,
                     selectedClient: widget.selectedClient,
@@ -253,8 +284,13 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                     onCreateInvoice: widget.onCreateInvoice,
                     onCreateReceipt: widget.onCreateReceipt,
                     onOpenInvoiceDetail: widget.onOpenInvoiceDetail,
+                    onEditInvoice: widget.onEditInvoice,
+                    onEditReceipt: widget.onEditReceipt,
+                    invoicePreviewBuilder: widget.invoicePreviewBuilder,
+                    receiptPreviewBuilder: widget.receiptPreviewBuilder,
                     onDeleteInvoice: widget.onDeleteInvoice,
                     onDownloadVisibleInvoices: widget.onDownloadVisibleInvoices,
+                    onAddClient: widget.onAddClient,
                     onApplyClassification: ({
                       String? entityType,
                       String? propertyKind,
@@ -264,8 +300,6 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                       propertyKind: propertyKind,
                     ),
                   ),
-                ),
-              ],
             ),
           ),
         ),

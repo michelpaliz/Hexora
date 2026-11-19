@@ -4,8 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
-import 'package:hexora/models/invoice/client_billing.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/invoice/client_billing.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/models/receipt/receipt_line.dart';
 import 'package:hexora/services/receipts/receipts_api.dart';
@@ -17,10 +17,14 @@ import 'package:hexora/presentation/screens/workspace/sections/receipts/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/json_import_service.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/widgets/lines_json_import_panel.dart';
-import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
+import 'package:hexora/presentation/shared/widgets/motion/hexora_step_transition.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -58,9 +62,10 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   final _receiptsApi = ReceiptsApi();
   final _notesCtrl = TextEditingController();
   final _clientNameCtrl = TextEditingController();
-  final _clientStreetCtrl = TextEditingController();
+  final _clientAddressCtrl = TextEditingController();
   final _clientCityCtrl = TextEditingController();
-  final _clientPostalCtrl = TextEditingController();
+  final _clientPostalCodeCtrl = TextEditingController();
+  final _clientSearchCtrl = TextEditingController();
   final List<ReceiptLineDraft> _lines = [];
 
   String? _clientId;
@@ -88,10 +93,6 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   List<Map<String, dynamic>> _extractedDraftLines = const [];
   String? _extractMethodUsed;
   List<String> _extractDiagnostics = const [];
-  bool _checkingUnnumberedDraft = false;
-  String? _existingUnnumberedReceiptId;
-  Receipt? _existingUnnumberedReceipt;
-
   // ── Client receipt stats (right panel) ──────────────────────────────────
   int _clientIssuedCount = 0;
   int _clientDraftCount = 0;
@@ -151,11 +152,11 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
     if (!mounted) return;
     final l = AppLocalizations.of(context)!;
     try {
-      final response = await _receiptsApi.previewPdf(r.id);
+      final response = await _receiptsApi.previewPdfWithFallback(r.id);
       final bytes = InvoiceEditorPdf.validatePdf(response);
       final fileName = (r.receiptNumber?.trim().isNotEmpty == true)
-          ? '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-${r.receiptNumber!.trim()}.pdf'
-          : '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-preview.pdf';
+          ? 'receipt-${r.receiptNumber!.trim()}.pdf'
+          : 'receipt-preview.pdf';
       await pdf_launcher.launchPdfPreview(bytes, fileName: fileName);
     } catch (e) {
       if (!mounted) return;
@@ -167,16 +168,15 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   }
 
   void _applyReceiptDraft(Receipt receipt) {
+    final clientSnapshot = receipt.clientSnapshot;
     _clientId = receipt.clientId.trim().isEmpty ? null : receipt.clientId;
-    _clientNameCtrl.text = receipt.clientName ?? '';
+    _clientNameCtrl.text =
+        receipt.clientName ?? clientSnapshot?.legalName ?? '';
+    _clientAddressCtrl.text = clientSnapshot?.addressStreet ?? '';
+    _clientCityCtrl.text = clientSnapshot?.addressCity ?? '';
+    _clientPostalCodeCtrl.text = clientSnapshot?.addressPostalCode ?? '';
     _useManualClient = (_clientId == null || _clientId!.trim().isEmpty) &&
         _clientNameCtrl.text.trim().isNotEmpty;
-    _clientStreetCtrl.text =
-        _useManualClient ? receipt.clientSnapshot?.addressStreet ?? '' : '';
-    _clientCityCtrl.text =
-        _useManualClient ? receipt.clientSnapshot?.addressCity ?? '' : '';
-    _clientPostalCtrl.text =
-        _useManualClient ? receipt.clientSnapshot?.addressPostalCode ?? '' : '';
     _issueDate = receipt.issueDate ?? DateTime.now();
     _draftReceipt = receipt;
     _notesCtrl.text = receipt.notes ?? '';
@@ -191,30 +191,7 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
         _lines.add(ReceiptLineDraft.fromLine(line));
       }
     }
-    _existingUnnumberedReceiptId = null;
-    _existingUnnumberedReceipt = null;
-    _didPersist = receipt.id.trim().isNotEmpty;
     _markDraftSynced();
-  }
-
-  Future<void> _checkExistingUnnumberedDraft() async {
-    if (widget.initialReceipt != null || widget.group.id.trim().isEmpty) return;
-    setState(() => _checkingUnnumberedDraft = true);
-    try {
-      final result = await _receiptsApi.lookupUnnumberedDraft(
-        groupId: widget.group.id,
-      );
-      if (!mounted) return;
-      setState(() {
-        _existingUnnumberedReceiptId =
-            result.exists ? result.existingReceiptId : null;
-        _existingUnnumberedReceipt = result.exists ? result.receipt : null;
-      });
-    } catch (_) {
-      // Non-blocking helper only; creation still handles the conflict safely.
-    } finally {
-      if (mounted) setState(() => _checkingUnnumberedDraft = false);
-    }
   }
 
   @override
@@ -234,18 +211,16 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
       WidgetsBinding.instance
           .addPostFrameCallback((_) => _loadClientReceiptStats(_clientId));
     }
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _checkExistingUnnumberedDraft(),
-    );
   }
 
   @override
   void dispose() {
     _notesCtrl.dispose();
     _clientNameCtrl.dispose();
-    _clientStreetCtrl.dispose();
+    _clientAddressCtrl.dispose();
     _clientCityCtrl.dispose();
-    _clientPostalCtrl.dispose();
+    _clientPostalCodeCtrl.dispose();
+    _clientSearchCtrl.dispose();
     for (final line in _lines) {
       line.dispose();
     }
@@ -254,15 +229,54 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
 
   bool get _hasClient => _useManualClient
       ? _clientNameCtrl.text.trim().isNotEmpty &&
-          _clientStreetCtrl.text.trim().isNotEmpty &&
-          _clientPostalCtrl.text.trim().isNotEmpty
+          _clientAddressCtrl.text.trim().isNotEmpty &&
+          _clientPostalCodeCtrl.text.trim().isNotEmpty
       : _clientId != null && _clientId!.trim().isNotEmpty;
-  String get _resolvedClientName {
-    if (_useManualClient) return _clientNameCtrl.text.trim();
-    return _selectedClient?.name.trim() ?? '';
-  }
-
   bool get _hasLines => _lines.any((line) => line.hasAnyValue);
+
+  ClientBilling? get _receiptClientSnapshot {
+    String? optionalText(TextEditingController controller) {
+      final value = controller.text.trim();
+      return value.isEmpty ? null : value;
+    }
+
+    if (_useManualClient) {
+      return ClientBilling(
+        legalName: optionalText(_clientNameCtrl),
+        addressStreet: optionalText(_clientAddressCtrl),
+        addressCity: optionalText(_clientCityCtrl),
+        addressPostalCode: optionalText(_clientPostalCodeCtrl),
+        documentType: 'receipt',
+      );
+    }
+
+    final client = _selectedClient;
+    if (client == null) return null;
+    final billing = client.billing;
+    String? clean(String? value) {
+      final trimmed = value?.trim() ?? '';
+      return trimmed.isEmpty ? null : trimmed;
+    }
+
+    // Persist the exact client data used to render this receipt. Relying only
+    // on clientId leaves the PDF renderer without address fields on backends
+    // that do not populate the complete client record during preview.
+    return ClientBilling(
+      legalName: clean(billing?.legalName) ?? clean(client.name),
+      taxId: clean(billing?.taxId),
+      addressStreet: clean(billing?.addressStreet),
+      addressExtra: clean(billing?.addressExtra),
+      addressCity: clean(billing?.addressCity),
+      addressProvince: clean(billing?.addressProvince),
+      addressPostalCode: clean(billing?.addressPostalCode),
+      addressCountry: clean(billing?.addressCountry),
+      email: clean(billing?.email) ?? clean(client.email),
+      phone: clean(billing?.phone) ?? clean(client.phone),
+      isComplete: billing?.isComplete,
+      documentType: 'receipt',
+      updatedAt: billing?.updatedAt,
+    );
+  }
 
   GroupClient? get _selectedClient {
     final id = _clientId;
@@ -292,27 +306,17 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   Widget build(BuildContext context) {
     final isEmbedded = widget.embedded == true;
     if (isEmbedded) {
-      final l = AppLocalizations.of(context)!;
       return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         child: FolderPanel(
-          title: l.receiptEditorTitle(_receiptNumber(l)),
-          onBack: _requestClose,
-          showTab: true,
-          contentTopPadding: 10,
+          // The embedded workspace already has its own vertical step rail
+          // and footer actions. Do not spend a second row on a title/back
+          // toolbar; closing remains available through the footer.
+          showTab: false,
+          contentTopPadding: 0,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minHeight: constraints.maxHeight),
-                    child: _buildContent(context),
-                  ),
-                );
-              },
-            ),
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+            child: _buildContent(context),
           ),
         ),
       );
@@ -334,8 +338,8 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
           child: _buildContent(context),
         ),
       ),

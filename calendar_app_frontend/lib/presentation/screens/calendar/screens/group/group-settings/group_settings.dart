@@ -3,6 +3,7 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
 import 'widgets/delete_group_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -11,6 +12,7 @@ import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/group-settings/widgets/group_danger_zone_card.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/group-settings/widgets/group_overview_card.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -183,7 +185,7 @@ class _GroupSettingsState extends State<GroupSettings> {
       }
 
       if (!mounted) return;
-      final confirm = await showDialog<bool>(
+      final confirm = await showHexoraDialog<bool>(
           context: context,
           builder: (_) => DeleteGroupDialog(groupName: freshGroup.name));
       if (confirm != true) return;
@@ -274,6 +276,10 @@ class _GroupSettingsState extends State<GroupSettings> {
                     ),
                     if (_membersFailed)
                       TextButton.icon(
+                          style: ThemedButtons.button(
+                            context,
+                            variant: ButtonVariant.ghost,
+                          ),
                           onPressed: _loadMemberNames,
                           icon: const Icon(Icons.refresh),
                           label: Text(l.refresh)),

@@ -37,12 +37,9 @@ class _LoadingTile extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       color: bg,
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.25),
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Container(
         height: 64,

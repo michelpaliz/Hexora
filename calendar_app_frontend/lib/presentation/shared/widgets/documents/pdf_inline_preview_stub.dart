@@ -11,11 +11,13 @@ class PdfInlinePreview extends StatelessWidget {
     required this.bytes,
     this.height = 420,
     this.interactive = true,
+    this.showToolbar = true,
   });
 
   final Uint8List bytes;
   final double height;
   final bool interactive;
+  final bool showToolbar;
 
   @override
   Widget build(BuildContext context) {

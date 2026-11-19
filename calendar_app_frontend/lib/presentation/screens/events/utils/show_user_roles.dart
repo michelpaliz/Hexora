@@ -23,7 +23,7 @@
 //     }
 
 //     // Show a confirmation dialog before removing the user
-//     showDialog(
+//     showHexoraDialog(
 //       context: context,
 //       builder: (BuildContext context) {
 //         return AlertDialog(

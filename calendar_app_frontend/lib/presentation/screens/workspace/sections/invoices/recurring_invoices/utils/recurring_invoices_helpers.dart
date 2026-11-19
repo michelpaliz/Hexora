@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/invoicing/recurring_invoices_api.dart';
 import 'package:hexora/services/receipts/recurring_receipts_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
@@ -225,7 +226,7 @@ Future<void> previewSeries(
     }
     if (!context.mounted) return;
     final l = AppLocalizations.of(context)!;
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.recurringInvoicesPreviewTitle),

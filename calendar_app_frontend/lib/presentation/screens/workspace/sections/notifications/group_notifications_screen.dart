@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/groups/invite/domain/invite_domain.dart';
 import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
@@ -54,6 +55,7 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
       groupDomain: context.read<GroupDomain>(),
       notificationDomain: context.read<NotificationDomain>(),
       notificationService: NotificationApiClient(),
+      invitationDomain: context.read<InvitationDomain>(),
     );
     _load();
   }
@@ -217,16 +219,19 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
   }
 
   Future<void> _openChat(NotificationUser notification) async {
-    final conversationId = (notification.args['conversationId'] ?? '').toString().trim();
-    final groupId = (notification.args['groupId'] ?? notification.groupId).toString().trim();
+    final conversationId =
+        (notification.args['conversationId'] ?? '').toString().trim();
+    final groupId = (notification.args['groupId'] ?? notification.groupId)
+        .toString()
+        .trim();
     if (conversationId.isEmpty || groupId != widget.group.id) return;
     await Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => Scaffold(
-        appBar: AppBar(title: const Text('Hexora Chat')),
+      builder: (routeContext) => Scaffold(
         body: BusinessChatScreen(
           groupId: groupId,
           currentUserId: context.read<UserDomain>().user?.id,
           initialConversationId: conversationId,
+          onExit: () => Navigator.of(routeContext).pop(),
         ),
       ),
     ));
@@ -273,16 +278,19 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
         (notification.args['jobId'] ?? '').toString().trim().isNotEmpty;
     final calendar = isEventNotification(notification) ||
         isConcurrentEventNotification(notification);
-    final chat = (notification.args['conversationId'] ?? '').toString().trim().isNotEmpty;
+    final chat = (notification.args['conversationId'] ?? '')
+        .toString()
+        .trim()
+        .isNotEmpty;
     final openLabel = chat
         ? (es ? 'Abrir conversación' : 'Open conversation')
         : ocr
-        ? (es ? 'Ver resultados' : 'View results')
-        : documentArgs != null
-            ? (es ? 'Ver documento' : 'View document')
-            : calendar && event.eventId != null
-                ? (es ? 'Ver calendario' : 'View calendar')
-                : null;
+            ? (es ? 'Ver resultados' : 'View results')
+            : documentArgs != null
+                ? (es ? 'Ver documento' : 'View document')
+                : calendar && event.eventId != null
+                    ? (es ? 'Ver calendario' : 'View calendar')
+                    : null;
     final action = await Navigator.of(context).push<NotificationDetailAction>(
       MaterialPageRoute(
           builder: (_) => NotificationDetailPage(

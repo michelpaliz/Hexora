@@ -99,4 +99,35 @@ void main() {
     expect(body, contains('["budget-1"]'));
     expect(body, contains('Hola'));
   });
+
+  test('sends one uploaded document with the single-file multipart field',
+      () async {
+    FlutterSecureStorage.setMockInitialValues({'access_token': 'test-token'});
+    late http.Request captured;
+    final api = TelegramApiClient(
+      client: MockClient((request) async {
+        captured = request;
+        return http.Response(
+          jsonEncode(<String, dynamic>{'id': 3, 'chatId': '42'}),
+          201,
+          headers: const <String, String>{
+            'content-type': 'application/json',
+          },
+        );
+      }),
+    );
+
+    await api.sendChatDocument(
+      chatId: 'chat 42',
+      accountId: 'account-1',
+      fileBytes: const [1, 2],
+      fileName: 'invoice.pdf',
+      mimeType: 'application/pdf',
+    );
+
+    expect(captured.url.path, endsWith('/telegram/chats/chat%2042/documents'));
+    final body = utf8.decode(captured.bodyBytes, allowMalformed: true);
+    expect(body, contains('name="file"'));
+    expect(body, contains('filename="invoice.pdf"'));
+  });
 }

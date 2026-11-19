@@ -9,64 +9,72 @@ extension _TemplateEditorControls on _PresupuestoTemplateEditorScreenState {
     Widget? trailing,
   }) {
     final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 0,
-      color: _editorCardBg(theme),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: _editorBorder(theme)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (icon != null) ...[
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(icon, color: theme.colorScheme.primary),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 4),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final titleArea = Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, color: theme.colorScheme.primary, size: 20),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          subtitle,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            height: 1.35,
+                          title,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                if (trailing != null) trailing,
-              ],
-            ),
-            const SizedBox(height: 14),
-            child,
-          ],
-        ),
+                ],
+              );
+              if (trailing != null && constraints.maxWidth < 560) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    titleArea,
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: trailing,
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: titleArea),
+                  if (trailing != null) trailing,
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          child,
+        ],
       ),
     );
   }
@@ -175,18 +183,18 @@ extension _TemplateEditorControls on _PresupuestoTemplateEditorScreenState {
               isDense: dense,
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 16,
-                vertical: maxLines > 1 ? 16 : 15,
+                vertical: dense ? 11 : (maxLines > 1 ? 16 : 15),
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(13),
+                borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(color: _editorBorder(theme)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(13),
+                borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(color: _editorBorder(theme)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(13),
+                borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(color: cs.primary, width: 1.6),
               ),
               hoverColor: cs.primary.withValues(alpha: 0.025),

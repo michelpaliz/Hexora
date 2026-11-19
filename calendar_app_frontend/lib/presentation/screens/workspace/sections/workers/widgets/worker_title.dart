@@ -3,6 +3,7 @@ import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/hexora_user_avatar.dart';
 import 'package:intl/intl.dart';
 
 class WorkerTile extends StatelessWidget {
@@ -12,7 +13,6 @@ class WorkerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
 
     final int? totalMinutes = _extractTotalMinutes(worker);
@@ -27,14 +27,15 @@ class WorkerTile extends StatelessWidget {
       color: bg,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.25), width: 1),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        leading: CircleAvatar(
-          backgroundColor: cs.secondary.withValues(alpha: 0.12),
-          child: Icon(Icons.person_outline, color: cs.secondary),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        leading: HexoraUserAvatar(
+          userId: worker.userId ?? worker.id,
+          displayName: worker.displayName ?? l.unknownWorker,
+          username: worker.externalId,
+          size: 40,
         ),
         title: Text(
           worker.displayName ?? l.unknownWorker,
@@ -54,8 +55,8 @@ class WorkerTile extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing:
-            Icon(Icons.chevron_right_rounded, color: onBg.withValues(alpha: 0.6)),
+        trailing: Icon(Icons.chevron_right_rounded,
+            color: onBg.withValues(alpha: 0.6)),
         onTap: () {
           // TODO: navigate to worker detail when available.
         },

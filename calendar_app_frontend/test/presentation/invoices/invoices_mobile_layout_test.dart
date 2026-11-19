@@ -75,13 +75,13 @@ void main() {
             .widget<TextButton>(find.widgetWithText(TextButton, 'Recibos'));
         final cs = Theme.of(tester.element(find.byType(MobileSectionTabs)))
             .colorScheme;
-        expect(button.style!.backgroundColor!.resolve({}), cs.primary);
+        expect(button.style!.backgroundColor!.resolve({}), cs.primaryContainer);
         await tester
             .tap(find.text('FERCAMAR GESTIÓN ALMERÍA S.L. con nombre largo'));
         expect(opened, isTrue);
         final context = tester.element(find.byType(InvoiceListItem));
         final edit = AppLocalizations.of(context)!.edit;
-        await tester.tap(find.byTooltip(edit));
+        await tester.tap(find.byType(PopupMenuButton<String>));
         await tester.pumpAndSettle();
         await tester.tap(find.text(edit));
         await tester.pumpAndSettle();

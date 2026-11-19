@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -48,10 +49,11 @@ class InvoiceEditorPreviewCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(l.invoicePreviewTotalLabel(NumberFormat.simpleCurrency(name: '').format(total))),
           const Spacer(),
-          OutlinedButton.icon(
+          HexoraButton(
             onPressed: onPreviewPdf,
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            label: Text(l.invoicePdfPreviewTitle),
+            icon: Icons.picture_as_pdf_outlined,
+            label: l.invoicePdfPreviewTitle,
+            variant: HexoraButtonVariant.secondary,
           ),
         ],
       ),

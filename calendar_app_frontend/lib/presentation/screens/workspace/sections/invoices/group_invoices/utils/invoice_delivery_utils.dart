@@ -22,6 +22,12 @@ String normalizeDeliveryStatus(String? raw) {
 InvoiceDeliveryViewData invoiceDeliveryViewData(String? raw) {
   final status = normalizeDeliveryStatus(raw);
   switch (status) {
+    case 'delivered':
+      return const InvoiceDeliveryViewData(
+        status: 'delivered',
+        labelEs: 'Entregada',
+        visual: InvoiceDeliveryVisualState.success,
+      );
     case 'sent':
       return const InvoiceDeliveryViewData(
         status: 'sent',

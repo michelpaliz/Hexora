@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -42,7 +44,7 @@ class AmountFilterDialog {
       }
     }
 
-    return showDialog<AmountFilterResult>(
+    return showHexoraDialog<AmountFilterResult>(
       context: context,
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;
@@ -153,9 +155,7 @@ class AmountFilterDialog {
                 constraints: const BoxConstraints(maxWidth: 340),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? cs.surfaceContainer
-                        : cs.surface,
+                    color: isDark ? cs.surfaceContainer : cs.surface,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: cs.outlineVariant.withValues(
@@ -164,7 +164,8 @@ class AmountFilterDialog {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.10),
+                        color: Colors.black
+                            .withValues(alpha: isDark ? 0.35 : 0.10),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),
@@ -247,7 +248,8 @@ class AmountFilterDialog {
 
                             // Range preview chip
                             AnimatedSize(
-                              duration: const Duration(milliseconds: 180),
+                              duration: HexoraMotion.duration(
+                                  context, HexoraMotion.standard),
                               child: hasRange
                                   ? Padding(
                                       padding:
@@ -330,7 +332,8 @@ class AmountFilterDialog {
 
                             // Error
                             AnimatedSize(
-                              duration: const Duration(milliseconds: 160),
+                              duration: HexoraMotion.duration(
+                                  context, HexoraMotion.fast),
                               child: error != null
                                   ? Padding(
                                       padding: const EdgeInsets.only(top: 8),
@@ -405,16 +408,12 @@ class AmountFilterDialog {
                             FilledButton(
                               onPressed: () {
                                 normalizeExpenseInputs();
-                                var min =
-                                    parseAmountInput(minController.text);
-                                var max =
-                                    parseAmountInput(maxController.text);
+                                var min = parseAmountInput(minController.text);
+                                var max = parseAmountInput(maxController.text);
                                 if (localType == 'expense') {
                                   if (min != null) min = -min.abs();
                                   if (max != null) max = -max.abs();
-                                  if (min != null &&
-                                      max != null &&
-                                      min > max) {
+                                  if (min != null && max != null && min > max) {
                                     final tmp = min;
                                     min = max;
                                     max = tmp;
@@ -432,9 +431,7 @@ class AmountFilterDialog {
                                       : 'Invalid amount');
                                   return;
                                 }
-                                if (min != null &&
-                                    max != null &&
-                                    min > max) {
+                                if (min != null && max != null && min > max) {
                                   setState(() => error = isEs
                                       ? 'Min debe ser menor o igual a Max'
                                       : 'Min must be ≤ Max');

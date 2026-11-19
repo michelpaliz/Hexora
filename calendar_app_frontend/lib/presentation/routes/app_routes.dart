@@ -51,6 +51,8 @@ class AppRoutes {
   static const createGroupSearchBar = '/create-group-search-bar';
 
   static const settings = '/settings';
+  static const preferences = '/preferences';
+  static const dashboardPreview = '/dashboard-preview';
 
   static const groupInsights = '/group-insights';
   static const groupQuickNotes = '/group-quick-notes';

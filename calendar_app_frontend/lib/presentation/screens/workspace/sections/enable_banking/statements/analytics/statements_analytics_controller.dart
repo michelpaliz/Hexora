@@ -56,6 +56,19 @@ class StatementsAnalyticsController extends ChangeNotifier {
   StatementsAnalyticsCompareMode compareMode =
       StatementsAnalyticsCompareMode.both;
 
+  int get activeFilterCount {
+    var count = 0;
+    if (selectedBatchId != null && selectedBatchId != 'all') count++;
+    if (selectedYear != null) count++;
+    if (selectedMonth != null) count++;
+    if (periodMode != StatementsAnalyticsPeriodMode.calendarMonth) count++;
+    if (compareMode != StatementsAnalyticsCompareMode.both) count++;
+    if (top != 20) count++;
+    if (settlementStartDay != 26) count++;
+    if (settlementEndDay != 20) count++;
+    return count;
+  }
+
   bool loadingCompare = false;
   String? compareError;
   List<StatementsAnalyticsCompareRow> compareRows = const [];
@@ -70,10 +83,11 @@ class StatementsAnalyticsController extends ChangeNotifier {
               .map((e) => Map<String, dynamic>.from(e))
               .toList();
 
-  List<Map<String, dynamic>> get months => (summary['months'] as List? ?? const [])
-      .whereType<Map>()
-      .map((e) => Map<String, dynamic>.from(e))
-      .toList();
+  List<Map<String, dynamic>> get months =>
+      (summary['months'] as List? ?? const [])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
 
   List<Map<String, dynamic>> get topExpense => ((summary['topMerchants'] is Map
               ? (summary['topMerchants'] as Map)['expense']
@@ -179,7 +193,9 @@ class StatementsAnalyticsController extends ChangeNotifier {
   }
 
   bool get volumeUsesDaily =>
-      entries.isNotEmpty && _selectedDateRangeDays <= 45 && _selectedDateRangeDays > 0;
+      entries.isNotEmpty &&
+      _selectedDateRangeDays <= 45 &&
+      _selectedDateRangeDays > 0;
 
   List<StatementsAnalyticsVolumePoint> get volumePoints {
     if (volumeUsesDaily) {
@@ -615,11 +631,13 @@ class StatementsAnalyticsController extends ChangeNotifier {
     }
     final daysSince = latest == null
         ? null
-        : DateTime.now().difference(DateTime(
-            latest.year,
-            latest.month,
-            latest.day,
-          )).inDays;
+        : DateTime.now()
+            .difference(DateTime(
+              latest.year,
+              latest.month,
+              latest.day,
+            ))
+            .inDays;
     return StatementsAnalyticsStatusSnapshot(
       lastDate: latest,
       daysSince: daysSince,
@@ -719,9 +737,13 @@ class StatementsAnalyticsController extends ChangeNotifier {
         final bm = int.tryParse(b['month']?.toString() ?? '') ?? 0;
         return am.compareTo(bm);
       });
-    final topExpense = expenseMerchants.values.map((e) => e.toMerchantMap()).toList()
+    final topExpense = expenseMerchants.values
+        .map((e) => e.toMerchantMap())
+        .toList()
       ..sort((a, b) => (b['total'] as num).compareTo(a['total'] as num));
-    final topIncome = incomeMerchants.values.map((e) => e.toMerchantMap()).toList()
+    final topIncome = incomeMerchants.values
+        .map((e) => e.toMerchantMap())
+        .toList()
       ..sort((a, b) => (b['total'] as num).compareTo(a['total'] as num));
 
     return {

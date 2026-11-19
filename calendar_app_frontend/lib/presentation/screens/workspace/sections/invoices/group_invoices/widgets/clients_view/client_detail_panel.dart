@@ -1,7 +1,12 @@
+import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
+import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/client_property_image.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/models/receipt/receipt.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 import 'package:hexora/services/clients/client_contracts_api.dart';
 import 'package:hexora/services/receipts/receipts_api.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +14,7 @@ import '../invoice_row_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/date_range_filter_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'client_invoice_stats_card.dart';
 import 'client_contracts_tab.dart';
@@ -30,8 +36,25 @@ class ClientDetailPanel extends StatefulWidget {
   final VoidCallback onCreateInvoice;
   final VoidCallback onCreateReceipt;
   final ValueChanged<Invoice> onOpenInvoiceDetail;
+  final ValueChanged<Invoice>? onEditInvoice;
+  final ValueChanged<Receipt> onEditReceipt;
+  final Widget Function(
+    BuildContext context,
+    Invoice invoice,
+    VoidCallback onClose,
+    VoidCallback? onPrevious,
+    VoidCallback? onNext,
+  ) invoicePreviewBuilder;
+  final Widget Function(
+    BuildContext context,
+    Receipt receipt,
+    VoidCallback onClose,
+    VoidCallback? onPrevious,
+    VoidCallback? onNext,
+  ) receiptPreviewBuilder;
   final ValueChanged<Invoice> onDeleteInvoice;
   final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
+  final VoidCallback? onAddClient;
 
   final Future<void> Function({String? entityType, String? propertyKind})
       onApplyClassification;
@@ -51,8 +74,13 @@ class ClientDetailPanel extends StatefulWidget {
     required this.onCreateInvoice,
     required this.onCreateReceipt,
     required this.onOpenInvoiceDetail,
+    this.onEditInvoice,
+    required this.onEditReceipt,
+    required this.invoicePreviewBuilder,
+    required this.receiptPreviewBuilder,
     required this.onDeleteInvoice,
     required this.onDownloadVisibleInvoices,
+    this.onAddClient,
     required this.onApplyClassification,
   });
 
@@ -63,10 +91,40 @@ class ClientDetailPanel extends StatefulWidget {
 class _ClientDetailPanelState extends State<ClientDetailPanel> {
   final ClientContractsApi _contractsApi = ClientContractsApi();
   final ReceiptsApi _receiptsApi = ReceiptsApi();
+  final _ClientInvoiceFilterController _invoiceFilters =
+      _ClientInvoiceFilterController();
   int _contractsCount = 0;
   int _receiptsCount = 0;
   String? _contractsCountClientId;
   String? _receiptsCountRequestKey;
+  Invoice? _selectedInvoice;
+
+  String _classificationLabel(String value) =>
+      {
+        'particular': 'Particular',
+        'community': 'Comunidad de propietarios',
+        'company': 'Empresa',
+        'chalet': 'Chalet',
+        'apartment': 'Apartamento',
+        'building': 'Edificio / Urbanización',
+        'hotel': 'Hotel',
+        'commercial_premises': 'Local comercial',
+        'owner': 'Propietario',
+        'administrator': 'Administrador',
+        'tenant': 'Inquilino',
+        'other': 'Otro',
+      }[value.toLowerCase()] ??
+      value;
+
+  String _clientMetadata(GroupClient client) => <String>[
+        if ((client.pdfAlias ?? '').trim().isNotEmpty) client.pdfAlias!.trim(),
+        if ((client.effectiveCustomerType ?? '').trim().isNotEmpty)
+          _classificationLabel(client.effectiveCustomerType!.trim()),
+        if ((client.effectivePropertyType ?? '').trim().isNotEmpty)
+          _classificationLabel(client.effectivePropertyType!.trim()),
+        if ((client.effectivePropertyRelationship ?? '').trim().isNotEmpty)
+          _classificationLabel(client.effectivePropertyRelationship!.trim()),
+      ].join(' · ');
 
   @override
   void initState() {
@@ -76,8 +134,20 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
   }
 
   @override
+  void dispose() {
+    _invoiceFilters.dispose();
+    super.dispose();
+  }
+
+  @override
   void didUpdateWidget(covariant ClientDetailPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedClient?.id != widget.selectedClient?.id) {
+      _selectedInvoice = null;
+    } else if (_selectedInvoice != null &&
+        !widget.issuedInvoices.any((item) => item.id == _selectedInvoice!.id)) {
+      _selectedInvoice = null;
+    }
     if (oldWidget.selectedClient?.id != widget.selectedClient?.id ||
         oldWidget.groupId != widget.groupId) {
       setState(() {
@@ -130,17 +200,53 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final selectedClientMetadata = widget.selectedClient == null
+        ? ''
+        : _clientMetadata(widget.selectedClient!);
 
     return Card(
+      margin: EdgeInsets.zero,
       color: Colors.transparent,
       elevation: 0,
       child: widget.selectedClient == null
-          ? Padding(
-              padding: const EdgeInsets.all(12),
-              child: Center(
-                child: Text(
-                  l.selectClientFirst,
-                  style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.people_outline, size: 36, color: cs.primary),
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.clients.isEmpty
+                          ? l.noClientsYet
+                          : l.selectClientFirst,
+                      textAlign: TextAlign.center,
+                      style: t.bodyLarge.copyWith(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (widget.clients.isEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        l.noClientsYet,
+                        textAlign: TextAlign.center,
+                        style: t.bodyMedium.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      if (widget.onAddClient != null) ...[
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          key: const Key('client-detail-add-client'),
+                          onPressed: widget.onAddClient,
+                          icon: const Icon(Icons.person_add_alt_1),
+                          label: Text(l.addClient),
+                        ),
+                      ],
+                    ],
+                  ],
                 ),
               ),
             )
@@ -150,52 +256,130 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
               ),
               length: 4,
               initialIndex: widget.initialTabIndex.clamp(0, 3),
+              animationDuration: HexoraMotion.duration(
+                context,
+                HexoraMotion.tabIndicator,
+              ),
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(12),
+                    key: const ValueKey('client-detail-compact-header'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     child: Row(children: [
-                      ClientPropertyImage(client: widget.selectedClient!),
-                      const SizedBox(width: 16),
+                      ClientPropertyImage(
+                        client: widget.selectedClient!,
+                        width: 36,
+                        height: 36,
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
-                          child: Text(widget.selectedClient!.name,
-                              maxLines: 2,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.selectedClient!.name,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: t.bodyLarge)),
+                              style: t.bodyLarge.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (selectedClientMetadata.isNotEmpty)
+                              Tooltip(
+                                message: selectedClientMetadata,
+                                child: Text(
+                                  selectedClientMetadata,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: t.bodySmall.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                       IconButton(
                           onPressed: widget.onEditSelectedClient,
                           tooltip: l.editClient,
-                          icon: const Icon(Icons.edit_outlined)),
+                          icon: const Icon(Icons.edit_outlined, size: 17),
+                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints.tightFor(
+                            width: 32,
+                            height: 32,
+                          )),
                     ]),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-                    child: _ClientTabs(
-                      invoicesCount: widget.issuedInvoices.length,
-                      contractsCount: _contractsCount,
-                      receiptsCount: _receiptsCount,
+                  Container(
+                    key: const ValueKey('client-detail-tabs-row'),
+                    width: double.infinity,
+                    padding: const EdgeInsetsDirectional.only(start: 12),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: cs.outlineVariant.withValues(alpha: 0.35),
+                        ),
+                      ),
+                    ),
+                    child: _ClientTabNavigationRow(
+                      tabs: _ClientTabs(
+                        invoicesCount: widget.issuedInvoices.length,
+                        contractsCount: _contractsCount,
+                        receiptsCount: _receiptsCount,
+                      ),
+                      invoiceActions: _ClientInvoiceToolbar(
+                        controller: _invoiceFilters,
+                        invoices: widget.issuedInvoices,
+                        onDownloadVisibleInvoices:
+                            widget.onDownloadVisibleInvoices,
+                      ),
                     ),
                   ),
                   Expanded(
                     child: TabBarView(
                       children: [
-                        _InvoiceList(
-                          emptyTitle: l.noInvoicesYet,
-                          emptySubtitle: l.noInvoicesYetSubtitle,
-                          icon: Icons.receipt_long_outlined,
-                          invoices: widget.issuedInvoices,
-                          clients: widget.clients,
-                          fallbackClient: widget.selectedClient!,
-                          onTap: widget.onOpenInvoiceDetail,
-                          onDelete: null,
-                          onDownloadVisibleInvoices:
-                              widget.onDownloadVisibleInvoices,
+                        DocumentSplitView(
+                          storageKey: 'client-invoices',
+                          initialListFraction: 0.68,
+                          minListWidth: 360,
+                          minPreviewWidth: 320,
+                          selectionKey: _selectedInvoice?.id,
+                          list: _InvoiceList(
+                            emptyTitle: l.noInvoicesYet,
+                            emptySubtitle: l.noInvoicesYetSubtitle,
+                            icon: Icons.receipt_long_outlined,
+                            invoices: widget.issuedInvoices,
+                            clients: widget.clients,
+                            fallbackClient: widget.selectedClient!,
+                            selectedInvoiceId: _selectedInvoice?.id,
+                            onTap: (invoice) =>
+                                setState(() => _selectedInvoice = invoice),
+                            onDelete: null,
+                            onEdit: widget.onEditInvoice,
+                            filterController: _invoiceFilters,
+                          ),
+                          preview: _selectedInvoice == null
+                              ? const SizedBox.shrink()
+                              : widget.invoicePreviewBuilder(
+                                  context,
+                                  _selectedInvoice!,
+                                  () => setState(() => _selectedInvoice = null),
+                                  _adjacentInvoice(-1),
+                                  _adjacentInvoice(1),
+                                ),
                         ),
                         ClientReceiptsTab(
                           key:
                               ValueKey('receipts-${widget.selectedClient!.id}'),
                           groupId: widget.groupId,
                           client: widget.selectedClient!,
+                          previewBuilder: widget.receiptPreviewBuilder,
+                          onEditReceipt: widget.onEditReceipt,
                           onCountChanged: (count) =>
                               setState(() => _receiptsCount = count),
                         ),
@@ -203,6 +387,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                           key: ValueKey(
                               'contracts-${widget.selectedClient!.id}'),
                           client: widget.selectedClient!,
+                          compact: true,
                           onCountChanged: (count) =>
                               setState(() => _contractsCount = count),
                         ),
@@ -217,6 +402,227 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                 ],
               ),
             ),
+    );
+  }
+
+  VoidCallback? _adjacentInvoice(int offset) {
+    final selected = _selectedInvoice;
+    if (selected == null) return null;
+    final index = widget.issuedInvoices.indexWhere((i) => i.id == selected.id);
+    final target = index + offset;
+    if (index < 0 || target < 0 || target >= widget.issuedInvoices.length) {
+      return null;
+    }
+    return () =>
+        setState(() => _selectedInvoice = widget.issuedInvoices[target]);
+  }
+}
+
+class _ClientInvoiceFilterController extends ChangeNotifier {
+  bool _disposed = false;
+  DateTime? fromDate;
+  DateTime? toDate;
+  DateQuickRange quickRange = DateQuickRange.none;
+  bool customRangeExpanded = false;
+  bool downloading = false;
+
+  bool get hasFilter => fromDate != null || toDate != null;
+
+  List<Invoice> apply(List<Invoice> invoices) => invoices.where((invoice) {
+        if (!hasFilter) return true;
+        final date =
+            invoice.issueDate ?? invoice.registeredAt ?? invoice.occurrenceDate;
+        if (date == null) return false;
+        if (fromDate != null) {
+          final start =
+              DateTime(fromDate!.year, fromDate!.month, fromDate!.day);
+          if (date.isBefore(start)) return false;
+        }
+        if (toDate != null) {
+          final end = DateTime(
+            toDate!.year,
+            toDate!.month,
+            toDate!.day,
+            23,
+            59,
+            59,
+            999,
+          );
+          if (date.isAfter(end)) return false;
+        }
+        return true;
+      }).toList(growable: false);
+
+  void clear() {
+    fromDate = null;
+    toDate = null;
+    quickRange = DateQuickRange.none;
+    customRangeExpanded = false;
+    notifyListeners();
+  }
+
+  void selectRecentDays(int days) {
+    final now = DateTime.now();
+    toDate = now;
+    fromDate = now.subtract(Duration(days: days - 1));
+    quickRange = DateQuickRange.month;
+    customRangeExpanded = false;
+    notifyListeners();
+  }
+
+  void selectRecentMonths(int months) {
+    final now = DateTime.now();
+    toDate = now;
+    fromDate = DateTime(now.year, now.month - (months - 1), now.day);
+    quickRange = DateQuickRange.quarter;
+    customRangeExpanded = false;
+    notifyListeners();
+  }
+
+  void showCustomRange() {
+    quickRange = DateQuickRange.custom;
+    customRangeExpanded = true;
+    notifyListeners();
+  }
+
+  void updateFrom(DateTime value) {
+    fromDate = value;
+    if (toDate != null && toDate!.isBefore(value)) toDate = value;
+    quickRange = DateQuickRange.custom;
+    notifyListeners();
+  }
+
+  void updateTo(DateTime value) {
+    toDate = value;
+    if (fromDate != null && value.isBefore(fromDate!)) fromDate = value;
+    quickRange = DateQuickRange.custom;
+    notifyListeners();
+  }
+
+  void setDownloading(bool value) {
+    if (_disposed || downloading == value) return;
+    downloading = value;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+}
+
+class _ClientTabNavigationRow extends StatelessWidget {
+  const _ClientTabNavigationRow({
+    required this.tabs,
+    required this.invoiceActions,
+  });
+
+  final Widget tabs;
+  final Widget invoiceActions;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = DefaultTabController.of(context);
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => Row(
+        children: [
+          Expanded(child: tabs),
+          if (controller.index == 0) invoiceActions,
+        ],
+      ),
+    );
+  }
+}
+
+class _ClientInvoiceToolbar extends StatelessWidget {
+  const _ClientInvoiceToolbar({
+    required this.controller,
+    required this.invoices,
+    required this.onDownloadVisibleInvoices,
+  });
+
+  final _ClientInvoiceFilterController controller;
+  final List<Invoice> invoices;
+  final Future<void> Function(List<Invoice>) onDownloadVisibleInvoices;
+
+  List<Invoice> _filteredInvoices() => controller.apply(invoices);
+
+  Future<void> _downloadVisible() async {
+    final filtered = _filteredInvoices();
+    if (controller.downloading || filtered.isEmpty) return;
+    controller.setDownloading(true);
+    try {
+      await onDownloadVisibleInvoices(filtered);
+    } finally {
+      controller.setDownloading(false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final filtered = _filteredInvoices();
+        return Padding(
+          padding: const EdgeInsetsDirectional.only(end: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ClientPeriodMenu(
+                selected: controller.quickRange,
+                hasFilter: controller.hasFilter,
+                isSpanish: isSpanish,
+                onSelected: (value) {
+                  if (value == null) {
+                    controller.clear();
+                  } else if (value == DateQuickRange.month) {
+                    controller.selectRecentDays(30);
+                  } else if (value == DateQuickRange.quarter) {
+                    controller.selectRecentMonths(3);
+                  } else {
+                    controller.showCustomRange();
+                  }
+                },
+              ),
+              const SizedBox(width: 4),
+              Tooltip(
+                message: filtered.isEmpty
+                    ? l.noInvoicesYet
+                    : isSpanish
+                        ? 'Descargar las facturas visibles (${filtered.length})'
+                        : 'Download visible invoices (${filtered.length})',
+                child: TextButton.icon(
+                  key: const ValueKey('client-invoice-zip-download'),
+                  onPressed: filtered.isEmpty || controller.downloading
+                      ? null
+                      : _downloadVisible,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(horizontal: 7),
+                    foregroundColor: cs.onSurfaceVariant,
+                  ),
+                  icon: controller.downloading
+                      ? const SizedBox.square(
+                          dimension: 13,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.folder_zip_outlined, size: 14),
+                  label: Text('ZIP (${filtered.length})', style: t.bodySmall),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -239,95 +645,68 @@ class _ClientTabs extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
 
-    Widget tab({
+    // Label + neutral count pill; the active tab is marked by the underline.
+    Tab tab({
       required IconData icon,
       required String label,
       int? count,
     }) {
       return Tab(
-        height: 40,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 15),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: HexoraDocumentTokens.icon),
+            const SizedBox(width: 6),
+            Text(label),
+            if (count != null) ...[
               const SizedBox(width: 6),
-              Text(label),
-              if (count != null) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: cs.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '$count',
-                    style: t.bodySmall.copyWith(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
-                    ),
+              Container(
+                constraints: const BoxConstraints(minWidth: 18),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$count',
+                  textAlign: TextAlign.center,
+                  style: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: HexoraTypography.caption,
+                    fontFeatures: HexoraTypography.numericFeatures,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
-              ],
+              ),
             ],
-          ),
+          ],
         ),
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
-      padding: const EdgeInsets.all(3),
-      child: TabBar(
-        isScrollable: true,
-        tabAlignment: TabAlignment.start,
-        dividerColor: Colors.transparent,
-        splashFactory: NoSplash.splashFactory,
-        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-        indicatorSize: TabBarIndicatorSize.tab,
-        indicator: BoxDecoration(
-          color: cs.primaryContainer,
-          borderRadius: BorderRadius.circular(999),
-          boxShadow: [
-            BoxShadow(
-              color: cs.primary.withValues(alpha: 0.08),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
-          ],
+    return HexoraSectionTabs(
+      compact: true,
+      tabs: [
+        tab(
+          icon: Icons.receipt_long_outlined,
+          label: l.invoicesListTitle,
+          count: invoicesCount,
         ),
-        labelColor: cs.onPrimaryContainer,
-        unselectedLabelColor: cs.onSurfaceVariant,
-        labelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
-        unselectedLabelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
-        indicatorPadding: EdgeInsets.zero,
-        labelPadding: EdgeInsets.zero,
-        tabs: [
-          tab(
-            icon: Icons.receipt_long_outlined,
-            label: l.groupInvoicesTabInvoices(invoicesCount),
-          ),
-          tab(
-            icon: Icons.description_outlined,
-            label: '${l.receiptsTitle} ($receiptsCount)',
-          ),
-          tab(
-            icon: Icons.folder_outlined,
-            label: '${l.contractsTitle} ($contractsCount)',
-          ),
-          tab(
-            icon: Icons.insights_outlined,
-            label: isSpanish ? 'Grafico' : 'Graph',
-          ),
-        ],
-      ),
+        tab(
+          icon: Icons.description_outlined,
+          label: l.receiptsTitle,
+          count: receiptsCount,
+        ),
+        tab(
+          icon: Icons.folder_outlined,
+          label: l.contractsTitle,
+          count: contractsCount,
+        ),
+        tab(
+          icon: Icons.insights_outlined,
+          label: isSpanish ? 'Gráfico' : 'Chart',
+        ),
+      ],
     );
   }
 }
@@ -341,7 +720,9 @@ class _InvoiceList extends StatefulWidget {
   final GroupClient fallbackClient;
   final ValueChanged<Invoice> onTap;
   final ValueChanged<Invoice>? onDelete;
-  final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
+  final ValueChanged<Invoice>? onEdit;
+  final String? selectedInvoiceId;
+  final _ClientInvoiceFilterController filterController;
 
   const _InvoiceList({
     required this.emptyTitle,
@@ -352,7 +733,9 @@ class _InvoiceList extends StatefulWidget {
     required this.fallbackClient,
     required this.onTap,
     required this.onDelete,
-    required this.onDownloadVisibleInvoices,
+    this.onEdit,
+    this.selectedInvoiceId,
+    required this.filterController,
   });
 
   @override
@@ -360,200 +743,48 @@ class _InvoiceList extends StatefulWidget {
 }
 
 class _InvoiceListState extends State<_InvoiceList> {
-  DateTime? _fromDate;
-  DateTime? _toDate;
-  DateQuickRange _quickRange = DateQuickRange.none;
-  bool _filtersExpanded = false;
-  bool _downloadingVisible = false;
-
-  DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
-  DateTime _endOfDay(DateTime d) =>
-      DateTime(d.year, d.month, d.day, 23, 59, 59, 999);
-
   DateTime? _invoiceDate(Invoice inv) =>
       inv.issueDate ?? inv.registeredAt ?? inv.occurrenceDate;
 
-  void _setRangeDays(int days) {
-    final now = DateTime.now();
-    setState(() {
-      _toDate = now;
-      _fromDate = now.subtract(Duration(days: days - 1));
-      _quickRange = DateQuickRange.month;
-    });
+  @override
+  void initState() {
+    super.initState();
+    widget.filterController.addListener(_refresh);
   }
 
-  void _setRangeMonths(int months) {
-    final now = DateTime.now();
-    setState(() {
-      _toDate = now;
-      _fromDate = DateTime(now.year, now.month - (months - 1), now.day);
-      _quickRange = DateQuickRange.quarter;
-    });
-  }
-
-  Future<void> _pickFromDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _fromDate ?? _toDate ?? now,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (picked == null) return;
-    setState(() {
-      _fromDate = picked;
-      if (_toDate != null && _toDate!.isBefore(_fromDate!)) {
-        _toDate = _fromDate;
-      }
-      _quickRange = DateQuickRange.none;
-    });
-  }
-
-  Future<void> _pickToDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _toDate ?? _fromDate ?? now,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (picked == null) return;
-    setState(() {
-      _toDate = picked;
-      if (_fromDate != null && _toDate!.isBefore(_fromDate!)) {
-        _fromDate = _toDate;
-      }
-      _quickRange = DateQuickRange.none;
-    });
-  }
-
-  Future<void> _downloadVisible(List<Invoice> invoices) async {
-    if (_downloadingVisible || invoices.isEmpty) return;
-    setState(() => _downloadingVisible = true);
-    try {
-      await widget.onDownloadVisibleInvoices(invoices);
-    } finally {
-      if (mounted) setState(() => _downloadingVisible = false);
+  @override
+  void didUpdateWidget(covariant _InvoiceList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filterController != widget.filterController) {
+      oldWidget.filterController.removeListener(_refresh);
+      widget.filterController.addListener(_refresh);
     }
   }
 
   @override
+  void dispose() {
+    widget.filterController.removeListener(_refresh);
+    super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
-    final hasFilter = _fromDate != null || _toDate != null;
-    final filtered = widget.invoices.where((inv) {
-      final date = _invoiceDate(inv);
-      if (!hasFilter) return true;
-      if (date == null) return false;
-      if (_fromDate != null && date.isBefore(_startOfDay(_fromDate!))) {
-        return false;
-      }
-      if (_toDate != null && date.isAfter(_endOfDay(_toDate!))) {
-        return false;
-      }
-      return true;
-    }).toList();
+    final filters = widget.filterController;
+    final filtered = filters.apply(widget.invoices);
 
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DateRangeFilterCard(
-            quickRange: _quickRange,
-            expanded: _filtersExpanded,
-            fromDate: _fromDate,
-            toDate: _toDate,
-            showLabel: true,
-            labelActions: [
-              Tooltip(
-                message: filtered.isEmpty
-                    ? l.noInvoicesYet
-                    : isSpanish
-                        ? 'Descargar las facturas visibles (${filtered.length})'
-                        : 'Download visible invoices (${filtered.length})',
-                child: InkWell(
-                  onTap: filtered.isEmpty || _downloadingVisible
-                      ? null
-                      : () => _downloadVisible(filtered),
-                  borderRadius: BorderRadius.circular(999),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: cs.surface.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: cs.outlineVariant.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_downloadingVisible)
-                          SizedBox(
-                            width: 13,
-                            height: 13,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          )
-                        else
-                          Icon(
-                            Icons.folder_zip_outlined,
-                            size: 14,
-                            color: filtered.isEmpty
-                                ? cs.onSurfaceVariant.withValues(alpha: 0.35)
-                                : cs.onSurfaceVariant,
-                          ),
-                        const SizedBox(width: 6),
-                        Text(
-                          isSpanish
-                              ? 'ZIP visibles (${filtered.length})'
-                              : 'Visible ZIP (${filtered.length})',
-                          style: t.bodySmall.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: filtered.isEmpty
-                                ? cs.onSurfaceVariant.withValues(alpha: 0.35)
-                                : cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-            onToggleExpanded: () =>
-                setState(() => _filtersExpanded = !_filtersExpanded),
-            onClear: () => setState(() {
-              _fromDate = null;
-              _toDate = null;
-              _quickRange = DateQuickRange.none;
-            }),
-            onPickFrom: _pickFromDate,
-            onPickTo: _pickToDate,
-            onSelectQuickRange: (value) {
-              if (value == DateQuickRange.month) {
-                _setRangeDays(30);
-              } else if (value == DateQuickRange.quarter) {
-                _setRangeMonths(3);
-              } else {
-                setState(() {
-                  _quickRange = DateQuickRange.custom;
-                  _filtersExpanded = true;
-                });
-              }
-            },
-          ),
-          const SizedBox(height: 8),
+          if (filters.customRangeExpanded) ...[
+            _ClientCustomDateRange(controller: filters),
+            const SizedBox(height: 2),
+          ],
           Expanded(
             child: filtered.isEmpty
                 ? Center(
@@ -599,10 +830,7 @@ class _InvoiceListState extends State<_InvoiceList> {
         final item = items[i];
         if (item is _MonthKey) {
           return Padding(
-            padding: EdgeInsets.only(
-              top: i == 0 ? 0 : 12,
-              bottom: 6,
-            ),
+            padding: EdgeInsets.zero,
             child: _MonthSeparator(label: item.label),
           );
         }
@@ -611,18 +839,199 @@ class _InvoiceListState extends State<_InvoiceList> {
           (c) => c.id == inv.clientId,
           orElse: () => widget.fallbackClient,
         );
-        final isLast = i == items.length - 1 || items[i + 1] is _MonthKey;
+
         return Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
+          padding: EdgeInsets.zero,
           child: InvoiceListItem(
             invoice: inv,
             client: client,
+            showClient: false,
+            visibleFinancialColumns: const {
+              HexoraFinancialColumn.date,
+              HexoraFinancialColumn.total,
+            },
             onTap: () => widget.onTap(inv),
+            onPreview: () => widget.onTap(inv),
+            selected: widget.selectedInvoiceId == inv.id,
             onDelete:
                 widget.onDelete == null ? null : () => widget.onDelete!(inv),
+            onEdit: widget.onEdit == null ? null : () => widget.onEdit!(inv),
           ),
         );
       },
+    );
+  }
+}
+
+class _ClientCustomDateRange extends StatelessWidget {
+  const _ClientCustomDateRange({required this.controller});
+
+  final _ClientInvoiceFilterController controller;
+
+  Future<void> _pick(BuildContext context, {required bool from}) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: from
+          ? controller.fromDate ?? controller.toDate ?? now
+          : controller.toDate ?? controller.fromDate ?? now,
+      firstDate: DateTime(now.year - 10),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked == null) return;
+    if (from) {
+      controller.updateFrom(picked);
+    } else {
+      controller.updateTo(picked);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    String label(DateTime? value, String fallback) =>
+        value == null ? fallback : DateFormat.yMMMd(l.localeName).format(value);
+
+    return Container(
+      key: const ValueKey('client-custom-date-range'),
+      constraints: const BoxConstraints(minHeight: 34),
+      padding: const EdgeInsetsDirectional.only(start: 4, end: 4),
+      color: cs.surfaceContainerLow.withValues(alpha: .45),
+      child: Row(
+        children: [
+          Icon(Icons.date_range_outlined, size: 15, color: cs.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Flexible(
+            child: TextButton(
+              onPressed: () => _pick(context, from: true),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 30),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+              ),
+              child: Text(
+                label(controller.fromDate, l.eventStartDateHint),
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall,
+              ),
+            ),
+          ),
+          Text('–', style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
+          Flexible(
+            child: TextButton(
+              onPressed: () => _pick(context, from: false),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 30),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+              ),
+              child: Text(
+                label(controller.toDate, l.eventEndDateHint),
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: l.clearSelection,
+            onPressed: controller.clear,
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+            icon: const Icon(Icons.close_rounded, size: 16),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClientPeriodMenu extends StatelessWidget {
+  const _ClientPeriodMenu({
+    required this.selected,
+    required this.hasFilter,
+    required this.isSpanish,
+    required this.onSelected,
+  });
+
+  final DateQuickRange selected;
+  final bool hasFilter;
+  final bool isSpanish;
+  final ValueChanged<DateQuickRange?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final narrow = MediaQuery.sizeOf(context).width < 500;
+    final label = switch (selected) {
+      DateQuickRange.month => isSpanish ? '30 días' : '30 days',
+      DateQuickRange.quarter => isSpanish ? '3 meses' : '3 months',
+      DateQuickRange.custom => isSpanish ? 'Personalizado' : 'Custom',
+      DateQuickRange.none => isSpanish ? 'Periodo' : 'Period',
+    };
+
+    return PopupMenuButton<String>(
+      key: const ValueKey('client-document-period-menu'),
+      tooltip: isSpanish ? 'Seleccionar periodo' : 'Select period',
+      onSelected: (value) => onSelected(switch (value) {
+        'month' => DateQuickRange.month,
+        'quarter' => DateQuickRange.quarter,
+        'custom' => DateQuickRange.custom,
+        _ => null,
+      }),
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'all',
+          child: Text(isSpanish ? 'Todo el periodo' : 'All time'),
+        ),
+        PopupMenuItem(
+          value: 'month',
+          child: Text(isSpanish ? '30 días' : '30 days'),
+        ),
+        PopupMenuItem(
+          value: 'quarter',
+          child: Text(isSpanish ? '3 meses' : '3 months'),
+        ),
+        PopupMenuItem(
+          value: 'custom',
+          child: Text(isSpanish ? 'Personalizado' : 'Custom'),
+        ),
+      ],
+      child: Container(
+        height: 32,
+        width: narrow ? 32 : null,
+        padding: EdgeInsets.symmetric(horizontal: narrow ? 7 : 10),
+        decoration: BoxDecoration(
+          color: hasFilter
+              ? cs.primary.withValues(alpha: 0.08)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.date_range_outlined,
+                size: 15, color: hasFilter ? cs.primary : cs.onSurfaceVariant),
+            if (!narrow) ...[
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: t.bodySmall.copyWith(
+                  color: hasFilter ? cs.primary : cs.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.expand_more_rounded,
+                  size: 15,
+                  color: hasFilter ? cs.primary : cs.onSurfaceVariant),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -647,43 +1056,6 @@ class _MonthSeparator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Row(
-      children: [
-        Expanded(
-          child: Divider(
-            color: cs.outlineVariant.withValues(alpha: 0.35),
-            height: 1,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.3),
-            ),
-          ),
-          child: Text(
-            label,
-            style: t.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              fontSize: 11,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Divider(
-            color: cs.outlineVariant.withValues(alpha: 0.35),
-            height: 1,
-          ),
-        ),
-      ],
-    );
+    return HexoraMonthSeparator(label: label, flat: true);
   }
 }

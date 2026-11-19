@@ -47,14 +47,27 @@ import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
 import 'package:hexora/presentation/screens/profile/edit/profile_edit_screen.dart';
 import 'package:hexora/presentation/screens/profile/view/profile_view_screen.dart';
 import 'package:hexora/presentation/screens/settings/screens/settings.dart';
+import 'package:hexora/presentation/screens/preferences/user_preferences_screen.dart';
+import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_preview_screen.dart';
 
 final Map<String, WidgetBuilder> routes = {
   AppRoutes.settings: (context) => const Settings(),
+  AppRoutes.preferences: (context) => const UserPreferencesScreen(),
+  AppRoutes.dashboardPreview: (context) => const DashboardPreviewScreen(),
   AppRoutes.loginRoute: (context) => const LoginView(),
   AppRoutes.registerRoute: (context) => const RegisterView(),
   AppRoutes.forgotPasswordRoute: (context) => const ForgotPasswordScreen(),
-  AppRoutes.resetPasswordRoute: (context) => const ResetPasswordScreen(),
-  AppRoutes.passwordRecoveryRoute: (context) => const ForgotPasswordScreen(),
+  AppRoutes.resetPasswordRoute: (context) => ResetPasswordScreen(
+        initialToken: _routeToken(context),
+      ),
+  // Older reset emails use /password-recovery. Keep it as the forgot form
+  // when opened directly, but show the reset form when a token is present.
+  AppRoutes.passwordRecoveryRoute: (context) {
+    final token = _routeToken(context);
+    return token == null
+        ? const ForgotPasswordScreen()
+        : ResetPasswordScreen(initialToken: token);
+  },
   AppRoutes.verifyEmailRoute: (context) => const VerifyEmailView(),
   AppRoutes.verifyEmailSuccessRoute: (context) =>
       const VerifyEmailSuccessView(),
@@ -66,13 +79,15 @@ final Map<String, WidgetBuilder> routes = {
   AppRoutes.statementsAnalytics: (context) => const StatementsAnalyticsScreen(),
   AppRoutes.groupDashboard: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const GroupRouteRecovery(routeName: AppRoutes.groupDashboard);
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupDashboard);
     return GroupDashboard(group: group);
   },
 
   AppRoutes.groupInsights: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const GroupRouteRecovery(routeName: AppRoutes.groupInsights);
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupInsights);
     return GroupInsightsScreen(group: group);
   },
   AppRoutes.groupQuickNotes: (context) {
@@ -118,7 +133,8 @@ final Map<String, WidgetBuilder> routes = {
     if (args is Map) {
       final groupId = (args['groupId'] ?? '').toString();
       final jobId = (args['jobId'] ?? '').toString();
-      if (groupId.isEmpty || jobId.isEmpty) return const MissingRouteDataScreen();
+      if (groupId.isEmpty || jobId.isEmpty)
+        return const MissingRouteDataScreen();
       return ExpenseOcrReprocessResultsScreen(groupId: groupId, jobId: jobId);
     }
     return const MissingRouteDataScreen();
@@ -132,7 +148,8 @@ final Map<String, WidgetBuilder> routes = {
 
   AppRoutes.addEvent: (context) {
     final group = ModalRoute.of(context)!.settings.arguments as Group?;
-    if (group == null) return const GroupRouteRecovery(routeName: AppRoutes.addEvent);
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.addEvent);
     return AddEventScreen(group: group);
   },
   AppRoutes.eventDetail: (context) {
@@ -155,7 +172,9 @@ final Map<String, WidgetBuilder> routes = {
   },
   AppRoutes.groupServicesClients: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const GroupRouteRecovery(routeName: AppRoutes.groupServicesClients);
+    if (group == null)
+      return const GroupRouteRecovery(
+          routeName: AppRoutes.groupServicesClients);
     return ServicesClientsScreen(group: group);
   },
   AppRoutes.groupIncome: (context) {
@@ -180,7 +199,8 @@ final Map<String, WidgetBuilder> routes = {
       initialReceiptId = args['initialReceiptId']?.toString();
       initialBudgetId = args['initialBudgetId']?.toString();
     }
-    if (group == null) return const GroupRouteRecovery(routeName: AppRoutes.groupIncome);
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupIncome);
     return GroupInvoicesScreen(
       group: group,
       initialMenu: initialMenu,
@@ -211,7 +231,8 @@ final Map<String, WidgetBuilder> routes = {
       initialReceiptId = args['initialReceiptId']?.toString();
       initialBudgetId = args['initialBudgetId']?.toString();
     }
-    if (group == null) return const GroupRouteRecovery(routeName: AppRoutes.groupInvoices);
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupInvoices);
     return GroupInvoicesScreen(
       group: group,
       initialMenu: initialMenu,
@@ -222,12 +243,14 @@ final Map<String, WidgetBuilder> routes = {
   },
   AppRoutes.groupExpenses: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const GroupRouteRecovery(routeName: AppRoutes.groupExpenses);
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupExpenses);
     return GastosModuleScreen(group: group);
   },
   AppRoutes.recurringInvoices: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const GroupRouteRecovery(routeName: AppRoutes.recurringInvoices);
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.recurringInvoices);
     return RecurringInvoicesScreen(group: group);
   },
   AppRoutes.agenda: (context) {
@@ -246,12 +269,14 @@ final Map<String, WidgetBuilder> routes = {
 
   AppRoutes.groupMembers: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const GroupRouteRecovery(routeName: AppRoutes.groupMembers);
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupMembers);
     return GroupMembersScreen(group: group);
   },
   AppRoutes.groupTimeTracking: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const GroupRouteRecovery(routeName: AppRoutes.groupTimeTracking);
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupTimeTracking);
     return WorkersHubScreen(group: group);
   },
   AppRoutes.headerSection: (context) {
@@ -262,7 +287,8 @@ final Map<String, WidgetBuilder> routes = {
   },
   AppRoutes.createWorker: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const GroupRouteRecovery(routeName: AppRoutes.createWorker);
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.createWorker);
     return CreateWorkerScreen(group: group);
   },
   AppRoutes.createTimeEntry: (context) {
@@ -271,7 +297,12 @@ final Map<String, WidgetBuilder> routes = {
     if (args == null) return const MissingRouteDataScreen();
     final group = args['group'] as Group;
     final workers = args['workers'] as List<Worker>;
-    return CreateTimeEntryScreen(group: group, workers: workers);
+    final fixedWorker = args['fixedWorker'] as Worker?;
+    return CreateTimeEntryScreen(
+      group: group,
+      workers: workers,
+      fixedWorker: fixedWorker,
+    );
   },
   AppRoutes.workerTimeTracking: (context) {
     final args =
@@ -282,3 +313,12 @@ final Map<String, WidgetBuilder> routes = {
     return WorkerTimeTrackingScreen(group: group, worker: worker);
   },
 };
+
+String? _routeToken(BuildContext context) {
+  final routeName = ModalRoute.of(context)?.settings.name;
+  final routeUri = routeName == null ? null : Uri.tryParse(routeName);
+  final token =
+      routeUri?.queryParameters['token'] ?? Uri.base.queryParameters['token'];
+  final trimmed = token?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}

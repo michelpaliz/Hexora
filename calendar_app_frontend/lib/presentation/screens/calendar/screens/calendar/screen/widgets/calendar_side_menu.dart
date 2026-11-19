@@ -1,14 +1,16 @@
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/models/groups/group.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/nav_section.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 
 class CalendarSideMenu extends StatelessWidget {
-  static const double expandedWidth = 220;
-  static const double collapsedWidth = 64;
+  static const double expandedWidth = NavigationTokens.sidebarWidth;
+  static const double collapsedWidth = NavigationTokens.railWidth;
 
   final Group group;
   final bool collapsed;
@@ -28,6 +30,8 @@ class CalendarSideMenu extends StatelessWidget {
   final bool canEditBusinessHours;
   final int upcomingCount;
   final int completedCount;
+  final Widget? dateNavigator;
+  final Widget? calendarFilters;
 
   const CalendarSideMenu({
     super.key,
@@ -49,24 +53,64 @@ class CalendarSideMenu extends StatelessWidget {
     this.canEditBusinessHours = false,
     this.upcomingCount = 0,
     this.completedCount = 0,
+    this.dateNavigator,
+    this.calendarFilters,
   });
 
   @override
   Widget build(BuildContext context) {
+    return Theme(
+      data: navigationTheme(Theme.of(context)),
+      child: Builder(builder: _buildMenu),
+    );
+  }
+
+  Widget _buildMenu(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
     final isEs = _isSpanish(context);
     final menuWidth = collapsed ? collapsedWidth : expandedWidth;
-    const childIndent = 12.0;
+    const childIndent = 0.0;
+    final colors = Theme.of(context).colorScheme;
+    Widget section(
+        String title, bool expanded, VoidCallback toggle, Widget child) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const SizedBox(height: 6),
+        Divider(height: 1, color: colors.outlineVariant.withValues(alpha: .3)),
+        InkWell(
+          onTap: toggle,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+            child: Row(children: [
+              Expanded(
+                  child: Text(title,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: colors.onSurface))),
+              Icon(expanded ? Icons.expand_less : Icons.expand_more,
+                  size: 16, color: colors.onSurfaceVariant),
+            ]),
+          ),
+        ),
+        if (expanded) child,
+      ]);
+    }
 
     if (collapsed) {
-      return _CollapsedCalendarMenu(
+      return SizedBox(
         width: menuWidth,
-        selectedMenu: selectedMenu,
-        onMenuChanged: onMenuChanged,
-        onAddEvent: canAddEvents ? onAddEvent : null,
-        onToggleCollapse: onToggleCollapse,
-        showCollapseToggle: showCollapseToggle,
+        child: SidebarEdgeShell(
+          backgroundColor: AppDarkColors.sidebar,
+          collapsed: true,
+          onToggle: onToggleCollapse,
+          showHandle: showCollapseToggle,
+          child: _CollapsedCalendarMenu(
+            width: menuWidth,
+            selectedMenu: selectedMenu,
+            onMenuChanged: onMenuChanged,
+            onAddEvent: canAddEvents ? onAddEvent : null,
+          ),
+        ),
       );
     }
 
@@ -74,248 +118,141 @@ class CalendarSideMenu extends StatelessWidget {
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       width: menuWidth,
-      decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.36)),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
-            child: _CalendarModuleHeader(
-              title: isEs ? 'Calendario' : 'Calendar',
-              onToggleCollapse:
-                  showCollapseToggle ? onToggleCollapse : null,
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Vistas' : 'Views',
-                    icon: Icons.calendar_month_outlined,
-                    expanded: viewsExpanded,
-                    onToggle: onToggleViewsExpanded,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.calendar_view_week_outlined,
-                          label: l.tabWeek,
-                          selected: selectedMenu == 'week',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('week'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.calendar_view_day_outlined,
-                          label: l.tabDay,
-                          selected: selectedMenu == 'day',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('day'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.view_agenda_outlined,
-                          label: l.tabAgenda,
-                          selected: selectedMenu == 'agenda',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('agenda'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.calendar_today_outlined,
-                          label: l.tabMonth,
-                          selected: selectedMenu == 'month',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('month'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.grid_view_rounded,
-                          label: _overviewLabel(context),
-                          selected: selectedMenu == 'mini_calendar',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('mini_calendar'),
-                        ),
-                      ],
+      child: SidebarEdgeShell(
+        backgroundColor: AppDarkColors.sidebar,
+        collapsed: false,
+        onToggle: onToggleCollapse,
+        showHandle: showCollapseToggle,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 10),
+                      child: Row(children: [
+                        Icon(Icons.calendar_month_outlined,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                            child: Text(l.calendarTitle,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w700))),
+                      ]),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Acciones' : 'Actions',
-                    icon: Icons.bolt_outlined,
-                    expanded: true,
-                    onToggle: () {},
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.add_rounded,
-                          label: _newEventLabel(context),
-                          selected: false,
-                          primaryAction: true,
-                          indent: childIndent,
-                          onPressed: canAddEvents ? onAddEvent : null,
+                    if (canAddEvents)
+                      FilledButton.icon(
+                        onPressed: onAddEvent,
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: Text(_newEventLabel(context)),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(34),
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(9)),
                         ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.alarm_add_rounded,
-                          label: _newReminderLabel(context),
-                          selected: false,
-                          primaryAction: true,
-                          indent: childIndent,
-                          onPressed: canAddEvents ? onAddEvent : null,
-                        ),
-                      ],
+                      ),
+                    if (dateNavigator != null) ...[
+                      const SizedBox(height: 8),
+                      dateNavigator!,
+                    ],
+                    if (calendarFilters != null)
+                      section(
+                          isEs ? 'Mis calendarios' : 'My calendars',
+                          viewsExpanded,
+                          onToggleViewsExpanded,
+                          calendarFilters!),
+                    section(
+                      isEs ? 'Eventos y tareas' : 'Events and tasks',
+                      eventsExpanded,
+                      onToggleEventsExpanded,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GroupInvoicesSubMenuItem(
+                            compact: true,
+                            icon: Icons.upcoming_rounded,
+                            label: l.sectionUpcoming,
+                            count: upcomingCount > 0 ? upcomingCount : null,
+                            selected: selectedMenu == 'upcoming',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('upcoming'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            compact: true,
+                            icon: Icons.task_alt_rounded,
+                            label: isEs ? 'Completados' : 'Completed',
+                            count: completedCount > 0 ? completedCount : null,
+                            selected: selectedMenu == 'completed',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('completed'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            compact: true,
+                            icon: Icons.checklist_rounded,
+                            label: _tasksLabel(context),
+                            selected: selectedMenu == 'tasks',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('tasks'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  _BusinessHoursInfo(
-                    group: group,
-                    canEdit: canEditBusinessHours,
-                    onTap: canEditBusinessHours ? onEditBusinessHours : null,
-                  ),
-                  const SizedBox(height: 8),
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Eventos' : 'Events',
-                    icon: Icons.event_available_outlined,
-                    expanded: eventsExpanded,
-                    onToggle: onToggleEventsExpanded,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        GroupInvoicesSectionLabel(
-                          isEs ? 'Seguimiento' : 'Tracking',
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.upcoming_rounded,
-                          label: l.sectionUpcoming,
-                          count: upcomingCount > 0 ? upcomingCount : null,
-                          selected: selectedMenu == 'upcoming',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('upcoming'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.task_alt_rounded,
-                          label: l.completedEventsSectionTitle,
-                          count: completedCount > 0 ? completedCount : null,
-                          selected: selectedMenu == 'completed',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('completed'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.checklist_rounded,
-                          label: _tasksLabel(context),
-                          selected: selectedMenu == 'tasks',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('tasks'),
-                        ),
-                      ],
+                    const SizedBox(height: 8),
+                    section(
+                      isEs ? 'Configuración' : 'Settings',
+                      insightsExpanded,
+                      onToggleInsightsExpanded,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _BusinessHoursInfo(
+                            group: group,
+                            canEdit: canEditBusinessHours,
+                            onTap: canEditBusinessHours
+                                ? onEditBusinessHours
+                                : null,
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            compact: true,
+                            icon: Icons.grid_view_rounded,
+                            label: _overviewLabel(context),
+                            selected: selectedMenu == 'mini_calendar',
+                            onPressed: () => onMenuChanged('mini_calendar'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            compact: true,
+                            icon: Icons.analytics_outlined,
+                            label: _reportsLabel(context),
+                            selected: selectedMenu == 'insights',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('insights'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            compact: true,
+                            icon: Icons.query_stats_rounded,
+                            label: _statsLabel(context),
+                            selected: selectedMenu == 'insights',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('insights'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Analisis' : 'Analysis',
-                    icon: Icons.insights_outlined,
-                    expanded: insightsExpanded,
-                    onToggle: onToggleInsightsExpanded,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.analytics_outlined,
-                          label: _reportsLabel(context),
-                          selected: selectedMenu == 'insights',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('insights'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.query_stats_rounded,
-                          label: _statsLabel(context),
-                          selected: selectedMenu == 'insights',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('insights'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CalendarModuleHeader extends StatelessWidget {
-  const _CalendarModuleHeader({
-    required this.title,
-    required this.onToggleCollapse,
-  });
-
-  final String title;
-  final VoidCallback? onToggleCollapse;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l = AppLocalizations.of(context)!;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.38)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: cs.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Icon(
-              Icons.calendar_month_outlined,
-              size: 17,
-              color: cs.primary,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: cs.onSurface,
-                    fontWeight: FontWeight.w900,
-                  ),
-            ),
-          ),
-          if (onToggleCollapse != null)
-            Tooltip(
-              message: l.groupInvoicesNavCollapse,
-              child: IconButton.filledTonal(
-                onPressed: onToggleCollapse,
-                icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
-                iconSize: 18,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(40, 34),
-                  fixedSize: const Size(40, 34),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  ],
                 ),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -327,21 +264,15 @@ class _CollapsedCalendarMenu extends StatelessWidget {
     required this.selectedMenu,
     required this.onMenuChanged,
     required this.onAddEvent,
-    required this.onToggleCollapse,
-    required this.showCollapseToggle,
   });
 
   final double width;
   final String selectedMenu;
   final ValueChanged<String> onMenuChanged;
   final VoidCallback? onAddEvent;
-  final VoidCallback onToggleCollapse;
-  final bool showCollapseToggle;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l = AppLocalizations.of(context)!;
     final isEs = _isSpanish(context);
     final activeKey = selectedMenu == 'upcoming' ||
             selectedMenu == 'completed' ||
@@ -378,29 +309,8 @@ class _CollapsedCalendarMenu extends StatelessWidget {
       curve: Curves.easeOutCubic,
       width: width,
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-      decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.42)),
-        ),
-      ),
       child: Column(
         children: [
-          if (showCollapseToggle)
-            Align(
-              alignment: Alignment.center,
-              child: IconButton.filledTonal(
-                tooltip: l.groupInvoicesNavExpand,
-                onPressed: onToggleCollapse,
-                icon: const Icon(Icons.keyboard_double_arrow_right_rounded),
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(42, 42),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-            ),
-          const SizedBox(height: 8),
           Expanded(
             child: ListView.separated(
               padding: EdgeInsets.zero,
@@ -409,54 +319,28 @@ class _CollapsedCalendarMenu extends StatelessWidget {
               itemBuilder: (context, index) {
                 final item = items[index];
                 final selected = item.key == activeKey;
-                return Tooltip(
-                  message: item.label,
-                  waitDuration: const Duration(milliseconds: 350),
-                  child: Center(
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () {
-                        switch (item.key) {
-                          case 'actions':
-                            onAddEvent?.call();
-                            break;
-                          case 'events':
-                            onMenuChanged('upcoming');
-                            break;
-                          case 'insights':
-                            onMenuChanged('insights');
-                            break;
-                          case 'calendar':
-                          default:
-                            onMenuChanged('week');
-                            break;
-                        }
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 160),
-                        curve: Curves.easeOutCubic,
-                        width: 48,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? cs.primary.withValues(alpha: 0.13)
-                              : cs.surfaceContainerHighest
-                                  .withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(13),
-                          border: Border.all(
-                            color: selected
-                                ? cs.primary.withValues(alpha: 0.25)
-                                : cs.outlineVariant.withValues(alpha: 0.18),
-                          ),
-                        ),
-                        child: Icon(
-                          item.icon,
-                          size: 19,
-                          color: selected ? cs.primary : cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
+                return SidebarItem(
+                  icon: item.icon,
+                  label: item.label,
+                  isSelected: selected,
+                  collapsed: true,
+                  onTap: () {
+                    switch (item.key) {
+                      case 'actions':
+                        onAddEvent?.call();
+                        break;
+                      case 'events':
+                        onMenuChanged('upcoming');
+                        break;
+                      case 'insights':
+                        onMenuChanged('insights');
+                        break;
+                      case 'calendar':
+                      default:
+                        onMenuChanged('week');
+                        break;
+                    }
+                  },
                 );
               },
             ),
@@ -506,9 +390,7 @@ class _BusinessHoursInfoState extends State<_BusinessHoursInfo> {
       curve: Curves.easeOutCubic,
       padding: const EdgeInsets.fromLTRB(7, 5, 7, 6),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.115),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.18)),
       ),
       child: InkWell(
         onTap: widget.onTap,
@@ -621,13 +503,6 @@ String _overviewLabel(BuildContext context) {
 
 String _newEventLabel(BuildContext context) {
   return _isSpanish(context) ? 'Nuevo evento' : 'New event';
-}
-
-String _newReminderLabel(BuildContext context) {
-  final l = AppLocalizations.of(context)!;
-  return _isSpanish(context)
-      ? 'Nuevo ${l.reminderLabel.toLowerCase()}'
-      : 'New reminder';
 }
 
 String _tasksLabel(BuildContext context) {

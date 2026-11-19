@@ -1,31 +1,41 @@
 import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
-import 'dart:math' as math;
+import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_preview_screen.dart';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/navigation/shell/hexora_app_shell.dart';
+import 'package:hexora/navigation/shell/hexora_global_nav_bar.dart';
+import 'package:hexora/navigation/shell/hexora_nav_components.dart';
+import 'package:hexora/navigation/shell/worker_status_indicator.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/layout/download_jobs_top_menu.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/layout/group_dashboard_content.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/group_dashboard_right_panel.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/gastos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/presupuestos_module_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/quick_notes/quick_notes_board_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
 import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
-import 'package:hexora/theme/colors/app_colors.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
+import 'package:hexora/services/weather/weather_service.dart';
+import 'package:hexora/presentation/shared/utils/weather/weather_summary_localizer.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../state/group_dashboard_state.dart';
 
@@ -36,42 +46,88 @@ class WideLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final preferences = context.watch<UserPreferencesProvider>();
+    final destinations = _dashboardDestinations(
+      l,
+      canSeeAdmin: state.canSeeAdmin,
+      canSeeWorkers: state.canSeeAdmin,
+    );
+    final workspace = WorkspaceContent(
+      manager: state.workspaceTabs,
+      builder: (context, tab) => _buildContent(state, context, l, tab),
+    );
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1800),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
-          child: Column(
+    return HexoraAppShell(
+      globalNav: _DashboardTopNav(state: state, l: l, user: state.user),
+      globalNavigationCollapsed: preferences.topNavCollapsed,
+      onRestoreGlobalNavigation: () =>
+          context.read<UserPreferencesProvider>().setTopNavCollapsed(false),
+      globalNavigationRestoreLabel: state.group.name,
+      body: ListenableBuilder(
+        listenable: state.workspaceTabs,
+        child: workspace,
+        builder: (context, child) {
+          final activeSection =
+              state.workspaceTabs.activeTab?.section ?? state.activeSection;
+          String? moduleLabel;
+          for (final destination in destinations) {
+            if (destination.id == activeSection) {
+              moduleLabel = destination.label;
+              break;
+            }
+          }
+          final content = moduleLabel == null
+              ? child!
+              : HexoraNavContext(
+                  moduleLabel: moduleLabel,
+                  child: child!,
+                );
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Horizontal top nav ───────────────────────
-              _DashboardTopNav(state: state, l: l, user: state.user),
-              const SizedBox(height: 10),
-              // ── Content ──────────────────────────────────
-              Expanded(child: _buildContent(state, context, l)),
+              _DashboardModuleSidebar(
+                destinations: destinations,
+                activeId: activeSection,
+                onSelected: state.openSection,
+              ),
+              Expanded(child: content),
             ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildContent(
-      GroupDashboardState state, BuildContext context, AppLocalizations l) {
+    GroupDashboardState state,
+    BuildContext context,
+    AppLocalizations l,
+    WorkspaceTab tab,
+  ) {
+    final section = tab.section;
     const showMainBody = !kIsWeb;
-    final showCalendarInline = kIsWeb && state.activeSection == 'calendar';
-    final showInvoicesInline = kIsWeb && state.activeSection == 'invoices';
-    final showBudgetsInline = kIsWeb && state.activeSection == Sections.budgets;
-    final showExpensesInline =
-        kIsWeb && state.activeSection == Sections.expenses;
-    final showMapInline = state.activeSection == Sections.maps;
-    final showEmailsInline = state.activeSection == 'emails';
-    final showEnableBankingInline =
-        kIsWeb && state.activeSection == 'enableBanking';
-    final showTelegramInline = state.activeSection == 'telegram';
+    final showCalendarInline = kIsWeb && section == Sections.calendar;
+    final showInvoicesInline = kIsWeb &&
+        (section == Sections.invoices || section == Sections.invoiceClients);
+    final showBudgetsInline = kIsWeb && section == Sections.budgets;
+    final showExpensesInline = kIsWeb && section == Sections.expenses;
+    final showMapInline = section == Sections.maps;
+    final showEmailsInline = section == Sections.emails;
+    final showEnableBankingInline = kIsWeb && section == Sections.enableBanking;
+    final showTelegramInline = section == Sections.telegram;
+    final showQuickNotesInline = section == Sections.quickNotes;
 
-    if (state.activeSection == Sections.agenda) {
-      return AgendaScreen(groupId: state.group.id, embedded: true);
+    if (section == Sections.home) {
+      return DashboardPreviewScreen(
+        embedded: true,
+        onOpenSection: state.openSection,
+      );
+    }
+
+    if (section == Sections.agenda) {
+      return WorkspaceMainContent(
+        child: AgendaScreen(groupId: state.group.id, embedded: true),
+      );
     }
 
     if (showEmailsInline) {
@@ -84,6 +140,10 @@ class WideLayout extends StatelessWidget {
 
     if (showTelegramInline) {
       return const TelegramSectionScreen();
+    }
+
+    if (showQuickNotesInline) {
+      return QuickNotesBoardScreen(group: state.group, embedded: true);
     }
 
     return Row(
@@ -110,15 +170,23 @@ class WideLayout extends StatelessWidget {
               : showInvoicesInline
                   ? GroupInvoicesScreen(
                       key: ValueKey(
-                        'group-invoices-${state.group.id}-${state.activeSection}',
+                        'group-invoices-${state.group.id}-${tab.identity.value}-${tab.arguments['navigationRevision'] ?? 'initial'}',
                       ),
                       group: state.group,
                       embedded: true,
+                      initialMenu: tab.arguments['initialMenu'] ??
+                          (section == Sections.invoiceClients
+                              ? 'clients_flow'
+                              : 'invoices_issued'),
+                      initialInvoiceId: tab.arguments['initialInvoiceId'],
+                      initialReceiptId: tab.arguments['initialReceiptId'],
+                      initialBudgetId: tab.arguments['initialBudgetId'],
+                      onOpenWorkspace: state.openInvoicesWorkspace,
                     )
                   : showBudgetsInline
                       ? PresupuestosModuleScreen(
                           key: ValueKey(
-                            'group-budgets-${state.group.id}-${state.activeSection}',
+                            'group-budgets-${state.group.id}-${tab.identity.value}',
                           ),
                           group: state.group,
                           embedded: true,
@@ -131,47 +199,366 @@ class WideLayout extends StatelessWidget {
                           : showMapInline
                               ? ClientMapScreen(
                                   key: ValueKey(
-                                    'group-map-${state.group.id}-${state.activeSection}',
+                                    'group-map-${state.group.id}-${tab.identity.value}',
                                   ),
                                   group: state.group,
                                   embedded: true,
                                   canEdit: state.canSeeAdmin,
                                 )
                               : showEmailsInline
-                                  ? PremiumFeatureGate(
-                                      group: state.group,
-                                      feature: PremiumFeatureRequest.email,
-                                      child: const MailConsoleScreen(embedded: true),
-                                    )
+                                  ? const MailConsoleScreen(embedded: true)
                                   : showEnableBankingInline
                                       ? EnableBankingScreen(
                                           group: state.group,
                                           embedded: true,
                                         )
-                                      : GroupDashboardRightPanel(
-                                          activeAnchor: state.activeSection,
-                                          counts: state.counts,
-                                          group: state.group,
-                                          user: state.user,
-                                          role: state.role,
-                                          fetchReadSas: state.fetchReadSas,
-                                          usersInGroup: const [],
-                                          onOpenCalendar: () =>
-                                              state.openSection('calendar'),
-                                          onOpenNotifications: () => state
-                                              .openSection('notifications'),
-                                          onOpenSettings: () =>
-                                              state.openSection('settings'),
-                                        ),
+                                      : _fallbackPanel(state, section),
         ),
       ],
     );
   }
+
+  Widget _fallbackPanel(GroupDashboardState state, String section) {
+    final panel = GroupDashboardRightPanel(
+      activeAnchor: section,
+      counts: state.counts,
+      group: state.group,
+      user: state.user,
+      role: state.role,
+      fetchReadSas: state.fetchReadSas,
+      usersInGroup: const [],
+      onOpenCalendar: () => state.openSection('calendar'),
+      onOpenNotifications: () => state.openSection('notifications'),
+      onOpenSettings: () => state.openSection('settings'),
+    );
+    if (section == Sections.settings ||
+        section == Sections.workers ||
+        section == Sections.notifications ||
+        section == Sections.chat ||
+        section == Sections.businessChat) {
+      return panel;
+    }
+    return WorkspaceMainContent(child: panel);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Horizontal top navigation bar
+// Global navigation (adapter over the shared HexoraGlobalNavBar)
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Workspace modules shown in the global bar. Rarely used modules are grouped
+/// under "More"; notifications get a dedicated bell but stay searchable.
+List<HexoraNavDestination> _dashboardDestinations(
+  AppLocalizations l, {
+  required bool canSeeAdmin,
+  required bool canSeeWorkers,
+}) {
+  final es = l.localeName.startsWith('es');
+  return [
+    HexoraNavDestination(
+      id: Sections.home,
+      icon: Icons.home_outlined,
+      label: es ? 'Inicio' : 'Home',
+    ),
+    if (canSeeAdmin) ...[
+      HexoraNavDestination(
+        id: Sections.invoices,
+        icon: Icons.receipt_long_outlined,
+        label: es ? 'Ingresos' : 'Income',
+      ),
+      HexoraNavDestination(
+        id: Sections.invoiceClients,
+        icon: Icons.people_alt_outlined,
+        label: es ? 'Facturas por cliente' : 'Invoices by client',
+      ),
+    ],
+    if (canSeeAdmin) ...[
+      HexoraNavDestination(
+        id: Sections.expenses,
+        icon: Icons.trending_down,
+        label: es ? 'Gastos' : 'Expenses',
+      ),
+      HexoraNavDestination(
+        id: Sections.enableBanking,
+        icon: Icons.account_balance_outlined,
+        label: es ? 'Banco' : 'Bank',
+      ),
+    ],
+    HexoraNavDestination(
+      id: Sections.calendar,
+      icon: Icons.calendar_today_outlined,
+      label: l.calendar,
+    ),
+    HexoraNavDestination(
+      id: Sections.quickNotes,
+      icon: Icons.view_kanban_outlined,
+      label: es ? 'Notas rápidas' : 'Quick notes',
+    ),
+    if (canSeeAdmin) ...[
+      HexoraNavDestination(
+        id: Sections.budgets,
+        icon: Icons.description_outlined,
+        label: es ? 'Propuestas' : 'Proposals',
+      ),
+    ],
+    const HexoraNavDestination(
+      id: Sections.businessChat,
+      icon: Icons.chat_bubble_outline_rounded,
+      label: 'Chat',
+    ),
+    HexoraNavDestination(
+      id: Sections.maps,
+      icon: Icons.map_outlined,
+      label: es ? 'Mapa' : 'Map',
+      placement: HexoraNavPlacement.more,
+    ),
+    if (canSeeAdmin)
+      const HexoraNavDestination(
+        id: Sections.emails,
+        icon: Icons.email_outlined,
+        label: 'Emails',
+        placement: HexoraNavPlacement.more,
+      ),
+    if (canSeeWorkers)
+      HexoraNavDestination(
+        id: Sections.workers,
+        icon: Icons.people_outline_rounded,
+        label: es ? 'Trabajadores' : 'Workers',
+        placement: HexoraNavPlacement.more,
+      ),
+    if (canSeeAdmin) ...[
+      HexoraNavDestination(
+        id: Sections.chat,
+        icon: Icons.auto_awesome_outlined,
+        label: es ? 'Asistente IA' : 'AI assistant',
+        placement: HexoraNavPlacement.more,
+      ),
+      const HexoraNavDestination(
+        id: Sections.telegram,
+        icon: Icons.telegram,
+        label: 'Telegram',
+        placement: HexoraNavPlacement.more,
+      ),
+    ],
+    if (canSeeAdmin)
+      HexoraNavDestination(
+        id: Sections.services,
+        icon: Icons.people_outline,
+        label: es ? 'Clientes' : 'Clients',
+      ),
+    if (canSeeAdmin)
+      HexoraNavDestination(
+        id: Sections.settings,
+        icon: Icons.settings_outlined,
+        label: es ? 'Ajustes' : 'Settings',
+      ),
+    HexoraNavDestination(
+      id: Sections.notifications,
+      icon: Icons.notifications_none_rounded,
+      label: l.notifications,
+      placement: HexoraNavPlacement.searchOnly,
+    ),
+  ];
+}
+
+class _DashboardModuleSidebar extends StatefulWidget {
+  const _DashboardModuleSidebar({
+    required this.destinations,
+    required this.activeId,
+    required this.onSelected,
+  });
+
+  final List<HexoraNavDestination> destinations;
+  final String activeId;
+  final ValueChanged<String> onSelected;
+
+  @override
+  State<_DashboardModuleSidebar> createState() =>
+      _DashboardModuleSidebarState();
+}
+
+class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
+  bool _collapsed = false;
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  CollapsibleSidebarItem _item(HexoraNavDestination destination) =>
+      CollapsibleSidebarItem(
+        icon: destination.icon,
+        label: destination.label,
+        selected: destination.id == widget.activeId,
+        onTap: () => widget.onSelected(destination.id),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final query = _searchController.text.trim().toLowerCase();
+    bool matches(HexoraNavDestination destination) =>
+        query.isEmpty || destination.label.toLowerCase().contains(query);
+    List<CollapsibleSidebarItem> entries(List<String> ids) => [
+          for (final id in ids)
+            for (final destination in widget.destinations)
+              if (destination.id == id && matches(destination))
+                _item(destination),
+        ];
+
+    return CollapsibleSidebar(
+      title: es ? 'Módulos' : 'Modules',
+      headerIcon: Icons.apps_rounded,
+      menuExpandedWidth: 176,
+      collapsedToggleInRail: true,
+      collapsed: _collapsed,
+      onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
+      topContent: Row(
+        children: [
+          Expanded(
+            child: _MenuSearchField(
+              controller: _searchController,
+              isSpanish: es,
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Tooltip(
+            message: es ? 'Contraer módulos' : 'Collapse modules',
+            child: IconButton(
+              onPressed: () => setState(() => _collapsed = true),
+              icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
+              iconSize: 16,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 34, height: 36),
+              style: IconButton.styleFrom(
+                backgroundColor: NavigationColors(Theme.of(context).colorScheme)
+                    .compactControlSurface,
+                foregroundColor:
+                    NavigationColors(Theme.of(context).colorScheme).foreground,
+                side: BorderSide(
+                  color: NavigationColors(Theme.of(context).colorScheme)
+                      .compactControlBorder,
+                ),
+                overlayColor: NavigationColors(Theme.of(context).colorScheme)
+                    .compactControlHover,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      items: entries([Sections.home]),
+      groups: [
+        CollapsibleSidebarGroup(
+          label: es ? 'OPERACIONES' : 'OPERATIONS',
+          items: entries([
+            Sections.invoices,
+            Sections.invoiceClients,
+            Sections.expenses,
+            Sections.enableBanking,
+            Sections.budgets
+          ]),
+        ),
+        CollapsibleSidebarGroup(
+          label: es ? 'GESTIÓN' : 'MANAGEMENT',
+          items: entries([
+            Sections.services,
+            Sections.workers,
+            Sections.calendar,
+            Sections.quickNotes,
+            Sections.maps
+          ]),
+        ),
+        CollapsibleSidebarGroup(
+          label: es ? 'COMUNICACIÓN' : 'COMMUNICATION',
+          items: entries(
+              [Sections.businessChat, Sections.emails, Sections.telegram]),
+        ),
+        CollapsibleSidebarGroup(
+          label: es ? 'HERRAMIENTAS' : 'TOOLS',
+          items: entries([Sections.chat]),
+        ),
+        CollapsibleSidebarGroup(label: '', items: entries([Sections.settings])),
+      ],
+      secondaryHeader: false,
+      expandTooltip: es ? 'Expandir módulos' : 'Expand modules',
+      collapseTooltip: es ? 'Contraer módulos' : 'Collapse modules',
+    );
+  }
+}
+
+class _MenuSearchField extends StatelessWidget {
+  const _MenuSearchField({
+    required this.controller,
+    required this.isSpanish,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final bool isSpanish;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 36,
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        textInputAction: TextInputAction.search,
+        style: NavigationTokens.label(context).copyWith(fontSize: 12),
+        decoration: InputDecoration(
+          hintText: isSpanish ? 'Buscar...' : 'Search...',
+          hintStyle: NavigationTokens.label(context).copyWith(
+            fontSize: 12,
+            color: colors.onSurfaceVariant.withValues(alpha: 0.72),
+          ),
+          prefixIcon: Icon(Icons.search_rounded,
+              size: 16, color: colors.onSurfaceVariant),
+          suffixIcon: controller.text.isEmpty
+              ? Icon(Icons.tune_rounded,
+                  size: 16, color: colors.onSurfaceVariant)
+              : IconButton(
+                  tooltip: isSpanish ? 'Limpiar búsqueda' : 'Clear search',
+                  onPressed: () {
+                    controller.clear();
+                    onChanged('');
+                  },
+                  icon: const Icon(Icons.close_rounded, size: 16),
+                ),
+          prefixIconConstraints:
+              const BoxConstraints.tightFor(width: 34, height: 36),
+          suffixIconConstraints:
+              const BoxConstraints.tightFor(width: 32, height: 36),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          filled: true,
+          fillColor: NavigationColors(colors).compactControlSurface,
+          isDense: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(
+                color: NavigationColors(colors).compactControlBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(
+                color: NavigationColors(colors).compactControlBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: colors.primary, width: 1.2),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _DashboardTopNav extends StatefulWidget {
   const _DashboardTopNav({
@@ -189,374 +576,231 @@ class _DashboardTopNav extends StatefulWidget {
 }
 
 class _DashboardTopNavState extends State<_DashboardTopNav> {
-  static const _compactPreferenceKey = 'dashboard_top_nav_compact';
-  bool _compact = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCompactPreference();
-  }
-
-  Future<void> _loadCompactPreference() async {
-    final preferences = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _compact = preferences.getBool(_compactPreferenceKey) ?? true;
-    });
-  }
-
-  void _toggleCompact() {
-    final next = !_compact;
-    setState(() => _compact = next);
-    SharedPreferences.getInstance().then(
-      (preferences) => preferences.setBool(_compactPreferenceKey, next),
-    );
-  }
-
-  String _shortLabel(String section, String fullLabel) {
-    final l = widget.l;
-    switch (section) {
-      case Sections.calendar:
-        return l.calendar;
-      case Sections.services:
-        return 'Servicios';
-      case Sections.maps:
-        return l.localeName.startsWith('es') ? 'Mapa' : 'Map';
-      case Sections.invoices:
-        return l.localeName.startsWith('es') ? 'Ingresos' : 'Income';
-      case Sections.budgets:
-        return l.localeName.startsWith('es') ? 'Presup.' : 'Budgets';
-      case Sections.expenses:
-        return l.localeName.startsWith('es') ? 'Gastos' : 'Expenses';
-      case Sections.emails:
-        return 'Emails';
-      case Sections.chat:
-        return 'IA';
-      case Sections.businessChat:
-        return 'Chat';
-      case 'enableBanking':
-        return 'Banco';
-      case Sections.telegram:
-        return 'Telegram';
-      case Sections.workers:
-        return 'Tiempo';
-      case Sections.settings:
-        return 'Ajustes';
-      case Sections.notifications:
-        return 'Notif.';
-      default:
-        return fullLabel;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
     final l = widget.l;
     final user = widget.user;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        isDark ? AppDarkColors.textPrimary : AppColors.textPrimary;
-    final activeColor = isDark ? AppDarkColors.primary : AppColors.primary;
-    final bg = ThemeColors.cardBg(context);
+    final es = l.localeName.startsWith('es');
     final unreadNotifications = context
         .watch<NotificationDomain>()
         .notifications
         .where((n) => n.groupId == state.group.id && !n.isRead)
         .length;
+    final memberIds = {...state.group.userIds, state.group.ownerId}..remove('');
+    final preferences = context.watch<UserPreferencesProvider>();
+    final navigationMode = preferences.navigationDisplayMode;
 
-    final sectionItems = [
-      (
-        icon: Icons.calendar_month_rounded,
-        label: l.calendar,
-        section: Sections.calendar,
-        adminOnly: false,
-      ),
-      (
-        icon: Icons.design_services_outlined,
-        label: l.localeName.startsWith('es') ? 'Operaciones' : 'Operations',
-        section: Sections.services,
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.map_outlined,
-        label: l.localeName.startsWith('es') ? 'Mapa' : 'Map',
-        section: Sections.maps,
-        adminOnly: false,
-      ),
-      (
-        icon: Icons.receipt_long_outlined,
-        label: l.localeName.startsWith('es') ? 'Ingresos' : 'Income',
-        section: Sections.invoices,
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.description_outlined,
-        label: l.localeName.startsWith('es') ? 'Propuestas' : 'Proposals',
-        section: Sections.budgets,
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.trending_down_rounded,
-        label: l.localeName.startsWith('es') ? 'Gastos' : 'Expenses',
-        section: Sections.expenses,
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.email_outlined,
-        label: 'Emails',
-        section: Sections.emails,
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.chat_bubble_outline_rounded,
-        label: 'Chat',
-        section: Sections.businessChat,
-        adminOnly: false,
-      ),
-      (
-        icon: Icons.auto_awesome_outlined,
-        label: l.localeName.startsWith('es') ? 'Asistente IA' : 'AI assistant',
-        section: Sections.chat,
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.account_balance_outlined,
-        label: l.statementsNavTitle,
-        section: 'enableBanking',
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.telegram,
-        label: 'Telegram',
-        section: Sections.telegram,
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.access_time_rounded,
-        label: l.localeName.startsWith('es') ? 'Trabajadores' : 'Workers',
-        section: Sections.workers,
-        adminOnly: false,
-      ),
-      (
-        icon: Icons.settings_outlined,
-        label: l.localeName.startsWith('es') ? 'Ajustes' : 'Settings',
-        section: Sections.settings,
-        adminOnly: true,
-      ),
-      (
-        icon: unreadNotifications > 0
-            ? Icons.notifications_active_rounded
-            : Icons.notifications_none_rounded,
-        label: l.notifications,
-        section: Sections.notifications,
-        adminOnly: false,
-      ),
-    ];
-
-    final allowedItems =
-        sectionItems.where((i) => !i.adminOnly || state.canSeeAdmin).toList();
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final isMediumWidth = width >= 1180 && width < 1380;
-
-        final mediumOverflowSections = <String>{
-          Sections.settings,
-          Sections.notifications,
-        };
-
-        final primaryItems = _compact
-            ? allowedItems
-                .map(
-                  (i) => (
-                    icon: i.icon,
-                    label: _shortLabel(i.section, i.label),
-                    section: i.section,
-                    adminOnly: i.adminOnly,
-                  ),
-                )
-                .toList()
-            : isMediumWidth
-                ? allowedItems
-                    .where((i) => !mediumOverflowSections.contains(i.section))
-                    .map(
-                      (i) => (
-                        icon: i.icon,
-                        label: _shortLabel(i.section, i.label),
-                        section: i.section,
-                        adminOnly: i.adminOnly,
-                      ),
-                    )
-                    .toList()
-                : allowedItems;
-
-        final List<
-                ({IconData icon, String label, String section, bool adminOnly})>
-            overflowItems = !_compact && isMediumWidth
-                ? allowedItems
-                    .where((i) => mediumOverflowSections.contains(i.section))
-                    .toList()
-                : <({
-                    IconData icon,
-                    String label,
-                    String section,
-                    bool adminOnly
-                  })>[];
-
-        return AnimatedSize(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.topCenter,
-          child: Card(
-            elevation: 1,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(_compact ? 10 : 14),
+    return ListenableBuilder(
+      listenable: state.workspaceTabs,
+      builder: (context, _) {
+        final activeSection =
+            state.workspaceTabs.activeTab?.section ?? state.activeSection;
+        return HexoraGlobalNavBar(
+          destinations: const <HexoraNavDestination>[],
+          activeId: activeSection,
+          onSelected: state.openSection,
+          onBrandTap: state.canSeeAdmin
+              ? () => state.openSection(Sections.settings)
+              : null,
+          brandTooltip: es ? 'Ajustes del espacio' : 'Workspace settings',
+          groupSwitcher: _GroupSwitcherChip(
+            activeGroup: state.group,
+            userId: user?.id ?? '',
+            onOpenGroupSettings: () => state.openSection(Sections.settings),
+          ),
+          workspaceStatus: _TopWeatherChip(location: user?.location),
+          navigationDisplayMode: navigationMode,
+          collapsed: preferences.topNavCollapsed,
+          onToggleCollapsed: () {
+            final provider = context.read<UserPreferencesProvider>();
+            provider.setTopNavCollapsed(!provider.topNavCollapsed);
+          },
+          notificationCount: unreadNotifications,
+          notificationsSelected: activeSection == Sections.notifications,
+          onOpenNotifications: () => state.openSection(Sections.notifications),
+          downloads: IconTheme(
+            data: IconThemeData(
+                color: HexoraGlobalNavColors.foregroundFor(context)),
+            child: DefaultTextStyle.merge(
+              style: TextStyle(
+                  color: HexoraGlobalNavColors.foregroundFor(context)),
+              child: DownloadJobsTopMenu(
+                groupId: state.group.id,
+                onViewAllDownloads: () =>
+                    state.openSection(Sections.notifications),
+                compact: true,
+              ),
             ),
-            color: bg,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: _compact ? 12 : 26,
-                vertical: _compact ? 4 : 12,
+          ),
+          onlineMembers: state.canSeeAdmin
+              ? WorkerStatusIndicator(
+                  groupId: state.group.id,
+                  memberIds: memberIds.toList(),
+                  groupRoles: state.group.userRoles,
+                  onOpenWorkers: () => state.openSection(Sections.workers),
+                  compact: true,
+                )
+              : null,
+          profile: UserProfilePopup(
+            user: user,
+            onSettings: () => state.openSection(Sections.settings),
+          ),
+          onBack: () => Navigator.of(context).maybePop(),
+          backTooltip: l.groupSectionTitle,
+        );
+      },
+    );
+  }
+}
+
+// ── Group / workspace switcher ────────────────────────────────────────────────
+
+class _TopWeatherChip extends StatefulWidget {
+  const _TopWeatherChip({this.location});
+
+  final String? location;
+
+  @override
+  State<_TopWeatherChip> createState() => _TopWeatherChipState();
+}
+
+class _TopWeatherChipState extends State<_TopWeatherChip> {
+  final WeatherService _weatherService = WeatherService();
+  late Future<WeatherBundle> _weather;
+
+  String get _location {
+    final value = widget.location?.trim();
+    return value == null || value.isEmpty ? 'Denia' : value;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeather();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TopWeatherChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.location?.trim() != widget.location?.trim()) {
+      _loadWeather();
+    }
+  }
+
+  void _loadWeather() {
+    _weather = _weatherService.fetchWeatherBundle(
+      location: _location,
+      days: 1,
+    );
+  }
+
+  @override
+  void dispose() {
+    _weatherService.dispose();
+    super.dispose();
+  }
+
+  IconData _weatherIcon(WeatherSnapshot weather) {
+    final summary = weather.summary.summary.toLowerCase();
+    if (summary.contains('storm')) return Icons.thunderstorm_outlined;
+    if (summary.contains('rain')) return Icons.grain_rounded;
+    if (summary.contains('cloud')) return Icons.wb_cloudy_outlined;
+    return weather.isDay ? Icons.wb_sunny_rounded : Icons.nightlight_round;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < 1050) {
+      return const SizedBox.shrink();
+    }
+
+    final foreground = HexoraGlobalNavColors.foregroundFor(context);
+    final l = AppLocalizations.of(context)!;
+
+    return FutureBuilder<WeatherBundle>(
+      future: _weather,
+      builder: (context, snapshot) {
+        final weather = snapshot.data?.today;
+        if (snapshot.connectionState != ConnectionState.done) {
+          return SizedBox(
+            width: 36,
+            height: 36,
+            child: Center(
+              child: SizedBox.square(
+                dimension: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: foreground.withValues(alpha: 0.7),
+                ),
               ),
-              child: Row(
-                children: [
-                  // Group avatar + name
-                  GestureDetector(
-                    onTap: state.canSeeAdmin
-                        ? () => state.openSection(Sections.settings)
-                        : null,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircleAvatar(
-                          radius: _compact ? 14 : 16,
-                          backgroundColor: textColor.withValues(alpha: 0.12),
-                          backgroundImage:
-                              state.group.photoUrl?.trim().isNotEmpty == true
-                                  ? NetworkImage(state.group.photoUrl!.trim())
-                                  : null,
-                          child: state.group.photoUrl?.trim().isNotEmpty == true
-                              ? null
-                              : Icon(
-                                  Icons.business_rounded,
-                                  color: textColor.withValues(alpha: 0.65),
-                                  size: 16,
-                                ),
-                        ),
-                        if (!_compact) ...[
-                          const SizedBox(width: 8),
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 140),
-                            child: Text(
-                              state.group.name,
-                              style:
-                                  AppTypography.of(context).bodyMedium.copyWith(
-                                        color: textColor,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  // Vertical divider
-                  Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: _compact ? 10 : 22),
-                    child: SizedBox(
-                      height: 28,
-                      child: VerticalDivider(
-                        thickness: 1,
-                        color: textColor.withValues(alpha: 0.15),
-                      ),
-                    ),
-                  ),
-                  // Scrollable nav items
-                  Expanded(
-                    child: _ScrollableTopNavItems(
-                      isSpanish: l.localeName.startsWith('es'),
-                      textColor: textColor,
-                      children: <Widget>[
-                        ...primaryItems.map(
-                          (item) => _TopNavItem(
-                            icon: item.icon,
-                            label: item.label,
-                            isSelected: state.activeSection == item.section,
-                            activeColor: activeColor,
-                            textColor: textColor,
-                            unreadCount: item.section == Sections.notifications
-                                ? unreadNotifications
-                                : 0,
-                            attention: item.section == Sections.notifications &&
-                                unreadNotifications > 0,
-                            compact: _compact,
-                            onTap: () => state.openSection(item.section),
-                          ),
-                        ),
-                        if (overflowItems.isNotEmpty)
-                          _TopNavOverflowMenu(
-                            items: overflowItems,
-                            textColor: textColor,
-                            activeColor: activeColor,
-                            unreadNotifications: unreadNotifications,
-                            activeSection: state.activeSection,
-                            onOpenSection: state.openSection,
-                          ),
-                      ],
-                    ),
-                  ),
-                  DownloadJobsTopMenu(
-                    groupId: state.group.id,
-                    onViewAllDownloads: () => state.openSection(Sections.notifications),
-                    compact: _compact,
-                  ),
-                  Tooltip(
-                    message: _compact
-                        ? (l.localeName.startsWith('es')
-                            ? 'Expandir navegacion'
-                            : 'Expand navigation')
-                        : (l.localeName.startsWith('es')
-                            ? 'Compactar navegacion'
-                            : 'Compact navigation'),
-                    child: IconButton(
-                      onPressed: _toggleCompact,
-                      icon: Icon(
-                        _compact
-                            ? Icons.unfold_more_rounded
-                            : Icons.unfold_less_rounded,
-                        size: 18,
-                        color: textColor.withValues(alpha: 0.62),
-                      ),
-                      visualDensity: VisualDensity.compact,
-                      constraints:
-                          const BoxConstraints.tightFor(width: 36, height: 36),
-                    ),
-                  ),
-                  // User profile avatar
-                  SizedBox(width: _compact ? 8 : 18),
-                  UserProfilePopup(user: user),
-                  const SizedBox(width: 12),
-                  // Back to groups
-                  Tooltip(
-                    message: l.groupSectionTitle,
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.arrow_back_rounded,
-                        size: 18,
-                        color: textColor.withValues(alpha: 0.5),
-                      ),
-                      splashRadius: 18,
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                  ),
-                ],
+            ),
+          );
+        }
+        if (weather == null) return const SizedBox.shrink();
+
+        final condition = localizeWeatherSummary(l, weather.summary.summary);
+        final place = weather.cityName?.trim().isNotEmpty == true
+            ? weather.cityName!.trim()
+            : _location;
+        final temperature = '${weather.tempMax.round()}\u00b0C';
+
+        return Tooltip(
+          message:
+              '$condition \u00b7 ${weather.tempMin.round()}\u00b0C\u2013${weather.tempMax.round()}\u00b0C',
+          waitDuration: const Duration(milliseconds: 500),
+          child: Container(
+            height: 42,
+            constraints: const BoxConstraints(minWidth: 170, maxWidth: 220),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: foreground.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: foreground.withValues(alpha: 0.05),
               ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _weatherIcon(weather),
+                  size: 24,
+                  color: const Color(0xFFFFC83D),
+                ),
+                const SizedBox(width: 9),
+                Flexible(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$temperature  $condition',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: NavigationTokens.label(context).copyWith(
+                          color: foreground,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        place,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: NavigationTokens.label(context).copyWith(
+                          color: foreground.withValues(alpha: 0.78),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          height: 1.1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -565,469 +809,371 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
   }
 }
 
-class _ScrollableTopNavItems extends StatefulWidget {
-  const _ScrollableTopNavItems({
-    required this.children,
-    required this.textColor,
-    required this.isSpanish,
+class _GroupSwitcherChip extends StatelessWidget {
+  const _GroupSwitcherChip({
+    required this.activeGroup,
+    required this.userId,
+    required this.onOpenGroupSettings,
   });
 
-  final List<Widget> children;
-  final Color textColor;
-  final bool isSpanish;
+  final Group activeGroup;
+  final String userId;
+  final VoidCallback onOpenGroupSettings;
 
-  @override
-  State<_ScrollableTopNavItems> createState() => _ScrollableTopNavItemsState();
-}
+  static const double _nameBreakpoint = 850;
+  static const double _chipMaxNameWidth = 320.0;
 
-class _ScrollableTopNavItemsState extends State<_ScrollableTopNavItems> {
-  final ScrollController _controller = ScrollController();
-  bool _hasOverflow = false;
-  bool _canScrollLeft = false;
-  bool _canScrollRight = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(_syncScrollState);
-    _scheduleScrollStateSync();
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    return parts.length == 1
+        ? parts.first[0].toUpperCase()
+        : (parts.first[0] + parts.last[0]).toUpperCase();
   }
 
-  @override
-  void didUpdateWidget(covariant _ScrollableTopNavItems oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _scheduleScrollStateSync();
-  }
-
-  @override
-  void dispose() {
-    _controller
-      ..removeListener(_syncScrollState)
-      ..dispose();
-    super.dispose();
-  }
-
-  void _scheduleScrollStateSync() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncScrollState();
-    });
-  }
-
-  void _syncScrollState() {
-    if (!_controller.hasClients) return;
-    final position = _controller.position;
-    final hasOverflow = position.maxScrollExtent > 0.5;
-    final canScrollLeft = position.pixels > 0.5;
-    final canScrollRight = position.pixels < position.maxScrollExtent - 0.5;
-    if (_hasOverflow == hasOverflow &&
-        _canScrollLeft == canScrollLeft &&
-        _canScrollRight == canScrollRight) {
-      return;
+  /// [bg]/[fg] let the dropdown rows use theme colors (legible on a light
+  /// surface), while the trigger keeps its white-on-navy look by default.
+  Widget _avatar(Group group, double size, {Color? bg, Color? fg}) {
+    final photoUrl = group.computedPhotoUrl ?? group.photoUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          photoUrl,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _initialsAvatar(group, size, bg, fg),
+        ),
+      );
     }
-    setState(() {
-      _hasOverflow = hasOverflow;
-      _canScrollLeft = canScrollLeft;
-      _canScrollRight = canScrollRight;
-    });
+    return _initialsAvatar(group, size, bg, fg);
   }
 
-  void _scrollBy(double delta) {
-    if (!_controller.hasClients) return;
-    final target = (_controller.offset + delta)
-        .clamp(0.0, _controller.position.maxScrollExtent)
-        .toDouble();
-    _controller.animateTo(
-      target,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-    );
-  }
-
-  void _handlePointerSignal(PointerSignalEvent event) {
-    if (event is! PointerScrollEvent || !_controller.hasClients) return;
-    if (event.scrollDelta.dy.abs() <= event.scrollDelta.dx.abs()) return;
-    _scrollBy(event.scrollDelta.dy);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    _scheduleScrollStateSync();
-    return Row(
-      children: [
-        if (_hasOverflow)
-          _scrollButton(
-            icon: Icons.chevron_left_rounded,
-            tooltip: widget.isSpanish
-                ? 'Ver opciones anteriores'
-                : 'View previous options',
-            enabled: _canScrollLeft,
-            onPressed: () => _scrollBy(-260),
-          ),
-        Expanded(
-          child: Listener(
-            onPointerSignal: _handlePointerSignal,
-            child: SingleChildScrollView(
-              controller: _controller,
-              scrollDirection: Axis.horizontal,
-              child: Row(children: widget.children),
-            ),
-          ),
-        ),
-        if (_hasOverflow)
-          _scrollButton(
-            icon: Icons.chevron_right_rounded,
-            tooltip:
-                widget.isSpanish ? 'Ver mas opciones' : 'View more options',
-            enabled: _canScrollRight,
-            onPressed: () => _scrollBy(260),
-          ),
-      ],
-    );
-  }
-
-  Widget _scrollButton({
-    required IconData icon,
-    required String tooltip,
-    required bool enabled,
-    required VoidCallback onPressed,
-  }) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: enabled ? onPressed : null,
-      icon: Icon(icon, size: 18),
-      color: widget.textColor.withValues(alpha: 0.72),
-      disabledColor: widget.textColor.withValues(alpha: 0.20),
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints.tightFor(width: 30, height: 36),
-    );
-  }
-}
-
-class _TopNavOverflowMenu extends StatelessWidget {
-  const _TopNavOverflowMenu({
-    required this.items,
-    required this.textColor,
-    required this.activeColor,
-    required this.unreadNotifications,
-    required this.activeSection,
-    required this.onOpenSection,
-  });
-
-  final List<({IconData icon, String label, String section, bool adminOnly})>
-      items;
-  final Color textColor;
-  final Color activeColor;
-  final int unreadNotifications;
-  final String activeSection;
-  final ValueChanged<String> onOpenSection;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    return PopupMenuButton<String>(
-      tooltip: 'More',
-      onSelected: onOpenSection,
-      itemBuilder: (_) => items
-          .map(
-            (item) => PopupMenuItem<String>(
-              value: item.section,
-              child: Row(
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Icon(item.icon, size: 16),
-                      if (item.section == Sections.notifications &&
-                          unreadNotifications > 0)
-                        Positioned(
-                          right: -6,
-                          top: -6,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.error,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  Text(item.label),
-                ],
-              ),
-            ),
-          )
-          .toList(),
-      child: Container(
-        margin: const EdgeInsets.only(left: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: items.any((i) => i.section == activeSection)
-              ? activeColor.withValues(alpha: 0.10)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.more_horiz_rounded, size: 16, color: textColor),
-            const SizedBox(width: 4),
-            Text(
-              'More',
-              style: t.bodySmall.copyWith(
-                color: textColor.withValues(alpha: 0.75),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+  Widget _initialsAvatar(Group group, double size, [Color? bg, Color? fg]) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: bg ?? const Color(0x26FFFFFF), // foreground @ 15 % alpha
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        _initials(group.name),
+        style: TextStyle(
+          fontSize: size * 0.38,
+          fontWeight: FontWeight.w700,
+          color: fg ?? HexoraGlobalNavColors.foreground,
+          fontFamily: 'Inter',
         ),
       ),
     );
   }
+
+  /// Theme-aware dropdown surface: clean white in light mode, a slate slightly
+  /// lighter than the navy nav bar in dark mode — never the top-bar color.
+  MenuStyle _menuStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final surface = isDark ? cs.surfaceContainerHigh : cs.surface;
+    return MenuStyle(
+      backgroundColor: WidgetStatePropertyAll(surface),
+      surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+      shadowColor: WidgetStatePropertyAll(Colors.black.withValues(alpha: 0.22)),
+      elevation: const WidgetStatePropertyAll(8),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 6)),
+      minimumSize: const WidgetStatePropertyAll(Size(264, 0)),
+      maximumSize: const WidgetStatePropertyAll(Size(320, 440)),
+      visualDensity: VisualDensity.compact,
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: isDark ? 0.4 : 0.6),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Compact workspace row: avatar · name · selected checkmark.
+  MenuItemButton _groupRow(
+    BuildContext context,
+    Group group,
+    bool selected,
+    VoidCallback onPressed,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    return MenuItemButton(
+      style: MenuItemButton.styleFrom(
+        minimumSize: const Size(0, 42),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        backgroundColor:
+            selected ? cs.primary.withValues(alpha: 0.10) : Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      onPressed: onPressed,
+      child: Row(
+        children: [
+          _avatar(group, 26,
+              bg: cs.primary.withValues(alpha: 0.12), fg: cs.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Tooltip(
+              message: group.name,
+              waitDuration: const Duration(milliseconds: 500),
+              child: Text(
+                group.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: NavigationTokens.label(context).copyWith(
+                  color: cs.onSurface,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          if (selected) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.check_rounded, size: 16, color: cs.primary),
+          ],
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showName = MediaQuery.sizeOf(context).width >= _nameBreakpoint;
+    final groupDomain = context.watch<GroupDomain>();
+    final es = Localizations.localeOf(context).languageCode == 'es';
+
+    return StreamBuilder<List<Group>>(
+      stream: userId.isNotEmpty
+          ? groupDomain.watchGroupsForUser(userId)
+          : const Stream.empty(),
+      builder: (context, snap) {
+        final groups = snap.data ?? [activeGroup];
+        final cs = Theme.of(context).colorScheme;
+
+        void selectGroup(Group g) {
+          if (g.id == activeGroup.id) return;
+          groupDomain.currentGroup = g;
+          Navigator.of(context).pushNamed(
+            AppRoutes.groupDashboard,
+            arguments: g,
+          );
+        }
+
+        return MenuAnchor(
+          alignmentOffset: const Offset(0, 6),
+          style: _menuStyle(context),
+          // A compact search appears only for users with many workspaces.
+          menuChildren: groups.length > 7
+              ? [
+                  _SearchableWorkspaceList(
+                    groups: groups,
+                    activeId: activeGroup.id,
+                    isSpanish: es,
+                    onSelect: selectGroup,
+                    avatarBuilder: (g, size) => _avatar(
+                      g,
+                      size,
+                      bg: cs.primary.withValues(alpha: 0.12),
+                      fg: cs.primary,
+                    ),
+                  ),
+                ]
+              : [
+                  for (final g in groups)
+                    _groupRow(
+                      context,
+                      g,
+                      g.id == activeGroup.id,
+                      () => selectGroup(g),
+                    ),
+                ],
+          builder: (context, controller, _) {
+            void switchWorkspace() {
+              if (controller.isOpen) {
+                controller.close();
+              } else {
+                controller.open();
+              }
+            }
+
+            final switchLabel =
+                es ? 'Cambiar espacio de trabajo' : 'Switch workspace';
+            final settingsLabel = es ? 'Configurar grupo' : 'Configure group';
+
+            // Keep the two actions separate: the avatar opens the workspace
+            // picker, while the group name takes the user to its settings.
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                HexoraNavTile(
+                  selected: false,
+                  semanticLabel: switchLabel,
+                  tooltip: switchLabel,
+                  minWidth: 32,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  onTap: switchWorkspace,
+                  builder: (context, fg) => _avatar(
+                    activeGroup,
+                    28,
+                    fg: HexoraGlobalNavColors.foregroundFor(context),
+                  ),
+                ),
+                if (showName) ...[
+                  const SizedBox(width: 2),
+                  HexoraNavTile(
+                    selected: false,
+                    semanticLabel: settingsLabel,
+                    tooltip: settingsLabel,
+                    minWidth: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    onTap: onOpenGroupSettings,
+                    builder: (context, fg) => Tooltip(
+                      message: activeGroup.name,
+                      waitDuration: const Duration(milliseconds: 500),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: _chipMaxNameWidth,
+                        ),
+                        child: Text(
+                          activeGroup.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: NavigationTokens.label(context).copyWith(
+                            color: fg,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  HexoraNavTile(
+                    selected: false,
+                    semanticLabel: switchLabel,
+                    tooltip: switchLabel,
+                    minWidth: 24,
+                    padding: EdgeInsets.zero,
+                    onTap: switchWorkspace,
+                    builder: (context, fg) => AnimatedRotation(
+                      turns: controller.isOpen ? 0.5 : 0,
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 180),
+                      child: Icon(
+                        Icons.expand_more_rounded,
+                        size: 14,
+                        color: fg,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Single nav item in the horizontal bar
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _TopNavItem extends StatefulWidget {
-  const _TopNavItem({
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.activeColor,
-    required this.textColor,
-    this.unreadCount = 0,
-    this.attention = false,
-    this.compact = false,
-    required this.onTap,
+class _SearchableWorkspaceList extends StatefulWidget {
+  const _SearchableWorkspaceList({
+    required this.groups,
+    required this.activeId,
+    required this.isSpanish,
+    required this.onSelect,
+    required this.avatarBuilder,
   });
 
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final Color activeColor;
-  final Color textColor;
-  final int? unreadCount;
-  final bool? attention;
-  final bool compact;
-  final VoidCallback onTap;
+  final List<Group> groups;
+  final String activeId;
+  final bool isSpanish;
+  final ValueChanged<Group> onSelect;
+  final Widget Function(Group group, double size) avatarBuilder;
 
   @override
-  State<_TopNavItem> createState() => _TopNavItemState();
+  State<_SearchableWorkspaceList> createState() =>
+      _SearchableWorkspaceListState();
 }
 
-class _TopNavItemState extends State<_TopNavItem>
-    with TickerProviderStateMixin {
-  bool _hovering = false;
-  late final AnimationController _attentionController;
-  late final AnimationController _pulseController;
-
-  @override
-  void initState() {
-    super.initState();
-    _attentionController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 850),
-    );
-    _syncAttentionAnimation();
-  }
-
-  @override
-  void didUpdateWidget(covariant _TopNavItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.attention != widget.attention ||
-        oldWidget.unreadCount != widget.unreadCount ||
-        oldWidget.isSelected != widget.isSelected) {
-      _syncAttentionAnimation();
-    }
-  }
-
-  void _syncAttentionAnimation() {
-    final shouldAnimate = (widget.attention ?? false) &&
-        (widget.unreadCount ?? 0) > 0 &&
-        !widget.isSelected;
-    if (shouldAnimate) {
-      if (!_attentionController.isAnimating) {
-        _attentionController.repeat();
-      }
-      if (!_pulseController.isAnimating) {
-        _pulseController.repeat(reverse: true);
-      }
-      return;
-    }
-    _attentionController.stop();
-    _attentionController.value = 0;
-    _pulseController.stop();
-    _pulseController.value = 0;
-  }
+class _SearchableWorkspaceListState extends State<_SearchableWorkspaceList> {
+  final TextEditingController _search = TextEditingController();
 
   @override
   void dispose() {
-    _attentionController.dispose();
-    _pulseController.dispose();
+    _search.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final showHighlight = widget.isSelected || _hovering;
-    final fg = widget.isSelected
-        ? widget.activeColor
-        : widget.textColor.withValues(alpha: _hovering ? 0.85 : 0.6);
-
     final cs = Theme.of(context).colorScheme;
-    final hasUnread = (widget.unreadCount ?? 0) > 0;
-
-    final icon = Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Icon(widget.icon, size: 15, color: fg),
-        if (hasUnread) ...[
-          // Radiating ring
-          Positioned(
-            right: -9,
-            top: -9,
-            child: AnimatedBuilder(
-              animation: _pulseController,
-              builder: (_, __) {
-                final scale = Tween<double>(begin: 1.0, end: 1.8).evaluate(
-                  CurvedAnimation(
-                      parent: _pulseController, curve: Curves.easeOut),
-                );
-                final opacity = Tween<double>(begin: 0.45, end: 0.0).evaluate(
-                  CurvedAnimation(
-                      parent: _pulseController, curve: Curves.easeOut),
-                );
-                return Transform.scale(
-                  scale: scale,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: cs.error.withValues(alpha: opacity),
-                    ),
+    final query = _search.text.trim().toLowerCase();
+    final visible = query.isEmpty
+        ? widget.groups
+        : widget.groups
+            .where((group) => group.name.toLowerCase().contains(query))
+            .toList(growable: false);
+    return SizedBox(
+      width: 280,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
+            child: SizedBox(
+              height: 36,
+              child: TextField(
+                controller: _search,
+                autofocus: true,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                  hintText: widget.isSpanish
+                      ? 'Buscar espacio...'
+                      : 'Search workspace...',
+                ),
+              ),
+            ),
+          ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 300),
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 6),
+              itemCount: visible.length,
+              itemBuilder: (context, index) {
+                final group = visible[index];
+                final selected = group.id == widget.activeId;
+                return MenuItemButton(
+                  style: MenuItemButton.styleFrom(
+                    backgroundColor: selected
+                        ? cs.primary.withValues(alpha: 0.10)
+                        : Colors.transparent,
+                  ),
+                  leadingIcon: widget.avatarBuilder(group, 20),
+                  trailingIcon: selected
+                      ? Icon(Icons.check_rounded, size: 16, color: cs.primary)
+                      : null,
+                  onPressed: () => widget.onSelect(group),
+                  child: Text(
+                    group.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: NavigationTokens.label(context),
                   ),
                 );
               },
             ),
           ),
-          // Badge with pulse scale
-          Positioned(
-            right: -7,
-            top: -7,
-            child: AnimatedBuilder(
-              animation: _pulseController,
-              builder: (_, child) => Transform.scale(
-                scale: Tween<double>(begin: 0.92, end: 1.08).evaluate(
-                  CurvedAnimation(
-                      parent: _pulseController, curve: Curves.easeInOut),
-                ),
-                child: child,
-              ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
-                decoration: BoxDecoration(
-                  color: cs.error,
-                  borderRadius: BorderRadius.circular(999),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.error.withValues(alpha: 0.45),
-                      blurRadius: 4,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    (widget.unreadCount ?? 0) > 9
-                        ? '9+'
-                        : (widget.unreadCount ?? 0).toString(),
-                    style: t.bodySmall.copyWith(
-                      color: cs.onError,
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
-      ],
-    );
-
-    return Padding(
-      padding: EdgeInsets.only(right: widget.compact ? 4 : 8),
-      child: TooltipVisibility(
-        visible: widget.compact,
-        child: Tooltip(
-          message: widget.label,
-          child: MouseRegion(
-            onEnter: (_) => setState(() => _hovering = true),
-            onExit: (_) => setState(() => _hovering = false),
-            child: GestureDetector(
-              onTap: widget.onTap,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                curve: Curves.easeOut,
-                padding: EdgeInsets.symmetric(
-                  horizontal: widget.compact ? 10 : 12,
-                  vertical: widget.compact ? 7 : 8,
-                ),
-                decoration: BoxDecoration(
-                  color: showHighlight
-                      ? widget.activeColor.withValues(alpha: 0.10)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedBuilder(
-                      animation: _attentionController,
-                      builder: (_, child) {
-                        final phase = _attentionController.value * 2 * math.pi;
-                        final dx = math.sin(phase) * 1.8;
-                        final rotation = math.sin(phase) * 0.06;
-                        return Transform.translate(
-                          offset: Offset(dx, 0),
-                          child: Transform.rotate(
-                            angle: rotation,
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: icon,
-                    ),
-                    if (!widget.compact || widget.isSelected) ...[
-                      const SizedBox(width: 7),
-                      Text(
-                        widget.label,
-                        style: t.bodySmall.copyWith(
-                          color: fg,
-                          fontWeight: widget.isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

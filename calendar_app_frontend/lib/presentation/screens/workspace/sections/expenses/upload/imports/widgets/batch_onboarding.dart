@@ -7,11 +7,15 @@ class _BatchOnboardingFlow extends StatefulWidget {
     List<({String fileName, Uint8List fileBytes})> files, {
     required int selectedCount,
   })? onDropWebDocuments;
+  final VoidCallback? onPickDocuments;
+  final VoidCallback? onPickZip;
 
   const _BatchOnboardingFlow({
     required this.cs,
     required this.ts,
     required this.onDropWebDocuments,
+    required this.onPickDocuments,
+    required this.onPickZip,
   });
 
   @override
@@ -101,12 +105,6 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
     final cs = widget.cs;
     final ts = widget.ts;
     final isEs = Localizations.localeOf(context).languageCode == 'es';
-    final steps = [
-      (icon: Icons.upload_file_outlined, label: 'Sube tus documentos'),
-      (icon: Icons.auto_awesome_outlined, label: 'Hexora analiza con IA'),
-      (icon: Icons.checklist_rounded, label: 'Revisa incidencias'),
-      (icon: Icons.check_circle_outline_rounded, label: 'Importa al instante'),
-    ];
     final webDropEnabled = kIsWeb &&
         widget.onDropWebDocuments != null &&
         FlutterDropzonePlatform.instance.runtimeType.toString() ==
@@ -115,8 +113,8 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
     final content = AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
-      margin: const EdgeInsets.all(14),
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+      margin: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         color: _dragging
@@ -177,7 +175,7 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
           ),
           const SizedBox(height: 16),
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 160),
+            duration: HexoraMotion.duration(context, HexoraMotion.fast),
             child: Text(
               _dragging
                   ? (isEs
@@ -210,30 +208,79 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 28),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < steps.length; i++) ...[
-                  _OnboardingStep(
-                    icon: steps[i].icon,
-                    label: steps[i].label,
-                    index: i + 1,
-                    cs: cs,
-                    ts: ts,
+          const SizedBox(height: 16),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: widget.onPickDocuments,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, HexoraDimensions.buttonLarge),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: HexoraDimensions.space * 2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(HexoraDimensions.radius),
                   ),
-                  if (i < steps.length - 1)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 13,
-                        color: cs.primary.withValues(alpha: 0.35),
-                      ),
-                    ),
-                ],
+                ),
+                icon: const Icon(Icons.upload_file_outlined,
+                    size: HexoraDimensions.buttonIconSize),
+                label: Text(isEs ? 'Seleccionar archivos' : 'Select files'),
+              ),
+              OutlinedButton.icon(
+                onPressed: widget.onPickZip,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, HexoraDimensions.buttonLarge),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: HexoraDimensions.space * 2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(HexoraDimensions.radius),
+                  ),
+                ),
+                icon: const Icon(Icons.folder_outlined,
+                    size: HexoraDimensions.buttonIconSize),
+                label: Text(isEs ? 'Seleccionar un ZIP' : 'Select a ZIP'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: 0.13),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              spacing: 24,
+              runSpacing: 8,
+              children: [
+                _BatchLimitItem(
+                  icon: Icons.insert_drive_file_outlined,
+                  title: isEs ? 'Formatos admitidos' : 'Supported formats',
+                  value: 'PDF, JPG, JPEG, PNG, WEBP',
+                  cs: cs,
+                  ts: ts,
+                ),
+                _BatchLimitItem(
+                  icon: Icons.inventory_2_outlined,
+                  title: isEs ? 'Tamano maximo' : 'Maximum size',
+                  value: isEs ? '100 MB por ZIP' : '100 MB per ZIP',
+                  cs: cs,
+                  ts: ts,
+                ),
+                _BatchLimitItem(
+                  icon: Icons.description_outlined,
+                  title: isEs ? 'Limite de documentos' : 'Document limit',
+                  value: isEs
+                      ? 'Hasta 200 facturas por ZIP'
+                      : 'Up to 200 invoices per ZIP',
+                  cs: cs,
+                  ts: ts,
+                ),
               ],
             ),
           ),
@@ -270,61 +317,49 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
   }
 }
 
-class _OnboardingStep extends StatelessWidget {
+class _BatchLimitItem extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final int index;
+  final String title;
+  final String value;
   final ColorScheme cs;
   final TextTheme ts;
 
-  const _OnboardingStep({
+  const _BatchLimitItem({
     required this.icon,
-    required this.label,
-    required this.index,
+    required this.title,
+    required this.value,
     required this.cs,
     required this.ts,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Flexible(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-        decoration: BoxDecoration(
-          color: cs.primaryContainer.withValues(alpha: 0.22),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: cs.primary.withValues(alpha: 0.18),
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: cs.surface,
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Icon(icon, size: 17, color: cs.primary),
           ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(icon, size: 15, color: cs.primary),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: ts.bodySmall?.copyWith(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                color: cs.onSurface,
-                height: 1.25,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+          const SizedBox(width: 9),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(title,
+                  style: ts.bodySmall?.copyWith(fontWeight: FontWeight.w800)),
+              Text(value,
+                  style: ts.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+            ],
+          ),
+        ],
+      );
 }

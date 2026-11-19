@@ -6,6 +6,7 @@ import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/event_args_helper.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_category_meta.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_grouping.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/panels/notifications/widgets/notification_density.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -14,6 +15,12 @@ class NotificationsList extends StatelessWidget {
   final String? selectedId;
   final FutureOr<void> Function(NotificationUser) onSelect;
   final Future<void> Function(NotificationUser) onDelete;
+  final FutureOr<void> Function(NotificationUser)? onMarkRead;
+
+  /// Optional controls (e.g. refresh / more-actions) rendered on the right of
+  /// the first section header, so they share that row instead of taking a
+  /// dedicated toolbar above the list.
+  final Widget? headerTrailing;
 
   const NotificationsList({
     super.key,
@@ -21,6 +28,8 @@ class NotificationsList extends StatelessWidget {
     required this.selectedId,
     required this.onSelect,
     required this.onDelete,
+    this.onMarkRead,
+    this.headerTrailing,
   });
 
   @override
@@ -37,23 +46,28 @@ class NotificationsList extends StatelessWidget {
         items.add(_ListItem.notification(n));
       }
     }
+    final firstHeaderIndex = items.indexWhere((item) => item.isHeader);
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
       itemCount: items.length,
       itemBuilder: (_, i) {
         final item = items[i];
         if (item.isHeader) {
-          return _GroupHeader(label: item.header!);
+          return _GroupHeader(
+            label: item.header!,
+            trailing: i == firstHeaderIndex ? headerTrailing : null,
+          );
         }
         final n = item.notification!;
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: NotifDensity.rowGap),
           child: _SettingsLikeNotificationRow(
             notification: n,
             isSelected: selectedId == n.id,
             onTap: () => onSelect(n),
             onDelete: () => onDelete(n),
+            onMarkRead: onMarkRead == null ? null : () => onMarkRead!(n),
           ),
         );
       },
@@ -76,34 +90,42 @@ class _ListItem {
 }
 
 class _GroupHeader extends StatelessWidget {
-  const _GroupHeader({required this.label});
+  const _GroupHeader({required this.label, this.trailing});
 
   final String label;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
+    // No decorative rule beside the label — spacing and weight carry the break.
+    final text = Text(
+      label.toUpperCase(),
+      style: t.caption.copyWith(
+        fontWeight: FontWeight.w700,
+        fontSize: NotifDensity.sectionLabelSize,
+        color: NotifDensity.sectionLabelColor(cs),
+        letterSpacing: NotifDensity.sectionLabelSpacing,
+      ),
+    );
+    if (trailing == null) {
+      return Padding(
+        padding: NotifDensity.sectionHeaderPadding,
+        child: text,
+      );
+    }
+    // Share the row with inline actions (refresh / more) to save vertical
+    // space: the section label sits left, the controls align right.
     return Padding(
-      padding: const EdgeInsets.only(top: 10, bottom: 6),
+      padding: NotifDensity.sectionHeaderPadding.add(
+        const EdgeInsets.only(right: 2),
+      ),
       child: Row(
         children: [
-          Text(
-            label.toUpperCase(),
-            style: t.caption.copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize: 10,
-              color: cs.onSurface.withValues(alpha: 0.40),
-              letterSpacing: 0.8,
-            ),
-          ),
+          Expanded(child: text),
           const SizedBox(width: 8),
-          Expanded(
-            child: Divider(
-              height: 1,
-              color: cs.outlineVariant.withValues(alpha: 0.35),
-            ),
-          ),
+          trailing!,
         ],
       ),
     );
@@ -116,12 +138,14 @@ class _SettingsLikeNotificationRow extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     required this.onDelete,
+    this.onMarkRead,
   });
 
   final NotificationUser notification;
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback? onMarkRead;
 
   @override
   Widget build(BuildContext context) {
@@ -167,56 +191,37 @@ class _SettingsLikeNotificationRow extends StatelessWidget {
       }
     }
 
+    // Flat, borderless row: transparent by default, a subtle blue fill when
+    // selected and a faint tint while unread. Hierarchy comes from spacing and
+    // weight rather than card borders or shadows.
     return Material(
-      color: Colors.transparent,
+      color: isSelected
+          ? NotifDensity.selectedRowFill(cs)
+          : (!notification.isRead
+              ? NotifDensity.unreadRowFill(cs)
+              : Colors.transparent),
+      borderRadius: BorderRadius.circular(NotifDensity.rowRadius),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.fromLTRB(10, 9, 8, 9),
-          decoration: BoxDecoration(
-            color: notification.isRead
-                ? cs.surfaceContainerHighest.withValues(alpha: 0.12)
-                : priorityColor.withValues(alpha: isHighPriority ? 0.10 : 0.07),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isSelected
-                  ? priorityColor.withValues(alpha: 0.5)
-                  : (notification.isRead
-                      ? cs.outlineVariant.withValues(alpha: 0.25)
-                      : priorityColor.withValues(
-                          alpha: isHighPriority ? 0.28 : 0.18,
-                        )),
-              width: isSelected ? 1.4 : 1,
-            ),
-          ),
+        borderRadius: BorderRadius.circular(NotifDensity.rowRadius),
+        child: Padding(
+          padding: NotifDensity.rowPadding,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (isSelected || isHighPriority || !notification.isRead)
-                Container(
-                  width: isHighPriority ? 4 : 3,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: priorityColor.withValues(
-                      alpha: notification.isRead ? 0.65 : 1,
-                    ),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
               Container(
-                width: 32,
-                height: 32,
+                width: NotifDensity.iconBox,
+                height: NotifDensity.iconBox,
                 decoration: BoxDecoration(
                   color: priorityColor.withValues(
                     alpha: isHighPriority ? 0.15 : 0.11,
                   ),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(meta.icon, color: priorityColor, size: 15),
+                child: Icon(meta.icon,
+                    color: priorityColor, size: NotifDensity.iconGlyph),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: NotifDensity.iconTextGap),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,12 +264,21 @@ class _SettingsLikeNotificationRow extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 6),
+                        Text(
+                          formatInlineNotificationTimestamp(
+                              notification.timestamp),
+                          style: t.caption.copyWith(
+                            color: cs.onSurfaceVariant.withValues(alpha: .65),
+                            fontSize: 10,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      notification.getLocalizedMessage(l),
-                      maxLines: 2,
+                      compactNotificationDescription(notification, l),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: t.caption.copyWith(color: cs.onSurfaceVariant),
                     ),
@@ -344,30 +358,39 @@ class _SettingsLikeNotificationRow extends StatelessWidget {
                             .toList(),
                       ),
                     ],
-                    const SizedBox(height: 3),
-                    Text(
-                      formatInlineNotificationTimestamp(notification.timestamp),
-                      style: t.caption.copyWith(
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                        fontSize: 10,
-                      ),
-                    ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(
-                  Icons.close_rounded,
-                  size: 14,
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.5),
-                ),
-                tooltip: l.delete,
-                onPressed: onDelete,
-                style: IconButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(26, 26),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+              PopupMenuButton<String>(
+                tooltip: isEs ? 'Acciones' : 'Actions',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 180),
+                onSelected: (value) {
+                  if (value == 'read') onMarkRead?.call();
+                  if (value == 'delete') onDelete();
+                },
+                itemBuilder: (context) => [
+                  if (!notification.isRead && onMarkRead != null)
+                    PopupMenuItem<String>(
+                      value: 'read',
+                      child: Row(children: [
+                        const Icon(Icons.mark_email_read_outlined, size: 17),
+                        const SizedBox(width: 8),
+                        Text(isEs ? 'Marcar como leída' : 'Mark as read'),
+                      ]),
+                    ),
+                  PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Row(children: [
+                      Icon(Icons.delete_outline_rounded,
+                          size: 17, color: cs.error),
+                      const SizedBox(width: 8),
+                      Text(l.delete, style: TextStyle(color: cs.error)),
+                    ]),
+                  ),
+                ],
+                icon: Icon(Icons.more_horiz_rounded,
+                    size: 18, color: cs.onSurfaceVariant),
               ),
             ],
           ),
@@ -385,6 +408,31 @@ String formatInlineNotificationTimestamp(DateTime ts) {
   if (diff.inHours < 24) return '${diff.inHours}h';
   if (diff.inDays < 7) return '${diff.inDays}d';
   return '${ts.day}/${ts.month}/${ts.year}';
+}
+
+String compactNotificationDescription(
+  NotificationUser notification,
+  AppLocalizations localizations,
+) {
+  final message = notification.getLocalizedMessage(localizations).trim();
+  final title = notification.getLocalizedTitle(localizations).toLowerCase();
+  final bankMatch = RegExp(
+    r'(\d+)\s+gastos? bancarios.*?(?:total de|total)\s+([^.]*)',
+    caseSensitive: false,
+  ).firstMatch(message);
+  if (title.contains('gastos bancarios') && bankMatch != null) {
+    final count = bankMatch.group(1)!;
+    return '$count ${count == '1' ? 'movimiento' : 'movimientos'} · ${bankMatch.group(2)!.trim()}';
+  }
+
+  final recurring = RegExp(
+    r'(?:para\s+)(.+?)(?:\s+a partir de la recurrencia\s+)["“]?(.+?)["”]?(?:\s+por\s+)([^.]+)',
+    caseSensitive: false,
+  ).firstMatch(message);
+  if (recurring != null) {
+    return '${recurring.group(1)!.trim()} · ${recurring.group(2)!.trim()} · ${recurring.group(3)!.trim()}';
+  }
+  return message;
 }
 
 enum _NotificationPriority { high, medium, low }

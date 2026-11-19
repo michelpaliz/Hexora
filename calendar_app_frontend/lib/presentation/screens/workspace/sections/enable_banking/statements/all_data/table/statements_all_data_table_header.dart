@@ -26,6 +26,8 @@ class StatementsAllDataTableHeader extends StatelessWidget {
     required this.clientProviderFilterActive,
     required this.onInvoiceSortTap,
     required this.invoiceSortMode,
+    required this.onInvoiceFilterTap,
+    required this.invoiceFilterActive,
   });
 
   final AppLocalizations label;
@@ -46,6 +48,8 @@ class StatementsAllDataTableHeader extends StatelessWidget {
   final bool clientProviderFilterActive;
   final VoidCallback onInvoiceSortTap;
   final int invoiceSortMode; // 0=none, 1=asc, 2=desc
+  final VoidCallback onInvoiceFilterTap;
+  final bool invoiceFilterActive;
 
   @override
   Widget build(BuildContext context) {
@@ -54,25 +58,29 @@ class StatementsAllDataTableHeader extends StatelessWidget {
     final balanceMaxWidth =
         isWide ? 200.0 : StatementsAllDataTableLayout.balanceMaxWidth;
     final isDesktop = !isCompact && !isTablet;
+    // The intermediate expanded layout has room for notes without competing
+    // with the full-width desktop columns. Keep the full layout focused on
+    // the primary transaction fields.
+    final showNotes = !isCompact && isTablet;
     final actionsWidth = isDesktop
         ? StatementsAllDataTableLayout.actionsWidth
         : StatementsAllDataTableLayout.compactActionsWidth;
 
     final headerStyle = typography.bodySmall.copyWith(
       fontWeight: FontWeight.w600,
-      fontSize: 13,
+      fontSize: 12,
       color: tableTheme.headerText,
       letterSpacing: 0,
     );
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        vertical: 8,
+        vertical: 2,
         horizontal: 12,
       ),
       decoration: BoxDecoration(
         color: tableTheme.headerBg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(0),
         border: Border.all(
           color: tableTheme.border.withValues(alpha: 0.55),
         ),
@@ -210,7 +218,7 @@ class StatementsAllDataTableHeader extends StatelessWidget {
                 onTap: onClientProviderFilterTap,
               ),
             ),
-            if (isDesktop) ...[
+            if (showNotes) ...[
               const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),
               _filterableCell(
                 context,
@@ -250,6 +258,43 @@ class StatementsAllDataTableHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
+                Tooltip(
+                  message: invoiceFilterActive
+                      ? (Localizations.localeOf(context).languageCode == 'es'
+                          ? 'Nº factura: filtro activo'
+                          : 'Invoice no.: filter active')
+                      : (Localizations.localeOf(context).languageCode == 'es'
+                          ? 'Buscar factura vinculada'
+                          : 'Search linked invoice'),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: onInvoiceFilterTap,
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: invoiceFilterActive
+                            ? Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.10)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        invoiceFilterActive
+                            ? Icons.filter_alt_rounded
+                            : Icons.search_rounded,
+                        size: 16,
+                        color: invoiceFilterActive
+                            ? Theme.of(context).colorScheme.primary
+                            : tableTheme.headerText.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 2),
                 Tooltip(
                   message: invoiceSortMode == 1
                       ? '${label.documentTypeInvoice}: asc'

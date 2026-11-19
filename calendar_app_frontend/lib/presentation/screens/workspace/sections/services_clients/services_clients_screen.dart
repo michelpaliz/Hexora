@@ -1,12 +1,14 @@
+import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/service_catalog/service.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/service_catalog/service_api_client.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import 'sheets/add_client_sheet/add_client_sheet.dart';
@@ -180,19 +182,20 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
 
   Future<void> _confirmDeleteClient(GroupClient client) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.remove),
         content: Text(l.removeClientConfirm(client.name)),
         actions: [
-          TextButton(
+          HexoraButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l.cancel),
+            label: l.cancel,
+            variant: HexoraButtonVariant.ghost,
           ),
-          FilledButton(
+          HexoraButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l.remove),
+            label: l.remove,
           ),
         ],
       ),
@@ -228,19 +231,20 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
 
   Future<void> _confirmDeleteService(Service service) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.remove),
         content: Text(l.removeServiceConfirm(service.name)),
         actions: [
-          TextButton(
+          HexoraButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l.cancel),
+            label: l.cancel,
+            variant: HexoraButtonVariant.ghost,
           ),
-          FilledButton(
+          HexoraButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l.remove),
+            label: l.remove,
           ),
         ],
       ),
@@ -275,9 +279,8 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
   }
 
   Widget _buildMobileLayout(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
+
     final propertyTypeOptions = _clients
         .map((c) => (c.effectivePropertyType ?? '').trim())
         .where((v) => v.isNotEmpty)
@@ -291,21 +294,8 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
         .toList()
       ..sort();
 
-    final tabBar = TabBar(
+    final tabBar = HexoraSectionTabs(
       controller: _tab,
-      dividerColor: Colors.transparent,
-      splashFactory: NoSplash.splashFactory,
-      overlayColor: WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
-      indicatorSize: TabBarIndicatorSize.tab,
-      indicator: BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      indicatorPadding: const EdgeInsets.symmetric(vertical: 4),
-      labelColor: cs.onPrimaryContainer,
-      unselectedLabelColor: cs.onSurfaceVariant,
-      labelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
-      unselectedLabelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
       tabs: [
         Tab(
           height: 44,
@@ -336,12 +326,9 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
       ),
       body: Column(
         children: [
-          Material(
-            color: cs.surface,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              child: tabBar,
-            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 2),
+            child: tabBar,
           ),
           Expanded(
             child: TabBarView(
@@ -357,7 +344,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                   onToggleMissingCurrentMonthInvoiceOnly: (value) => setState(
                     () => _missingCurrentMonthInvoiceOnly = value,
                   ),
-                  showInlineCTA: true,
+                  showInlineCTA: false,
                   onAddTap: _openAddClientSheet,
                   showInactive: _showInactiveClients,
                   onToggleInactive: (v) =>
@@ -378,7 +365,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                   loading: _loadingServices,
                   error: _errServices,
                   onRefresh: _loadServices,
-                  showInlineCTA: true,
+                  showInlineCTA: false,
                   onDelete: _confirmDeleteService,
                   onAddTap: _openAddServiceSheet,
                   onEdit: _openEditServiceSheet,
@@ -393,13 +380,15 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
         minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: AnimatedBuilder(
           animation: _tab,
-          builder: (_, __) => FilledButton.icon(
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-            onPressed:
-                _tab.index == 0 ? _openAddClientSheet : _openAddServiceSheet,
-            icon: const Icon(Icons.add),
-            label: Text(_tab.index == 0 ? l.addClient : l.addService),
+          builder: (_, __) => SizedBox(
+            width: double.infinity,
+            child: HexoraButton(
+              icon: Icons.add,
+              label: _tab.index == 0 ? l.addClient : l.addService,
+              onPressed:
+                  _tab.index == 0 ? _openAddClientSheet : _openAddServiceSheet,
+              size: HexoraButtonSize.large,
+            ),
           ),
         ),
       ),
@@ -408,21 +397,14 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
     final isMobile = MediaQuery.sizeOf(context).width < 700;
     if (isMobile) return _buildMobileLayout(context);
 
-    final Color primary = cs.primary;
-    final Color selectedText = ThemeColors.contrastOn(primary);
-    final Color unselectedText =
-        ThemeColors.textPrimary(context).withValues(alpha: 0.7);
-    final Color trackBg = ThemeColors.cardBg(context);
-
     // Optional: show counts in tab labels for quick context
-    final clientsTabLabel = '${l.tabClients} · ${_clients.length}';
-    final servicesTabLabel = '${l.tabServices} · ${_services.length}';
+    final clientsTabLabel = '${l.tabClients} ${_clients.length}';
+    final servicesTabLabel = '${l.tabServices} ${_services.length}';
+    final isEs = l.localeName.toLowerCase().startsWith('es');
     final propertyTypeOptions = _clients
         .map((c) => (c.effectivePropertyType ?? '').trim())
         .where((v) => v.isNotEmpty)
@@ -439,112 +421,83 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     return Scaffold(
       appBar: SectionAppBar(
         title: l.screenServicesClientsTitle,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: trackBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
-              ),
-              child: TabBar(
-                controller: _tab,
-                tabs: [
-                  Tab(text: clientsTabLabel),
-                  Tab(text: servicesTabLabel),
-                ],
-                indicatorSize: TabBarIndicatorSize.tab,
-                dividerColor: Colors.transparent,
-                labelColor: selectedText,
-                unselectedLabelColor: unselectedText,
-                labelStyle: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: .2,
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 1),
+            child: Row(
+              children: [
+                Expanded(
+                  child: HexoraSectionTabs(
+                    controller: _tab,
+                    compact: true,
+                    tabs: [
+                      Tab(text: clientsTabLabel),
+                      Tab(text: servicesTabLabel),
+                    ],
+                  ),
                 ),
-                unselectedLabelStyle: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: .2,
+                const SizedBox(width: 12),
+                AnimatedBuilder(
+                  animation: _tab,
+                  builder: (_, __) => HexoraButton(
+                    icon: Icons.add_rounded,
+                    label: isEs ? 'Añadir' : 'Add',
+                    tooltip: _tab.index == 0 ? l.addClient : l.addService,
+                    onPressed: _tab.index == 0
+                        ? _openAddClientSheet
+                        : _openAddServiceSheet,
+                    size: HexoraButtonSize.standard,
+                  ),
                 ),
-                indicator: BoxDecoration(
-                  color: primary,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                splashBorderRadius: BorderRadius.circular(10),
-              ),
+              ],
             ),
           ),
-        ),
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final left = TabBarView(
-            controller: _tab,
-            children: [
-              ClientsTab(
-                items: _clients,
-                loading: _loadingClients,
-                error: _errClients,
-                onRefresh: _loadClients,
-                missingCurrentMonthInvoiceOnly: _missingCurrentMonthInvoiceOnly,
-                onToggleMissingCurrentMonthInvoiceOnly: (value) => setState(
-                  () => _missingCurrentMonthInvoiceOnly = value,
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
+              children: [
+                ClientsTab(
+                  items: _clients,
+                  loading: _loadingClients,
+                  error: _errClients,
+                  onRefresh: _loadClients,
+                  missingCurrentMonthInvoiceOnly:
+                      _missingCurrentMonthInvoiceOnly,
+                  onToggleMissingCurrentMonthInvoiceOnly: (value) => setState(
+                    () => _missingCurrentMonthInvoiceOnly = value,
+                  ),
+                  showInlineCTA: false,
+                  onAddTap: _openAddClientSheet,
+                  showInactive: _showInactiveClients,
+                  onToggleInactive: (v) =>
+                      setState(() => _showInactiveClients = v),
+                  propertyTypeFilter: _propertyTypeFilter,
+                  propertyTypeOptions: propertyTypeOptions,
+                  onPropertyTypeChanged: (v) =>
+                      setState(() => _propertyTypeFilter = v),
+                  customerTypeFilter: _customerTypeFilter,
+                  customerTypeOptions: customerTypeOptions,
+                  onCustomerTypeChanged: (v) =>
+                      setState(() => _customerTypeFilter = v),
+                  onDelete: _confirmDeleteClient,
+                  onEdit: _openEditClientSheet,
                 ),
-                showInlineCTA: true,
-                onAddTap: _openAddClientSheet,
-                showInactive: _showInactiveClients,
-                onToggleInactive: (v) =>
-                    setState(() => _showInactiveClients = v),
-                propertyTypeFilter: _propertyTypeFilter,
-                propertyTypeOptions: propertyTypeOptions,
-                onPropertyTypeChanged: (v) =>
-                    setState(() => _propertyTypeFilter = v),
-                customerTypeFilter: _customerTypeFilter,
-                customerTypeOptions: customerTypeOptions,
-                onCustomerTypeChanged: (v) =>
-                    setState(() => _customerTypeFilter = v),
-                onDelete: _confirmDeleteClient,
-                onEdit: _openEditClientSheet,
-              ),
-              ServicesTab(
-                items: _services,
-                loading: _loadingServices,
-                error: _errServices,
-                onRefresh: _loadServices,
-                showInlineCTA: true,
-                onDelete: _confirmDeleteService,
-                onAddTap: _openAddServiceSheet,
-                onEdit: _openEditServiceSheet,
-              ),
-            ],
-          );
-
-          return left;
-        },
-      ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        child: SizedBox(
-          height: 56,
-          child: FilledButton.icon(
-            icon: const Icon(Icons.add),
-            label: AnimatedBuilder(
-              animation: _tab,
-              builder: (_, __) => Text(
-                _tab.index == 0 ? l.addClient : l.addService,
-                style: t.bodySmall.copyWith(
-                  color: ThemeColors.contrastOn(cs.primary),
-                  fontWeight: FontWeight.w700,
+                ServicesTab(
+                  items: _services,
+                  loading: _loadingServices,
+                  error: _errServices,
+                  onRefresh: _loadServices,
+                  showInlineCTA: false,
+                  onDelete: _confirmDeleteService,
+                  onAddTap: _openAddServiceSheet,
+                  onEdit: _openEditServiceSheet,
                 ),
-              ),
+              ],
             ),
-            onPressed: () => _tab.index == 0
-                ? _openAddClientSheet()
-                : _openAddServiceSheet(),
           ),
-        ),
+        ],
       ),
     );
   }

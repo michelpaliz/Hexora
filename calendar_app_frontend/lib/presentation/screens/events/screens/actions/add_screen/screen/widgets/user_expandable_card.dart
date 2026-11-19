@@ -1,5 +1,6 @@
 import 'package:hexora/models/user/user.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 
 class UserExpandableCard extends StatefulWidget {
   final List<User> usersAvailable;
@@ -21,6 +22,7 @@ class _UserExpandableCardState extends State<UserExpandableCard> {
   @override
   Widget build(BuildContext context) {
     return ExpansionTile(
+      expansionAnimationStyle: HexoraMotion.expansionStyle(context),
       title: const Text("Select Participants"),
       children: widget.usersAvailable.map((user) {
         final isSelected = _selectedUsers.contains(user);

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 class InsightsVisitPlannerGuide extends StatelessWidget {
-  const InsightsVisitPlannerGuide({super.key});
+  const InsightsVisitPlannerGuide({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -51,8 +53,7 @@ class InsightsVisitPlannerGuide extends StatelessWidget {
               title: 'Solicitar fotos del trabajo',
               description:
                   'Puedes pedir fotos para completar el trabajo, indicar una cantidad mínima o solicitar fotos del antes y el después. La regla se muestra en la vista previa.',
-              example:
-                  'Pide 3 fotos al terminar cada visita.',
+              example: 'Pide 3 fotos al terminar cada visita.',
             ),
             _GuideSection(
               icon: Icons.access_time_outlined,
@@ -125,8 +126,7 @@ class InsightsVisitPlannerGuide extends StatelessWidget {
               title: 'Require work photos',
               description:
                   'Ask for photos before a job can be completed, specify a minimum number, or request before-and-after photos. The requirement appears in the preview.',
-              example:
-                  'Require 3 photos when each visit is finished.',
+              example: 'Require 3 photos when each visit is finished.',
             ),
             _GuideSection(
               icon: Icons.access_time_outlined,
@@ -141,8 +141,7 @@ class InsightsVisitPlannerGuide extends StatelessWidget {
               title: 'Resolve conflicts or change the plan',
               description:
                   'If it finds an overlap or too little estimated travel time, ask it to adjust the plan. Give it another time, day, or team, then review the updated proposal.',
-              example:
-                  'Move the second visit to 11:30 and keep the same team.',
+              example: 'Move the second visit to 11:30 and keep the same team.',
             ),
             _GuideSection(
               icon: Icons.repeat_rounded,
@@ -162,81 +161,98 @@ class InsightsVisitPlannerGuide extends StatelessWidget {
             ),
           ];
 
-    return AlertDialog(
-      titlePadding: const EdgeInsets.fromLTRB(22, 20, 14, 4),
-      contentPadding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
-      title: Row(
+    final title = Row(
+      children: [
+        Icon(Icons.event_note_rounded, color: cs.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            isEs ? 'Cómo usar el asistente de trabajo' : 'Work assistant guide',
+            style: t.bodySmall.copyWith(
+              color: cs.onSurface,
+              fontWeight: FontWeight.w800,
+              fontSize: 17,
+            ),
+          ),
+        ),
+      ],
+    );
+    final content = SizedBox(
+      width: embedded ? double.infinity : 620,
+      height:
+          embedded ? double.infinity : MediaQuery.sizeOf(context).height * 0.68,
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 8),
         children: [
-          Icon(Icons.event_note_rounded, color: cs.primary),
-          const SizedBox(width: 10),
-          Expanded(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
             child: Text(
-              isEs ? 'Cómo usar el asistente de trabajo' : 'Work assistant guide',
+              isEs
+                  ? 'Describe el trabajo con tus propias palabras. El chat preparará una vista previa antes de crear visitas o notas rápidas.'
+                  : 'Describe the work in your own words. The chat prepares a preview before creating visits or quick notes.',
               style: t.bodySmall.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w800,
-                fontSize: 17,
+                color: cs.onSurfaceVariant,
+                fontSize: 13,
+                height: 1.4,
               ),
+            ),
+          ),
+          for (final section in sections)
+            _VisitGuideCard(section: section, isEs: isEs),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: cs.tertiaryContainer.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: cs.tertiary.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEs ? 'Ten en cuenta' : 'Keep in mind',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  isEs
+                      ? '• Máximo 20 visitas o notas por solicitud.\n• Confirma cada elemento antes de crearlo.\n• Los traslados son estimaciones basadas en coordenadas guardadas, no rutas de tráfico en tiempo real.\n• Se revisan eventos del calendario, pero no turnos ni ausencias.'
+                      : '• Up to 20 visits or notes per request.\n• Confirm each item before it is created.\n• Travel times are estimates from saved coordinates, not live traffic routes.\n• Calendar events are checked; shifts and leave are not.',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 12.5,
+                    height: 1.45,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
-      content: SizedBox(
-        width: 620,
-        height: MediaQuery.sizeOf(context).height * 0.68,
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: 8),
+    );
+    if (embedded) {
+      return Container(
+        color: cs.surface,
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
-              child: Text(
-                isEs
-                    ? 'Describe el trabajo con tus propias palabras. El chat preparará una vista previa antes de crear visitas o notas rápidas.'
-                    : 'Describe the work in your own words. The chat prepares a preview before creating visits or quick notes.',
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontSize: 13,
-                  height: 1.4,
-                ),
-              ),
-            ),
-            for (final section in sections)
-              _VisitGuideCard(section: section, isEs: isEs),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(13),
-              decoration: BoxDecoration(
-                color: cs.tertiaryContainer.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: cs.tertiary.withValues(alpha: 0.2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isEs ? 'Ten en cuenta' : 'Keep in mind',
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    isEs
-                        ? '• Máximo 20 visitas o notas por solicitud.\n• Confirma cada elemento antes de crearlo.\n• Los traslados son estimaciones basadas en coordenadas guardadas, no rutas de tráfico en tiempo real.\n• Se revisan eventos del calendario, pero no turnos ni ausencias.'
-                        : '• Up to 20 visits or notes per request.\n• Confirm each item before it is created.\n• Travel times are estimates from saved coordinates, not live traffic routes.\n• Calendar events are checked; shifts and leave are not.',
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 12.5,
-                      height: 1.45,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 10), child: title),
+            Expanded(child: content),
           ],
         ),
-      ),
+      );
+    }
+    return AlertDialog(
+      titlePadding: const EdgeInsets.fromLTRB(22, 20, 14, 4),
+      contentPadding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
+      title: title,
+      content: content,
       actions: [
         FilledButton(
           onPressed: () => Navigator.of(context).pop(),
@@ -327,7 +343,7 @@ class _VisitGuideCard extends StatelessWidget {
                 ),
                 children: [
                   TextSpan(
-                    text: '${isEs ? 'Ejemplo: ' : 'Example: '}',
+                    text: isEs ? 'Ejemplo: ' : 'Example: ',
                     style: TextStyle(
                       color: cs.primary,
                       fontWeight: FontWeight.w800,

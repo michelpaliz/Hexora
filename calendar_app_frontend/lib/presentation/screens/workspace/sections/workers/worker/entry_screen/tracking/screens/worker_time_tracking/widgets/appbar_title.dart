@@ -18,6 +18,9 @@ class WorkerAppBarTitle extends StatelessWidget {
     this.advanceAmount,
     this.currency,
     this.onOpenAdvanceDialog,
+    this.identityOnly = false,
+    this.financialOnly = false,
+    this.showAdvance = true,
   });
 
   final Group group;
@@ -29,6 +32,9 @@ class WorkerAppBarTitle extends StatelessWidget {
   final double? advanceAmount;
   final String? currency;
   final VoidCallback? onOpenAdvanceDialog;
+  final bool identityOnly;
+  final bool financialOnly;
+  final bool showAdvance;
 
   bool _isEs(BuildContext context) => context.isSpanishLocale;
 
@@ -42,6 +48,16 @@ class WorkerAppBarTitle extends StatelessWidget {
     if (value == null) return 0;
     if (value is num) return value;
     return num.tryParse(value.toString()) ?? 0;
+  }
+
+  String _formatMoney(BuildContext context, num value, String currency) {
+    final locale = Localizations.localeOf(context).toString();
+    final symbol = currency.toUpperCase() == 'EUR' ? '\u20AC' : currency;
+    return NumberFormat.currency(
+      locale: locale,
+      symbol: symbol,
+      decimalDigits: 2,
+    ).format(value);
   }
 
   @override
@@ -60,63 +76,64 @@ class WorkerAppBarTitle extends StatelessWidget {
     final advanceNum = _toNum(totals?['advanceAmount'] ?? advanceAmount);
     final netPayNum = _toNum(totals?['netPay'] ?? (grossPayNum - advanceNum));
     final safeNetPayNum = netPayNum < 0 ? 0 : netPayNum;
-    final toPayText =
-        '${_toPayLabel(context)}: ${safeNetPayNum.toStringAsFixed(2)}'
-        '${effectiveCurrency.isEmpty ? '' : ' $effectiveCurrency'}';
-    final advanceText =
-        '${_advanceLabel(context)}: ${advanceNum.toStringAsFixed(2)}'
-        '${effectiveCurrency.isEmpty ? '' : ' $effectiveCurrency'}';
     final payableSummary = totals == null
         ? '${group.name} • $monthLabel'
         : '${_toPayLabel(context)}: ${safeNetPayNum.toStringAsFixed(2)}'
             '${effectiveCurrency.isEmpty ? '' : ' $effectiveCurrency'} • $monthLabel';
 
     if (compact) {
-      return Row(
+      final identity = Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 150),
-            child: Text(
-              worker.displayName ?? 'Worker',
-              style: t.titleLarge.copyWith(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
+          Flexible(
+            child: Tooltip(
+              message: worker.displayName ?? 'Worker',
+              child: Text(
+                worker.displayName ?? 'Worker',
+                style: t.titleLarge.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 6),
           _StatusChip(label: statusLabel, inactive: isInactive),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Tooltip(
-              message: totals == null
-                  ? payableSummary
-                  : '$toPayText - $advanceText - $monthLabel',
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const ClampingScrollPhysics(),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _InlineMetric(
-                      icon: Icons.account_balance_wallet_outlined,
-                      label: totals == null ? payableSummary : toPayText,
-                    ),
-                    if (onOpenAdvanceDialog != null) ...[
-                      const SizedBox(width: 8),
-                      _InlineMetric(
-                        icon: Icons.request_quote_outlined,
-                        label: advanceText,
-                        onTap: onOpenAdvanceDialog,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+        ],
+      );
+      final financial = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _FinancialMetric(
+            label: _toPayLabel(context),
+            value: _formatMoney(context, safeNetPayNum, effectiveCurrency),
+            emphasized: true,
           ),
+          if (showAdvance) ...[
+            const SizedBox(width: 10),
+            Container(
+              width: 1,
+              height: 18,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+            const SizedBox(width: 10),
+            _FinancialMetric(
+              label: _advanceLabel(context),
+              value: _formatMoney(context, advanceNum, effectiveCurrency),
+              onTap: onOpenAdvanceDialog,
+            ),
+          ],
+        ],
+      );
+      if (identityOnly) return identity;
+      if (financialOnly) return financial;
+      return Row(
+        children: [
+          Flexible(child: identity),
+          const SizedBox(width: 8),
+          Expanded(child: Center(child: financial)),
         ],
       );
     }
@@ -155,47 +172,45 @@ class WorkerAppBarTitle extends StatelessWidget {
   }
 }
 
-class _InlineMetric extends StatelessWidget {
-  const _InlineMetric({
-    required this.icon,
+class _FinancialMetric extends StatelessWidget {
+  const _FinancialMetric({
     required this.label,
+    required this.value,
+    this.emphasized = false,
     this.onTap,
   });
 
-  final IconData icon;
   final String label;
+  final String value;
+  final bool emphasized;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final content = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          size: 14,
-          color: cs.onSurfaceVariant.withValues(alpha: 0.78),
+    final colors = Theme.of(context).colorScheme;
+    final typography = AppTypography.of(context);
+    final content = Text.rich(
+      TextSpan(children: [
+        TextSpan(
+          text: '$label: ',
+          style: typography.caption.copyWith(color: colors.onSurfaceVariant),
         ),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          maxLines: 1,
-          style: t.bodySmall.copyWith(
-            color: cs.onSurfaceVariant,
+        TextSpan(
+          text: value,
+          style: typography.bodySmall.copyWith(
+            color: emphasized ? colors.primary : colors.onSurface,
             fontWeight: FontWeight.w700,
           ),
         ),
-      ],
+      ]),
+      maxLines: 1,
     );
-
     if (onTap == null) return content;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
         child: content,
       ),
     );

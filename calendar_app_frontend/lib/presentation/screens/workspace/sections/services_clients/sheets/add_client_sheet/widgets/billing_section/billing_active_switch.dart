@@ -4,11 +4,17 @@ import 'package:hexora/l10n/app_localizations.dart';
 class ActiveSwitch extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
+  final bool showIcon;
+  final bool showDescription;
+  final bool compact;
 
   const ActiveSwitch({
     super.key,
     required this.value,
     required this.onChanged,
+    this.showIcon = true,
+    this.showDescription = true,
+    this.compact = false,
   });
 
   @override
@@ -17,23 +23,51 @@ class ActiveSwitch extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      dense: false,
-      value: value,
-      onChanged: onChanged,
-      title: Text(
-        l.active,
-        style: text.bodyLarge!.copyWith(
-          fontWeight: FontWeight.w600,
+    return Row(
+      children: [
+        if (showIcon) ...[
+          Icon(
+            value ? Icons.check_circle_outline : Icons.pause_circle_outline,
+            size: 18,
+            color: value ? cs.primary : cs.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l.active,
+                style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              if (showDescription)
+                Text(
+                  value ? l.clientWillBeActive : l.clientWillBeInactive,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+            ],
+          ),
         ),
-      ),
-      subtitle: Text(
-        value ? l.clientWillBeActive : l.clientWillBeInactive,
-        style: text.bodyMedium!.copyWith(
-          color: cs.onSurfaceVariant,
-        ),
-      ),
+        if (compact)
+          SizedBox(
+            width: 42,
+            height: 30,
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: Switch.adaptive(
+                value: value,
+                onChanged: onChanged,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          )
+        else
+          Switch.adaptive(value: value, onChanged: onChanged),
+      ],
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -87,10 +88,12 @@ class BillingVerificationCard extends StatelessWidget {
             if (!ready)
               _MissingBanner(
                 title: l.clientBillingMissingTitle,
-                message: l.clientBillingMissingMessage(requiredMissing.join(', ')),
+                message:
+                    l.clientBillingMissingMessage(requiredMissing.join(', ')),
               ),
             if (!ready) const SizedBox(height: 10),
             ExpansionTile(
+              expansionAnimationStyle: HexoraMotion.expansionStyle(context),
               tilePadding: EdgeInsets.zero,
               childrenPadding: const EdgeInsets.only(top: 8),
               iconColor: cs.onSurfaceVariant,
@@ -168,7 +171,8 @@ class _FieldsColumn extends StatelessWidget {
 
     String v(String? s) => (s ?? '').trim();
 
-    final legalName = v(b?.legalName).isNotEmpty ? v(b?.legalName) : client.name;
+    final legalName =
+        v(b?.legalName).isNotEmpty ? v(b?.legalName) : client.name;
     final taxId = v(b?.taxId);
     final email = v(b?.email).isNotEmpty ? v(b?.email) : v(client.email);
     final phone = v(b?.phone).isNotEmpty ? v(b?.phone) : v(client.phone);
@@ -258,9 +262,8 @@ class _Field extends StatelessWidget {
     );
 
     final valueStyle = t.bodyMedium.copyWith(
-      color: _missing
-          ? (required ? cs.error : cs.onSurfaceVariant)
-          : cs.onSurface,
+      color:
+          _missing ? (required ? cs.error : cs.onSurfaceVariant) : cs.onSurface,
       fontWeight: _missing ? FontWeight.w700 : FontWeight.w800,
       fontStyle: _missing ? FontStyle.italic : null,
     );

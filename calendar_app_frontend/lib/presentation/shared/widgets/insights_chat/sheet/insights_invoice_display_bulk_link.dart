@@ -268,5 +268,4 @@ mixin InsightsInvoiceDisplayBulkLink on InsightsChatSheetStateBase {
       }
     }
   }
-
 }

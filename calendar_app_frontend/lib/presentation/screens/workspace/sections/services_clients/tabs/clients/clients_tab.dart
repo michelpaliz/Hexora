@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/clients_search_filters.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 
 import 'client_list_item.dart';
 
 class ClientsTab extends StatefulWidget {
   final List<GroupClient> items;
+  final String? selectedClientId;
   final bool loading;
   final String? error;
   final Future<void> Function() onRefresh;
@@ -30,6 +34,7 @@ class ClientsTab extends StatefulWidget {
   const ClientsTab({
     super.key,
     required this.items,
+    this.selectedClientId,
     required this.loading,
     required this.error,
     required this.onRefresh,
@@ -54,6 +59,10 @@ class ClientsTab extends StatefulWidget {
 }
 
 class _ClientsTabState extends State<ClientsTab> {
+  String _status = 'all';
+  bool _ascending = true;
+  int _page = 0;
+  int? _pageSize;
   final TextEditingController _searchCtrl = TextEditingController();
 
   @override
@@ -70,6 +79,7 @@ class _ClientsTabState extends State<ClientsTab> {
       c.email ?? '',
       c.phone ?? '',
       c.billing?.legalName ?? '',
+      c.billing?.taxId ?? '',
     ].join(' ').toLowerCase();
     return haystack.contains(q);
   }
@@ -80,43 +90,55 @@ class _ClientsTabState extends State<ClientsTab> {
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
 
-    final filtered = widget.items.where((c) {
-      final customerMatches = widget.customerTypeFilter == null ||
+    final filtered = widget.items.where((client) {
+      final matchesCustomer = widget.customerTypeFilter == null ||
           widget.customerTypeFilter!.isEmpty ||
-          (c.effectiveCustomerType ?? '').trim() ==
+          (client.effectiveCustomerType ?? '').trim() ==
               widget.customerTypeFilter!.trim();
-      final propertyMatches = widget.propertyTypeFilter == null ||
+      final matchesProperty = widget.propertyTypeFilter == null ||
           widget.propertyTypeFilter!.isEmpty ||
-          (c.effectivePropertyType ?? '').trim() ==
+          (client.effectivePropertyType ?? '').trim() ==
               widget.propertyTypeFilter!.trim();
-      return customerMatches && propertyMatches;
+      return matchesCustomer && matchesProperty;
     }).toList(growable: false);
     final searched = filtered.where(_matchesSearch).toList(growable: false);
     final flagged = widget.missingCurrentMonthInvoiceOnly
         ? searched
-            .where((c) => c.missingCurrentMonthInvoice == true)
+            .where((c) =>
+                c.isActive != false && c.missingCurrentMonthInvoice == true)
             .toList(growable: false)
         : searched;
     final activeItems =
         flagged.where((c) => c.isActive != false).toList(growable: false);
     final inactiveItems =
         flagged.where((c) => c.isActive == false).toList(growable: false);
-    final visible =
-        widget.showInactive ? [...activeItems, ...inactiveItems] : activeItems;
+    final visible = (_status == 'active'
+            ? activeItems
+            : _status == 'inactive'
+                ? inactiveItems
+                : flagged)
+        .toList();
+    visible.sort((a, b) => _ascending
+        ? a.name.toLowerCase().compareTo(b.name.toLowerCase())
+        : b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+    final pageSize =
+        _pageSize ?? (MediaQuery.sizeOf(context).width >= 760 ? 25 : 10);
+    final pages = (visible.length / pageSize).ceil();
+    final page = pages == 0 ? 0 : _page.clamp(0, pages - 1);
+    final pageItems = visible.skip(page * pageSize).take(pageSize).toList();
     final hasInvoiceFlagData =
         widget.items.any((c) => c.hasCurrentMonthInvoiceFlagData);
-    final missingInvoiceCount =
-        widget.items.where((c) => c.missingCurrentMonthInvoice == true).length;
-    final filterCountSource = widget.missingCurrentMonthInvoiceOnly
-        ? widget.items
-            .where((c) => c.missingCurrentMonthInvoice == true)
-            .toList(growable: false)
-        : widget.items;
+    final missingInvoiceCount = searched
+        .where(
+            (c) => c.isActive != false && c.missingCurrentMonthInvoice == true)
+        .length;
 
     final query = _searchCtrl.text.trim();
     final hasSearch = query.isNotEmpty;
     final hasPropertyFilter =
         (widget.propertyTypeFilter ?? '').trim().isNotEmpty;
+    final hasCustomerFilter =
+        (widget.customerTypeFilter ?? '').trim().isNotEmpty;
     final hasSourceData = widget.items.isNotEmpty;
 
     late final Widget content;
@@ -139,7 +161,8 @@ class _ClientsTabState extends State<ClientsTab> {
               ? 'No clients are currently flagged as missing an invoice this month.'
               : 'The backend did not return current-month invoice flags for these clients yet.',
         );
-      } else if (hasSourceData && (hasSearch || hasPropertyFilter)) {
+      } else if (hasSourceData &&
+          (hasSearch || hasCustomerFilter || hasPropertyFilter)) {
         content = EmptyView(
           icon: Icons.search_off_rounded,
           title: hasSearch ? l.noMatchesForX(query) : l.noMatchesInvite,
@@ -165,18 +188,19 @@ class _ClientsTabState extends State<ClientsTab> {
         onRefresh: widget.onRefresh,
         child: ListView.separated(
           cacheExtent: 800,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          itemCount: visible.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          itemCount: pageItems.length,
+          separatorBuilder: (_, __) => const SizedBox.shrink(),
           itemBuilder: (_, i) {
-            final c = visible[i];
+            final c = pageItems[i];
             return ClientListItem(
               client: c,
+              selected: c.id == widget.selectedClientId,
               onTap: widget.onEdit == null ? null : () => widget.onEdit!(c),
               onDelete:
                   widget.onDelete == null ? null : () => widget.onDelete!(c),
               nameStyle: typo.bodyMedium.copyWith(
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 letterSpacing: .2,
                 color: cs.onSurface,
               ),
@@ -195,20 +219,44 @@ class _ClientsTabState extends State<ClientsTab> {
       children: [
         ClientsSearchFilters(
           searchController: _searchCtrl,
-          onSearchChanged: () => setState(() {}),
+          onSearchChanged: () => setState(() => _page = 0),
           searchHint: l.clientSearchHint,
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-          clientsForCounts: filterCountSource,
+          clearFiltersLabel: l.localeName.toLowerCase().startsWith('es')
+              ? 'Restablecer'
+              : 'Reset',
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+          searchDesktopHeight: 34,
+          topSpacing: 0,
+          clientsForCounts: filtered,
+          trailingActions: [
+            _SortButton(
+              ascending: _ascending,
+              onChanged: (v) => setState(() {
+                _ascending = v;
+                _page = 0;
+              }),
+            ),
+            HexoraButton.iconOnly(
+              key: const ValueKey('client-refresh-control'),
+              tooltip: l.refresh,
+              onPressed: widget.loading ? null : widget.onRefresh,
+              icon: Icons.refresh_rounded,
+              variant: HexoraButtonVariant.ghost,
+              size: HexoraButtonSize.standard,
+            ),
+          ],
+          statusContent: _ClientStatusFilter(
+            value: _status,
+            active: activeItems.length,
+            inactive: inactiveItems.length,
+            onChanged: (value) => setState(() {
+              _status = value;
+              _page = 0;
+            }),
+          ),
           activeCountLabel: l.activeClientsSection,
           inactiveCountLabel: l.statusInactive,
-          inactiveValue: widget.showInactive,
-          onInactiveChanged: widget.onToggleInactive,
-          inactiveLabelOn: l.hideInactiveClients,
-          inactiveLabelOff: l.showInactiveClients,
-          countInactiveAsFilter: true,
-          clearInactiveOnClear: true,
-          additionalFilters: _MissingInvoiceFilterRow(
-            label: l.clientMissingInvoiceThisMonth,
+          additionalFilters: _MissingInvoiceToggle(
             selected: widget.missingCurrentMonthInvoiceOnly,
             count: hasInvoiceFlagData ? missingInvoiceCount : null,
             onTap: widget.onToggleMissingCurrentMonthInvoiceOnly == null
@@ -217,7 +265,14 @@ class _ClientsTabState extends State<ClientsTab> {
                       !widget.missingCurrentMonthInvoiceOnly,
                     ),
           ),
-          extraActiveFilterCount: widget.missingCurrentMonthInvoiceOnly ? 1 : 0,
+          extraActiveFilterCount:
+              (widget.missingCurrentMonthInvoiceOnly ? 1 : 0) +
+                  (_status == 'all' ? 0 : 1),
+          moveSummaryIntoFilters: true,
+          filtersInMenu: true,
+          filterMenuWidth: 320,
+          additionalFiltersInFilterBody: true,
+          compactClassificationDropdowns: true,
           propertyLabel: 'Tipo de inmueble',
           propertyOptions: widget.propertyTypeOptions,
           propertyFilter: widget.propertyTypeFilter,
@@ -227,14 +282,11 @@ class _ClientsTabState extends State<ClientsTab> {
           onClearProperty: widget.onPropertyTypeChanged == null
               ? null
               : () => widget.onPropertyTypeChanged!(null),
-          entityLabel: 'Tipo de cliente',
-          entityOptions: widget.customerTypeOptions,
-          entityFilter: widget.customerTypeFilter,
-          onToggleEntity: widget.onCustomerTypeChanged,
-          onClearEntity: widget.onCustomerTypeChanged == null
-              ? null
-              : () => widget.onCustomerTypeChanged!(null),
           onClearFilters: () {
+            setState(() {
+              _status = 'all';
+              _page = 0;
+            });
             if (widget.onPropertyTypeChanged != null) {
               widget.onPropertyTypeChanged!(null);
             }
@@ -249,108 +301,233 @@ class _ClientsTabState extends State<ClientsTab> {
               widget.onToggleMissingCurrentMonthInvoiceOnly!(false);
             }
           },
+          entityLabel: 'Tipo de cliente',
+          entityOptions: widget.customerTypeOptions,
+          entityFilter: widget.customerTypeFilter,
+          onToggleEntity: widget.onCustomerTypeChanged,
+          onClearEntity: widget.onCustomerTypeChanged == null
+              ? null
+              : () => widget.onCustomerTypeChanged!(null),
         ),
         Expanded(child: content),
+        if (!widget.loading && widget.error == null && pages > 1)
+          Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(children: [
+                Tooltip(
+                    message: MaterialLocalizations.of(context).rowsPerPageTitle,
+                    child: DropdownButton<int>(
+                        value: pageSize,
+                        isDense: true,
+                        underline: const SizedBox.shrink(),
+                        items: [10, 20, 25]
+                            .map((size) => DropdownMenuItem(
+                                value: size,
+                                child: Text('$size', style: typo.bodySmall)))
+                            .toList(),
+                        onChanged: (value) => setState(() {
+                              _pageSize = value;
+                              _page = 0;
+                            }),
+                        hint: Text(MaterialLocalizations.of(context)
+                            .rowsPerPageTitle))),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text(
+                        'Mostrando ${visible.isEmpty ? 0 : page * pageSize + 1}–${page * pageSize + pageItems.length} de ${visible.length} clientes',
+                        style: typo.bodySmall)),
+                IconButton(
+                    tooltip: 'Página anterior',
+                    onPressed: page > 0
+                        ? () => setState(() => _page = page - 1)
+                        : null,
+                    icon: const Icon(Icons.chevron_left, size: 18)),
+                Text('${page + 1} / ${pages == 0 ? 1 : pages}',
+                    style: typo.bodySmall),
+                IconButton(
+                    tooltip: 'Página siguiente',
+                    onPressed: page + 1 < pages
+                        ? () => setState(() => _page = page + 1)
+                        : null,
+                    icon: const Icon(Icons.chevron_right, size: 18)),
+              ])),
       ],
     );
   }
 }
 
-class _MissingInvoiceFilterRow extends StatelessWidget {
-  const _MissingInvoiceFilterRow({
-    required this.label,
-    required this.selected,
+class _SortButton extends StatelessWidget {
+  const _SortButton({required this.ascending, required this.onChanged});
+
+  final bool ascending;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<bool>(
+      key: const ValueKey('client-sort-control'),
+      tooltip: ascending ? 'Orden A–Z' : 'Orden Z–A',
+      onSelected: onChanged,
+      itemBuilder: (_) => const [
+        NavigationPopupMenuItem(value: true, child: Text('Nombre (A–Z)')),
+        NavigationPopupMenuItem(value: false, child: Text('Nombre (Z–A)')),
+      ],
+      padding: EdgeInsets.zero,
+      style: IconButton.styleFrom(
+        fixedSize: const Size(34, 34),
+        minimumSize: const Size(34, 34),
+        padding: EdgeInsets.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      icon: Icon(
+        ascending ? Icons.sort_by_alpha_rounded : Icons.sort_rounded,
+        size: 18,
+      ),
+    );
+  }
+}
+
+class _ClientStatusFilter extends StatelessWidget {
+  const _ClientStatusFilter({
+    required this.value,
+    required this.active,
+    required this.inactive,
+    required this.onChanged,
+  });
+
+  final String value;
+  final int active;
+  final int inactive;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+
+    Widget option(String optionValue, String label) {
+      final selected = value == optionValue;
+      return InkWell(
+        key: ValueKey('client-status-filter-$optionValue'),
+        onTap: () => onChanged(optionValue),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          height: 30,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? cs.primary.withValues(alpha: .10)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l.localeName.toLowerCase().startsWith('es') ? 'Estado' : 'Status',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          height: 32,
+          padding: const EdgeInsets.all(1),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: .65),
+            ),
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 96,
+                  child: option('all', '${l.all} ${active + inactive}'),
+                ),
+                SizedBox(
+                  width: 96,
+                  child: option('active', '${l.active} $active'),
+                ),
+                SizedBox(
+                  width: 96,
+                  child: option('inactive', '${l.inactive} $inactive'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MissingInvoiceToggle extends StatelessWidget {
+  const _MissingInvoiceToggle({
     required this.count,
+    required this.selected,
     required this.onTap,
   });
 
-  final String label;
-  final bool selected;
   final int? count;
+  final bool selected;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
+    final l = AppLocalizations.of(context)!;
+    final label = count == null
+        ? l.clientMissingInvoiceThisMonth
+        : l.clientMissingCountThisMonth(count!);
 
-    const activeColor = Color(0xFFD97706); // amber-600
-    const activeBg = Color(0xFFFEF3C7); // amber-100
-
-    final chipColor = selected ? activeColor : cs.onSurfaceVariant;
-    final chipBg = selected
-        ? activeBg.withValues(alpha: 0.35)
-        : cs.surfaceContainerHighest.withValues(alpha: 0.4);
-    final chipBorder = selected
-        ? activeColor.withValues(alpha: 0.45)
-        : cs.outlineVariant.withValues(alpha: 0.35);
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 230),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(999),
-              onTap: onTap,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                constraints: const BoxConstraints(minHeight: 34),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                decoration: BoxDecoration(
-                  color: chipBg,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: chipBorder, width: 1.2),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      size: 14,
-                      color: chipColor,
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: typo.bodySmall.copyWith(
-                          color: chipColor,
-                          fontWeight:
-                              selected ? FontWeight.w700 : FontWeight.w500,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+    return InkWell(
+      key: const ValueKey('client-missing-month-invoice-filter'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 1),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: Checkbox(
+                value: selected,
+                onChanged: onTap == null ? null : (_) => onTap!(),
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
-          ),
-          if (count != null && count! > 0) ...[
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: activeColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: activeColor.withValues(alpha: 0.3)),
-              ),
+            const SizedBox(width: 5),
+            Expanded(
               child: Text(
-                '${count!}',
-                style: typo.caption.copyWith(
-                  color: activeColor,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 11,
-                ),
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium,
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }

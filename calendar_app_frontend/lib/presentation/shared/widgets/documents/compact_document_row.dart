@@ -1,0 +1,1488 @@
+import 'package:flutter/material.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_popup_menu.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
+
+Set<HexoraFinancialColumn> _columnsForWidth(
+  double width,
+  Set<HexoraFinancialColumn> requested,
+) {
+  final columns = Set<HexoraFinancialColumn>.of(requested);
+  columns
+    ..remove(HexoraFinancialColumn.concept)
+    ..remove(HexoraFinancialColumn.notes);
+  if (width < 860) {
+    columns
+      ..remove(HexoraFinancialColumn.taxableBase)
+      ..remove(HexoraFinancialColumn.vat);
+  }
+  if (width < 640) columns.remove(HexoraFinancialColumn.date);
+  return columns;
+}
+
+const _expandedTableWidth = 1080.0;
+const _compactActionSlot = 32.0;
+const _actionGap = 4.0;
+const _totalActionGap = 16.0;
+const _compactCellHeight = 44.0;
+// The compact identity/client cell may truncate, but keeping it at 112 px
+// lets the status, delivery, payment and date columns remain useful in the
+// standard two-pane invoice workspace.
+const _compactSummaryMinWidth = 112.0;
+const _clientMinWidth = 220.0;
+const _clientMaxWidth = 300.0;
+
+enum CompactDocumentColumn {
+  identity,
+  client,
+  status,
+  delivery,
+  payment,
+  date,
+  notes,
+  taxableBase,
+  vat,
+  total,
+}
+
+class _DocumentColumnLayout {
+  const _DocumentColumnLayout({
+    required this.expanded,
+    required this.columns,
+    required this.invoice,
+    required this.client,
+    required this.status,
+    required this.delivery,
+    required this.payment,
+    required this.date,
+    required this.concept,
+    required this.notes,
+    required this.base,
+    required this.vat,
+    required this.total,
+    required this.actions,
+    required this.spacer,
+    required this.totalActionGap,
+  });
+
+  final bool expanded;
+  final Set<HexoraFinancialColumn> columns;
+  final double invoice;
+  final double client;
+  final double status;
+  final double delivery;
+  final double payment;
+  final double date;
+  final double concept;
+  final double notes;
+  final double base;
+  final double vat;
+  final double total;
+  final double actions;
+  final double spacer;
+  final double totalActionGap;
+}
+
+double _compactInlineFixedWidth(_DocumentColumnLayout layout) =>
+    32 +
+    8 +
+    layout.status +
+    layout.delivery +
+    layout.payment +
+    layout.date +
+    layout.concept +
+    layout.notes +
+    layout.base +
+    layout.vat +
+    layout.total +
+    layout.totalActionGap +
+    layout.actions;
+
+bool _usesStackedDocumentLayout(
+  _DocumentColumnLayout layout,
+  double width,
+  TextScaler textScaler,
+) =>
+    (!layout.expanded &&
+        width < _compactInlineFixedWidth(layout) + _compactSummaryMinWidth) ||
+    textScaler.scale(13) > 18;
+
+_DocumentColumnLayout _documentColumnLayout(
+  double width,
+  Set<HexoraFinancialColumn> requested,
+  double actionsWidth, [
+  bool includeDelivery = false,
+  bool preferWideClient = false,
+]) {
+  final expanded = width >= _expandedTableWidth;
+  final columns = expanded
+      ? Set<HexoraFinancialColumn>.of(requested)
+      : _columnsForWidth(width, requested);
+  if (!expanded) {
+    return _DocumentColumnLayout(
+      expanded: false,
+      columns: columns,
+      invoice: 0,
+      client: 0,
+      status: HexoraDocumentTokens.statusColumn,
+      delivery: includeDelivery ? 96 : 0,
+      payment: columns.contains(HexoraFinancialColumn.payment) ? 108 : 0,
+      date: columns.contains(HexoraFinancialColumn.date) ? 104 : 0,
+      concept: 0,
+      notes: 0,
+      base: columns.contains(HexoraFinancialColumn.taxableBase) ? 112 : 0,
+      vat: columns.contains(HexoraFinancialColumn.vat) ? 96 : 0,
+      total: columns.contains(HexoraFinancialColumn.total) ? 120 : 0,
+      actions: actionsWidth,
+      spacer: 0,
+      totalActionGap:
+          columns.contains(HexoraFinancialColumn.total) ? _totalActionGap : 0,
+    );
+  }
+
+  final invoice = width * (preferWideClient ? .08 : .09);
+  final status = width * (preferWideClient ? .08 : .10);
+  final payment = columns.contains(HexoraFinancialColumn.payment)
+      ? width * (preferWideClient ? .08 : .10)
+      : 0.0;
+  final date = columns.contains(HexoraFinancialColumn.date)
+      ? width * (preferWideClient ? .09 : .10)
+      : 0.0;
+  final concept = columns.contains(HexoraFinancialColumn.concept)
+      ? width * (preferWideClient ? .12 : .14)
+      : 0.0;
+  final notes = columns.contains(HexoraFinancialColumn.notes)
+      ? width * (preferWideClient ? .12 : .14)
+      : 0.0;
+  final base = columns.contains(HexoraFinancialColumn.taxableBase)
+      ? width * (preferWideClient ? .10 : .11)
+      : 0.0;
+  final vat = columns.contains(HexoraFinancialColumn.vat)
+      ? width * (preferWideClient ? .07 : .08)
+      : 0.0;
+  final total = columns.contains(HexoraFinancialColumn.total)
+      ? width * (preferWideClient ? .10 : .11)
+      : 0.0;
+  final delivery = includeDelivery ? 96.0 : 0.0;
+  final totalActionGap =
+      columns.contains(HexoraFinancialColumn.total) ? _totalActionGap : 0.0;
+  final availableClient = width -
+      invoice -
+      status -
+      delivery -
+      totalActionGap -
+      payment -
+      date -
+      concept -
+      notes -
+      base -
+      vat -
+      total -
+      actionsWidth;
+  // Never force the client column beyond the remaining row width. Near the
+  // expanded breakpoint the preferred minimum can be a few pixels wider than
+  // the available space, which makes the complete row overflow.
+  final clientMaxWidth = preferWideClient ? 420.0 : _clientMaxWidth;
+  final client = availableClient >= _clientMinWidth
+      ? availableClient.clamp(_clientMinWidth, clientMaxWidth).toDouble()
+      : availableClient.clamp(0.0, clientMaxWidth).toDouble();
+  final spacer =
+      (availableClient - client).clamp(0, double.infinity).toDouble();
+  return _DocumentColumnLayout(
+    expanded: true,
+    columns: columns,
+    invoice: invoice,
+    client: client,
+    status: status,
+    delivery: delivery,
+    payment: payment,
+    date: date,
+    concept: concept,
+    notes: notes,
+    base: base,
+    vat: vat,
+    total: total,
+    actions: actionsWidth,
+    spacer: spacer,
+    totalActionGap: totalActionGap,
+  );
+}
+
+class CompactDocumentAction {
+  const CompactDocumentAction(
+    this.label,
+    this.onPressed, {
+    this.destructive = false,
+    this.primary = false,
+    this.icon,
+    this.opensPreviewDrawer = false,
+  });
+  final String label;
+  final VoidCallback? onPressed;
+  final bool destructive;
+  final bool primary;
+  final IconData? icon;
+
+  /// Opens the shared document preview drawer before running this action.
+  /// This keeps explicit preview actions consistent in every list mode.
+  final bool opensPreviewDrawer;
+}
+
+/// Always-visible icon action (e.g. download, edit). Replaces the default
+/// preview button when a row supplies any.
+class CompactDocumentQuickAction {
+  const CompactDocumentQuickAction(
+      {required this.icon,
+      required this.tooltip,
+      required this.onPressed,
+      this.busy = false,
+      this.opensPreviewDrawer = false});
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final bool busy;
+  final bool opensPreviewDrawer;
+}
+
+class CompactDocumentTableHeader extends StatelessWidget {
+  const CompactDocumentTableHeader({
+    super.key,
+    required this.identityLabel,
+    required this.visibleFinancialColumns,
+    this.clientLabel = 'Cliente',
+    this.conceptLabel = 'Concepto',
+    this.statusLabel = 'Estado',
+    this.paymentLabel = 'Pago',
+    this.actionsLabel = 'Acciones',
+    this.actionsWidth = _compactActionSlot * 4,
+    this.previewActionInFullView = true,
+    this.hideActionsInSplitView = false,
+    this.showDeliveryColumn = false,
+    this.invoiceColumnOrder = false,
+    this.preferWideClient = false,
+    this.headerBuilder,
+  });
+
+  final String identityLabel;
+  final Set<HexoraFinancialColumn> visibleFinancialColumns;
+  final String clientLabel;
+  final String conceptLabel;
+  final String statusLabel;
+  final String paymentLabel;
+  final String actionsLabel;
+  final double actionsWidth;
+  final bool previewActionInFullView;
+  final bool hideActionsInSplitView;
+  final bool showDeliveryColumn;
+  final bool invoiceColumnOrder;
+  final bool preferWideClient;
+  final Widget Function(
+    BuildContext context,
+    CompactDocumentColumn column,
+    String label,
+    double width,
+    bool numeric,
+  )? headerBuilder;
+
+  Widget _cell(
+    BuildContext context,
+    CompactDocumentColumn column,
+    String label,
+    double width, {
+    bool numeric = false,
+  }) =>
+      headerBuilder?.call(context, column, label, width, numeric) ??
+      HexoraFinancialHeaderCell(label: label, width: width, numeric: numeric);
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final split =
+        DocumentWorkspaceScope.maybeOf(context)?.mode == DocumentViewMode.split;
+    final hideActions = split && hideActionsInSplitView;
+    final effectiveActionsWidth = hideActions
+        ? 0.0
+        : split && previewActionInFullView
+            ? actionsWidth - _compactActionSlot - _actionGap
+            : actionsWidth;
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth < 560) return const SizedBox.shrink();
+      final contentWidth = constraints.maxWidth - 24;
+      final layout = _documentColumnLayout(
+        contentWidth,
+        visibleFinancialColumns,
+        effectiveActionsWidth,
+        showDeliveryColumn,
+        preferWideClient,
+      );
+      // The header and its rows must cross the responsive breakpoint
+      // together. Otherwise labels remain visible while row values move into
+      // the stacked summary, making Estado/Envio/Fecha look empty.
+      final stacked = _usesStackedDocumentLayout(
+          layout, contentWidth, MediaQuery.textScalerOf(context));
+      if (stacked) {
+        if (!invoiceColumnOrder || constraints.maxWidth < 720) {
+          return const SizedBox.shrink();
+        }
+        return Container(
+          key: const ValueKey('compact-document-table-header'),
+          height: HexoraTableTokens.headingHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          color: cs.surfaceContainerLow.withValues(alpha: .55),
+          child: Row(
+            children: [
+              const SizedBox(width: 24),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, identityConstraints) {
+                    final invoiceWidth = identityConstraints.maxWidth * .42;
+                    final clientWidth =
+                        identityConstraints.maxWidth - invoiceWidth;
+                    return Row(
+                      children: [
+                        _cell(
+                          context,
+                          CompactDocumentColumn.identity,
+                          identityLabel,
+                          invoiceWidth,
+                        ),
+                        _cell(
+                          context,
+                          CompactDocumentColumn.client,
+                          clientLabel,
+                          clientWidth,
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              if (layout.columns.contains(HexoraFinancialColumn.date))
+                _cell(
+                  context,
+                  CompactDocumentColumn.date,
+                  'Fecha',
+                  layout.date,
+                ),
+              _cell(
+                context,
+                CompactDocumentColumn.status,
+                statusLabel,
+                layout.status,
+              ),
+              if (layout.columns.contains(HexoraFinancialColumn.payment))
+                _cell(
+                  context,
+                  CompactDocumentColumn.payment,
+                  paymentLabel,
+                  layout.payment,
+                ),
+              if (layout.columns.contains(HexoraFinancialColumn.total))
+                _cell(
+                  context,
+                  CompactDocumentColumn.total,
+                  'Total',
+                  layout.total,
+                  numeric: true,
+                ),
+              if (!hideActions && layout.totalActionGap > 0)
+                SizedBox(width: layout.totalActionGap),
+              if (!hideActions)
+                SizedBox(
+                  key: const ValueKey('document-actions-header'),
+                  width: layout.actions,
+                  child: Center(
+                    child: Text(
+                      actionsLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontFamily: HexoraTypography.fontFamily,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      }
+      return Container(
+        height: HexoraTableTokens.headingHeight,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        color: cs.surfaceContainerLow.withValues(alpha: .55),
+        child: Row(children: [
+          if (layout.expanded) ...[
+            KeyedSubtree(
+                key: const ValueKey('document-identity-header'),
+                child: _cell(context, CompactDocumentColumn.identity,
+                    identityLabel, layout.invoice)),
+            if (invoiceColumnOrder &&
+                layout.columns.contains(HexoraFinancialColumn.date))
+              _cell(context, CompactDocumentColumn.date, 'Fecha', layout.date),
+            KeyedSubtree(
+                key: const ValueKey('document-client-header'),
+                child: _cell(context, CompactDocumentColumn.client, clientLabel,
+                    layout.client)),
+          ] else ...[
+            const SizedBox(width: 24),
+            Expanded(
+                child: HexoraFinancialHeaderCell(
+                    label: '$identityLabel / $clientLabel',
+                    width: double.infinity)),
+            if (invoiceColumnOrder &&
+                layout.columns.contains(HexoraFinancialColumn.date))
+              _cell(context, CompactDocumentColumn.date, 'Fecha', layout.date),
+          ],
+          SizedBox(
+            width: layout.spacer,
+          ),
+          SizedBox(
+            width: layout.status,
+            child: _cell(context, CompactDocumentColumn.status, statusLabel,
+                double.infinity),
+          ),
+          if (showDeliveryColumn)
+            _cell(context, CompactDocumentColumn.delivery, 'Envío',
+                layout.delivery),
+          if (layout.columns.contains(HexoraFinancialColumn.payment))
+            _cell(context, CompactDocumentColumn.payment, paymentLabel,
+                layout.payment),
+          if (!invoiceColumnOrder &&
+              layout.columns.contains(HexoraFinancialColumn.date))
+            _cell(context, CompactDocumentColumn.date, 'Fecha', layout.date),
+          if (layout.columns.contains(HexoraFinancialColumn.concept))
+            HexoraFinancialHeaderCell(
+                label: conceptLabel, width: layout.concept),
+          if (layout.columns.contains(HexoraFinancialColumn.notes))
+            _cell(context, CompactDocumentColumn.notes, 'Notas', layout.notes),
+          if (layout.columns.contains(HexoraFinancialColumn.taxableBase))
+            _cell(context, CompactDocumentColumn.taxableBase, 'Base imponible',
+                layout.base,
+                numeric: true),
+          if (layout.columns.contains(HexoraFinancialColumn.vat))
+            _cell(context, CompactDocumentColumn.vat, 'IVA', layout.vat,
+                numeric: true),
+          if (layout.columns.contains(HexoraFinancialColumn.total))
+            _cell(context, CompactDocumentColumn.total, 'Total', layout.total,
+                numeric: true),
+          if (!hideActions && layout.totalActionGap > 0)
+            SizedBox(width: layout.totalActionGap),
+          if (!hideActions)
+            SizedBox(
+              key: const ValueKey('document-actions-header'),
+              width: layout.actions,
+              child: Center(
+                child: Text(actionsLabel,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontFamily: HexoraTypography.fontFamily,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurfaceVariant)),
+              ),
+            ),
+        ]),
+      );
+    });
+  }
+}
+
+/// Financial footer that uses the exact same responsive column geometry as
+/// [CompactDocumentTableHeader] and [CompactDocumentRow].
+///
+/// When the document table switches to its compact/stacked presentation, the
+/// caller-provided [compactFallback] is shown instead of forcing desktop
+/// columns into the available width.
+class CompactDocumentFinancialFooter extends StatelessWidget {
+  const CompactDocumentFinancialFooter({
+    super.key,
+    required this.countLabel,
+    required this.taxableBaseValue,
+    required this.vatValue,
+    required this.totalValue,
+    required this.visibleFinancialColumns,
+    required this.compactFallback,
+    this.actionsWidth = _compactActionSlot * 4,
+    this.previewActionInFullView = true,
+    this.hideActionsInSplitView = false,
+    this.showDeliveryColumn = false,
+    this.invoiceColumnOrder = false,
+    this.preferWideClient = false,
+    this.loading = false,
+    this.trailing,
+  });
+
+  final String countLabel;
+  final String taxableBaseValue;
+  final String vatValue;
+  final String totalValue;
+  final Set<HexoraFinancialColumn> visibleFinancialColumns;
+  final Widget compactFallback;
+  final double actionsWidth;
+  final bool previewActionInFullView;
+  final bool hideActionsInSplitView;
+  final bool showDeliveryColumn;
+  final bool invoiceColumnOrder;
+  final bool preferWideClient;
+  final bool loading;
+  final Widget? trailing;
+
+  Widget _moneyCell(
+    BuildContext context, {
+    required Key key,
+    required String semanticsLabel,
+    required String value,
+    required double width,
+    bool emphasized = false,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      key: key,
+      width: width,
+      child: Semantics(
+        label: '$semanticsLabel: $value',
+        child: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: Text(
+            loading ? '—' : value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.end,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontFamily: HexoraTypography.fontFamily,
+                  fontSize: emphasized ? 13.5 : 12.5,
+                  fontWeight: emphasized ? FontWeight.w800 : FontWeight.w600,
+                  color: emphasized ? cs.primary : cs.onSurface,
+                  fontFeatures: HexoraTypography.numericFeatures,
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final split =
+        DocumentWorkspaceScope.maybeOf(context)?.mode == DocumentViewMode.split;
+    final hideActions = split && hideActionsInSplitView;
+    final effectiveActionsWidth = hideActions
+        ? 0.0
+        : split && previewActionInFullView
+            ? actionsWidth - _compactActionSlot - _actionGap
+            : actionsWidth;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // During split-view/sidebar transitions this footer can briefly
+        // receive a very narrow constraint. Do not subtract its horizontal
+        // padding from that width and create a negative BoxConstraints value.
+        if (constraints.maxWidth < 560) return compactFallback;
+        final contentWidth = constraints.maxWidth - 24;
+        final layout = _documentColumnLayout(
+          contentWidth,
+          visibleFinancialColumns,
+          effectiveActionsWidth,
+          showDeliveryColumn,
+          preferWideClient,
+        );
+        final stacked = _usesStackedDocumentLayout(
+          layout,
+          contentWidth,
+          MediaQuery.textScalerOf(context),
+        );
+        if (!layout.expanded || stacked) return compactFallback;
+
+        return Container(
+          key: const ValueKey('aligned-document-financial-footer'),
+          height: 50,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLow.withValues(alpha: 0.82),
+            border: Border(
+              top: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: layout.invoice,
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        countLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontFamily: HexoraTypography.fontFamily,
+                              fontSize: 11.5,
+                              color: cs.onSurfaceVariant,
+                            ),
+                      ),
+                    ),
+                    if (loading) ...[
+                      const SizedBox(width: 6),
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (invoiceColumnOrder &&
+                  layout.columns.contains(HexoraFinancialColumn.date))
+                SizedBox(width: layout.date),
+              SizedBox(width: layout.client),
+              SizedBox(width: layout.spacer),
+              SizedBox(width: layout.status),
+              if (showDeliveryColumn) SizedBox(width: layout.delivery),
+              if (layout.columns.contains(HexoraFinancialColumn.payment))
+                SizedBox(width: layout.payment),
+              if (!invoiceColumnOrder &&
+                  layout.columns.contains(HexoraFinancialColumn.date))
+                SizedBox(width: layout.date),
+              if (layout.columns.contains(HexoraFinancialColumn.concept))
+                SizedBox(width: layout.concept),
+              if (layout.columns.contains(HexoraFinancialColumn.notes))
+                SizedBox(width: layout.notes),
+              if (layout.columns.contains(HexoraFinancialColumn.taxableBase))
+                _moneyCell(
+                  context,
+                  key: const ValueKey('invoice-footer-taxable-base'),
+                  semanticsLabel: 'Base imponible',
+                  value: taxableBaseValue,
+                  width: layout.base,
+                ),
+              if (layout.columns.contains(HexoraFinancialColumn.vat))
+                _moneyCell(
+                  context,
+                  key: const ValueKey('invoice-footer-vat'),
+                  semanticsLabel: 'IVA',
+                  value: vatValue,
+                  width: layout.vat,
+                ),
+              if (layout.columns.contains(HexoraFinancialColumn.total))
+                _moneyCell(
+                  context,
+                  key: const ValueKey('invoice-footer-total'),
+                  semanticsLabel: 'Total facturado',
+                  value: totalValue,
+                  width: layout.total,
+                  emphasized: true,
+                ),
+              if (!hideActions && layout.totalActionGap > 0)
+                SizedBox(width: layout.totalActionGap),
+              if (!hideActions)
+                SizedBox(
+                  width: layout.actions,
+                  child: Align(
+                    alignment: AlignmentDirectional.center,
+                    child: trailing ?? const SizedBox.shrink(),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class CompactDocumentRow extends StatelessWidget {
+  const CompactDocumentRow(
+      {super.key,
+      required this.title,
+      required this.metadata,
+      this.amount,
+      this.icon = Icons.description_outlined,
+      this.selected = false,
+      this.onTap,
+      this.onPreview,
+      required this.previewLabel,
+      this.actions = const [],
+      this.status,
+      this.titleTrailing,
+      this.details,
+      this.previewBusy = false,
+      this.quickActions = const [],
+      this.primaryAction,
+      this.primaryActionWidth = 0,
+      this.quickActionSlots = 0,
+      this.date,
+      this.dateWarningTooltip,
+      this.payment,
+      this.delivery,
+      this.concept,
+      this.notes,
+      this.showDeliveryColumn = false,
+      this.invoiceColumnOrder = false,
+      this.preferWideClient = false,
+      this.compactSplitLayout = false,
+      this.hideActionsInSplitView = false,
+      this.compactTitle,
+      this.separatorWidth = 1,
+      this.taxableBase,
+      this.vat,
+      this.visibleFinancialColumns = const {HexoraFinancialColumn.total}});
+  final String title, metadata, previewLabel;
+  final String? amount;
+  final IconData icon;
+  final bool selected, previewBusy;
+  final VoidCallback? onTap, onPreview;
+  final List<CompactDocumentAction> actions;
+  final Widget? status, titleTrailing, details;
+
+  /// Visible icon actions shown instead of the preview button.
+  final List<CompactDocumentQuickAction> quickActions;
+
+  /// Labelled action for state-changing operations (e.g. "Emitir"), placed
+  /// before the icon actions. Lists pass the same [primaryActionWidth] for
+  /// every row so amount columns stay aligned even on rows without one.
+  final Widget? primaryAction;
+  final double primaryActionWidth;
+
+  /// Icon slots reserved for [quickActions]. Rows that omit an action (e.g.
+  /// Edit when editing isn't permitted) leave its slot empty, so Download
+  /// keeps the same position on every row. Standard order: Edit, Download.
+  final int quickActionSlots;
+  final DateTime? date;
+  final String? dateWarningTooltip;
+  final Widget? payment;
+  final Widget? delivery;
+  final Widget? concept;
+  final Widget? notes;
+  final bool showDeliveryColumn;
+  final bool invoiceColumnOrder;
+  final bool preferWideClient;
+  final bool compactSplitLayout;
+  final bool hideActionsInSplitView;
+  final String? compactTitle;
+  final double separatorWidth;
+  final num? taxableBase;
+  final num? vat;
+  final Set<HexoraFinancialColumn> visibleFinancialColumns;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final workspace = DocumentWorkspaceScope.maybeOf(context);
+    final hidePreviewAction = workspace?.mode == DocumentViewMode.split;
+    final hideActions = hidePreviewAction && hideActionsInSplitView;
+    final useCompactSplitLayout = compactSplitLayout && hidePreviewAction;
+    final visibleQuickActions = quickActions
+        .where((action) => !(hidePreviewAction && action.opensPreviewDrawer))
+        .toList(growable: false);
+    final hiddenPreviewSlots =
+        hidePreviewAction && quickActions.any((a) => a.opensPreviewDrawer)
+            ? 1
+            : 0;
+    final effectiveQuickActionSlots =
+        (quickActionSlots - hiddenPreviewSlots).clamp(0, quickActionSlots);
+    // The web target platform may still report Android/iOS. Use the actual
+    // viewport so desktop panes do not inherit the stacked mobile row.
+    final touch = MediaQuery.sizeOf(context).width < 650;
+    final target = touch ? 48.0 : _compactActionSlot;
+    final emptySlots = effectiveQuickActionSlots > visibleQuickActions.length
+        ? effectiveQuickActionSlots - visibleQuickActions.length
+        : 0;
+    final showFallbackPreview = !hidePreviewAction &&
+        visibleQuickActions.isEmpty &&
+        (onPreview != null || previewBusy);
+    final iconSlots = visibleQuickActions.length +
+        emptySlots +
+        (showFallbackPreview ? 1 : 0) +
+        (actions.isNotEmpty ? 1 : 0);
+    final hasPrimaryAction = primaryActionWidth > 0 || primaryAction != null;
+    // Quick-action buttons are separated by [_actionGap] in [actionsWidget].
+    // Reserve those gaps too so three action buttons fit their table cell.
+    final quickActionGaps =
+        visibleQuickActions.length > 1 ? visibleQuickActions.length - 1 : 0;
+    final actionSeparators = actions.isNotEmpty &&
+            (visibleQuickActions.isNotEmpty || showFallbackPreview)
+        ? 1
+        : 0;
+    final primaryActionGap = hasPrimaryAction && iconSlots > 0 ? 4.0 : 0.0;
+    final actionsColumnWidth = hideActions
+        ? 0.0
+        : target * iconSlots +
+            _actionGap * (quickActionGaps + actionSeparators) +
+            primaryActionGap +
+            primaryActionWidth;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      HexoraListRow(
+          selected: selected,
+          onTap: onTap,
+          minHeight: useCompactSplitLayout ? 56 : 52,
+          verticalPadding: 2,
+          separatorWidth: separatorWidth,
+          child: LayoutBuilder(builder: (context, constraints) {
+            final layout = _documentColumnLayout(
+              constraints.maxWidth,
+              visibleFinancialColumns,
+              actionsColumnWidth,
+              showDeliveryColumn,
+              preferWideClient,
+            );
+            final columns = layout.columns;
+            // A desktop viewport can still contain a narrow list pane (for
+            // example while the recurrence editor is open). Base the row
+            // layout on its actual pane width, not only the full viewport.
+            final stacked = _usesStackedDocumentLayout(
+                layout, constraints.maxWidth, MediaQuery.textScalerOf(context));
+            final showStatusColumn =
+                !stacked && (layout.expanded || constraints.maxWidth >= 560);
+            final dateInMetadata =
+                visibleFinancialColumns.contains(HexoraFinancialColumn.date) &&
+                    !columns.contains(HexoraFinancialColumn.date);
+            final secondaryLabel = [
+              metadata,
+              if (dateInMetadata) HexoraFinancialFormat.date(date),
+            ].where((value) => value.isNotEmpty).join(' · ');
+            Widget dateWarningIcon() => Tooltip(
+                  key: const ValueKey('document-date-warning'),
+                  message: dateWarningTooltip!,
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    size: 15,
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? const Color(0xFF9A5B00)
+                        : const Color(0xFFFFC247),
+                  ),
+                );
+            Widget dateColumn() => SizedBox(
+                  key: const ValueKey('document-date-column'),
+                  width: layout.date,
+                  height: _compactCellHeight,
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: HexoraDateCell(
+                            value: date,
+                            width: double.infinity,
+                          ),
+                        ),
+                        if (dateWarningTooltip != null) ...[
+                          const SizedBox(width: 3),
+                          dateWarningIcon(),
+                          const SizedBox(width: 3),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+            final titleLine = Row(children: [
+              Expanded(
+                child: Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.bodyMedium?.copyWith(
+                        fontFamily: HexoraTypography.fontFamily,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ),
+              if (titleTrailing != null) ...[
+                const SizedBox(width: 6),
+                titleTrailing!,
+              ],
+            ]);
+            final metadataText = Text(secondaryLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.bodySmall?.copyWith(
+                    fontFamily: HexoraTypography.fontFamily,
+                    fontSize: layout.expanded ? 12 : 11,
+                    fontWeight: FontWeight.w400,
+                    color: cs.onSurfaceVariant,
+                    fontFeatures: HexoraTypography.numericFeatures));
+            final showSecondarySummary = secondaryLabel.isNotEmpty ||
+                (!showStatusColumn && status != null);
+            final summary = Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  titleLine,
+                  if (showSecondarySummary)
+                    Row(children: [
+                      if (secondaryLabel.isNotEmpty)
+                        Expanded(child: metadataText),
+                      if (dateInMetadata && dateWarningTooltip != null) ...[
+                        const SizedBox(width: 3),
+                        dateWarningIcon(),
+                      ],
+                      if (!showStatusColumn && status != null) ...[
+                        if (secondaryLabel.isNotEmpty) const SizedBox(width: 6),
+                        Flexible(child: status!),
+                      ],
+                    ]),
+                  if (stacked && columns.contains(HexoraFinancialColumn.date))
+                    Row(children: [
+                      Text(
+                        HexoraFinancialFormat.date(date),
+                        maxLines: 1,
+                        style: text.bodySmall?.copyWith(
+                          fontFamily: HexoraTypography.fontFamily,
+                          fontSize: 12,
+                          color: cs.onSurfaceVariant,
+                          fontFeatures: HexoraTypography.numericFeatures,
+                        ),
+                      ),
+                      if (dateWarningTooltip != null) ...[
+                        const SizedBox(width: 3),
+                        dateWarningIcon(),
+                      ],
+                    ]),
+                ]);
+            final amountWidget = amount == null
+                ? null
+                : Text(amount!,
+                    textAlign: TextAlign.right,
+                    style: text.bodyMedium?.copyWith(
+                        fontFamily: HexoraTypography.fontFamily,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: HexoraTypography.numericFeatures));
+            Widget busyIndicator() => const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2));
+            final actionsWidget = SizedBox(
+              width: actionsColumnWidth,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.center,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (primaryActionWidth > 0)
+                    SizedBox(
+                        width: primaryActionWidth,
+                        child: Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: primaryAction))
+                  else if (primaryAction != null)
+                    primaryAction!,
+                  if (hasPrimaryAction && iconSlots > 0)
+                    SizedBox(width: primaryActionGap),
+                  for (var i = 0; i < emptySlots; i++) SizedBox(width: target),
+                  if (visibleQuickActions.isNotEmpty)
+                    for (var i = 0; i < visibleQuickActions.length; i++) ...[
+                      if (i > 0) const SizedBox(width: _actionGap),
+                      SizedBox(
+                          width: target,
+                          height: target,
+                          child: IconButton(
+                              tooltip: visibleQuickActions[i].tooltip,
+                              onPressed: visibleQuickActions[i].busy ||
+                                      visibleQuickActions[i].onPressed == null
+                                  ? null
+                                  : () {
+                                      if (visibleQuickActions[i]
+                                          .opensPreviewDrawer) {
+                                        workspace?.openPreviewDrawer();
+                                      }
+                                      visibleQuickActions[i].onPressed!.call();
+                                    },
+                              iconSize: 16,
+                              padding: EdgeInsets.zero,
+                              style: IconButton.styleFrom(
+                                  minimumSize: const Size.square(32),
+                                  maximumSize: const Size.square(32),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap),
+                              icon: visibleQuickActions[i].busy
+                                  ? busyIndicator()
+                                  : Icon(visibleQuickActions[i].icon)))
+                    ]
+                  else if (showFallbackPreview)
+                    SizedBox(
+                        width: target,
+                        height: target,
+                        child: IconButton(
+                            tooltip: previewLabel,
+                            onPressed: previewBusy || onPreview == null
+                                ? null
+                                : () {
+                                    workspace?.openPreviewDrawer();
+                                    onPreview!.call();
+                                  },
+                            iconSize: 16,
+                            padding: EdgeInsets.zero,
+                            style: IconButton.styleFrom(
+                                minimumSize: const Size.square(32),
+                                maximumSize: const Size.square(32),
+                                tapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap),
+                            icon: previewBusy
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2))
+                                : const Icon(Icons.visibility_outlined))),
+                  if (actions.isNotEmpty)
+                    if (visibleQuickActions.isNotEmpty || showFallbackPreview)
+                      const SizedBox(width: _actionGap),
+                  if (actions.isNotEmpty)
+                    SizedBox(
+                        width: target,
+                        height: target,
+                        child: Center(
+                          child: SizedBox.square(
+                            dimension: 32,
+                            child: HexoraPopupMenuButton<int>(
+                                tooltip: MaterialLocalizations.of(context)
+                                    .moreButtonTooltip,
+                                icon: const Icon(Icons.more_vert, size: 16),
+                                onSelected: (index) {
+                                  final action = actions[index];
+                                  if (action.opensPreviewDrawer) {
+                                    workspace?.openPreviewDrawer();
+                                  }
+                                  action.onPressed?.call();
+                                },
+                                itemBuilder: (_) {
+                                  final entries = <PopupMenuEntry<int>>[];
+                                  for (var i = 0; i < actions.length; i++) {
+                                    final action = actions[i];
+                                    if (action.destructive &&
+                                        entries.isNotEmpty) {
+                                      entries
+                                          .add(const HexoraPopupMenuDivider());
+                                    }
+                                    entries.add(HexoraPopupMenuActionItem<int>(
+                                      value: i,
+                                      enabled: action.onPressed != null,
+                                      icon: action.icon ?? Icons.more_horiz,
+                                      label: action.label,
+                                      tone: action.destructive
+                                          ? HexoraPopupMenuTone.destructive
+                                          : action.primary
+                                              ? HexoraPopupMenuTone.primary
+                                              : HexoraPopupMenuTone.neutral,
+                                    ));
+                                  }
+                                  return entries;
+                                }),
+                          ),
+                        ))
+                  else
+                    SizedBox(width: target),
+                ]),
+              ),
+            );
+            final useSingleLineCompactLayout = compactSplitLayout &&
+                (hidePreviewAction || (constraints.maxWidth >= 650 && stacked));
+            if (useSingleLineCompactLayout) {
+              final compactIdentity = (compactTitle ?? title).trim();
+              final showCompactColumns = constraints.maxWidth >= 720;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(icon,
+                      size: 16,
+                      color: selected ? cs.primary : cs.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Expanded(
+                            child: Text(
+                              compactIdentity,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: text.bodyMedium?.copyWith(
+                                fontFamily: HexoraTypography.fontFamily,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          if (titleTrailing != null) ...[
+                            const SizedBox(width: 4),
+                            titleTrailing!,
+                          ],
+                        ]),
+                        const SizedBox(height: 2),
+                        Row(children: [
+                          Expanded(
+                            child: Tooltip(
+                              message: metadata,
+                              child: Text(
+                                metadata,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.bodySmall?.copyWith(
+                                  fontFamily: HexoraTypography.fontFamily,
+                                  fontSize: 11,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (!showCompactColumns &&
+                              HexoraFinancialFormat.date(date).isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              HexoraFinancialFormat.date(date),
+                              maxLines: 1,
+                              style: text.bodySmall?.copyWith(
+                                fontFamily: HexoraTypography.fontFamily,
+                                fontSize: 11,
+                                color: cs.onSurfaceVariant,
+                                fontFeatures: HexoraTypography.numericFeatures,
+                              ),
+                            ),
+                            if (dateWarningTooltip != null) ...[
+                              const SizedBox(width: 3),
+                              dateWarningIcon(),
+                            ],
+                          ],
+                        ]),
+                      ],
+                    ),
+                  ),
+                  if (showCompactColumns &&
+                      columns.contains(HexoraFinancialColumn.date))
+                    SizedBox(
+                      key: const ValueKey('document-date-column'),
+                      width: layout.date,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: HexoraDateCell(
+                              value: date,
+                              width: double.infinity,
+                            ),
+                          ),
+                          if (dateWarningTooltip != null) ...[
+                            const SizedBox(width: 3),
+                            dateWarningIcon(),
+                            const SizedBox(width: 3),
+                          ],
+                        ],
+                      ),
+                    ),
+                  if (status != null) ...[
+                    if (showCompactColumns)
+                      SizedBox(
+                        key: const ValueKey('document-status-column'),
+                        width: layout.status,
+                        child: Center(child: status!),
+                      )
+                    else ...[
+                      const SizedBox(width: 8),
+                      ConstrainedBox(
+                        key: const ValueKey('document-status-column'),
+                        constraints: const BoxConstraints(maxWidth: 96),
+                        child: status!,
+                      ),
+                    ],
+                  ],
+                  if (showCompactColumns &&
+                      columns.contains(HexoraFinancialColumn.payment))
+                    SizedBox(
+                      key: const ValueKey('document-payment-column'),
+                      width: layout.payment,
+                      child: Center(
+                        child: payment ?? const SizedBox.shrink(),
+                      ),
+                    ),
+                  if (amountWidget != null &&
+                      columns.contains(HexoraFinancialColumn.total)) ...[
+                    if (!showCompactColumns) const SizedBox(width: 8),
+                    SizedBox(
+                      key: const ValueKey('document-amount-column'),
+                      width: showCompactColumns ? layout.total : 104,
+                      child: Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: amountWidget,
+                      ),
+                    ),
+                  ],
+                  if (!hideActions &&
+                      showCompactColumns &&
+                      layout.totalActionGap > 0)
+                    SizedBox(width: layout.totalActionGap),
+                  if (!hideActions) ...[
+                    if (!showCompactColumns) const SizedBox(width: 8),
+                    SizedBox(
+                      key: const ValueKey('document-actions-column'),
+                      width: actionsColumnWidth,
+                      child: Align(
+                        alignment: AlignmentDirectional.center,
+                        child: actionsWidget,
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            }
+            return Column(mainAxisSize: MainAxisSize.min, children: [
+              ConstrainedBox(
+                  constraints: BoxConstraints(
+                      minHeight: stacked ? 0 : _compactCellHeight),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (layout.expanded) ...[
+                          SizedBox(
+                            key: const ValueKey('document-identity-column'),
+                            width: layout.invoice,
+                            height: _compactCellHeight,
+                            child: Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Icon(icon,
+                                        size: 16,
+                                        color: selected
+                                            ? cs.primary
+                                            : cs.onSurfaceVariant),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: titleLine),
+                                  ]),
+                            ),
+                          ),
+                          if (invoiceColumnOrder &&
+                              columns.contains(HexoraFinancialColumn.date))
+                            dateColumn(),
+                          SizedBox(
+                              key: const ValueKey('document-client-column'),
+                              width: layout.client,
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Tooltip(
+                                  message: metadata,
+                                  child: metadataText,
+                                ),
+                              )),
+                        ] else ...[
+                          // Blue is reserved for selection and primary actions.
+                          Icon(icon,
+                              size: 16,
+                              color:
+                                  selected ? cs.primary : cs.onSurfaceVariant),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            key: const ValueKey(
+                                'document-compact-identity-column'),
+                            child: Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: summary,
+                            ),
+                          ),
+                        ],
+                        if (!stacked) ...[
+                          if (!layout.expanded) const SizedBox(width: 8),
+                          if (!layout.expanded &&
+                              invoiceColumnOrder &&
+                              columns.contains(HexoraFinancialColumn.date))
+                            dateColumn(),
+                          if (showStatusColumn) ...[
+                            if (layout.spacer > 0)
+                              SizedBox(width: layout.spacer),
+                            SizedBox(
+                                key: const ValueKey('document-status-column'),
+                                width: layout.status,
+                                height: _compactCellHeight,
+                                child: Align(
+                                    alignment: AlignmentDirectional.center,
+                                    child: status)),
+                          ],
+                          if (showDeliveryColumn && delivery != null)
+                            SizedBox(
+                              key: const ValueKey('document-delivery-column'),
+                              width: layout.delivery,
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.center,
+                                child: delivery,
+                              ),
+                            ),
+                          if (columns.contains(HexoraFinancialColumn.payment))
+                            SizedBox(
+                              key: const ValueKey('document-payment-column'),
+                              width: layout.payment,
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.center,
+                                child: payment ?? const SizedBox.shrink(),
+                              ),
+                            ),
+                          if (!invoiceColumnOrder &&
+                              columns.contains(HexoraFinancialColumn.date))
+                            dateColumn(),
+                          if (columns.contains(HexoraFinancialColumn.concept))
+                            SizedBox(
+                              key: const ValueKey('document-concept-column'),
+                              width: layout.concept,
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: concept ?? const SizedBox.shrink(),
+                              ),
+                            ),
+                          if (columns.contains(HexoraFinancialColumn.notes))
+                            SizedBox(
+                              key: const ValueKey('document-notes-column'),
+                              width: layout.notes,
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: notes ?? const SizedBox.shrink(),
+                              ),
+                            ),
+                          if (columns
+                              .contains(HexoraFinancialColumn.taxableBase))
+                            SizedBox(
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: HexoraFinancialCell(
+                                    value: taxableBase, width: layout.base),
+                              ),
+                            ),
+                          if (columns.contains(HexoraFinancialColumn.vat))
+                            SizedBox(
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: HexoraFinancialCell(
+                                    value: vat, width: layout.vat),
+                              ),
+                            ),
+                          if (columns.contains(HexoraFinancialColumn.total))
+                            SizedBox(
+                                key: const ValueKey('document-amount-column'),
+                                width: layout.total,
+                                height: _compactCellHeight,
+                                child: Align(
+                                    alignment: AlignmentDirectional.centerEnd,
+                                    child: amountWidget)),
+                          if (!hideActions && layout.totalActionGap > 0)
+                            SizedBox(width: layout.totalActionGap),
+                          if (!hideActions)
+                            SizedBox(
+                                key: const ValueKey('document-actions-column'),
+                                width: layout.actions,
+                                height: _compactCellHeight,
+                                child: Center(child: actionsWidget)),
+                        ],
+                      ])),
+              if (stacked && !hideActions)
+                Row(children: [
+                  Expanded(
+                      child: columns.contains(HexoraFinancialColumn.total)
+                          ? amountWidget ?? const SizedBox.shrink()
+                          : const SizedBox.shrink()),
+                  actionsWidget
+                ])
+            ]);
+          })),
+      if (details != null)
+        Padding(padding: const EdgeInsets.all(8), child: details!),
+    ]);
+  }
+}
+
+class HexoraMonthSeparator extends StatelessWidget {
+  const HexoraMonthSeparator({
+    super.key,
+    required this.label,
+    this.flat = false,
+  });
+  final String label;
+  final bool flat;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final line = Expanded(
+      child: Container(
+        height: HexoraTableTokens.separatorWidth,
+        color: cs.outlineVariant.withValues(
+          alpha: HexoraTableTokens.separatorOpacity,
+        ),
+      ),
+    );
+    final text = Text(
+      label.toUpperCase(),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.labelSmall?.copyWith(
+        fontFamily: HexoraTypography.fontFamily,
+        fontSize: 10.5,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.6,
+        color: cs.onSurfaceVariant.withValues(alpha: 0.78),
+      ),
+    );
+    if (flat) {
+      return SizedBox(
+        key: ValueKey('document-month-group-separator-$label'),
+        height: 24,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: 12, end: 8),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: text,
+          ),
+        ),
+      );
+    }
+    final labelWidget = Container(
+      constraints: const BoxConstraints(maxWidth: 220),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(HexoraDimensions.radius),
+      ),
+      child: text,
+    );
+
+    return SizedBox(
+      key: ValueKey('document-month-group-separator-$label'),
+      height: HexoraDocumentTokens.monthHeadingHeight,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+        child: Row(
+          children: [
+            line,
+            const SizedBox(width: 8),
+            labelWidget,
+            const SizedBox(width: 8),
+            line,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Backwards-compatible name for existing document list call sites.
+class HexoraMonthGroupSeparator extends HexoraMonthSeparator {
+  const HexoraMonthGroupSeparator({super.key, required super.label});
+}
+
+/// Backwards-compatible name for document lists outside the main workspaces.
+class CompactDocumentMonthHeading extends HexoraMonthGroupSeparator {
+  const CompactDocumentMonthHeading({super.key, required super.label});
+}

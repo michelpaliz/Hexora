@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -206,7 +207,7 @@ Future<String?> showTimezonePicker({
   final controller = TextEditingController(text: initial);
   final l = AppLocalizations.of(context)!;
 
-  return showDialog<String>(
+  return showHexoraDialog<String>(
     context: context,
     builder: (context) {
       return StatefulBuilder(

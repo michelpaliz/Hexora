@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/downloads/download_job.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -6,6 +9,7 @@ import 'package:hexora/models/jobs/job_notification.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/downloads/downloads_api.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/groups/invite/domain/invite_domain.dart';
 import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
@@ -16,7 +20,6 @@ import 'package:hexora/presentation/screens/workspace/dashboard/panels/notificat
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/notifications/widgets/notification_details_panel.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/notifications/widgets/notifications_list.dart';
 import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
-import 'package:hexora/presentation/shared/downloads/download_job_display.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
@@ -25,8 +28,13 @@ import 'package:hexora/presentation/screens/notifications/show-notifications/uti
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_destination.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_payload_helper.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/premium_upgrade_dialog.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/presentation/viewmodels/notifications/notification_view_model.dart';
 import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -47,6 +55,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
   final DownloadsApi _downloadsApi = DownloadsApi();
   List<NotificationUser> _notifications = const [];
   NotificationUser? _selected;
+  bool _detailsClosed = false;
   DownloadJob? _selectedDownload;
   BackgroundJob? _selectedOcrJob;
   Category? _selectedCategory;
@@ -54,6 +63,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
   bool _downloadsMode = false;
   bool _ocrJobsMode = false;
   bool _loading = true;
+  bool _markingAllRead = false;
   bool _processing = false;
   String? _error;
   bool _initialized = false;
@@ -71,7 +81,9 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
   }
 
   void _onDownloadsChanged() {
-    if (!DownloadJobsStore.instance.takeOpenDownloadsRequest() || !mounted) return;
+    if (!DownloadJobsStore.instance.takeOpenDownloadsRequest() || !mounted) {
+      return;
+    }
     setState(() {
       _downloadsMode = true;
       _ocrJobsMode = false;
@@ -131,15 +143,20 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
         width: 32,
         height: 32,
         child: IconButton(
-          padding: EdgeInsets.zero,
-          visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+          // Keep this compact control self-contained. The shared desktop
+          // action style has a larger minimum target, which conflicts with
+          // the fixed 32px toolbar slot and creates invalid constraints.
           style: IconButton.styleFrom(
-            backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.38),
+            minimumSize: const Size(32, 32),
+            padding: EdgeInsets.zero,
+            foregroundColor: cs.onSurfaceVariant,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           splashRadius: 16,
           iconSize: 16,
           icon: Icon(
@@ -147,62 +164,123 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
             size: 16,
             color: cs.onSurface.withValues(alpha: 0.75),
           ),
-          onPressed: _load,
+          onPressed: _loading || _markingAllRead ? null : _load,
         ),
       ),
     );
   }
 
   Widget _compactActionsMenu(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final es = Localizations.localeOf(context).languageCode == 'es';
     final unreadCount = _notifications.where((n) => !n.isRead).length;
-    final hasUnreadJobs = _jobNotifications.isNotEmpty;
+    final hasJobs = _jobNotifications.isNotEmpty;
+
+    Widget menuLabel(
+      IconData icon,
+      String label, {
+      String? subtitle,
+      bool enabled = true,
+    }) {
+      final labelColor =
+          enabled ? cs.onSurface : cs.onSurface.withValues(alpha: 0.4);
+      return Row(children: [
+        Icon(
+          icon,
+          size: 16,
+          color:
+              enabled ? cs.primary : cs.onSurfaceVariant.withValues(alpha: 0.5),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: NavigationTokens.label(context).copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: labelColor,
+                  )),
+              if (subtitle != null)
+                Text(subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      ]);
+    }
+
+    // Refresh lives in the toolbar as its own icon, so it is intentionally not
+    // repeated here. Theme-aware neutral surface, never a bright blue-gray.
     return PopupMenuButton<String>(
-      tooltip: 'Acciones',
+      tooltip: es ? 'Más acciones' : 'More actions',
+      enabled: !_markingAllRead,
       padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-      style: IconButton.styleFrom(
-        backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.38),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+      constraints: const BoxConstraints(minWidth: 252, maxWidth: 288),
+      position: PopupMenuPosition.under,
+      offset: const Offset(0, 6),
+      color: isDark ? cs.surfaceContainerHigh : cs.surface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: cs.outlineVariant.withValues(alpha: isDark ? 0.4 : 0.6),
         ),
       ),
-      icon: Icon(
-        Icons.more_horiz_rounded,
-        size: 16,
-        color: cs.onSurface.withValues(alpha: 0.75),
-      ),
+      style: ThemedButtons.iconAction(context, color: cs.primary),
+      icon: _markingAllRead
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.more_horiz_rounded, size: 18),
       onSelected: (value) async {
-        if (value == 'refresh') {
-          await _load();
-          return;
-        }
         if (value == 'mark_notifications_read') {
-          await _markVisibleNotificationsRead();
-          return;
+          await _markAllNotificationsRead();
         }
-        if (value == 'mark_jobs_read') {
-          await _markAllJobNotificationsRead();
-        }
+        if (value == 'mark_jobs_read') await _markAllJobNotificationsRead();
       },
       itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'refresh',
-          child: Text('Actualizar'),
+        NavigationPopupMenuItem(
+          value: 'mark_notifications_read',
+          enabled: unreadCount > 0,
+          child: menuLabel(
+            Icons.done_all_rounded,
+            es ? 'Marcar todas como leídas' : 'Mark all as read',
+            enabled: unreadCount > 0,
+            subtitle: unreadCount == 0
+                ? (es
+                    ? 'No hay notificaciones sin leer'
+                    : 'No unread notifications')
+                : (es
+                    ? '$unreadCount sin leer en este grupo'
+                    : '$unreadCount unread in this group'),
+          ),
         ),
-        if (unreadCount > 0)
-          PopupMenuItem(
-            value: 'mark_notifications_read',
-            child: Text('Marcar $unreadCount como leidas'),
+        NavigationPopupMenuItem(
+          value: 'mark_jobs_read',
+          enabled: hasJobs,
+          child: menuLabel(
+            Icons.auto_awesome_outlined,
+            es
+                ? 'Marcar automatizaciones como leídas'
+                : 'Mark automations as read',
+            enabled: hasJobs,
+            subtitle: hasJobs
+                ? null
+                : (es
+                    ? 'Sin automatizaciones sin leer'
+                    : 'No unread automations'),
           ),
-        if (hasUnreadJobs)
-          const PopupMenuItem(
-            value: 'mark_jobs_read',
-            child: Text('Marcar automatizaciones como leidas'),
-          ),
-        const PopupMenuItem(
-          enabled: false,
-          child: Text('Ajustes proximamente'),
         ),
       ],
     );
@@ -218,6 +296,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       groupDomain: context.read<GroupDomain>(),
       notificationDomain: context.read<NotificationDomain>(),
       notificationService: NotificationApiClient(),
+      invitationDomain: context.read<InvitationDomain>(),
     );
     _load();
   }
@@ -244,6 +323,12 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
         jobNotifications = const <JobNotification>[];
       }
       final data = await _viewModel.fetchNotificationsForGroup(widget.group.id);
+      // Refresh domain so the nav-bar badge count reflects the server's
+      // current read state (domain may be stale from the initial app load).
+      final user = _viewModel.userDomain.user;
+      if (user != null) {
+        unawaited(_viewModel.fetchAndUpdateNotifications(user));
+      }
       if (!mounted) return;
       context.read<NotificationDomain>().replaceGroupNotifications(
             widget.group.id,
@@ -359,6 +444,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       setState(() {
         _downloadsMode = false;
         _selected = notification;
+        _detailsClosed = false;
       });
       return;
     }
@@ -481,10 +567,12 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
     final documentArgs = _documentRouteArgs(notification);
     if (destination == NotificationDestination.document &&
         documentArgs != null) {
-      await Navigator.of(context).pushNamed(
-        AppRoutes.groupInvoices,
-        arguments: documentArgs,
-      );
+      context.read<GroupDashboardState>().openInvoicesWorkspace(
+            initialMenu: documentArgs.initialMenu ?? 'invoices_issued',
+            initialInvoiceId: documentArgs.initialInvoiceId,
+            initialReceiptId: documentArgs.initialReceiptId,
+            initialBudgetId: documentArgs.initialBudgetId,
+          );
       return;
     }
     if (destination == NotificationDestination.invoiceDraft) {
@@ -492,14 +580,10 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
           (notification.args['invoiceId'] ?? notification.args['documentId'])
               .toString()
               .trim();
-      await Navigator.of(context).pushNamed(
-        AppRoutes.groupInvoices,
-        arguments: GroupInvoicesRouteArgs(
-          group: widget.group,
-          initialMenu: 'invoices_drafts',
-          initialInvoiceId: invoiceId,
-        ),
-      );
+      context.read<GroupDashboardState>().openInvoicesWorkspace(
+            initialMenu: 'invoices_drafts',
+            initialInvoiceId: invoiceId,
+          );
       return;
     }
     if (destination == NotificationDestination.event) {
@@ -513,14 +597,12 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       );
       return;
     }
-    await Navigator.of(context).pushNamed(
-      switch (destination) {
-        NotificationDestination.expenses => AppRoutes.enableBanking,
-        NotificationDestination.members => AppRoutes.groupMembers,
-        _ => AppRoutes.groupDashboard,
-      },
-      arguments: widget.group,
-    );
+    final dashboard = context.read<GroupDashboardState>();
+    dashboard.openSection(switch (destination) {
+      NotificationDestination.expenses => Sections.enableBanking,
+      NotificationDestination.members => Sections.members,
+      _ => Sections.calendar,
+    });
   }
 
   Future<void> _handleOpenNotification(NotificationUser notification) async {
@@ -637,22 +719,33 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
     setState(() => _jobNotifications = const []);
   }
 
-  Future<void> _markVisibleNotificationsRead() async {
-    final unread = _filteredNotifications
-        .where((notification) => !notification.isRead)
-        .toList(growable: false);
-    for (final notification in unread) {
-      await _viewModel.markNotificationAsRead(notification);
+  Future<void> _markAllNotificationsRead() async {
+    if (_markingAllRead) return;
+    final unread =
+        _notifications.where((n) => !n.isRead).toList(growable: false);
+    if (unread.isEmpty) return;
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    setState(() => _markingAllRead = true);
+    var completed = 0;
+    try {
+      for (final notification in unread) {
+        await _viewModel.markNotificationAsRead(notification);
+        completed++;
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(es
+              ? 'Todas las notificaciones del grupo están leídas.'
+              : 'All group notifications are marked as read.')));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(es
+              ? 'Se marcaron $completed de ${unread.length}. Inténtalo de nuevo para completar el resto.'
+              : 'Marked $completed of ${unread.length}. Try again to finish the rest.')));
+    } finally {
+      if (mounted) setState(() => _markingAllRead = false);
     }
-    if (!mounted) return;
-    setState(() {
-      _notifications = _notifications.map((notification) {
-        if (unread.any((entry) => entry.id == notification.id)) {
-          notification.isRead = true;
-        }
-        return notification;
-      }).toList();
-    });
   }
 
   Future<void> _refreshSelectedDownload() async {
@@ -668,7 +761,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       final response = await _downloadsApi.downloadFile(job);
       await launchFileDownload(
         response.bodyBytes,
-        fileName: DownloadJobDisplay.downloadFilename(context, job, response.headers),
+        fileName: job.effectiveFileName,
         mimeType: job.mimeType.trim().isNotEmpty
             ? job.mimeType
             : 'application/octet-stream',
@@ -755,23 +848,29 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
 
     Widget body;
     if (_loading) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const WorkspaceMainContent(
+        child: Center(child: CircularProgressIndicator()),
+      );
     } else if (_error != null) {
-      body = Center(
-        child: Text(
-          l.groupNotificationsError,
-          style: t.bodyLarge,
-          textAlign: TextAlign.center,
+      body = WorkspaceMainContent(
+        child: Center(
+          child: Text(
+            l.groupNotificationsError,
+            style: t.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     } else if (_notifications.isEmpty &&
         _downloads.isEmpty &&
         _ocrJobs.isEmpty) {
-      body = Center(
-        child: Text(
-          l.groupNotificationsEmpty,
-          style: t.bodyLarge,
-          textAlign: TextAlign.center,
+      body = WorkspaceMainContent(
+        child: Center(
+          child: Text(
+            l.groupNotificationsEmpty,
+            style: t.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     } else {
@@ -784,13 +883,31 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
               final visibleNotifications = _filteredNotifications;
               final downloads = _downloads;
               final ocrJobs = _ocrJobs;
+              // The refresh / more-actions controls move onto the first
+              // section header row ("Reciente") to reclaim the vertical space
+              // of a dedicated toolbar. The toolbar is kept for the downloads /
+              // OCR modes and the empty state, where there is no header to host
+              // them.
+              final inlineHeaderActions = !_downloadsMode &&
+                  !_ocrJobsMode &&
+                  visibleNotifications.isNotEmpty;
+              final headerActionsRow = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _compactRefreshAction(context, l.refreshAction),
+                  const SizedBox(width: 2),
+                  _compactActionsMenu(context),
+                ],
+              );
               final selectedVisible = _selected != null &&
                   visibleNotifications.any((n) => n.id == _selected!.id);
-              final effectiveSelected = selectedVisible
-                  ? _selected
-                  : (visibleNotifications.isNotEmpty
-                      ? visibleNotifications.first
-                      : null);
+              final effectiveSelected = _detailsClosed
+                  ? null
+                  : selectedVisible
+                      ? _selected
+                      : (visibleNotifications.isNotEmpty
+                          ? visibleNotifications.first
+                          : null);
               final selectedDestination = effectiveSelected == null
                   ? null
                   : _openDestination(effectiveSelected);
@@ -834,6 +951,9 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                         selectedId: effectiveSelected?.id,
                         onSelect: _handleNotificationSelected,
                         onDelete: _handleDelete,
+                        onMarkRead: _handleMarkRead,
+                        headerTrailing:
+                            inlineHeaderActions ? headerActionsRow : null,
                       ),
               );
 
@@ -857,79 +977,79 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                     : _markAllJobNotificationsRead,
               );
 
+              final filter = NotificationCategoryFilterBar(
+                sidebar: isWide,
+                notifications: _notifications,
+                selectedWorkflow: _selectedWorkflow,
+                onWorkflowSelected: (workflow) {
+                  setState(() {
+                    _selectedWorkflow = workflow;
+                    _downloadsMode = false;
+                    _ocrJobsMode =
+                        workflow == NotificationWorkflowFilter.automations &&
+                            ocrJobs.isNotEmpty;
+                    if (_ocrJobsMode) {
+                      _selectedCategory = null;
+                      _selectedOcrJob ??=
+                          ocrJobs.isNotEmpty ? ocrJobs.first : null;
+                      return;
+                    }
+                    final filtered = _filteredNotifications;
+                    if (_selected != null &&
+                        !filtered.any((n) => n.id == _selected!.id)) {
+                      _selected = filtered.isEmpty ? null : filtered.first;
+                    }
+                  });
+                },
+                selectedCategory: _selectedCategory,
+                downloadsCount: downloads.length,
+                downloadsSelected: _downloadsMode,
+                onDownloadsSelected: downloads.isEmpty
+                    ? null
+                    : () => setState(() {
+                          _downloadsMode = true;
+                          _selectedWorkflow =
+                              NotificationWorkflowFilter.automations;
+                          _selectedCategory = null;
+                          _selectedDownload ??=
+                              downloads.isNotEmpty ? downloads.first : null;
+                        }),
+                ocrJobsCount: ocrJobs.length,
+                ocrJobsSelected: _ocrJobsMode,
+                onOcrJobsSelected: ocrJobs.isEmpty
+                    ? null
+                    : () => setState(() {
+                          _ocrJobsMode = true;
+                          _selectedWorkflow =
+                              NotificationWorkflowFilter.automations;
+                          _downloadsMode = false;
+                          _selectedCategory = null;
+                          _selectedOcrJob ??=
+                              ocrJobs.isNotEmpty ? ocrJobs.first : null;
+                        }),
+                onCategorySelected: (category) {
+                  setState(() {
+                    _downloadsMode = false;
+                    _ocrJobsMode = false;
+                    _selectedCategory = category;
+                    if (category != null) {
+                      _selectedWorkflow = NotificationWorkflowFilter.all;
+                    }
+                    final filtered = _filteredNotifications;
+                    if (_selected != null &&
+                        !filtered.any((n) => n.id == _selected!.id)) {
+                      _selected = filtered.isEmpty ? null : filtered.first;
+                    }
+                  });
+                },
+              );
               final listWithFilter = Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
-                    child: NotificationCategoryFilterBar(
-                      notifications: _notifications,
-                      selectedWorkflow: _selectedWorkflow,
-                      onWorkflowSelected: (workflow) {
-                        setState(() {
-                          _selectedWorkflow = workflow;
-                          _downloadsMode = false;
-                          _ocrJobsMode = workflow ==
-                                  NotificationWorkflowFilter.automations &&
-                              ocrJobs.isNotEmpty;
-                          if (_ocrJobsMode) {
-                            _selectedCategory = null;
-                            _selectedOcrJob ??=
-                                ocrJobs.isNotEmpty ? ocrJobs.first : null;
-                            return;
-                          }
-                          final filtered = _filteredNotifications;
-                          if (_selected != null &&
-                              !filtered.any((n) => n.id == _selected!.id)) {
-                            _selected =
-                                filtered.isEmpty ? null : filtered.first;
-                          }
-                        });
-                      },
-                      selectedCategory: _selectedCategory,
-                      downloadsCount: downloads.length,
-                      downloadsSelected: _downloadsMode,
-                      onDownloadsSelected: downloads.isEmpty
-                          ? null
-                          : () => setState(() {
-                                _downloadsMode = true;
-                                _selectedWorkflow =
-                                    NotificationWorkflowFilter.automations;
-                                _selectedCategory = null;
-                                _selectedDownload ??= downloads.isNotEmpty
-                                    ? downloads.first
-                                    : null;
-                              }),
-                      ocrJobsCount: ocrJobs.length,
-                      ocrJobsSelected: _ocrJobsMode,
-                      onOcrJobsSelected: ocrJobs.isEmpty
-                          ? null
-                          : () => setState(() {
-                                _ocrJobsMode = true;
-                                _selectedWorkflow =
-                                    NotificationWorkflowFilter.automations;
-                                _downloadsMode = false;
-                                _selectedCategory = null;
-                                _selectedOcrJob ??=
-                                    ocrJobs.isNotEmpty ? ocrJobs.first : null;
-                              }),
-                      onCategorySelected: (category) {
-                        setState(() {
-                          _downloadsMode = false;
-                          _ocrJobsMode = false;
-                          _selectedCategory = category;
-                          if (category != null) {
-                            _selectedWorkflow = NotificationWorkflowFilter.all;
-                          }
-                          final filtered = _filteredNotifications;
-                          if (_selected != null &&
-                              !filtered.any((n) => n.id == _selected!.id)) {
-                            _selected =
-                                filtered.isEmpty ? null : filtered.first;
-                          }
-                        });
-                      },
+                  if (!isWide)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
+                      child: filter,
                     ),
-                  ),
                   Expanded(
                     child: _ocrJobsMode
                         ? ocrJobsList
@@ -944,85 +1064,133 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      flex: 3,
-                      child: FolderPanel(
-                        title: l.notifications,
-                        contentTopPadding: 44,
-                        actions: [
-                          _compactRefreshAction(context, l.refreshAction),
-                          _compactActionsMenu(context),
-                        ],
-                        child: listWithFilter,
-                      ),
-                    ),
+                    filter,
                     const SizedBox(width: 12),
                     Expanded(
-                      flex: 2,
-                      child: FolderPanel(
-                        title: l.details,
-                        child: _ocrJobsMode
-                            ? _OcrJobDetailsPanel(
-                                job: effectiveSelectedOcrJob,
-                                onOpen: effectiveSelectedOcrJob == null
-                                    ? null
-                                    : () =>
-                                        _openOcrJob(effectiveSelectedOcrJob),
-                              )
-                            : _downloadsMode
-                                ? DownloadDetailsPanel(
-                                    item: effectiveSelectedDownload,
-                                    onRefresh: _refreshSelectedDownload,
-                                    onDownload: _downloadSelectedJob,
-                                  )
-                                : NotificationDetailsPanel(
-                                    notification: effectiveSelected,
-                                    groupName: widget.group.name,
-                                    onOpen: effectiveSelected != null &&
-                                            selectedDestination != null
-                                        ? () => _handleOpenNotification(
-                                            effectiveSelected)
-                                        : null,
-                                    openLabel: selectedDestination == null
-                                        ? null
-                                        : _openLabel(
-                                            selectedDestination,
-                                            Localizations.localeOf(context)
-                                                    .languageCode ==
-                                                'es',
-                                            notification: effectiveSelected),
-                                    onMarkRead: effectiveSelected != null &&
-                                            !effectiveSelected.isRead
-                                        ? () =>
-                                            _handleMarkRead(effectiveSelected)
-                                        : null,
-                                    onConfirm: effectiveSelected == null
-                                        ? null
-                                        : () =>
-                                            _handleConfirm(effectiveSelected),
-                                    onNegate: effectiveSelected == null
-                                        ? null
-                                        : () =>
-                                            _handleNegate(effectiveSelected),
-                                    onDelete: effectiveSelected == null
-                                        ? null
-                                        : () =>
-                                            _handleDelete(effectiveSelected),
-                                  ),
+                      child: WorkspaceMainContent(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: FolderPanel(
+                                title: l.notifications,
+                                showTab: !inlineHeaderActions,
+                                showBorder: false,
+                                showToolbarDivider: false,
+                                contentTopPadding: inlineHeaderActions ? 6 : 8,
+                                actions: inlineHeaderActions
+                                    ? const []
+                                    : [
+                                        _compactRefreshAction(
+                                            context, l.refreshAction),
+                                        _compactActionsMenu(context),
+                                      ],
+                                child: listWithFilter,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: FolderPanel(
+                                title: null,
+                                showTab: false,
+                                showBorder: false,
+                                contentTopPadding: 0,
+                                actions: [
+                                  if (!_downloadsMode &&
+                                      !_ocrJobsMode &&
+                                      effectiveSelected != null)
+                                    IconButton(
+                                      style: ThemedButtons.iconAction(context),
+                                      tooltip: MaterialLocalizations.of(context)
+                                          .closeButtonTooltip,
+                                      icon: const Icon(Icons.close, size: 18),
+                                      onPressed: () =>
+                                          setState(() => _detailsClosed = true),
+                                    ),
+                                ],
+                                child: _ocrJobsMode
+                                    ? _OcrJobDetailsPanel(
+                                        job: effectiveSelectedOcrJob,
+                                        onOpen: effectiveSelectedOcrJob == null
+                                            ? null
+                                            : () => _openOcrJob(
+                                                effectiveSelectedOcrJob),
+                                      )
+                                    : _downloadsMode
+                                        ? DownloadDetailsPanel(
+                                            item: effectiveSelectedDownload,
+                                            onRefresh: _refreshSelectedDownload,
+                                            onDownload: _downloadSelectedJob,
+                                          )
+                                        : NotificationDetailsPanel(
+                                            notification: effectiveSelected,
+                                            groupName: widget.group.name,
+                                            onOpen: effectiveSelected != null &&
+                                                    selectedDestination != null
+                                                ? () => _handleOpenNotification(
+                                                    effectiveSelected)
+                                                : null,
+                                            openLabel:
+                                                selectedDestination == null
+                                                    ? null
+                                                    : _openLabel(
+                                                        selectedDestination,
+                                                        Localizations.localeOf(
+                                                                    context)
+                                                                .languageCode ==
+                                                            'es',
+                                                        notification:
+                                                            effectiveSelected),
+                                            onMarkRead: effectiveSelected !=
+                                                        null &&
+                                                    !effectiveSelected.isRead
+                                                ? () => _handleMarkRead(
+                                                    effectiveSelected)
+                                                : null,
+                                            onConfirm: effectiveSelected == null
+                                                ? null
+                                                : () => _handleConfirm(
+                                                    effectiveSelected),
+                                            onNegate: effectiveSelected == null
+                                                ? null
+                                                : () => _handleNegate(
+                                                    effectiveSelected),
+                                            onDelete: effectiveSelected == null
+                                                ? null
+                                                : () => _handleDelete(
+                                                    effectiveSelected),
+                                            onClose: effectiveSelected == null
+                                                ? null
+                                                : () => setState(() =>
+                                                    _detailsClosed = true),
+                                          ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 );
               }
 
-              return FolderPanel(
-                title: l.notifications,
-                contentTopPadding: 44,
-                actions: [
-                  _compactRefreshAction(context, l.refreshAction),
-                  _compactActionsMenu(context),
-                ],
-                child: listWithFilter,
+              return WorkspaceMainContent(
+                child: FolderPanel(
+                  title: l.notifications,
+                  showTab: !inlineHeaderActions,
+                  showBorder: false,
+                  showToolbarDivider: false,
+                  contentTopPadding: inlineHeaderActions ? 6 : 44,
+                  actions: inlineHeaderActions
+                      ? const []
+                      : [
+                          _compactRefreshAction(context, l.refreshAction),
+                          _compactActionsMenu(context),
+                        ],
+                  child: listWithFilter,
+                ),
               );
             },
           );
@@ -1133,6 +1301,10 @@ class _OcrNotificationsSummary extends StatelessWidget {
           ),
           if (onMarkAllRead != null)
             TextButton(
+              style: ThemedButtons.button(
+                context,
+                variant: ButtonVariant.ghost,
+              ),
               onPressed: onMarkAllRead,
               child: const Text('Marcar leidas'),
             ),
@@ -1229,6 +1401,10 @@ class _OcrJobRow extends StatelessWidget {
                 ],
                 const Spacer(),
                 TextButton(
+                  style: ThemedButtons.button(
+                    context,
+                    variant: ButtonVariant.ghost,
+                  ),
                   onPressed: onOpen,
                   child: Text(_jobActionLabel(job.status)),
                 ),
@@ -1305,6 +1481,7 @@ class _OcrJobDetailsPanel extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
+              style: ThemedButtons.button(context),
               onPressed: onOpen,
               icon: const Icon(Icons.open_in_new_rounded),
               label: Text(_jobActionLabel(item.status)),

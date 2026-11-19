@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
 import 'package:provider/provider.dart';
@@ -27,7 +28,7 @@ class PendingEventsBulkAction extends StatelessWidget {
         onPressed: vm.isLoading || vm.hasPendingWrites
             ? null
             : () async {
-                final confirmed = await showDialog<bool>(
+                final confirmed = await showHexoraDialog<bool>(
                   context: context,
                   builder: (context) => AlertDialog(
                     title: Text(isEs

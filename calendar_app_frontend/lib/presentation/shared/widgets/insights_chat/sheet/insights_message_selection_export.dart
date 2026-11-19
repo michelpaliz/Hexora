@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
@@ -176,7 +177,7 @@ mixin InsightsMessageSelectionExport on InsightsChatSheetStateBase {
   Future<void> confirmClearChat() async {
     if (runtime.sending) return;
     final l = AppLocalizations.of(context)!;
-    final confirm = await showDialog<bool>(
+    final confirm = await showHexoraDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l.insightsChatClearTitle),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_email_widgets.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -78,7 +79,8 @@ class InvoiceDetailEmailPanel extends StatelessWidget {
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+            border:
+                Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
           ),
           child: Row(
             children: [
@@ -87,9 +89,8 @@ class InvoiceDetailEmailPanel extends StatelessWidget {
                     ? Icons.check_circle_outline
                     : Icons.warning_amber_outlined,
                 size: 18,
-                color: emailConfigured == true
-                    ? cs.primary
-                    : cs.onSurfaceVariant,
+                color:
+                    emailConfigured == true ? cs.primary : cs.onSurfaceVariant,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -152,8 +153,8 @@ class InvoiceDetailEmailPanel extends StatelessWidget {
           ],
         ),
         AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
+          duration: HexoraMotion.duration(context, HexoraMotion.standard),
+          curve: HexoraMotion.enter,
           child: emailHistoryExpanded
               ? Padding(
                   padding: const EdgeInsets.only(top: 6),

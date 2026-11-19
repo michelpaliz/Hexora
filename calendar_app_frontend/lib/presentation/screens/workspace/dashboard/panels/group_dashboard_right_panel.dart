@@ -14,8 +14,8 @@ import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/pending_events/right_panel_undone_inline.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/right_panel_workers_inline.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat_fab.dart';
-import 'package:hexora/presentation/screens/workspace/sections/business_chat/business_chat_screen.dart';
 import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/business_chat/business_chat_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/domain/models/members_count.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
@@ -66,7 +66,9 @@ class GroupDashboardRightPanel extends StatelessWidget {
         );
         break;
       case 'services':
-        content = role == GroupRole.owner || role == GroupRole.admin || role == GroupRole.coAdmin
+        content = role == GroupRole.owner ||
+                role == GroupRole.admin ||
+                role == GroupRole.coAdmin
             ? ServicesClientsInlinePanel(group: group)
             : const SizedBox.shrink();
         break;
@@ -88,7 +90,9 @@ class GroupDashboardRightPanel extends StatelessWidget {
         content = InsightsInlinePanel(group: group);
         break;
       case 'chat':
-        content = role == GroupRole.owner || role == GroupRole.admin || role == GroupRole.coAdmin
+        content = role == GroupRole.owner ||
+                role == GroupRole.admin ||
+                role == GroupRole.coAdmin
             ? PremiumFeatureGate(
                 group: group,
                 feature: PremiumFeatureRequest.aiChat,
@@ -174,7 +178,12 @@ class GroupDashboardRightPanel extends StatelessWidget {
         );
     }
 
-    if (activeAnchor == 'workers' || activeAnchor == 'services') {
+    if (activeAnchor == 'workers' ||
+        activeAnchor == 'services' ||
+        activeAnchor == 'settings' ||
+        activeAnchor == 'notifications' ||
+        activeAnchor == 'chat' ||
+        activeAnchor == 'businessChat') {
       return content;
     }
 

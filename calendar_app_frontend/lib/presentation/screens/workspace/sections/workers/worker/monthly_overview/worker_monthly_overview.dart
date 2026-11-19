@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
@@ -112,6 +113,7 @@ class _WorkerMonthlyOverviewScreenState
 
   void _showInfoSheet() {
     showModalBottomSheet(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(

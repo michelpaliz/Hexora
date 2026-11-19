@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:hexora/presentation/shared/utils/audit/audit_format_utils.dart';
 import 'package:hexora/presentation/shared/utils/audit/audit_presentation_utils.dart';
@@ -42,15 +43,18 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
   Map<String, dynamic>? _selectedRow;
   bool _filtersExpanded = false;
 
-  bool get _isEs =>
-      Localizations.localeOf(context).languageCode.toLowerCase().startsWith('es');
+  bool get _isEs => Localizations.localeOf(context)
+      .languageCode
+      .toLowerCase()
+      .startsWith('es');
   String _tx(String es, String en) => _isEs ? es : en;
 
   @override
   void initState() {
     super.initState();
     _searchCtrl.addListener(() {
-      if (mounted) setState(() => _searchText = _searchCtrl.text.trim().toLowerCase());
+      if (mounted)
+        setState(() => _searchText = _searchCtrl.text.trim().toLowerCase());
     });
     _load();
   }
@@ -69,9 +73,18 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
         .map((e) => Map<String, dynamic>.from(e))
         .where((row) {
       if (_searchText.isEmpty) return true;
-      return (row['invoiceNumber'] ?? '').toString().toLowerCase().contains(_searchText) ||
-          (row['vendorName'] ?? '').toString().toLowerCase().contains(_searchText) ||
-          (row['fileName'] ?? '').toString().toLowerCase().contains(_searchText);
+      return (row['invoiceNumber'] ?? '')
+              .toString()
+              .toLowerCase()
+              .contains(_searchText) ||
+          (row['vendorName'] ?? '')
+              .toString()
+              .toLowerCase()
+              .contains(_searchText) ||
+          (row['fileName'] ?? '')
+              .toString()
+              .toLowerCase()
+              .contains(_searchText);
     }).toList(growable: false);
   }
 
@@ -92,7 +105,8 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
       );
       if (mounted) setState(() => _response = result);
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      if (mounted)
+        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted && showSpinner) setState(() => _loading = false);
     }
@@ -154,7 +168,8 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
     }
   }
 
-  Future<void> _updateReview(Map<String, dynamic> row, String status, {String? notes}) async {
+  Future<void> _updateReview(Map<String, dynamic> row, String status,
+      {String? notes}) async {
     final id = (row['id'] ?? '').toString().trim();
     if (id.isEmpty || _busyIds.contains(id)) return;
     setState(() => _busyIds.add(id));
@@ -180,8 +195,9 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
   }
 
   Future<void> _needsFix(Map<String, dynamic> row) async {
-    final ctrl = TextEditingController(text: (row['reviewNotes'] ?? '').toString());
-    final submitted = await showDialog<String?>(
+    final ctrl =
+        TextEditingController(text: (row['reviewNotes'] ?? '').toString());
+    final submitted = await showHexoraDialog<String?>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(_tx('Marcar para corregir', 'Mark for correction')),
@@ -189,7 +205,8 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
           controller: ctrl,
           maxLines: 4,
           decoration: InputDecoration(
-            hintText: _tx('Añade una nota de revisión...', 'Add a review note...'),
+            hintText:
+                _tx('Añade una nota de revisión...', 'Add a review note...'),
           ),
         ),
         actions: [
@@ -205,7 +222,8 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
       ),
     );
     ctrl.dispose();
-    if (submitted != null) await _updateReview(row, 'needs_fix', notes: submitted);
+    if (submitted != null)
+      await _updateReview(row, 'needs_fix', notes: submitted);
   }
 
   Future<void> _openFile(Map<String, dynamic> row) async {
@@ -215,7 +233,8 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
       final result = await _api.fetchExpenseFile(id);
       final url = (result['url'] ?? '').toString().trim();
       final uri = Uri.tryParse(url);
-      if (uri == null) throw Exception(_tx('No se encontró el archivo.', 'File not found.'));
+      if (uri == null)
+        throw Exception(_tx('No se encontró el archivo.', 'File not found.'));
       await launchUrl(uri, webOnlyWindowName: '_blank');
     } catch (e) {
       if (!mounted) return;
@@ -280,7 +299,9 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
               children: [
                 Icon(Icons.error_outline, size: 16, color: cs.error),
                 const SizedBox(width: 8),
-                Expanded(child: Text(_error!, style: t.bodySmall.copyWith(color: cs.error))),
+                Expanded(
+                    child: Text(_error!,
+                        style: t.bodySmall.copyWith(color: cs.error))),
                 TextButton(
                   onPressed: _load,
                   child: Text(_tx('Reintentar', 'Retry')),
@@ -339,8 +360,9 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
     final baseChipColor = isLight ? const Color(0xFF1D4ED8) : cs.secondary;
     final vatChipColor = isLight ? const Color(0xFF475569) : cs.secondary;
     final totalChipColor = isLight ? const Color(0xFFB45309) : cs.primary;
-    final issuesChipColor =
-        hasMismatch ? (isLight ? const Color(0xFFC2410C) : cs.error) : cs.tertiary;
+    final issuesChipColor = hasMismatch
+        ? (isLight ? const Color(0xFFC2410C) : cs.error)
+        : cs.tertiary;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
@@ -370,7 +392,8 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                     children: [
                       Text(
                         _tx('Auditoria IVA gastos', 'Expense VAT audit'),
-                        style: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
+                        style:
+                            t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
                       ),
                       Text(
                         _tx(
@@ -447,6 +470,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
       ),
     );
   }
+
   Widget _buildExportButton(ColorScheme cs) {
     return Container(
       decoration: BoxDecoration(
@@ -485,6 +509,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
       ),
     );
   }
+
   Widget _statChip(
     IconData icon,
     String label,
@@ -495,12 +520,10 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
     bool highlight = false,
   }) {
     final isLight = Theme.of(context).brightness == Brightness.light;
-    final backgroundAlpha = highlight
-        ? (isLight ? 0.10 : 0.12)
-        : (isLight ? 0.055 : 0.07);
-    final borderAlpha = highlight
-        ? (isLight ? 0.28 : 0.35)
-        : (isLight ? 0.16 : 0.2);
+    final backgroundAlpha =
+        highlight ? (isLight ? 0.10 : 0.12) : (isLight ? 0.055 : 0.07);
+    final borderAlpha =
+        highlight ? (isLight ? 0.28 : 0.35) : (isLight ? 0.16 : 0.2);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
@@ -544,10 +567,9 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
   // ── Filters bar ───────────────────────────────────────────────────────────
 
   Widget _filtersBar(ColorScheme cs, AppTypography t) {
-    final activeFilters = [_from, _to, _providerId, _clientId]
-        .where((f) => f != null)
-        .length +
-        (_searchText.isNotEmpty ? 1 : 0);
+    final activeFilters =
+        [_from, _to, _providerId, _clientId].where((f) => f != null).length +
+            (_searchText.isNotEmpty ? 1 : 0);
 
     return Container(
       decoration: BoxDecoration(
@@ -643,8 +665,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
           // Expandable filters
           if (_filtersExpanded) ...[
             Divider(
-                height: 1,
-                color: cs.outlineVariant.withValues(alpha: 0.25)),
+                height: 1, color: cs.outlineVariant.withValues(alpha: 0.25)),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               child: Wrap(
@@ -761,8 +782,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
         children: [
           // Panel header
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             child: Row(
               children: [
                 Text(
@@ -784,8 +804,8 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
           Expanded(
             child: ListView.separated(
               itemCount: rows.length,
-              separatorBuilder: (_, __) =>
-                  Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.15)),
+              separatorBuilder: (_, __) => Divider(
+                  height: 1, color: cs.outlineVariant.withValues(alpha: 0.15)),
               itemBuilder: (_, i) => _listRow(rows[i], cs, t),
             ),
           ),
@@ -794,8 +814,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
     );
   }
 
-  Widget _listRow(
-      Map<String, dynamic> row, ColorScheme cs, AppTypography t) {
+  Widget _listRow(Map<String, dynamic> row, ColorScheme cs, AppTypography t) {
     final id = (row['id'] ?? '').toString();
     final isSuspect = row['isSuspect'] == true;
     final review = (row['reviewStatus'] ?? 'unreviewed').toString();
@@ -821,8 +840,8 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
               height: 56,
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: isSelected ? 1.0 : 0.5),
-                borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(12)),
+                borderRadius:
+                    const BorderRadius.horizontal(left: Radius.circular(12)),
               ),
             ),
             const SizedBox(width: 10),
@@ -941,14 +960,13 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.fact_check_outlined,
-                size: 32,
-                color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
+                size: 32, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
             const SizedBox(height: 8),
             Text(
               _tx('Selecciona un gasto para ver el detalle.',
                   'Select an expense to view details.'),
-              style:
-                  t.bodySmall.copyWith(color: cs.onSurfaceVariant, fontSize: 11),
+              style: t.bodySmall
+                  .copyWith(color: cs.onSurfaceVariant, fontSize: 11),
             ),
           ],
         ),
@@ -995,8 +1013,8 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
               border: Border(
-                bottom: BorderSide(
-                    color: cs.outlineVariant.withValues(alpha: 0.2)),
+                bottom:
+                    BorderSide(color: cs.outlineVariant.withValues(alpha: 0.2)),
               ),
             ),
             child: Row(
@@ -1118,7 +1136,10 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                     ...reasons.map((reason) => _reasonChip(reason, cs, t)),
                   ],
                   // ── Review notes ──────────────────────────────────────
-                  if ((row['reviewNotes'] ?? '').toString().trim().isNotEmpty) ...[
+                  if ((row['reviewNotes'] ?? '')
+                      .toString()
+                      .trim()
+                      .isNotEmpty) ...[
                     const SizedBox(height: 14),
                     AuditSectionLabel(
                       label: _tx('Notas de revisión', 'Review notes'),
@@ -1127,7 +1148,8 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+                        color:
+                            cs.surfaceContainerHighest.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -1308,8 +1330,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                       r[0],
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight:
-                            isLast ? FontWeight.w800 : FontWeight.w600,
+                        fontWeight: isLast ? FontWeight.w800 : FontWeight.w600,
                         color: cs.onSurfaceVariant,
                       ),
                     ),
@@ -1321,8 +1342,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                       textAlign: TextAlign.right,
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight:
-                            isLast ? FontWeight.w800 : FontWeight.w600,
+                        fontWeight: isLast ? FontWeight.w800 : FontWeight.w600,
                         color: cs.onSurface,
                       ),
                     ),
@@ -1334,8 +1354,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                       textAlign: TextAlign.right,
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight:
-                            isLast ? FontWeight.w800 : FontWeight.w600,
+                        fontWeight: isLast ? FontWeight.w800 : FontWeight.w600,
                         color: cs.primary,
                       ),
                     ),
@@ -1409,8 +1428,7 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.error_outline_rounded,
-                size: 13, color: cs.error),
+            Icon(Icons.error_outline_rounded, size: 13, color: cs.error),
             const SizedBox(width: 7),
             Expanded(
               child: Column(
@@ -1427,12 +1445,15 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                       fontSize: 11,
                     ),
                   ),
-                  if ((reason['message'] ?? '').toString().trim().isNotEmpty) ...[
+                  if ((reason['message'] ?? '')
+                      .toString()
+                      .trim()
+                      .isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
                       (reason['message'] ?? '').toString(),
-                      style: t.bodySmall.copyWith(
-                          fontSize: 11, color: cs.onSurface),
+                      style: t.bodySmall
+                          .copyWith(fontSize: 11, color: cs.onSurface),
                     ),
                   ],
                 ],
@@ -1453,7 +1474,8 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
               size: 32, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
           const SizedBox(height: 8),
           Text(
-            _tx('No hay gastos para este filtro.', 'No expenses found for this filter.'),
+            _tx('No hay gastos para este filtro.',
+                'No expenses found for this filter.'),
             style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
@@ -1499,15 +1521,11 @@ class _ExpenseVatAuditViewState extends State<ExpenseVatAuditView> {
                 Text(
                   label,
                   style: t.bodySmall.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11),
+                      color: color, fontWeight: FontWeight.w600, fontSize: 11),
                 ),
               ],
             ),
           ),
         ),
       );
-
 }
-

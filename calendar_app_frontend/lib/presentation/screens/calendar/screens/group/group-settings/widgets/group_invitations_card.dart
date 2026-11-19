@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 
 import 'group_section_header.dart';
 
@@ -37,6 +38,7 @@ class GroupInvitationsCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: FilledButton.icon(
+                style: ThemedButtons.button(context),
                 icon: const Icon(Icons.mail_outline),
                 label: Text(l.groupSettingsViewInvitations),
                 onPressed: onViewInvitations,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 
 class GroupOverviewCard extends StatelessWidget {
   final Group group;
@@ -53,6 +54,10 @@ class GroupOverviewCard extends StatelessWidget {
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             if (onEdit != null)
               TextButton.icon(
+                  style: ThemedButtons.button(
+                    context,
+                    variant: ButtonVariant.ghost,
+                  ),
                   onPressed: onEdit,
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   label: Text(l.groupSettingsEditInformation)),

@@ -137,11 +137,7 @@ class ProfileRoleCard extends StatelessWidget {
 
   String _greetingLine(AppLocalizations l, String displayName, String roleLabel,
       GroupRole role) {
-    final key = role.wire.toLowerCase().replaceAll('-', '').replaceAll('_', '');
-    if (key == 'owner' || key == 'admin' || key == 'coadmin') {
-      return '${l.hey} $displayName — ${l.youAreThe} $roleLabel ${l.ofThisGroup}. ${l.youHaveSuperPowersHere}';
-    }
-    return '${l.hey} $displayName — ${l.youAreThe} ${l.member} ${l.ofThisGroup}.';
+    return '${l.youAreThe} $roleLabel ${l.ofThisGroup}.';
   }
 }
 

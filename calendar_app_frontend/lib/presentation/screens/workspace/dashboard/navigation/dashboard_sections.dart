@@ -1,6 +1,8 @@
 class Sections {
+  static const home = 'home';
   static const agenda = 'agenda';
   static const calendar = 'calendar';
+  static const quickNotes = 'quickNotes';
   static const notifications = 'notifications';
   static const settings = 'settings';
   static const members = 'members';
@@ -12,6 +14,7 @@ class Sections {
   static const profile = 'profile';
   static const editGroup = 'editGroup';
   static const invoices = 'invoices';
+  static const invoiceClients = 'invoiceClients';
   static const budgets = 'budgets';
   static const expenses = 'expenses';
   static const emails = 'emails';

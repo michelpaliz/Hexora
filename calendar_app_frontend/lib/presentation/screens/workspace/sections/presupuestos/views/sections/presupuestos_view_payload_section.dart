@@ -581,15 +581,12 @@ extension _GroupInvoicesBudgetsViewPayloadSection
     payload = _budgetPayloadData(payload);
     _applyBudgetDiscountPayload(payload);
     final advancePercent = _parseBudgetDiscountInput(
-      (payload.containsKey('advancePercent')
-              ? payload['advancePercent'] ?? 0
-              : 70)
-          .toString(),
+      (payload['advancePercent'] ?? 0).toString(),
     );
     final safeAdvancePercent =
         advancePercent != null && advancePercent >= 0 && advancePercent <= 100
             ? advancePercent
-            : 70;
+            : 0;
     _budgetAdvancePercentCtrl.text =
         safeAdvancePercent == safeAdvancePercent.roundToDouble()
             ? safeAdvancePercent.toInt().toString()
@@ -670,6 +667,11 @@ extension _GroupInvoicesBudgetsViewPayloadSection
             ? 'EUR'
             : (payload['currency'] ?? 'EUR').toString().trim().toUpperCase();
     _budgetNotesCtrl.text = (payload['notes'] ?? '').toString();
+    _conversionTarget =
+        (payload['conversionTarget'] ?? '').toString().toLowerCase() ==
+                'receipt'
+            ? _PresupuestoConversionTarget.receipt
+            : _PresupuestoConversionTarget.invoice;
     final clientId = (payload['clientId'] ?? '').toString().trim();
     final clientName = (payload['clientName'] ?? '').toString().trim();
     final clientSnapshot = payload['clientSnapshot'] is Map

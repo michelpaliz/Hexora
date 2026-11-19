@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:intl/intl.dart';
 import 'package:hexora/presentation/shared/widgets/documents/mobile_document_card.dart';
 import 'group_invoices/mobile/mobile_client_search_list.dart';
@@ -10,6 +11,9 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -21,6 +25,8 @@ import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/invoicing/billing_profile_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
+import 'package:hexora/services/invoicing/invoice_link_events.dart';
+import 'package:hexora/services/invoicing/filtered_invoices_excel.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
 import 'package:hexora/services/receipts/receipts_api.dart';
@@ -37,6 +43,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/import_history/expense_import_history_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/invoice_issue_error_message.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/billing_profile_inline_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/client_classifications_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/client_contracts_tab.dart';
@@ -66,8 +73,15 @@ import 'package:hexora/presentation/screens/workspace/sections/services_clients/
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/client_classification_manager_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/bulk_download_dialog.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/panels/services/right_panel_services_inline.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab_scope.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
+import 'package:hexora/navigation/shell/hexora_app_shell.dart'
+    show HexoraBreadcrumb;
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -77,6 +91,14 @@ import 'package:provider/provider.dart';
 part 'group_invoices/group_invoices_view.dart';
 part 'group_invoices/view/group_invoices_content.dart';
 part 'group_invoices/mobile/invoices_mobile_view.dart';
+
+typedef InvoicesWorkspaceOpener = void Function({
+  required String initialMenu,
+  String? initialInvoiceId,
+  String? initialReceiptId,
+  String? initialBudgetId,
+  String? tabTitle,
+});
 
 class GroupInvoicesRouteArgs {
   const GroupInvoicesRouteArgs({
@@ -101,6 +123,7 @@ class GroupInvoicesScreen extends StatefulWidget {
   final String? initialInvoiceId;
   final String? initialReceiptId;
   final String? initialBudgetId;
+  final InvoicesWorkspaceOpener? onOpenWorkspace;
 
   const GroupInvoicesScreen({
     super.key,
@@ -110,6 +133,7 @@ class GroupInvoicesScreen extends StatefulWidget {
     this.initialInvoiceId,
     this.initialReceiptId,
     this.initialBudgetId,
+    this.onOpenWorkspace,
   });
 
   @override
@@ -117,9 +141,20 @@ class GroupInvoicesScreen extends StatefulWidget {
 }
 
 class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
+  VoidCallbackHandle? _invoiceLinkSubscription;
   // Shared callbacks return here so the owning State controls its lifecycle.
   void _updateView(VoidCallback change) {
     if (!mounted) return;
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      // Child disposal can clear toolbar actions while the tree is locked.
+      // Apply the change in order, but wait until finalization ends to rebuild.
+      change();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+      return;
+    }
     setState(change);
   }
 
@@ -146,11 +181,29 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   BillingProfile? _billingProfile;
   List<GroupClient> _clients = [];
   GroupClient? _selectedClient;
+
+  GroupClient? _defaultClient(
+    List<GroupClient> clients, {
+    String? preferredId,
+  }) {
+    if (preferredId != null) {
+      for (final client in clients) {
+        if (client.id == preferredId) return client;
+      }
+    }
+    for (final client in clients) {
+      if (client.isActive != false) return client;
+    }
+    return clients.isEmpty ? null : clients.first;
+  }
+
+  /// Client form shown in the clients view's right panel instead of a sheet.
+  /// [_inlineClientEditing] is null while creating a new client.
+  bool _inlineClientEditorOpen = false;
+  GroupClient? _inlineClientEditing;
   Invoice? _selectedInvoice;
   Receipt? _selectedReceipt;
   String? _recurringSeriesToOpen;
-  RecurringInvoicesActions? _recurringActions;
-  RecurringReceiptsActions? _recurringReceiptsActions;
   String _menuBeforeInvoiceEditor = 'clients';
   String _menuBeforeReceiptEditor = 'receipts';
   String? _invoiceEditorClientId;
@@ -168,8 +221,11 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   String? _error;
   final bool _busyProfile = false;
   bool _disableReceiptPreviewInteraction = false;
+  int _receiptListTabIndex = 1;
+  final ValueNotifier<DocumentViewMode?> _receiptSplitModeNotifier =
+      ValueNotifier<DocumentViewMode?>(null);
   final Set<String> _updatingReceiptDeliveryIds = <String>{};
-  String _selectedMenu = 'clients';
+  String _selectedMenu = 'invoices_issued';
   bool _businessExpanded = false;
   bool _facturacionExpanded = false;
   bool _gastosExpanded = false;
@@ -191,11 +247,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   int _invoiceEditorSession = 0;
   int _receiptEditorSession = 0;
   String? _budgetEditorBudgetId;
-  DateTime? _issuedInvoicesFromDate;
-  DateTime? _issuedInvoicesToDate;
   List<InvoiceZipDownload> _invoiceZipDownloads = const [];
-  String? _lastExportFileId;
-  String? _lastExportFileUrl;
   late String? _pendingInitialInvoiceId;
   late String? _pendingInitialReceiptId;
 
@@ -214,14 +266,28 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   @override
   void initState() {
     super.initState();
+    _invoiceLinkSubscription = InvoiceLinkEvents.instance.subscribe(
+      widget.group.id,
+      _handleInvoiceLinkChanged,
+    );
     _pendingInitialInvoiceId = _normalizedEntityId(widget.initialInvoiceId);
     _pendingInitialReceiptId = _normalizedEntityId(widget.initialReceiptId);
     if (widget.initialMenu != null && widget.initialMenu!.trim().isNotEmpty) {
       _selectedMenu = widget.initialMenu!.trim();
     }
+    if (_selectedMenu == 'invoice_editor') {
+      _menuBeforeInvoiceEditor = 'invoices_drafts';
+    }
     _syncInitialMenuExpansion();
     _loadAll();
     Future.microtask(_refreshInvoiceZipDownloads);
+  }
+
+  void _handleInvoiceLinkChanged() {
+    if (!mounted || _loading || _sortingInvoices == true) return;
+    // Keep the current invoice filters and selection while replacing the
+    // server-backed invoice collections with their latest linked totals.
+    unawaited(_refreshInvoiceListsOnly());
   }
 
   void _syncInitialMenuExpansion() {
@@ -229,7 +295,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     _clientsExpanded = menu == 'clients' ||
         menu == 'client_classifications' ||
         menu == 'client_invoice_stats' ||
-        menu == 'clients_flow';
+        menu == 'clients_flow' ||
+        menu == 'operations';
     _facturacionExpanded = true;
     _businessExpanded = menu.startsWith('budgets');
     _informesExpanded = menu == 'receipts' ||
@@ -268,6 +335,13 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   void _openDraftBudgetEditor(String budgetId) {
     final trimmedId = budgetId.trim();
     if (trimmedId.isEmpty) return;
+    if (widget.embedded && kIsWeb && widget.onOpenWorkspace != null) {
+      widget.onOpenWorkspace!(
+        initialMenu: 'budgets_new',
+        initialBudgetId: trimmedId,
+      );
+      return;
+    }
     setState(() {
       _budgetEditorBudgetId = trimmedId;
       _selectedMenu = 'budgets_new';
@@ -280,21 +354,36 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       _budgetEditorUnsaved = false;
       _selectedMenu = 'budgets_list';
     });
+    _setWorkspaceDirty(false);
   }
 
-  void _applyPendingInitialSelections() {
+  void _setWorkspaceDirty(bool dirty) {
+    WorkspaceTabScope.maybeOf(context)?.setDirty(dirty: dirty);
+  }
+
+  void _applyPendingInitialSelections({Invoice? hydratedInvoice}) {
     final pendingInvoiceId = _pendingInitialInvoiceId;
     if (pendingInvoiceId != null) {
-      Invoice? target;
-      for (final invoice in <Invoice>[..._drafts, ..._invoices]) {
-        if (invoice.id.trim() == pendingInvoiceId) {
-          target = invoice;
-          break;
+      Invoice? target = hydratedInvoice?.id.trim() == pendingInvoiceId
+          ? hydratedInvoice
+          : null;
+      if (target == null) {
+        for (final invoice in <Invoice>[..._drafts, ..._invoices]) {
+          if (invoice.id.trim() == pendingInvoiceId) {
+            target = invoice;
+            break;
+          }
         }
       }
       if (target != null) {
         _selectedInvoice = target;
-        if (!_isInvoiceMenu(_selectedMenu)) {
+        final openingEditor = _selectedMenu == 'invoice_editor';
+        if (openingEditor) {
+          _invoiceEditorClientId = target.clientId;
+          _invoiceEditorInvoice = target;
+          _invoiceEditorSession++;
+        }
+        if (!openingEditor && !_isInvoiceMenu(_selectedMenu)) {
           _selectedMenu = _drafts.any((draft) => draft.id == target!.id)
               ? 'invoices_drafts'
               : 'invoices_issued';
@@ -314,7 +403,17 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       }
       if (target != null) {
         _selectedReceipt = target;
-        if (_selectedMenu != 'receipts') {
+        if (_selectedMenu == 'receipt_editor') {
+          _receiptEditorClientId = target.clientId;
+          _receiptEditorReceipt = target;
+          _receiptEditorSession++;
+        }
+        _receiptListTabIndex =
+            _receiptDrafts.any((r) => r.id == target!.id) ? 0 : 1;
+        // A workspace tab opened specifically to edit a receipt must remain
+        // in the editor. Previously this always redirected the freshly opened
+        // `receipt_editor` tab back to the receipt list after hydration.
+        if (_selectedMenu != 'receipt_editor') {
           _selectedMenu = 'receipts';
         }
         _pendingInitialReceiptId = null;
@@ -396,6 +495,24 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       issuedReceipts.removeWhere(
         (receipt) => draftIds.contains(receipt.id),
       );
+      Invoice? hydratedInitialInvoice;
+      final pendingInvoiceId = _pendingInitialInvoiceId;
+      if (_selectedMenu == 'invoice_editor' && pendingInvoiceId != null) {
+        try {
+          hydratedInitialInvoice = await _invoicesApi.getById(pendingInvoiceId);
+          if (hydratedInitialInvoice.lines.isEmpty) {
+            final lines = await _linesApi.list(pendingInvoiceId);
+            if (lines.isNotEmpty) {
+              hydratedInitialInvoice =
+                  hydratedInitialInvoice.copyWith(lines: lines);
+            }
+          }
+        } catch (_) {
+          // The list result remains a safe fallback when detail hydration is
+          // temporarily unavailable. The editor must still be reachable.
+        }
+      }
+      if (!mounted) return;
       setState(() {
         _clients = List<GroupClient>.from(
           results[0] as List<GroupClient>,
@@ -418,12 +535,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           growable: true,
         );
         _billingProfile = results[5] as BillingProfile?;
-        _selectedClient = previousSelectedClientId == null
-            ? (_clients.isNotEmpty ? _clients.first : null)
-            : _clients.cast<GroupClient?>().firstWhere(
-                  (client) => client?.id == previousSelectedClientId,
-                  orElse: () => _clients.isNotEmpty ? _clients.first : null,
-                );
+        _selectedClient = _defaultClient(
+          _clients,
+          preferredId: previousSelectedClientId,
+        );
         if (_selectedInvoice != null) {
           final stillExists =
               _invoices.any((i) => i.id == _selectedInvoice!.id) ||
@@ -435,15 +550,21 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
             : (_invoices.isNotEmpty ? _invoices.first : null);
 
         if (_selectedReceipt != null) {
-          final stillExists =
-              _receipts.any((r) => r.id == _selectedReceipt!.id) ||
-                  _receiptDrafts.any((r) => r.id == _selectedReceipt!.id);
-          if (!stillExists) _selectedReceipt = null;
+          final selectedId = _selectedReceipt!.id;
+          _selectedReceipt = null;
+          for (final receipt in [..._receipts, ..._receiptDrafts]) {
+            if (receipt.id == selectedId) {
+              _selectedReceipt = receipt;
+              break;
+            }
+          }
         }
-        _selectedReceipt ??= _receiptDrafts.isNotEmpty
-            ? _receiptDrafts.first
-            : (_receipts.isNotEmpty ? _receipts.first : null);
-        _applyPendingInitialSelections();
+        _selectedReceipt ??= _receipts.isNotEmpty
+            ? _receipts.first
+            : (_receiptDrafts.isNotEmpty ? _receiptDrafts.first : null);
+        _applyPendingInitialSelections(
+          hydratedInvoice: hydratedInitialInvoice,
+        );
       });
     } catch (e) {
       if (!mounted) return;
@@ -569,12 +690,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           results[2] as List<Invoice>,
           growable: true,
         );
-        _selectedClient = previousSelectedClientId == null
-            ? (_clients.isNotEmpty ? _clients.first : null)
-            : _clients.cast<GroupClient?>().firstWhere(
-                  (client) => client?.id == previousSelectedClientId,
-                  orElse: () => _clients.isNotEmpty ? _clients.first : null,
-                );
+        _selectedClient = _defaultClient(
+          _clients,
+          preferredId: previousSelectedClientId,
+        );
         if (_selectedInvoice != null) {
           final stillExists =
               _invoices.any((i) => i.id == _selectedInvoice!.id) ||
@@ -604,10 +723,11 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   }
 
   Future<void> _openClientClassificationManager() async {
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (_) => ClientClassificationManagerDialog(
         groupId: widget.group.id,
+        clients: _clients,
       ),
     );
     if (!mounted) return;
@@ -665,50 +785,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     if (mounted && changed == true) _loadAll();
   }
 
-  void _showBulkDownloadDialog() {
-    showDialog<void>(
-      context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440, maxHeight: 720),
-          child: BulkDownloadDialog(
-            onDownload: _downloadAllInvoicesPdfs,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _downloadAllInvoicesPdfs(BulkDownloadFilter filter) async {
-    if (_downloadingAllPdfs) return;
-    if (_invoices.isEmpty && _drafts.isEmpty) {
-      final l = AppLocalizations.of(context)!;
-      showInfoSnack(context, l.noInvoicesYet);
-      return;
-    }
-    setState(() => _downloadingAllPdfs = true);
-    try {
-      final params = filter.toQueryParams(widget.group.id)
-        ..['locale'] = Localizations.localeOf(context).languageCode;
-      final job = await _invoicesApi.queueInvoiceZipExport(
-        groupId: widget.group.id,
-        params: params,
-      );
-      _rememberQueuedExport(job);
-      await _refreshInvoiceZipDownloads(showErrors: false);
-      if (!mounted) return;
-      showInfoSnack(context, _zipJobQueuedMessage());
-    } catch (e) {
-      if (!mounted) return;
-      showErrorSnack(context, _downloadZipErrorMessage(e));
-    } finally {
-      if (mounted) setState(() => _downloadingAllPdfs = false);
-    }
-  }
-
   Future<void> _downloadFilteredInvoices(List<Invoice> invoices) async {
     final ids = invoices
         .map((inv) => inv.id.trim())
@@ -725,7 +801,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         params: <String, String>{
           'groupId': widget.group.id,
           'invoiceIds': ids.join(','),
-          'locale': Localizations.localeOf(context).languageCode,
         },
       );
       _rememberQueuedExport(job);
@@ -755,7 +830,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         params: <String, String>{
           'groupId': widget.group.id,
           'invoiceIds': ids.join(','),
-          'locale': Localizations.localeOf(context).languageCode,
         },
       );
       _rememberQueuedExport(job);
@@ -772,9 +846,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   void _rememberQueuedExport(InvoiceZipDownload job) {
     setState(() {
-      _lastExportFileId = job.id.trim().isEmpty ? null : job.id.trim();
-      _lastExportFileUrl =
-          job.fileUrl?.trim().isEmpty == true ? null : job.fileUrl?.trim();
+      _invoiceZipDownloads = [
+        job,
+        ..._invoiceZipDownloads.where((item) => item.id != job.id),
+      ];
     });
     unawaited(DownloadJobsStore.instance
         .bindGroup(widget.group.id)
@@ -847,47 +922,27 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   }
 
   Future<void> _showStoredInvoiceZipDownloads() async {
-    await _refreshInvoiceZipDownloads(showErrors: false);
     if (!mounted) return;
-    showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) => _InvoiceZipDownloadsDialog(state: this),
     );
   }
 
-  Future<void> _exportInvoiceConceptsExcel() async {
-    if (_exportingInvoiceConcepts) return;
-    final groupId = widget.group.id.trim();
-    if (groupId.isEmpty) return;
-
-    String? formatDate(DateTime? value) {
-      if (value == null) return null;
-      final y = value.year.toString().padLeft(4, '0');
-      final m = value.month.toString().padLeft(2, '0');
-      final d = value.day.toString().padLeft(2, '0');
-      return '$y-$m-$d';
-    }
-
-    final from = formatDate(_issuedInvoicesFromDate);
-    final to = formatDate(_issuedInvoicesToDate);
-    final currency = (_billingProfile?.currency ?? 'EUR').trim();
-
+  Future<void> _downloadFilteredInvoicesExcel(List<Invoice> invoices) async {
+    if (_exportingInvoiceConcepts || invoices.isEmpty) return;
     setState(() => _exportingInvoiceConcepts = true);
     try {
-      final response = await _invoicesApi.exportConceptsExcel(
-        groupId: groupId,
-        from: from,
-        to: to,
-        status: 'issued',
-        currency: currency.isEmpty ? 'EUR' : currency,
-      );
-      final fileName = downloadFileNameFromHeaders(
-        response.headers,
-        fallback: 'invoice_concepts_${from ?? 'all'}_${to ?? 'all'}.xlsx',
+      final bytes = buildFilteredInvoicesExcel(
+        invoices: invoices,
+        clientNames: {for (final client in _clients) client.id: client.name},
+        defaultCurrency: _billingProfile?.currency ?? 'EUR',
+        spanish: Localizations.localeOf(context).languageCode == 'es',
       );
       await launchFileDownload(
-        response.bodyBytes,
-        fileName: fileName,
+        bytes,
+        fileName:
+            'facturas-filtradas-${DateTime.now().toIso8601String().split('T').first}.xlsx',
         mimeType:
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
@@ -943,15 +998,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     return downloadFileNameFromHeaders(
       headers,
       fallback:
-          '${Localizations.localeOf(context).languageCode == 'es' ? 'facturas' : 'invoices'}-${DateTime.now().year.toString().padLeft(4, '0')}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}.zip',
+          'invoices-${DateTime.now().year.toString().padLeft(4, '0')}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}.zip',
     );
-  }
-
-  void _updateIssuedInvoiceDateFilter(InvoiceDateFilterState filters) {
-    setState(() {
-      _issuedInvoicesFromDate = filters.fromDate;
-      _issuedInvoicesToDate = filters.toDate;
-    });
   }
 
   void _closeInlineInvoiceEditor({required bool changed}) {
@@ -961,6 +1009,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       _invoiceEditorInvoice = null;
       _inlineInvoiceEditorUnsaved = false;
     });
+    _setWorkspaceDirty(false);
     if (changed) _loadAll();
   }
 
@@ -974,7 +1023,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     }
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final result = await showDialog<bool>(
+    final result = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Tienes cambios sin guardar' : 'Unsaved changes'),
@@ -1006,6 +1055,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       _inlineReceiptEditorUnsaved = false;
       _budgetEditorUnsaved = false;
     });
+    _setWorkspaceDirty(false);
   }
 
   void _closeInlineReceiptEditor({required bool changed}) {
@@ -1015,10 +1065,18 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       _receiptEditorReceipt = null;
       _inlineReceiptEditorUnsaved = false;
     });
+    _setWorkspaceDirty(false);
     if (changed) _loadAll();
   }
 
   Future<void> _openEditDraft(Invoice draft) async {
+    if (widget.embedded && kIsWeb && widget.onOpenWorkspace != null) {
+      widget.onOpenWorkspace!(
+        initialMenu: 'invoice_editor',
+        initialInvoiceId: draft.id,
+      );
+      return;
+    }
     if (_openingDraft) return;
     _openingDraft = true;
     try {
@@ -1075,6 +1133,13 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   Future<void> _openInvoiceFromBudgetConversion(String invoiceId) async {
     final id = invoiceId.trim();
     if (id.isEmpty) return;
+    if (widget.embedded && kIsWeb && widget.onOpenWorkspace != null) {
+      widget.onOpenWorkspace!(
+        initialMenu: 'invoice_editor',
+        initialInvoiceId: id,
+      );
+      return;
+    }
     try {
       final invoice = await _invoicesApi.getById(id);
       if (!mounted) return;
@@ -1133,6 +1198,17 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   }
 
   Future<void> _openEditReceipt(Receipt receipt) async {
+    if (widget.embedded && kIsWeb && widget.onOpenWorkspace != null) {
+      final number = receipt.receiptNumber?.trim() ?? '';
+      final isEs = Localizations.localeOf(context).languageCode == 'es';
+      widget.onOpenWorkspace!(
+        initialMenu: 'receipt_editor',
+        initialReceiptId: receipt.id,
+        tabTitle:
+            number.isEmpty ? null : '${isEs ? 'Recibo' : 'Receipt'} #$number',
+      );
+      return;
+    }
     if (widget.embedded && kIsWeb) {
       setState(() {
         _receiptEditorSession++;
@@ -1202,7 +1278,19 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   }
 
   void _openInvoiceDetail(Invoice invoice) {
+    if (widget.embedded && kIsWeb && widget.onOpenWorkspace != null) {
+      final number = invoice.invoiceNumber.trim();
+      final isEs = Localizations.localeOf(context).languageCode == 'es';
+      widget.onOpenWorkspace!(
+        initialMenu: 'invoices_issued',
+        initialInvoiceId: invoice.id,
+        tabTitle:
+            number.isEmpty ? null : '${isEs ? 'Factura' : 'Invoice'} #$number',
+      );
+      return;
+    }
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -1229,8 +1317,50 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     );
   }
 
+  /// The clients list has a right-hand panel on desktop; the form goes there.
+  bool get _clientFormInline =>
+      (_selectedMenu == 'clients' || _selectedMenu == 'clients_flow') &&
+      MediaQuery.sizeOf(context).width >= 900;
+
+  void _openInlineClientEditor(GroupClient? client) {
+    _updateView(() {
+      _inlineClientEditorOpen = true;
+      _inlineClientEditing = client;
+    });
+  }
+
+  void _closeInlineClientEditor() {
+    _updateView(() {
+      _inlineClientEditorOpen = false;
+      _inlineClientEditing = null;
+    });
+  }
+
+  void _handleInlineClientSaved(GroupClient saved) {
+    final l = AppLocalizations.of(context)!;
+    final isEdit = _clients.any((c) => c.id == saved.id);
+    _updateView(() {
+      _clients = isEdit
+          ? [for (final c in _clients) c.id == saved.id ? saved : c]
+          : [saved, ..._clients];
+      _selectedClient = saved;
+      _inlineClientEditorOpen = false;
+      _inlineClientEditing = null;
+    });
+    showSuccessSnack(
+        context,
+        isEdit
+            ? l.clientUpdatedWithName(saved.name)
+            : l.clientCreatedWithName(saved.name));
+  }
+
   Future<void> _openEditClient(GroupClient client) async {
+    if (_clientFormInline) {
+      _openInlineClientEditor(client);
+      return;
+    }
     final updated = await showModalBottomSheet<GroupClient>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -1254,7 +1384,12 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   }
 
   Future<void> _openCreateClient() async {
+    if (_clientFormInline) {
+      _openInlineClientEditor(null);
+      return;
+    }
     final created = await showModalBottomSheet<GroupClient>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -1277,6 +1412,34 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       });
       showSuccessSnack(context,
           AppLocalizations.of(context)!.clientCreatedWithName(created.name));
+    }
+  }
+
+  Future<GroupClient> _patchClassificationClient(
+      GroupClient client, Map<String, dynamic> fields) async {
+    final updated = await _clientsApi.updateFields(client.id, fields);
+    if (mounted) {
+      setState(() {
+        _clients = [
+          for (final item in _clients)
+            if (item.id == updated.id) updated else item
+        ];
+        if (_selectedClient?.id == updated.id) _selectedClient = updated;
+      });
+    }
+    return updated;
+  }
+
+  Future<void> _deleteClassificationClient(GroupClient client) async {
+    final deleted = await _clientsApi.delete(client.id);
+    if (!deleted) throw StateError('Could not delete client');
+    if (mounted) {
+      setState(() {
+        _clients = _clients.where((c) => c.id != client.id).toList();
+        if (_selectedClient?.id == client.id) {
+          _selectedClient = _defaultClient(_clients);
+        }
+      });
     }
   }
 
@@ -1316,7 +1479,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   Future<void> _deleteInvoice(Invoice invoice) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(
@@ -1375,7 +1538,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           label: l.details,
           onPressed: () {
             if (!mounted) return;
-            showDialog<void>(
+            showHexoraDialog<void>(
               context: context,
               builder: (_) => AlertDialog(
                 title: Text(l.details),
@@ -1425,21 +1588,20 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   Future<void> _previewReceiptPdf(Receipt receipt) async {
     final l = AppLocalizations.of(context)!;
     try {
-      final r = await _receiptsApi.previewPdf(receipt.id);
+      final r = await _receiptsApi.previewPdfWithFallback(receipt.id);
       final Uint8List bytes = InvoiceEditorPdf.validatePdf(r);
       final fileName = (receipt.receiptNumber?.trim().isNotEmpty == true)
-          ? '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-${receipt.receiptNumber!.trim()}.pdf'
-          : '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-preview.pdf';
+          ? 'receipt-${receipt.receiptNumber!.trim()}.pdf'
+          : 'receipt-preview.pdf';
       await pdf_launcher.launchPdfPreview(bytes, fileName: fileName);
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().replaceFirst('Exception: ', '').trim();
-      showErrorSnack(context, msg.isEmpty ? l.receiptPreviewFailed : msg);
+      showFailureSnack(context, e, title: l.receiptPreviewFailed);
     }
   }
 
   Future<Uint8List?> _loadReceiptInlinePdfBytes(Receipt receipt) async {
-    final r = await _receiptsApi.previewPdf(receipt.id);
+    final r = await _receiptsApi.previewPdfWithFallback(receipt.id);
     return InvoiceEditorPdf.validatePdf(r);
   }
 
@@ -1449,8 +1611,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       final r = await _receiptsApi.downloadPdf(receipt.id);
       final Uint8List bytes = InvoiceEditorPdf.validatePdf(r);
       final fileName = (receipt.receiptNumber?.trim().isNotEmpty == true)
-          ? '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-${receipt.receiptNumber!.trim()}.pdf'
-          : '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}.pdf';
+          ? 'receipt-${receipt.receiptNumber!.trim()}.pdf'
+          : 'receipt.pdf';
       await launchFileDownload(
         bytes,
         fileName: fileName,
@@ -1487,41 +1649,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     }
   }
 
-  static const _invoiceChronologyErrorMessage =
-      'Esta factura tiene una fecha anterior a la última factura emitida. '
-      'Para mantener la numeración cronológica, debes emitir primero las '
-      'facturas de fechas anteriores o corregir la fecha.';
-
-  DateTime? _invoiceChronologyDate(Invoice invoice) {
-    return invoice.issueDate ?? invoice.occurrenceDate ?? invoice.registeredAt;
-  }
-
-  DateTime? _latestIssuedInvoiceDate() {
-    DateTime? latest;
-    for (final invoice in _invoices) {
-      final date = _invoiceChronologyDate(invoice);
-      if (date == null) continue;
-      if (latest == null || date.isAfter(latest)) latest = date;
-    }
-    return latest;
-  }
-
-  bool _isBeforeCalendarDay(DateTime value, DateTime limit) {
-    final valueDay = DateTime(value.year, value.month, value.day);
-    final limitDay = DateTime(limit.year, limit.month, limit.day);
-    return valueDay.isBefore(limitDay);
-  }
-
-  bool _canIssueInvoiceByDate(Invoice invoice) {
-    final selectedDate = _invoiceChronologyDate(invoice);
-    final latestIssuedDate = _latestIssuedInvoiceDate();
-    if (selectedDate == null || latestIssuedDate == null) return true;
-    return !_isBeforeCalendarDay(selectedDate, latestIssuedDate);
-  }
-
   Future<Invoice> _issueInvoiceDirect(Invoice invoice) async {
-    if (!_canIssueInvoiceByDate(invoice)) {
-      throw Exception(_invoiceChronologyErrorMessage);
+    final conflict = invoiceChronologyConflict(invoice, _invoices);
+    if (conflict != null) {
+      throw InvoiceChronologyIssueException(conflict);
     }
     final updated = await _invoicesApi.issue(invoice.id);
     if (!mounted) return updated;
@@ -1532,26 +1663,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       );
     });
     return updated;
-  }
-
-  bool _isDuplicateInvoiceNumberError(Object error) {
-    final lower = error.toString().toLowerCase();
-    return (lower.contains('e11000') && lower.contains('invoicenumber')) ||
-        (lower.contains('duplicate key') && lower.contains('invoicenumber'));
-  }
-
-  String _friendlyInvoiceIssueError(Object error, AppLocalizations l) {
-    final raw = error.toString().replaceFirst('Exception: ', '').trim();
-    if (!_isDuplicateInvoiceNumberError(error)) {
-      return raw.isEmpty ? l.invoiceIssueFailedSnack : raw;
-    }
-
-    final numberMatch = RegExp(r'invoiceNumber:\s*"([^"]+)"').firstMatch(raw) ??
-        RegExp(r'invoiceNumber:\s*([^,}\s]+)').firstMatch(raw);
-    final number = numberMatch?.group(1)?.trim() ?? '';
-    return number.isEmpty
-        ? l.invoiceIssueDuplicateNumberSnack
-        : l.invoiceIssueDuplicateNumberValueSnack(number);
   }
 
   Future<void> _issueAllDraftInvoices([List<Invoice>? scopedDrafts]) async {
@@ -1581,7 +1692,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     setState(() => _confirmingIssueAllDrafts = true);
     bool? confirmed;
     try {
-      confirmed = await showDialog<bool>(
+      confirmed = await showHexoraDialog<bool>(
         context: context,
         useRootNavigator: true,
         builder: (dialogContext) => AlertDialog(
@@ -1644,17 +1755,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           context, l.invoiceBatchIssueSuccessSnack(successCount.toString()));
     } on InvoicesBatchIssueException catch (e) {
       final issuedCount = e.failure?.issuedCount ?? 0;
-      final failedInvoiceId = e.failure?.failedInvoiceId;
-      Invoice? failedDraft;
-      if (failedInvoiceId != null) {
-        for (final draft in draftsToIssue) {
-          if (draft.id == failedInvoiceId) {
-            failedDraft = draft;
-            break;
-          }
-        }
-      }
-
       if (mounted) {
         try {
           await _refreshInvoiceListsOnly();
@@ -1662,18 +1762,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       }
       if (!mounted) return;
 
-      final message = e.message.trim().isEmpty
-          ? l.invoiceIssueFailedSnack
-          : e.message.trim();
+      final message = friendlyInvoiceIssueError(e, l);
       final parts = <String>[
         if (issuedCount > 0)
-          isSpanish
-              ? '$issuedCount facturas emitidas antes del error'
-              : '$issuedCount invoices issued before the error',
-        if (failedInvoiceId != null)
-          isSpanish
-              ? 'Fila fallida: ${failedDraft?.displayNumber(draftLabel: l.statusDraft) ?? l.statusDraft} ($failedInvoiceId)'
-              : 'Failed row: ${failedDraft?.displayNumber(draftLabel: l.statusDraft) ?? l.statusDraft} ($failedInvoiceId)',
+          l.invoiceBatchIssueStoppedAfter(issuedCount.toString()),
         message,
       ];
       final text = parts.join(' · ');
@@ -1689,7 +1781,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         } catch (_) {}
       }
       if (!mounted) return;
-      final message = _friendlyInvoiceIssueError(e, l);
+      final message = friendlyInvoiceIssueError(e, l);
       showErrorSnack(context, message);
     } finally {
       if (mounted) {
@@ -1700,7 +1792,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   Future<void> _issueInvoice(Invoice invoice) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       useRootNavigator: true,
       builder: (dialogContext) => AlertDialog(
@@ -1725,6 +1817,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     try {
       final issued = await _issueInvoiceDirect(invoice);
       if (!mounted) return;
+      await _refreshInvoiceListsOnly();
+      if (!mounted) return;
       showSuccessSnack(
         context,
         l.invoiceIssueSuccessSnack(
@@ -1733,7 +1827,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      final message = _friendlyInvoiceIssueError(e, l);
+      final message = friendlyInvoiceIssueError(e, l);
       showErrorSnack(context, message);
       await _refreshInvoiceListsOnly();
     }
@@ -1744,7 +1838,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     if (mounted) {
       setState(() => _disableReceiptPreviewInteraction = true);
     }
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       useRootNavigator: true,
       builder: (dialogContext) => AlertDialog(
@@ -1793,7 +1887,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   Future<void> _deleteReceipt(Receipt receipt) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.groupReceiptsRemoveDraftTitle),
@@ -1894,7 +1988,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         _updatingReceiptDeliveryIds.contains(receipt.id)) {
       return;
     }
-    final selection = await showDialog<ReceiptMarkSentSelection>(
+    final selection = await showHexoraDialog<ReceiptMarkSentSelection>(
       context: context,
       builder: (_) => const ReceiptMarkSentDialog(),
     );
@@ -1925,7 +2019,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         _updatingReceiptDeliveryIds.contains(receipt.id)) {
       return;
     }
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => const ReceiptMarkUnsentDialog(),
     );
@@ -1976,7 +2070,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     String? fileName;
     String? errorText;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
@@ -2199,6 +2293,13 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     );
 
     jsonCtrl.dispose();
+  }
+
+  @override
+  void dispose() {
+    _invoiceLinkSubscription?.dispose();
+    _receiptSplitModeNotifier.dispose();
+    super.dispose();
   }
 
   @override

@@ -154,13 +154,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get userName => 'User name';
 
   @override
-  String get currentPassword => 'Insert your current password';
+  String get currentPassword => 'Current password';
 
   @override
-  String get newPassword => 'Update your current password';
+  String get newPassword => 'New password';
 
   @override
-  String get confirmPassword => 'Confirm password';
+  String get confirmPassword => 'Confirm new password';
 
   @override
   String get password => 'Password';
@@ -198,6 +198,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get passwordNotMatch =>
       'New password and confirmation password do not match.';
+
+  @override
+  String get newPasswordMustDiffer =>
+      'New password must be different from the current password.';
 
   @override
   String get userNameTaken => 'The user name is already taken';
@@ -1705,6 +1709,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roleCardTapHint => 'Tap to view all role capabilities.';
 
   @override
+  String get accessPermissionsTitle => 'Access permissions';
+
+  @override
+  String get accessFullBusiness => 'Full access to the business';
+
+  @override
+  String get viewRolePermissions => 'View role permissions';
+
+  @override
+  String get businessHoursScheduleHint =>
+      'Set the allowed schedule for scheduling events.';
+
+  @override
   String get createdByLabel => 'Created by';
 
   @override
@@ -3177,7 +3194,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openInvoicesWorkspace => 'Open invoices workspace';
 
   @override
-  String get invoiceNumberLabel => 'Invoice number (NNN-YY)';
+  String get invoiceNumberLabel => 'Invoice number';
 
   @override
   String invoiceNumberHelper(String year) {
@@ -3771,9 +3788,9 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count missing this month',
-      one: '1 missing this month',
-      zero: 'None missing',
+      other: '$count without invoice this month',
+      one: '1 without invoice this month',
+      zero: 'All invoiced this month',
     );
     return '$_temp0';
   }
@@ -5237,7 +5254,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statementsInvoiceNotFoundToast => 'Invoice not found.';
 
   @override
-  String get statementsRepetitiveInvoiceBadge => 'Split payment';
+  String get statementsRepetitiveInvoiceBadge => 'Repeated invoice';
 
   @override
   String statementsRepetitiveInvoiceTooltip(Object count) {
@@ -5246,7 +5263,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String statementsRepetitiveInvoiceLinkedToast(Object count) {
-    return 'Payment added. The invoice now has $count linked transactions.';
+    return 'Invoice linked, but it was already used in other movements ($count).';
   }
 
   @override
@@ -6111,6 +6128,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailConversationSignature => 'Signature';
 
   @override
+  String get mailConversationShowQuoted => 'Show quoted content';
+
+  @override
+  String get mailConversationHideQuoted => 'Hide quoted content';
+
+  @override
+  String get mailConversationViewComplete => 'View complete message';
+
+  @override
+  String get mailConversationViewCompact => 'Show compact view';
+
+  @override
   String get mailConversationReply => 'Reply';
 
   @override
@@ -6130,8 +6159,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# messages',
-      one: '# message',
+      other: '$count messages',
+      one: '1 message',
     );
     return '$_temp0';
   }
@@ -7334,13 +7363,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expenseBatchErrorCopyList => 'Copy list';
 
   @override
-  String get expenseTotalsUseSummaryLabel => 'Use document summary';
+  String get expenseTotalsUseSummaryLabel => 'Amount source';
 
   @override
-  String get expenseTotalsSummaryMode => 'Totals extracted from summary';
+  String get expenseTotalsSummaryMode => 'From document';
 
   @override
-  String get expenseTotalsCalculateMode => 'Calculate from lines';
+  String get expenseTotalsCalculateMode => 'From lines';
 
   @override
   String get expenseTotalsSummaryHelp =>
@@ -7915,70 +7944,122 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupSettingsDeleteGroup => 'Delete business';
 
   @override
+  String invoiceIssueChronologyError(
+      Object draftDate, Object invoiceNumber, Object issuedDate) {
+    return 'This draft is dated $draftDate, but invoice $invoiceNumber was already issued with the later date $issuedDate. Change the draft date before issuing it.';
+  }
+
+  @override
+  String invoiceBatchIssueStoppedAfter(Object count) {
+    return '$count invoices were issued before the process stopped.';
+  }
+
+  @override
   String get agendaCompleted => 'Completed';
 
   @override
   String get agendaEmptyDay =>
       'No jobs for this day. Select another date or All.';
-  @override
-  String get downloadsTitle => "Downloads";
 
   @override
-  String get downloadsRecent => "Recent downloads";
+  String get downloadsTitle => 'Downloads';
 
   @override
-  String get downloadsViewAll => "View all downloads";
+  String get downloadsRecent => 'Recent downloads';
 
   @override
-  String get downloadsInvoicesZip => "Invoices";
+  String get downloadsViewAll => 'View all downloads';
 
   @override
-  String get downloadsInvoiceVatAudit => "Invoice VAT audit";
+  String get downloadsInvoicesZip => 'Invoices';
 
   @override
-  String get downloadsExpenseVatAudit => "Expense VAT audit";
+  String get downloadsInvoiceVatAudit => 'Invoice VAT audit';
 
   @override
-  String get downloadsBankExpenses => "Bank expenses";
+  String get downloadsExpenseVatAudit => 'Expense VAT audit';
 
   @override
-  String get downloadsBankTransactions => "Bank transactions";
+  String get downloadsBankExpenses => 'Bank expenses';
 
   @override
-  String get downloadsInsights => "Insights report";
+  String get downloadsBankTransactions => 'Bank transactions';
 
   @override
-  String get downloadsCustomReport => "Custom report";
+  String get downloadsInsights => 'Insights report';
 
   @override
-  String get downloadsInvoice => "Invoice";
+  String get downloadsCustomReport => 'Custom report';
 
   @override
-  String get downloadsQueued => "Queued";
+  String get downloadsInvoice => 'Invoice';
 
   @override
-  String get downloadsProcessing => "Processing";
+  String get downloadsQueued => 'Queued';
 
   @override
-  String get downloadsReady => "Ready";
+  String get downloadsProcessing => 'Processing';
 
   @override
-  String get downloadsFailed => "Failed";
+  String get downloadsReady => 'Ready';
 
   @override
-  String get downloadsExpired => "Expired";
+  String get downloadsFailed => 'Failed';
 
   @override
-  String get downloadsRefresh => "Refresh";
+  String get downloadsExpired => 'Expired';
 
   @override
-  String get downloadsEmpty => "No recent downloads";
+  String get downloadsRefresh => 'Refresh';
 
   @override
-  String get downloadsChecking => "Checking files…";
+  String get downloadsEmpty => 'No recent downloads';
 
   @override
-  String get downloadsGeneratedFile => "Generated file";
+  String get downloadsChecking => 'Checking files…';
 
+  @override
+  String get downloadsGeneratedFile => 'Generated file';
 
+  @override
+  String get preferencesTitle => 'Preferences';
+
+  @override
+  String get preferencesNavigation => 'Navigation';
+
+  @override
+  String get preferencesAppearance => 'Appearance';
+
+  @override
+  String get preferencesLanguage => 'Language';
+
+  @override
+  String get preferencesAutomatic => 'Automatic';
+
+  @override
+  String get preferencesNavigationAutomatic => 'Automatic';
+
+  @override
+  String get preferencesNavigationAutomaticDescription =>
+      'Show labels when space is available.';
+
+  @override
+  String get preferencesNavigationIconsAndText => 'Icons and text';
+
+  @override
+  String get preferencesNavigationIconsAndTextDescription =>
+      'Always show module icons and labels.';
+
+  @override
+  String get preferencesNavigationIconsOnly => 'Icons only';
+
+  @override
+  String get preferencesNavigationIconsOnlyDescription =>
+      'Use a compact navigation with tooltips.';
+
+  @override
+  String get preferencesThemeLight => 'Light';
+
+  @override
+  String get preferencesThemeDark => 'Dark';
 }

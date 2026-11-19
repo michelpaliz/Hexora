@@ -4,10 +4,7 @@ part of '../receipt_editor_wizard_screen.dart';
 
 extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
   bool get _shouldRefreshReceiptList =>
-      _didPersist ||
-      (_draftReceipt?.id.trim().isNotEmpty ?? false) ||
-      (_existingUnnumberedReceiptId?.trim().isNotEmpty ?? false) ||
-      _existingUnnumberedReceipt != null;
+      _didPersist || (_draftReceipt?.id.trim().isNotEmpty ?? false);
 
   void _releasePreviewSurface() {
     _previewPdfBytes = null;
@@ -47,7 +44,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     }
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final result = await showDialog<String>(
+    final result = await showHexoraDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Tienes cambios sin guardar' : 'Unsaved changes'),
@@ -86,27 +83,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       showInfoSnack(context, l.fieldIsRequired);
       return false;
     }
-    if (_useManualClient &&
-        _clientNameCtrl.text.trim().isNotEmpty &&
-        _clientStreetCtrl.text.trim().isEmpty) {
-      showInfoSnack(
-          context,
-          Localizations.localeOf(context).languageCode == 'es'
-              ? 'La dirección del cliente es obligatoria.'
-              : 'Client address is required.');
-      return false;
-    }
-    if (_useManualClient &&
-        _clientNameCtrl.text.trim().isNotEmpty &&
-        _clientPostalCtrl.text.trim().isEmpty) {
-      showInfoSnack(
-          context,
-          Localizations.localeOf(context).languageCode == 'es'
-              ? 'El código postal del cliente es obligatorio.'
-              : 'Client postal code is required.');
-      return false;
-    }
-    if (!_hasClient) {
+    if (_step == 0 && !_hasClient) {
       showInfoSnack(context, l.receiptClientRequired);
       return false;
     }
@@ -157,88 +134,6 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     return true;
   }
 
-  Future<void> _openExistingUnnumberedDraft({
-    String? receiptId,
-    Receipt? receipt,
-  }) async {
-    Receipt? existing = receipt;
-    final id = receiptId ?? receipt?.id;
-    if (existing == null && id != null && id.trim().isNotEmpty) {
-      try {
-        existing = await _receiptsApi.getById(id.trim());
-      } catch (e) {
-        if (!mounted) return;
-        showErrorSnack(
-          context,
-          e.toString().replaceFirst('Exception: ', '').trim(),
-        );
-        return;
-      }
-    }
-    if (existing == null || !mounted) return;
-    setState(() {
-      _applyReceiptDraft(existing!);
-      _step = 1;
-      _releasePreviewSurface();
-    });
-    if (_clientId != null) {
-      await _loadClientReceiptStats(_clientId);
-    }
-  }
-
-  void _showDraftsList() {
-    _close(changed: _shouldRefreshReceiptList);
-  }
-
-  Future<void> _showExistingUnnumberedDraftDialog(
-    ReceiptsApiException error,
-  ) async {
-    final isEs =
-        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
-              'es',
-            );
-    final receipt = error.receipt;
-    final receiptId = error.existingReceiptId ?? receipt?.id;
-    final action = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(isEs ? 'Borrador existente' : 'Existing draft'),
-        content: Text(
-          isEs
-              ? 'Ya existe un recibo borrador sin numerar para este grupo.'
-              : 'An unnumbered receipt draft already exists for this group.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop('cancel'),
-            child: Text(isEs ? 'Cancelar' : 'Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop('list'),
-            child: Text(isEs ? 'Ver lista de borradores' : 'View drafts list'),
-          ),
-          FilledButton(
-            onPressed: (receiptId ?? '').trim().isEmpty && receipt == null
-                ? null
-                : () => Navigator.of(dialogContext).pop('open'),
-            child: Text(
-              isEs ? 'Abrir borrador existente' : 'Open existing draft',
-            ),
-          ),
-        ],
-      ),
-    );
-    if (!mounted) return;
-    if (action == 'open') {
-      await _openExistingUnnumberedDraft(
-        receiptId: receiptId,
-        receipt: receipt,
-      );
-    } else if (action == 'list') {
-      _showDraftsList();
-    }
-  }
-
   Future<Receipt?> _saveDraft({
     bool showSavedSnack = true,
     String? successSnackMessage,
@@ -256,6 +151,8 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       return null;
     }
     if (!allowEmptyLines && !_validateReceiptLineValues()) return null;
+    // Ignore re-entrant saves so a rapid second click cannot close the editor
+    // using stale draft data while the current request is still in flight.
     if (_savingDraft) return null;
     if (_draftReceipt?.status == 'issued' && !_draftDirty) {
       return _draftReceipt;
@@ -264,7 +161,10 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     var editReason = '';
     if (_draftReceipt?.status == 'issued') {
       final reasonCtrl = TextEditingController();
-      final isEs = AppLocalizations.of(context)!.localeName.toLowerCase().startsWith('es');
+      final isEs = AppLocalizations.of(context)!
+          .localeName
+          .toLowerCase()
+          .startsWith('es');
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
@@ -294,9 +194,11 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       reasonCtrl.dispose();
       if (confirmed != true) return null;
       if (editReason.isEmpty) {
-        showInfoSnack(context, isEs
-            ? 'Indica el motivo para guardar los cambios.'
-            : 'Enter a reason before saving the changes.');
+        showInfoSnack(
+            context,
+            isEs
+                ? 'Indica el motivo para guardar los cambios.'
+                : 'Enter a reason before saving the changes.');
         return null;
       }
     }
@@ -308,13 +210,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
         groupId: widget.group.id,
         clientId: _useManualClient ? '' : _clientId!,
         clientName: _useManualClient ? _clientNameCtrl.text.trim() : null,
-        clientSnapshot: _useManualClient
-            ? ClientBilling(
-                addressStreet: _clientStreetCtrl.text.trim(),
-                addressCity: _clientCityCtrl.text.trim(),
-                addressPostalCode: _clientPostalCtrl.text.trim(),
-              )
-            : null,
+        clientSnapshot: _receiptClientSnapshot,
         status: _draftReceipt?.status ?? 'draft',
         issueDate: _issueDate,
         notes: _notesCtrl.text.trim(),
@@ -336,27 +232,17 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
         _markDraftSynced();
       });
       if (showSavedSnack) {
-        showSuccessSnack(
+        showDocumentSavedSnack(
           context,
-          successSnackMessage ?? l.receiptDraftSavedSnackMessage,
           title: l.receiptDraftSavedSnackTitle,
-          actionLabel: l.invoiceDraftSnackDismiss,
+          message: successSnackMessage ?? l.receiptDraftSavedSnackMessage,
+          reference: saved.receiptNumber,
+          dismissLabel: l.invoiceDraftSnackDismiss,
         );
       }
       return saved;
     } catch (e) {
       if (!mounted) return null;
-      if (e is ReceiptsApiException &&
-          e.statusCode == 409 &&
-          e.code == 'RECEIPT_UNNUMBERED_DRAFT_EXISTS') {
-        setState(() {
-          _existingUnnumberedReceiptId = e.existingReceiptId ?? e.receipt?.id;
-          _existingUnnumberedReceipt = e.receipt;
-          _draftSaveFailed = true;
-        });
-        await _showExistingUnnumberedDraftDialog(e);
-        return null;
-      }
       var msg = e.toString().replaceFirst('Exception: ', '').trim();
       if (msg.toLowerCase().contains('e11000 duplicate key error')) {
         msg = l.somethingWentWrong;
@@ -374,6 +260,12 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     }
   }
 
+  Future<void> _saveDraftAndFinish() async {
+    final saved = await _saveDraft();
+    if (!mounted || saved == null) return;
+    _close(changed: true);
+  }
+
   Future<void> _loadDraftPreview({required String receiptId}) async {
     final l = AppLocalizations.of(context)!;
     setState(() {
@@ -381,7 +273,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       _previewError = null;
     });
     try {
-      final r = await _receiptsApi.previewPdf(receiptId);
+      final r = await _receiptsApi.previewPdfWithFallback(receiptId);
       final bytes = InvoiceEditorPdf.validatePdf(r);
       if (!mounted) return;
       setState(() => _previewPdfBytes = bytes);
@@ -399,6 +291,9 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
 
   Future<bool> _preparePreviewStep() async {
     final draft = await _saveDraft(showSavedSnack: false);
+    // Advancing only depends on the draft actually persisting. The PDF preview
+    // is best-effort: if it fails the preview step renders the error inline
+    // with a retry, so a preview problem must never block saving or progress.
     if (draft == null || !mounted) return false;
     await _loadDraftPreview(receiptId: draft.id);
     return mounted;
@@ -418,7 +313,8 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     if (targetStep > _step + 1) return;
     if (!_validateCurrentStep()) return;
     if (targetStep == 2) {
-      if (!await _preparePreviewStep()) return;
+      final prepared = await _preparePreviewStep();
+      if (!prepared || !mounted) return;
     }
     setState(() {
       if (targetStep != 2) {

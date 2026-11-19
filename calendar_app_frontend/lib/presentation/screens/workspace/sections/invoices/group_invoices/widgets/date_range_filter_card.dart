@@ -6,44 +6,35 @@ import 'package:intl/intl.dart';
 enum DateQuickRange { none, month, quarter, custom }
 
 class DateRangeFilterCard extends StatelessWidget {
+  const DateRangeFilterCard(
+      {super.key,
+      required this.quickRange,
+      required this.expanded,
+      required this.fromDate,
+      required this.toDate,
+      this.showLabel = true,
+      this.showCollapsedRange = true,
+      this.trailingActions,
+      this.quickRangeControls,
+      this.showClearAction = true,
+      required this.onToggleExpanded,
+      required this.onClear,
+      required this.onPickFrom,
+      required this.onPickTo,
+      required this.onSelectQuickRange});
   final DateQuickRange quickRange;
-  final bool expanded;
-  final DateTime? fromDate;
-  final DateTime? toDate;
-  final bool showLabel;
-  final bool showCollapsedRange;
-  final List<Widget>? labelActions;
+  final bool expanded, showLabel, showCollapsedRange, showClearAction;
+  final DateTime? fromDate, toDate;
+  final List<Widget>? trailingActions;
   final Widget? quickRangeControls;
-  final bool showClearAction;
-  final VoidCallback onToggleExpanded;
-  final VoidCallback onClear;
-  final VoidCallback onPickFrom;
-  final VoidCallback onPickTo;
+  final VoidCallback onToggleExpanded, onClear, onPickFrom, onPickTo;
   final ValueChanged<DateQuickRange> onSelectQuickRange;
-
-  const DateRangeFilterCard({
-    super.key,
-    required this.quickRange,
-    required this.expanded,
-    required this.fromDate,
-    required this.toDate,
-    this.showLabel = true,
-    this.showCollapsedRange = true,
-    this.labelActions,
-    this.quickRangeControls,
-    this.showClearAction = true,
-    required this.onToggleExpanded,
-    required this.onClear,
-    required this.onPickFrom,
-    required this.onPickTo,
-    required this.onSelectQuickRange,
-  });
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
     final hasFilter = fromDate != null || toDate != null;
     final fromLabel = fromDate == null
         ? l.eventStartDateHint
@@ -51,174 +42,142 @@ class DateRangeFilterCard extends StatelessWidget {
     final toLabel = toDate == null
         ? l.eventEndDateHint
         : DateFormat.yMMMd(l.localeName).format(toDate!);
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        border: Border(
-          bottom: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.35),
-          ),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    final touch = MediaQuery.sizeOf(context).width < 650 ||
+        Theme.of(context).platform == TargetPlatform.android ||
+        Theme.of(context).platform == TargetPlatform.iOS;
+    final height = touch ? 48.0 : 28.0;
+    final filters = Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Row(
-            children: [
-              Icon(Icons.date_range_outlined, color: cs.primary),
-              const SizedBox(width: 8),
-              if (showLabel)
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text(
-                        l.date,
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                      if (labelActions != null && labelActions!.isNotEmpty)
-                        ...labelActions!,
-                    ],
-                  ),
-                )
-              else if (quickRangeControls == null)
-                const Spacer(),
-              if (quickRangeControls != null)
-                Expanded(child: quickRangeControls!)
-              else
-                _QuickRangeSegmented(
+          if (showLabel)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.date_range_outlined,
+                  size: 16, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(l.date, style: t.bodySmall)
+            ]),
+          quickRangeControls ??
+              _QuickRangeSegmented(
                   selected: quickRange,
-                  onSelected: onSelectQuickRange,
-                ),
-              if (hasFilter && showClearAction)
-                TextButton(
-                  onPressed: onClear,
-                  child: Text(
-                    l.clearSelection,
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              InkWell(
-                onTap: onToggleExpanded,
-                borderRadius: BorderRadius.circular(999),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: AnimatedRotation(
-                    duration: const Duration(milliseconds: 180),
-                    turns: expanded ? 0.5 : 0,
-                    child: Icon(
-                      Icons.expand_more,
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (expanded) ...[
-            const SizedBox(height: 4),
-            _ConnectedDateRange(
-              fromLabel: fromLabel,
-              toLabel: toLabel,
-              onPickFrom: onPickFrom,
-              onPickTo: onPickTo,
-            ),
-          ] else if (hasFilter && showCollapsedRange) ...[
-            const SizedBox(height: 4),
-            Text(
-              '$fromLabel — $toLabel',
-              style: t.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
+                  expanded: expanded,
+                  height: height,
+                  onSelected: (value) {
+                    if (value == DateQuickRange.custom &&
+                        quickRange == DateQuickRange.custom) {
+                      onToggleExpanded();
+                    } else {
+                      onSelectQuickRange(value);
+                    }
+                  }),
+          if (hasFilter && showClearAction)
+            TextButton(
+                onPressed: onClear,
+                style: TextButton.styleFrom(
+                    minimumSize: Size(0, height),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(horizontal: 8)),
+                child: Text(l.clearSelection, style: t.bodySmall)),
+        ]);
+    final actions =
+        Wrap(spacing: 4, runSpacing: 4, children: trailingActions ?? const []);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      LayoutBuilder(builder: (context, constraints) {
+        final stacked = constraints.maxWidth < 640 ||
+            MediaQuery.textScalerOf(context).scale(13) > 18;
+        return ConstrainedBox(
+            constraints: BoxConstraints(minHeight: touch ? 48 : 32),
+            child: stacked
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                        filters,
+                        if (trailingActions?.isNotEmpty ?? false)
+                          Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: actions)
+                      ])
+                : Row(children: [
+                    Expanded(child: filters),
+                    if (trailingActions?.isNotEmpty ?? false) ...[
+                      const SizedBox(width: 16),
+                      actions
+                    ]
+                  ]));
+      }),
+      if (expanded) ...[
+        const SizedBox(height: 8),
+        _ConnectedDateRange(
+            fromLabel: fromLabel,
+            toLabel: toLabel,
+            onPickFrom: onPickFrom,
+            onPickTo: onPickTo)
+      ] else if (hasFilter && showCollapsedRange) ...[
+        const SizedBox(height: 4),
+        Text('$fromLabel — $toLabel',
+            style: t.bodySmall.copyWith(color: cs.onSurfaceVariant))
+      ],
+    ]);
   }
 }
 
 class _QuickRangeSegmented extends StatelessWidget {
+  const _QuickRangeSegmented(
+      {required this.selected,
+      required this.expanded,
+      required this.height,
+      required this.onSelected});
   final DateQuickRange selected;
+  final bool expanded;
+  final double height;
   final ValueChanged<DateQuickRange> onSelected;
-
-  const _QuickRangeSegmented({
-    required this.selected,
-    required this.onSelected,
-  });
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-
-    Widget segment(DateQuickRange value, String label, {Widget? trailing}) {
-      final active = selected == value;
-      return GestureDetector(
-        onTap: () => onSelected(value),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-          decoration: BoxDecoration(
-            color: active
-                ? cs.primaryContainer
-                : cs.surface.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: active
-                  ? cs.primaryContainer
-                  : cs.outlineVariant.withValues(alpha: 0.2),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: t.bodySmall.copyWith(
-                  fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-                  color: active ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-                ),
-              ),
-              if (trailing != null) ...[
-                const SizedBox(width: 4),
-                trailing,
-              ],
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        segment(DateQuickRange.month, l.dateRange30d),
-        const SizedBox(width: 6),
-        segment(DateQuickRange.quarter, l.dateRange3m),
-        const SizedBox(width: 6),
-        segment(
-          DateQuickRange.custom,
-          l.dateRangeCustom,
-          trailing: Icon(
-            Icons.expand_more,
-            size: 12,
-            color: cs.onSurfaceVariant.withValues(alpha: 0.8),
-          ),
-        ),
-      ],
-    );
+    return Material(
+        color: cs.surfaceContainerHighest.withValues(alpha: .35),
+        borderRadius: BorderRadius.circular(6),
+        child: Wrap(spacing: 0, runSpacing: 0, children: [
+          for (final item in [
+            (DateQuickRange.month, l.dateRange30d),
+            (DateQuickRange.quarter, l.dateRange3m),
+            (DateQuickRange.custom, l.dateRangeCustom)
+          ])
+            Semantics(
+                selected: selected == item.$1,
+                expanded: item.$1 == DateQuickRange.custom ? expanded : null,
+                child: TextButton(
+                  key: ValueKey('date-range-${item.$1.name}'),
+                  onPressed: () => onSelected(item.$1),
+                  style: TextButton.styleFrom(
+                      minimumSize: Size(0, height),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      foregroundColor: selected == item.$1
+                          ? cs.primary
+                          : cs.onSurfaceVariant,
+                      backgroundColor: selected == item.$1
+                          ? cs.primary.withValues(alpha: .08)
+                          : Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6)),
+                      textStyle: Theme.of(context)
+                          .textTheme
+                          .labelMedium
+                          ?.copyWith(
+                              fontSize: 12, fontWeight: FontWeight.w500)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(item.$2),
+                    if (item.$1 == DateQuickRange.custom) ...[
+                      const SizedBox(width: 4),
+                      Icon(expanded ? Icons.expand_less : Icons.expand_more,
+                          size: 14)
+                    ]
+                  ]),
+                )),
+        ]));
   }
 }
 

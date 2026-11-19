@@ -16,9 +16,17 @@ class ShowNotificationsHeader extends StatelessWidget {
     final loc = AppLocalizations.of(context)!;
     final t = Theme.of(context).textTheme;
 
-    return Text(
-      loc.notifications,
-      style: t.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.notifications_none_rounded,
+            size: 20, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 8),
+        Text(
+          loc.notifications,
+          style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+      ],
     );
   }
 }

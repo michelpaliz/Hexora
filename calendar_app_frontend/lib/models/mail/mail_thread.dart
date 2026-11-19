@@ -7,6 +7,7 @@ class MailThread {
   final String subject;
   final String? snippet;
   final bool hasAttachments;
+  final bool important;
   final List<String> participants;
   final DateTime? latestDate;
   final int unreadCount;
@@ -17,6 +18,7 @@ class MailThread {
     this.subject = '',
     this.snippet,
     this.hasAttachments = false,
+    this.important = false,
     this.participants = const [],
     this.latestDate,
     this.unreadCount = 0,
@@ -41,15 +43,22 @@ class MailThread {
               json['bodyPreview'])
           ?.toString(),
       hasAttachments: _parseAttachmentsFlag(json),
+      important: parseBool(
+            json['important'] ??
+                json['isImportant'] ??
+                json['flagged'] ??
+                json['isFlagged'] ??
+                json['starred'],
+          ) ??
+          false,
       participants: participants,
       latestDate: parseDate(
         json['latestDate'] ?? json['latest_date'] ?? json['date'],
       ),
-      unreadCount:
-          parseInt(json['unreadCount'] ?? json['unread_count']) ?? 0,
-      messageCount:
-          parseInt(json['messageCount'] ?? json['message_count'] ?? json['count']) ??
-              0,
+      unreadCount: parseInt(json['unreadCount'] ?? json['unread_count']) ?? 0,
+      messageCount: parseInt(
+              json['messageCount'] ?? json['message_count'] ?? json['count']) ??
+          0,
     );
   }
 }
@@ -89,7 +98,8 @@ class MailThreadDetail {
       participants: base.participants,
       latestDate: base.latestDate,
       unreadCount: base.unreadCount,
-      messageCount: base.messageCount == 0 ? messages.length : base.messageCount,
+      messageCount:
+          base.messageCount == 0 ? messages.length : base.messageCount,
       messages: messages,
     );
   }

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/downloads/download_job.dart';
-import 'package:hexora/services/shared/content_disposition.dart';
 import 'package:intl/intl.dart';
 
 /// Presentation only: stored filenames and download URLs remain unchanged.
 class DownloadJobDisplay {
-  static AppLocalizations _l(BuildContext context) => AppLocalizations.of(context)!;
+  static AppLocalizations _l(BuildContext context) =>
+      AppLocalizations.of(context)!;
 
   static String name(BuildContext context, DownloadJob job) {
     final l = _l(context);
@@ -16,15 +16,19 @@ class DownloadJobDisplay {
       'invoice_vat_audit_excel' => l.downloadsInvoiceVatAudit,
       'expense_vat_audit_excel' => l.downloadsExpenseVatAudit,
       'bank_transactions_excel' => job.params['amountType'] == 'expense'
-          ? l.downloadsBankExpenses : l.downloadsBankTransactions,
+          ? l.downloadsBankExpenses
+          : l.downloadsBankTransactions,
       'insights_excel' => l.downloadsInsights,
       'custom_report' => l.downloadsCustomReport,
       'invoice_pdf' => l.downloadsInvoice,
       _ => null,
     };
     if (label == null) {
-      return job.fileName.trim().isNotEmpty ? job.fileName :
-          (job.title.trim().isNotEmpty ? job.title : l.downloadsGeneratedFile);
+      return job.fileName.trim().isNotEmpty
+          ? job.fileName
+          : (job.title.trim().isNotEmpty
+              ? job.title
+              : l.downloadsGeneratedFile);
     }
     final invoiceNumber = job.params['invoiceNumber']?.toString().trim() ?? '';
     if (type == 'invoice_pdf' && invoiceNumber.isNotEmpty) {
@@ -32,7 +36,8 @@ class DownloadJobDisplay {
     }
     if (type == 'invoice_zip') {
       final date = job.completedAt ?? job.createdAt;
-      final pattern = l.localeName.startsWith('es') ? 'd MMM yyyy' : 'MMM d, yyyy';
+      final pattern =
+          l.localeName.startsWith('es') ? 'd MMM yyyy' : 'MMM d, yyyy';
       return '$label · ${DateFormat(pattern, l.localeName).format(date.toLocal())}';
     }
     return label;
@@ -54,43 +59,15 @@ class DownloadJobDisplay {
     return dateTime(context, job.completedAt ?? job.createdAt);
   }
 
-  static String downloadFilename(
-    BuildContext context,
-    DownloadJob job,
-    Map<String, String> headers,
-  ) {
-    final fromServer = downloadFileNameFromHeaders(headers, fallback: '');
-    if (fromServer.isNotEmpty) return fromServer;
-    final l = _l(context);
-    final date = job.completedAt ?? job.createdAt;
-    final stamp = '${date.year.toString().padLeft(4, '0')}'
-        '${date.month.toString().padLeft(2, '0')}'
-        '${date.day.toString().padLeft(2, '0')}';
-    final original = job.effectiveFileName;
-    final extension = original.contains('.') ? '.${original.split('.').last}' : '';
-    final base = switch (job.jobType) {
-      'invoice_zip' => l.localeName.startsWith('es') ? 'facturas' : 'invoices',
-      'bank_transactions_excel' => job.params['amountType'] == 'expense'
-          ? (l.localeName.startsWith('es') ? 'gastos-bancarios' : 'bank-expenses')
-          : (l.localeName.startsWith('es') ? 'movimientos-bancarios' : 'bank-transactions'),
-      'invoice_vat_audit_excel' => l.localeName.startsWith('es')
-          ? 'auditoria-iva-facturas' : 'invoice-vat-audit',
-      'expense_vat_audit_excel' => l.localeName.startsWith('es')
-          ? 'auditoria-iva-gastos' : 'expense-vat-audit',
-      'insights_excel' => l.localeName.startsWith('es') ? 'informe-analisis' : 'insights-report',
-      'custom_report' => l.localeName.startsWith('es') ? 'informe-personalizado' : 'custom-report',
-      'worker_hours_excel' => l.localeName.startsWith('es') ? 'horas-trabajadas' : 'worker-hours',
-      'presupuesto_zip' => l.localeName.startsWith('es') ? 'presupuestos' : 'budgets',
-      _ => '',
-    };
-    return base.isEmpty ? original : '$base-$stamp$extension';
-  }
-
   static String dateTime(BuildContext context, DateTime date) {
     final l = _l(context);
     final value = date.toLocal();
-    return DateFormat(l.localeName.startsWith('es')
-        ? 'd MMM yyyy · HH:mm' : 'MMM d, yyyy · HH:mm', l.localeName).format(value);
+    return DateFormat(
+            l.localeName.startsWith('es')
+                ? 'd MMM yyyy · HH:mm'
+                : 'MMM d, yyyy · HH:mm',
+            l.localeName)
+        .format(value);
   }
 
   static String fileType(DownloadJob job) {
@@ -98,7 +75,9 @@ class DownloadJobDisplay {
     if (file.endsWith('.pdf') || job.isPdf) return 'PDF';
     if (file.endsWith('.zip') || job.mimeType.contains('zip')) return 'ZIP';
     if (file.endsWith('.csv') || job.mimeType.contains('csv')) return 'CSV';
-    if (file.endsWith('.xlsx') || job.mimeType.contains('spreadsheetml')) return 'XLSX';
+    if (file.endsWith('.xlsx') || job.mimeType.contains('spreadsheetml')) {
+      return 'XLSX';
+    }
     if (file.endsWith('.xls')) return 'XLS';
     if (job.jobType == 'invoice_zip') return 'ZIP';
     if (job.jobType.endsWith('_excel')) return 'XLSX';
@@ -107,10 +86,10 @@ class DownloadJobDisplay {
   }
 
   static IconData icon(DownloadJob job) => switch (fileType(job)) {
-    'PDF' => Icons.picture_as_pdf_outlined,
-    'ZIP' => Icons.folder_zip_outlined,
-    'CSV' => Icons.table_chart_outlined,
-    'XLSX' || 'XLS' => Icons.grid_on_outlined,
-    _ => Icons.insert_drive_file_outlined,
-  };
+        'PDF' => Icons.picture_as_pdf_outlined,
+        'ZIP' => Icons.folder_zip_outlined,
+        'CSV' => Icons.table_chart_outlined,
+        'XLSX' || 'XLS' => Icons.grid_on_outlined,
+        _ => Icons.insert_drive_file_outlined,
+      };
 }

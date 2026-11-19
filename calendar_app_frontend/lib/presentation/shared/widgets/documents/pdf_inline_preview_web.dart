@@ -7,17 +7,21 @@ import 'package:flutter/foundation.dart';
 import 'pdf_inline_preview_stub.dart' as rendered;
 import 'pdf_preview_platform.dart';
 
+import 'document_split_view.dart';
+
 class PdfInlinePreview extends StatelessWidget {
   const PdfInlinePreview({
     super.key,
     required this.bytes,
     this.height = 420,
     this.interactive = true,
+    this.showToolbar = true,
   });
 
   final Uint8List bytes;
   final double height;
   final bool interactive;
+  final bool showToolbar;
 
   @override
   Widget build(BuildContext context) {
@@ -30,18 +34,30 @@ class PdfInlinePreview extends StatelessWidget {
     );
     if (useRenderer) {
       return rendered.PdfInlinePreview(
-        bytes: bytes, height: height, interactive: interactive,
+        bytes: bytes,
+        height: height,
+        interactive: interactive,
       );
     }
-    return _BrowserPdfPreview(bytes: bytes, height: height, interactive: interactive);
+    return _BrowserPdfPreview(
+      bytes: bytes,
+      height: height,
+      interactive: interactive,
+      showToolbar: showToolbar,
+    );
   }
 }
 
 class _BrowserPdfPreview extends StatefulWidget {
-  const _BrowserPdfPreview({required this.bytes, required this.height, required this.interactive});
+  const _BrowserPdfPreview(
+      {required this.bytes,
+      required this.height,
+      required this.interactive,
+      required this.showToolbar});
   final Uint8List bytes;
   final double height;
   final bool interactive;
+  final bool showToolbar;
 
   @override
   State<_BrowserPdfPreview> createState() => _PdfInlinePreviewState();
@@ -60,8 +76,10 @@ class _PdfInlinePreviewState extends State<_BrowserPdfPreview> {
       ..style.border = '0'
       ..style.width = '100%'
       ..style.height = '100%'
-      ..style.pointerEvents = widget.interactive ? 'auto' : 'none';
+      ..title = 'Documento PDF'
+      ..style.pointerEvents = _pointerEvents;
     _setUrl(widget.bytes);
+    documentSplitDragging.addListener(_syncPointerEvents);
 
     ui.platformViewRegistry.registerViewFactory(
       _viewType,
@@ -72,13 +90,19 @@ class _PdfInlinePreviewState extends State<_BrowserPdfPreview> {
   @override
   void didUpdateWidget(covariant _BrowserPdfPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.bytes != widget.bytes) {
+    if (oldWidget.bytes != widget.bytes ||
+        oldWidget.showToolbar != widget.showToolbar) {
       _setUrl(widget.bytes);
     }
-    if (oldWidget.interactive != widget.interactive) {
-      _element.style.pointerEvents = widget.interactive ? 'auto' : 'none';
-    }
+    if (oldWidget.interactive != widget.interactive) _syncPointerEvents();
   }
+
+  // The iframe would capture the pointer while a split divider is dragged
+  // across it.
+  String get _pointerEvents =>
+      widget.interactive && !documentSplitDragging.value ? 'auto' : 'none';
+
+  void _syncPointerEvents() => _element.style.pointerEvents = _pointerEvents;
 
   void _setUrl(Uint8List bytes) {
     if (_url != null) {
@@ -87,11 +111,14 @@ class _PdfInlinePreviewState extends State<_BrowserPdfPreview> {
     final blob = html.Blob(
         [bytes.toJS].toJS, html.BlobPropertyBag(type: 'application/pdf'));
     _url = html.URL.createObjectURL(blob);
-    _element.src = '${_url!}#toolbar=1&navpanes=0&pagemode=none&view=FitH';
+    // Native viewers may ignore PDF open parameters depending on the browser.
+    _element.src =
+        '${_url!}#toolbar=${widget.showToolbar ? 1 : 0}&navpanes=0&pagemode=none&view=FitH&filename=Documento.pdf';
   }
 
   @override
   void dispose() {
+    documentSplitDragging.removeListener(_syncPointerEvents);
     if (_url != null) {
       html.URL.revokeObjectURL(_url!);
     }

@@ -10,6 +10,7 @@ class NavTile extends StatelessWidget {
     this.onTap,
     this.danger = false,
     this.iconBgColor,
+    this.compact = false,
   });
 
   final Widget leading;
@@ -20,6 +21,7 @@ class NavTile extends StatelessWidget {
 
   /// Background color for the icon container. Defaults to a neutral tint.
   final Color? iconBgColor;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +54,10 @@ class NavTile extends StatelessWidget {
       splashColor: (danger ? cs.error : cs.primary).withValues(alpha: 0.08),
       highlightColor: (danger ? cs.error : cs.primary).withValues(alpha: 0.04),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        padding: EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: compact ? 10 : 13,
+        ),
         child: Row(
           children: [
             Container(

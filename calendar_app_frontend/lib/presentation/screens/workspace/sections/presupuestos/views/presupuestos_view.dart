@@ -2,12 +2,12 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice_block.dart';
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
-import 'package:hexora/services/shared/content_disposition.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/form/invoice_content_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
@@ -19,11 +19,20 @@ import 'package:hexora/presentation/screens/workspace/sections/presupuestos/util
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/conversion/presupuesto_advance_final_flow.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_workspace.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/json_import_service.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
-import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
+import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
-import 'package:hexora/presentation/shared/widgets/wizard_steps_header.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
+import 'package:hexora/presentation/shared/widgets/motion/hexora_step_transition.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -32,14 +41,45 @@ part 'sections/presupuestos_view_flow_section.dart';
 part 'sections/presupuestos_view_import_extract_section.dart';
 part 'sections/presupuestos_view_payload_section.dart';
 part 'sections/presupuestos_view_step_content_section.dart';
+part 'sections/presupuestos_view_details_section.dart';
 
 enum GroupInvoicesBudgetsMode { list, create }
 
 enum _ClientSource { existing, manual }
 
+enum _PresupuestoConversionTarget {
+  invoice,
+  receipt;
+
+  String get apiValue => switch (this) {
+        _PresupuestoConversionTarget.invoice => 'invoice',
+        _PresupuestoConversionTarget.receipt => 'receipt',
+      };
+}
+
 enum BudgetSortBy { date, number }
 
 enum BudgetSortDir { asc, desc }
+
+enum _BudgetColumnSort {
+  number,
+  client,
+  status,
+  delivery,
+  date,
+  base,
+  vat,
+  total,
+}
+
+class _BudgetRange {
+  const _BudgetRange({this.min, this.max});
+  final num? min;
+  final num? max;
+  bool get active => min != null || max != null;
+  bool includes(num value) =>
+      (min == null || value >= min!) && (max == null || value <= max!);
+}
 
 class BudgetSortState {
   final BudgetSortBy by;
@@ -86,6 +126,7 @@ class GroupInvoicesBudgetsView extends StatefulWidget {
     this.onEditDraftBudget,
     this.onExitEditor,
     this.onUnsavedStateChanged,
+    this.api,
   });
 
   final String groupId;
@@ -96,6 +137,7 @@ class GroupInvoicesBudgetsView extends StatefulWidget {
   final ValueChanged<String>? onEditDraftBudget;
   final VoidCallback? onExitEditor;
   final ValueChanged<bool>? onUnsavedStateChanged;
+  final PresupuestosApi? api;
 
   @override
   State<GroupInvoicesBudgetsView> createState() =>
@@ -103,7 +145,7 @@ class GroupInvoicesBudgetsView extends StatefulWidget {
 }
 
 class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
-  final PresupuestosApi _presupuestosApi = PresupuestosApi();
+  late final PresupuestosApi _presupuestosApi = widget.api ?? PresupuestosApi();
   bool _loadingBudgets = false;
   bool _downloadingBudgetsZip = false;
   final Set<String> _issuingBudgetIds = <String>{};
@@ -116,7 +158,30 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   String? _budgetsError;
   List<Map<String, dynamic>> _budgets = const [];
   String? _selectedBudgetId;
-  int _budgetsTabIndex = 0;
+  int _budgetsTabIndex = 1;
+  String _budgetSearchQuery = '';
+  String _budgetNumberFilter = '';
+  Set<String> _budgetClientFilters = {};
+  Set<String> _budgetStatusFilters = {};
+  Set<String> _budgetDeliveryFilters = {};
+  DateTime? _budgetFromDate;
+  DateTime? _budgetToDate;
+  _BudgetRange _budgetBaseRange = const _BudgetRange();
+  _BudgetRange _budgetVatRange = const _BudgetRange();
+  _BudgetRange _budgetTotalRange = const _BudgetRange();
+  _BudgetColumnSort? _budgetColumnSort;
+  bool _budgetSortAscending = false;
+  static const _budgetAvailableColumns = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.concept,
+    HexoraFinancialColumn.taxableBase,
+    HexoraFinancialColumn.vat,
+    HexoraFinancialColumn.total,
+  };
+  Set<HexoraFinancialColumn> _budgetVisibleColumns =
+      Set.of(_budgetAvailableColumns);
+  final ValueNotifier<DocumentViewMode?> _budgetSplitModeNotifier =
+      ValueNotifier<DocumentViewMode?>(null);
   String? _selectedClientId;
   int _clientBudgetIssuedCount = 0;
   int _clientBudgetDraftCount = 0;
@@ -137,6 +202,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   final TextEditingController _budgetAdvancePercentCtrl =
       TextEditingController(text: '0');
   _ClientSource _clientSource = _ClientSource.existing;
+  _PresupuestoConversionTarget _conversionTarget =
+      _PresupuestoConversionTarget.invoice;
   final List<LineDraft> _budgetLines = <LineDraft>[LineDraft(position: 1)];
   final List<InvoiceBlockDraft> _budgetBlocks = <InvoiceBlockDraft>[
     InvoiceBlockDraft.item(),
@@ -150,7 +217,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   String? _draftId;
   Future<String>? _draftCreateInFlight;
   String? _issuedPresupuestoNumber;
-  DateTime? _budgetIssueDate;
+  DateTime? _budgetIssueDate = DateUtils.dateOnly(DateTime.now());
   bool _loadingEditableBudget = false;
   String? _editableBudgetError;
   bool _editableBudgetDirty = false;
@@ -161,6 +228,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   List<int>? _previewPdfBytes;
   String? _previewForId;
   bool _loadingDetailPreview = false;
+  int _detailPreviewRequestSerial = 0;
   String? _detailPreviewError;
   List<int>? _detailPreviewPdfBytes;
   String? _detailPreviewForId;
@@ -203,8 +271,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 
   String get _budgetAdvancePercentError => _isSpanishLocale
-      ? 'Introduce un porcentaje entre 0% y 100%. Usa 0 para no solicitar anticipo.'
-      : 'Enter a percentage between 0% and 100%. Use 0 for no advance.';
+      ? 'El anticipo debe estar entre 0% y 100%.'
+      : 'The advance must be between 0% and 100%.';
 
   void _setBudgetAdvancePercentText(String _) {
     setState(() {
@@ -477,7 +545,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 
   Future<void> _previewHistoricalBudget(Map<String, dynamic> budget) async {
-    final pdfPrefix = Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto' : 'budget';
     final id = (budget['_id'] ?? budget['id'] ?? '').toString();
     final number =
         (budget['presupuestoNumber'] ?? budget['budgetNumber'] ?? 'preview')
@@ -486,7 +553,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       final r = await _presupuestosApi.previewPdf(id);
       final bytes = InvoiceEditorPdf.validatePdf(r);
       await pdf_launcher.launchPdfPreview(bytes,
-          fileName: '$pdfPrefix-$number.pdf');
+          fileName: 'presupuesto-$number.pdf');
     } catch (e) {
       if (!mounted) return;
       showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
@@ -501,6 +568,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 
   void _releaseDetailPreviewSurface() {
+    _detailPreviewRequestSerial++;
     _loadingDetailPreview = false;
     _detailPreviewError = null;
     _detailPreviewPdfBytes = null;
@@ -515,7 +583,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     _editableBudgetVersion = null;
     _draftId = null;
     _issuedPresupuestoNumber = null;
-    _budgetIssueDate = null;
+    _budgetIssueDate = DateUtils.dateOnly(DateTime.now());
     _budgetCurrencyCtrl.text = 'EUR';
     _budgetNotesCtrl.clear();
     _issuedEditReasonCtrl.clear();
@@ -529,6 +597,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     _clientCityCtrl.clear();
     _clientPostalCodeCtrl.clear();
     _clientSource = _ClientSource.existing;
+    _conversionTarget = _PresupuestoConversionTarget.invoice;
     _confirmPreview = false;
     _visibleStep = 0;
     _applyPresupuestoPayload(const <String, dynamic>{});
@@ -595,7 +664,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       return;
     }
     final isEs = _isSpanishLocale;
-    final result = await showDialog<String>(
+    final result = await showHexoraDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Tienes cambios sin guardar' : 'Unsaved changes'),
@@ -648,24 +717,18 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                 ? Icons.cloud_done_outlined
                 : Icons.save_outlined;
     final color = _issuing || _editableBudgetDirty ? cs.tertiary : cs.primary;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.32)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color),
+          Icon(icon, size: 14, color: color),
           const SizedBox(width: 6),
           Text(
             text,
             style: t.bodySmall.copyWith(
               color: color,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -676,6 +739,12 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   @override
   void initState() {
     super.initState();
+    HexoraColumnVisibilityStore.load(
+      'presupuestos_description_v1',
+      _budgetAvailableColumns,
+    ).then((value) {
+      if (mounted) setState(() => _budgetVisibleColumns = value);
+    });
     if (widget.mode == GroupInvoicesBudgetsMode.list) {
       _loadBudgets();
     } else if (_isEditingBudget) {
@@ -724,9 +793,17 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     }
     if (initialBudgetChanged && widget.mode == GroupInvoicesBudgetsMode.list) {
       final targetId = (widget.initialSelectedBudgetId ?? '').trim();
-      if (targetId.isNotEmpty &&
-          _budgets.any((item) => _budgetId(item).trim() == targetId)) {
-        setState(() => _selectedBudgetId = targetId);
+      final target = targetId.isEmpty
+          ? null
+          : _budgets.cast<Map<String, dynamic>?>().firstWhere(
+                (item) => item != null && _budgetId(item).trim() == targetId,
+                orElse: () => null,
+              );
+      if (target != null) {
+        setState(() {
+          _selectedBudgetId = targetId;
+          _budgetsTabIndex = _isDraftBudget(target) ? 0 : 1;
+        });
         _loadDetailPreviewPdf(targetId);
       }
     }
@@ -736,6 +813,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   void dispose() {
     _releaseCreatePreviewSurface();
     _releaseDetailPreviewSurface();
+    _budgetSplitModeNotifier.dispose();
     _clientNameCtrl.dispose();
     _clientAddressCtrl.dispose();
     _clientCityCtrl.dispose();
@@ -796,38 +874,22 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       _visibleStep = _maxAllowedStep;
     }
 
-    final steps = <Step>[
-      Step(
-        title: Text(l.budgetStepClient),
-        subtitle: const SizedBox.shrink(),
-        content: const SizedBox.shrink(),
-        isActive: _visibleStep == 0,
-        state: _visibleStep > 0 ? StepState.complete : StepState.editing,
+    final editorSteps = <HexoraDocumentStep>[
+      HexoraDocumentStep(
+        label: l.budgetStepClient,
+        icon: Icons.person_outline_rounded,
       ),
-      Step(
-        title: Text(_isSpanishLocale ? 'Detalles' : 'Details'),
-        subtitle: const SizedBox.shrink(),
-        content: const SizedBox.shrink(),
-        isActive: _visibleStep == 1,
-        state: _visibleStep > 1
-            ? StepState.complete
-            : (_visibleStep == 1 ? StepState.editing : StepState.indexed),
+      HexoraDocumentStep(
+        label: _isSpanishLocale ? 'Detalles' : 'Details',
+        icon: Icons.edit_note_outlined,
       ),
-      Step(
-        title: Text(l.budgetStepLines),
-        subtitle: const SizedBox.shrink(),
-        content: const SizedBox.shrink(),
-        isActive: _visibleStep == 2,
-        state: _visibleStep > 2
-            ? StepState.complete
-            : (_visibleStep == 2 ? StepState.editing : StepState.indexed),
+      HexoraDocumentStep(
+        label: l.budgetStepLines,
+        icon: Icons.format_list_bulleted_rounded,
       ),
-      Step(
-        title: Text(l.budgetStepPreview),
-        subtitle: const SizedBox.shrink(),
-        content: const SizedBox.shrink(),
-        isActive: _visibleStep == 3,
-        state: _visibleStep == 3 ? StepState.editing : StepState.indexed,
+      HexoraDocumentStep(
+        label: l.budgetStepPreview,
+        icon: Icons.picture_as_pdf_outlined,
       ),
     ];
 
@@ -840,7 +902,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
             height: (MediaQuery.sizeOf(context).height - 150)
                 .clamp(680.0, 980.0)
                 .toDouble(),
-            child: BudgetHistoryDialog(
+            child: _BudgetHistoryDialog(
               api: _presupuestosApi,
               presupuestoId: _budgetId(budget),
               title: _budgetClientName(budget, l),
@@ -854,245 +916,282 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(10),
+    if (!isCreate) {
+      return ListView(
+          padding: EdgeInsets.zero,
+          children: [_buildBudgetsListLayout(context)]);
+    }
+    if (_loadingEditableBudget) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if ((_editableBudgetError ?? '').trim().isNotEmpty) {
+      return Center(
+          child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(_editableBudgetError!, style: TextStyle(color: cs.error)),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+              onPressed: () => _loadEditableBudget(
+                  (widget.initialSelectedBudgetId ?? '').trim()),
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(l.tryAgain)),
+        ]),
+      ));
+    }
+    final actions = Row(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!isCreate) ...[
-                _buildBudgetsListLayout(context),
-              ] else ...[
-                if (_loadingEditableBudget)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Center(
-                      child: SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
+        if (_visibleStep > _minVisibleStep ||
+            (_isEditingBudget && widget.onExitEditor != null))
+          TextButton(
+            onPressed: _issuing ? null : _handleBudgetBack,
+            child: Text(l.budgetBackCta),
+          ),
+        const Spacer(),
+        if (_visibleStep < 3)
+          FilledButton(
+            onPressed: !_issuing
+                ? () async {
+                    if (!_validateCurrentStep()) return;
+                    final target = _visibleStep + 1;
+                    setState(() {
+                      _setVisibleStep(target);
+                    });
+                    if (target == 3) {
+                      await _createDraftAndPreparePreview();
+                    }
+                  }
+                : null,
+            child: Text(_visibleStep == 1
+                ? (_isSpanishLocale
+                    ? 'Continuar a líneas'
+                    : 'Continue to line items')
+                : _visibleStep == 2
+                    ? l.budgetStepPreview
+                    : l.budgetNextCta),
+          )
+        else ...[
+          if (_isEditingBudget && (_editableBudgetVersion ?? 0) > 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Chip(
+                visualDensity: VisualDensity.compact,
+                label: Text('Versión $_editableBudgetVersion'),
+              ),
+            ),
+          if (_isEditingBudget && (_draftId ?? '').trim().isNotEmpty)
+            OutlinedButton.icon(
+              onPressed: () => _showBudgetHistoryDialog({
+                'id': _draftId,
+                'clientName': _clientNameCtrl.text.trim(),
+                'presupuestoNumber': _issuedPresupuestoNumber,
+              }),
+              icon: const Icon(Icons.history_rounded),
+              label: Text(
+                _isSpanishLocale ? 'Historial' : 'History',
+              ),
+            ),
+          if (_isEditingBudget && !_isDraftEditable && !_isIssuedEditable)
+            Text(
+              _isSpanishLocale
+                  ? 'Este presupuesto no se puede editar.'
+                  : 'This presupuesto cannot be edited.',
+              style: TextStyle(color: cs.onSurfaceVariant),
+            )
+          else
+            FilledButton.icon(
+              onPressed: (_issuing ||
+                      (_isEditingBudget &&
+                          !_editableBudgetDirty &&
+                          (_draftId ?? '').trim().isNotEmpty))
+                  ? null
+                  : _saveDraftOnly,
+              icon: _issuing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
                       ),
-                    ),
-                  )
-                else if ((_editableBudgetError ?? '').trim().isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: cs.error.withValues(alpha: 0.4)),
-                    ),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: Text(
+                _isEditingBudget
+                    ? (_isIssuedEditable
+                        ? (_isSpanishLocale
+                            ? 'Guardar nueva versión'
+                            : 'Save new version')
+                        : (_isSpanishLocale
+                            ? 'Guardar cambios'
+                            : 'Save changes'))
+                    : (_isSpanishLocale ? 'Guardar borrador' : 'Save draft'),
+              ),
+            ),
+        ],
+      ],
+    );
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (MediaQuery.sizeOf(context).width < 1100)
+        Padding(
+          key: const ValueKey('budget_wizard_header'),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              color: cs.surface,
+              child: HexoraDocumentStepper(
+                steps: editorSteps,
+                currentStep: _visibleStep,
+                onStepTapped: (target) {
+                  if (target >= _minVisibleStep && target <= _maxAllowedStep) {
+                    if (target > _visibleStep && !_validateCurrentStep())
+                      return;
+                    setState(() => _setVisibleStep(target));
+                    if (target == 3) _createDraftAndPreparePreview();
+                  }
+                },
+                itemKeyBuilder: (index, _) =>
+                    ValueKey('budget-editor-step-$index'),
+                compactConnectors: true,
+              ),
+            ),
+            if (selectedClientName.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                l.budgetConfirmClientValue(selectedClientName),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ]),
+        )
+      else
+        const SizedBox(
+          key: ValueKey('budget_wizard_header'),
+          height: 0,
+        ),
+      Expanded(
+        child: LayoutBuilder(builder: (context, constraints) {
+          final transition = HexoraStepTransition(
+            step: _visibleStep,
+            child: _visibleStep == 0
+                ? Padding(
+                    key: const ValueKey('budget_wizard_content'),
+                    padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _editableBudgetError!,
-                          style: TextStyle(color: cs.error),
-                        ),
-                        const SizedBox(height: 10),
-                        OutlinedButton.icon(
-                          onPressed: () => _loadEditableBudget(
-                            (widget.initialSelectedBudgetId ?? '').trim(),
+                        Expanded(child: _buildStepContent(cs, l)),
+                        if (_error != null) ...[
+                          const SizedBox(height: 8),
+                          _BudgetInlineErrorCard(
+                            message: _error!,
+                            visibleStep: _visibleStep,
+                            isSpanishLocale: _isSpanishLocale,
                           ),
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: Text(l.tryAgain),
-                        ),
+                        ],
                       ],
                     ),
                   )
-                else ...[
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final showInlineClient = selectedClientName.isNotEmpty &&
-                          constraints.maxWidth >= 860;
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                : _visibleStep == 3
+                    ? Padding(
+                        key: const ValueKey('budget_wizard_content'),
+                        padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+                        child: _buildStepContent(cs, l),
+                      )
+                    : ListView(
+                        key: const ValueKey('budget_wizard_content'),
+                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: WizardStepsHeader(
-                                  steps: steps,
-                                  currentStep: _visibleStep,
-                                  isWide: true,
-                                  maxWidth: double.infinity,
-                                  height: 112,
-                                  onStepTapped: (target) {
-                                    if (target >= _minVisibleStep &&
-                                        target <= _maxAllowedStep) {
-                                      setState(() {
-                                        _setVisibleStep(target);
-                                      });
-                                      if (target == 3) {
-                                        _createDraftAndPreparePreview();
-                                      }
-                                    }
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              _budgetDraftStatusChip(cs, t),
-                              if (showInlineClient) ...[
-                                const SizedBox(width: 10),
-                                ConstrainedBox(
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 320),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: cs.primaryContainer
-                                          .withValues(alpha: 0.4),
-                                      borderRadius: BorderRadius.circular(999),
-                                      border: Border.all(
-                                        color:
-                                            cs.primary.withValues(alpha: 0.45),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      l.budgetConfirmClientValue(
-                                          selectedClientName),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: cs.onSurfaceVariant,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          if (!showInlineClient &&
-                              selectedClientName.isNotEmpty) ...[
+                          _buildStepContent(cs, l),
+                          if (_error != null) ...[
                             const SizedBox(height: 8),
-                            Text(
-                              l.budgetConfirmClientValue(selectedClientName),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            _BudgetInlineErrorCard(
+                              message: _error!,
+                              visibleStep: _visibleStep,
+                              isSpanishLocale: _isSpanishLocale,
                             ),
                           ],
                         ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildStepContent(cs, l),
-                  if (_error != null) ...[
-                    const SizedBox(height: 8),
-                    _BudgetInlineErrorCard(
-                      message: _error!,
-                      visibleStep: _visibleStep,
-                      isSpanishLocale: _isSpanishLocale,
+                      ),
+          );
+          if (constraints.maxWidth >= 1100) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: 174,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
+                    child: HexoraDocumentStepper(
+                      steps: editorSteps,
+                      currentStep: _visibleStep,
+                      onStepTapped: (target) {
+                        if (target >= _minVisibleStep &&
+                            target <= _maxAllowedStep) {
+                          if (target > _visibleStep && !_validateCurrentStep())
+                            return;
+                          setState(() => _setVisibleStep(target));
+                          if (target == 3) _createDraftAndPreparePreview();
+                        }
+                      },
+                      itemKeyBuilder: (index, _) =>
+                          ValueKey('budget-editor-step-$index'),
+                      vertical: true,
                     ),
-                  ],
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      if (_visibleStep > _minVisibleStep ||
-                          (_isEditingBudget && widget.onExitEditor != null))
-                        TextButton(
-                          onPressed: _issuing ? null : _handleBudgetBack,
-                          child: Text(l.budgetBackCta),
-                        ),
-                      const Spacer(),
-                      if (_visibleStep < 3)
-                        FilledButton(
-                          onPressed: !_issuing
-                              ? () async {
-                                  if (!_validateCurrentStep()) return;
-                                  final target = _visibleStep + 1;
-                                  setState(() {
-                                    _setVisibleStep(target);
-                                  });
-                                  if (target == 3) {
-                                    await _createDraftAndPreparePreview();
-                                  }
-                                }
-                              : null,
-                          child: Text(l.budgetNextCta),
-                        )
-                      else ...[
-                        if (_isEditingBudget &&
-                            (_editableBudgetVersion ?? 0) > 0)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: Chip(
-                              visualDensity: VisualDensity.compact,
-                              label: Text('Versión $_editableBudgetVersion'),
-                            ),
-                          ),
-                        if (_isEditingBudget &&
-                            (_draftId ?? '').trim().isNotEmpty)
-                          OutlinedButton.icon(
-                            onPressed: () => _showBudgetHistoryDialog({
-                              'id': _draftId,
-                              'clientName': _clientNameCtrl.text.trim(),
-                              'presupuestoNumber': _issuedPresupuestoNumber,
-                            }),
-                            icon: const Icon(Icons.history_rounded),
-                            label: Text(
-                              _isSpanishLocale ? 'Historial' : 'History',
-                            ),
-                          ),
-                        if (_isEditingBudget &&
-                            !_isDraftEditable &&
-                            !_isIssuedEditable)
-                          Text(
-                            _isSpanishLocale
-                                ? 'Este presupuesto no se puede editar.'
-                                : 'This presupuesto cannot be edited.',
-                            style: TextStyle(color: cs.onSurfaceVariant),
-                          )
-                        else
-                          FilledButton.icon(
-                            onPressed: (_issuing ||
-                                    (_isEditingBudget &&
-                                        !_editableBudgetDirty &&
-                                        (_draftId ?? '').trim().isNotEmpty))
-                                ? null
-                                : _saveDraftOnly,
-                            icon: _issuing
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.save_outlined),
-                            label: Text(
-                              _isEditingBudget
-                                  ? (_isIssuedEditable
-                                      ? (_isSpanishLocale
-                                          ? 'Guardar nueva versión'
-                                          : 'Save new version')
-                                      : (_isSpanishLocale
-                                          ? 'Guardar cambios'
-                                          : 'Save changes'))
-                                  : (_isSpanishLocale
-                                      ? 'Guardar borrador'
-                                      : 'Save draft'),
-                            ),
-                          ),
-                      ],
-                    ],
                   ),
-                ],
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(child: transition),
               ],
-            ],
-          ),
-        ),
-      ],
-    );
+            );
+          }
+          return transition;
+        }),
+      ),
+      SafeArea(
+          top: false,
+          child: Container(
+            key: const ValueKey('budget_wizard_actions'),
+            constraints: const BoxConstraints(minHeight: 50),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+                color: cs.surface,
+                border: Border(
+                    top: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.25)))),
+            child: LayoutBuilder(
+                builder: (context, constraints) => constraints.maxWidth < 900
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _budgetDraftStatusChip(cs, t),
+                          const SizedBox(height: 6),
+                          OverflowBar(
+                            alignment: MainAxisAlignment.end,
+                            spacing: 8,
+                            overflowSpacing: 6,
+                            children: actions.children
+                                .where((child) => child is! Spacer)
+                                .toList(),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          _budgetDraftStatusChip(cs, t),
+                          const SizedBox(width: 12),
+                          Expanded(child: actions),
+                        ],
+                      )),
+          )),
+    ]);
   }
 
   String _budgetId(Map<String, dynamic> item) {
@@ -1113,9 +1212,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
 
   bool _isDraftBudget(Map<String, dynamic> item) =>
       _budgetStatus(item).contains('draft');
-
-  bool _isIssuedBudget(Map<String, dynamic> item) =>
-      _budgetStatus(item) == 'issued';
 
   int _budgetVersion(Map<String, dynamic> item) {
     final raw = item['currentVersion'] ??
@@ -1180,16 +1276,78 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 
   num? _budgetBaseAmount(Map<String, dynamic> item) {
+    final calculated = _budgetLineFinancials(item);
+    if (calculated != null) return calculated.base;
+    final totals = item['totals'];
     final candidates = <dynamic>[
       item['subtotal'],
       item['baseAmount'],
       item['taxableBase'],
+      if (totals is Map) totals['subtotal'],
+      if (totals is Map) totals['base'],
+      if (totals is Map) totals['taxableBase'],
     ];
     for (final value in candidates) {
       if (value is num) return value;
       final parsed =
           num.tryParse((value ?? '').toString().trim().replaceAll(',', '.'));
       if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  ({num base, num vat})? _budgetLineFinancials(
+    Map<String, dynamic> item,
+  ) {
+    num? parseNum(dynamic value) {
+      if (value is num) return value;
+      final text = value?.toString().trim() ?? '';
+      if (text.isEmpty) return null;
+      return num.tryParse(text.replaceAll(',', '.'));
+    }
+
+    for (final rawGroup in <dynamic>[item['lines'], item['blocks']]) {
+      if (rawGroup is! List || rawGroup.isEmpty) continue;
+      num baseTotal = 0;
+      num vatTotal = 0;
+      var hasFinancialValues = false;
+      for (final raw in rawGroup.whereType<Map>()) {
+        if (raw['isBillable'] == false) continue;
+        final quantity = parseNum(raw['quantity'] ?? raw['qty']) ?? 1;
+        final unitPrice = parseNum(
+          raw['unitPrice'] ?? raw['price'] ?? raw['unit_price'],
+        );
+        final discount = (parseNum(
+                  raw['discountRate'] ?? raw['discountPercent'],
+                ) ??
+                0)
+            .clamp(0, 100);
+        final taxRate = parseNum(
+              raw['taxRate'] ?? raw['tax'] ?? raw['vat'] ?? raw['iva'],
+            ) ??
+            0;
+        final explicitBase = parseNum(raw['lineSubtotal']);
+        final explicitVat = parseNum(raw['lineTax']);
+        final explicitTotal = parseNum(raw['lineTotal'] ?? raw['total']);
+
+        num? base = explicitBase;
+        if (base == null && unitPrice != null) {
+          base = quantity * unitPrice * (1 - discount / 100);
+        } else if (base == null && explicitTotal != null) {
+          base = taxRate == 0
+              ? explicitTotal
+              : explicitTotal / (1 + taxRate / 100);
+        }
+        if (base == null) continue;
+        final vat = explicitVat ??
+            (explicitTotal != null
+                ? explicitTotal - base
+                : base * taxRate / 100);
+        baseTotal += base;
+        vatTotal += vat;
+        hasFinancialValues = true;
+      }
+      if (hasFinancialValues) return (base: baseTotal, vat: vatTotal);
     }
     return null;
   }
@@ -1202,6 +1360,45 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     if (raw == null) return null;
     if (raw is DateTime) return raw;
     return DateTime.tryParse(raw.toString());
+  }
+
+  /// Rows for the budget list. Date sorting is re-applied locally on the same
+  /// date the rows display, then grouped by month, so each month appears
+  /// once. Number sorting has no chronological order, so it stays flat.
+  List<Object> _groupBudgetsForList(
+    List<Map<String, dynamic>> budgets,
+    String locale,
+  ) {
+    final groups = <String, List<Map<String, dynamic>>>{};
+    final groupDates = <String, DateTime?>{};
+    for (final budget in budgets) {
+      final date = _budgetDate(budget)?.toLocal();
+      final key = date == null
+          ? '__none__'
+          : '${date.year}-${date.month.toString().padLeft(2, '0')}';
+      groups.putIfAbsent(key, () => []).add(budget);
+      groupDates[key] = date == null ? null : DateTime(date.year, date.month);
+    }
+    final keys = groups.keys.toList()
+      ..sort((a, b) {
+        final da = groupDates[a];
+        final db = groupDates[b];
+        if (da == null && db == null) return 0;
+        if (da == null) return 1;
+        if (db == null) return -1;
+        final ascending =
+            _budgetColumnSort == _BudgetColumnSort.date && _budgetSortAscending;
+        return ascending ? da.compareTo(db) : db.compareTo(da);
+      });
+    final items = <Object>[];
+    for (final key in keys) {
+      final date = groupDates[key];
+      items.add(date == null
+          ? (_isSpanishLocale ? 'Sin fecha' : 'No date')
+          : _budgetMonthLabel(date, locale));
+      items.addAll(groups[key]!);
+    }
+    return items;
   }
 
   String _budgetMonthLabel(DateTime dt, String locale) {
@@ -1226,6 +1423,39 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       if (match != null && match.name.trim().isNotEmpty) return match.name;
     }
     return l.unknownClient;
+  }
+
+  String _budgetDescription(Map<String, dynamic> item) {
+    String clean(dynamic value) => (value ?? '').toString().trim();
+    for (final key in const ['description', 'concept', 'subject', 'title']) {
+      final value = clean(item[key]);
+      if (value.isNotEmpty) return value;
+    }
+    for (final key in const ['lines', 'blocks', 'items']) {
+      final rows = item[key];
+      if (rows is! List) continue;
+      final descriptions = <String>[];
+      for (final raw in rows.whereType<Map>()) {
+        final row = Map<String, dynamic>.from(raw);
+        for (final field in const [
+          'conceptTitle',
+          'description',
+          'title',
+          'concept',
+          'name',
+          'text',
+        ]) {
+          final value = clean(row[field]);
+          if (value.isNotEmpty && !descriptions.contains(value)) {
+            descriptions.add(value);
+            break;
+          }
+        }
+        if (descriptions.length == 2) break;
+      }
+      if (descriptions.isNotEmpty) return descriptions.join(' · ');
+    }
+    return '-';
   }
 
   List<String> _missingClientBillingFieldsForBudget(Map<String, dynamic> item) {
@@ -1265,11 +1495,14 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           fallback;
     }
 
+    final totals = item['totals'];
     final candidates = <dynamic>[
       item['total'],
       item['grandTotal'],
       item['amountTotal'],
-      item['subtotal'],
+      if (totals is Map) totals['total'],
+      if (totals is Map) totals['grandTotal'],
+      if (totals is Map) totals['amount'],
     ];
     for (final value in candidates) {
       if (value is num) return value;
@@ -1277,6 +1510,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           num.tryParse((value ?? '').toString().replaceAll(',', '.'));
       if (parsed != null) return parsed;
     }
+
+    final calculated = _budgetLineFinancials(item);
+    if (calculated != null) return calculated.base + calculated.vat;
 
     final lines = item['lines'];
     if (lines is List && lines.isNotEmpty) {
@@ -1323,7 +1559,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       if (sum > 0) return sum;
     }
 
-    return 0;
+    final subtotal = parseNum(item['subtotal']);
+    final taxTotal = parseNum(item['taxTotal']);
+    return subtotal + taxTotal;
   }
 
   // ignore: unused_element
@@ -1361,12 +1599,27 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         final preferred = (widget.initialSelectedBudgetId ?? '').trim();
         if (selected.isEmpty ||
             !_budgets.any((e) => _budgetId(e).trim() == selected)) {
-          if (preferred.isNotEmpty &&
-              _budgets.any((e) => _budgetId(e).trim() == preferred)) {
+          final preferredBudget = preferred.isEmpty
+              ? null
+              : _budgets.cast<Map<String, dynamic>?>().firstWhere(
+                    (item) =>
+                        item != null && _budgetId(item).trim() == preferred,
+                    orElse: () => null,
+                  );
+          if (preferredBudget != null) {
             _selectedBudgetId = preferred;
+            _budgetsTabIndex = _isDraftBudget(preferredBudget) ? 0 : 1;
           } else {
-            _selectedBudgetId =
-                _budgets.isEmpty ? null : _budgetId(_budgets.first);
+            final issuedBudget =
+                _budgets.cast<Map<String, dynamic>?>().firstWhere(
+                      (item) => item != null && !_isDraftBudget(item),
+                      orElse: () => null,
+                    );
+            final fallback =
+                issuedBudget ?? (_budgets.isEmpty ? null : _budgets.first);
+            _selectedBudgetId = fallback == null ? null : _budgetId(fallback);
+            _budgetsTabIndex =
+                fallback != null && _isDraftBudget(fallback) ? 0 : 1;
           }
         }
       });
@@ -1387,7 +1640,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
 
   Future<void> _downloadBudgetPdf(Map<String, dynamic> budget) async {
     final l = AppLocalizations.of(context)!;
-    final pdfPrefix = l.localeName.startsWith('es') ? 'presupuesto' : 'budget';
     final id = _budgetId(budget).trim();
     if (id.isEmpty) return;
     try {
@@ -1396,7 +1648,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           : await _presupuestosApi.downloadPdf(id);
       final number = _budgetNumber(budget).replaceAll('/', '-');
       final fileName =
-          number == '-' ? '$pdfPrefix-$id.pdf' : '$pdfPrefix-$number.pdf';
+          number == '-' ? 'presupuesto-$id.pdf' : 'presupuesto-$number.pdf';
       await launchFileDownload(
         response.bodyBytes,
         fileName: fileName,
@@ -1419,17 +1671,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     try {
       final response =
           await _presupuestosApi.downloadAllPdfsZip(groupId: widget.groupId);
-      final date = DateTime.now();
-      final stamp = '${date.year.toString().padLeft(4, '0')}'
-          '${date.month.toString().padLeft(2, '0')}'
-          '${date.day.toString().padLeft(2, '0')}';
-      final prefix = l.localeName.startsWith('es') ? 'presupuestos' : 'budgets';
       await launchFileDownload(
         response.bodyBytes,
-        fileName: downloadFileNameFromHeaders(
-          response.headers,
-          fallback: '$prefix-$stamp.zip',
-        ),
+        fileName: 'presupuestos-${widget.groupId}.zip',
         mimeType: 'application/zip',
       );
     } on PresupuestosApiException catch (e) {
@@ -1484,7 +1728,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     final id = _budgetId(budget).trim();
     if (id.isEmpty || _deletingBudgetIds.contains(id)) return;
     final number = _budgetNumber(budget);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             title: Text(l.groupInvoicesRemoveDraftTitle),
@@ -1661,7 +1905,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     bool submitting = false;
 
     try {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
             context: context,
             builder: (ctx) {
               return StatefulBuilder(
@@ -1876,7 +2120,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       String? errorText;
       bool submitting = false;
 
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
             context: context,
             builder: (ctx) {
               return StatefulBuilder(
@@ -2041,7 +2285,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     if (id.isEmpty || _convertingBudgetIds.contains(id)) return;
 
     debugPrint('presupuesto_convert_click id=$id');
-    final confirm = await showDialog<bool>(
+    final confirm = await showHexoraDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('Convertir presupuesto a factura'),
@@ -2115,19 +2359,385 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     }
   }
 
+  num _budgetVatAmount(Map<String, dynamic> item) {
+    final calculated = _budgetLineFinancials(item);
+    if (calculated != null) return calculated.vat;
+    final totals = item['totals'];
+    final direct = item['taxTotal'] ??
+        item['tax'] ??
+        item['iva'] ??
+        (totals is Map
+            ? totals['taxTotal'] ?? totals['tax'] ?? totals['iva']
+            : null);
+    if (direct is num) return direct;
+    final parsed = num.tryParse((direct ?? '').toString().replaceAll(',', '.'));
+    if (parsed != null) return parsed;
+    final base = _budgetBaseAmount(item);
+    return base == null
+        ? 0
+        : (_budgetTotal(item) - base).clamp(0, double.infinity);
+  }
+
+  String _normalizedBudgetStatus(Map<String, dynamic> item) {
+    final raw = _budgetStatus(item);
+    if (raw.contains('draft')) return 'draft';
+    if (raw.contains('cancel') || raw.contains('void')) return 'cancelled';
+    if (raw.contains('accept')) return 'accepted';
+    if (raw.contains('reject')) return 'rejected';
+    return 'issued';
+  }
+
+  String _budgetStatusLabel(String value) => switch (value) {
+        'draft' => _isSpanishLocale ? 'Borrador' : 'Draft',
+        'cancelled' => _isSpanishLocale ? 'Anulado' : 'Cancelled',
+        'accepted' => _isSpanishLocale ? 'Aceptado' : 'Accepted',
+        'rejected' => _isSpanishLocale ? 'Rechazado' : 'Rejected',
+        _ => _isSpanishLocale ? 'Emitido' : 'Issued',
+      };
+
+  bool get _hasBudgetFilters =>
+      _budgetSearchQuery.isNotEmpty ||
+      _budgetNumberFilter.isNotEmpty ||
+      _budgetClientFilters.isNotEmpty ||
+      _budgetStatusFilters.isNotEmpty ||
+      _budgetDeliveryFilters.isNotEmpty ||
+      _budgetFromDate != null ||
+      _budgetToDate != null ||
+      _budgetBaseRange.active ||
+      _budgetVatRange.active ||
+      _budgetTotalRange.active;
+
+  void _clearBudgetFilters() => setState(() {
+        _budgetSearchQuery = '';
+        _budgetNumberFilter = '';
+        _budgetClientFilters = {};
+        _budgetStatusFilters = {};
+        _budgetDeliveryFilters = {};
+        _budgetFromDate = null;
+        _budgetToDate = null;
+        _budgetBaseRange = const _BudgetRange();
+        _budgetVatRange = const _BudgetRange();
+        _budgetTotalRange = const _BudgetRange();
+      });
+
+  void _setBudgetDateMonths(int months) {
+    final now = DateTime.now();
+    setState(() {
+      _budgetToDate = now;
+      _budgetFromDate = DateTime(now.year, now.month - months, now.day + 1);
+    });
+  }
+
+  Future<void> _pickBudgetDateRange() async {
+    final now = DateTime.now();
+    final value = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 10),
+      lastDate: DateTime(now.year + 5),
+      initialDateRange: _budgetFromDate == null || _budgetToDate == null
+          ? null
+          : DateTimeRange(start: _budgetFromDate!, end: _budgetToDate!),
+      builder: hexoraCompactDateRangePickerBuilder,
+    );
+    if (value != null) {
+      setState(() {
+        _budgetFromDate = value.start;
+        _budgetToDate = value.end;
+      });
+    }
+  }
+
+  _BudgetColumnSort _budgetSortFor(CompactDocumentColumn column) =>
+      switch (column) {
+        CompactDocumentColumn.identity => _BudgetColumnSort.number,
+        CompactDocumentColumn.client => _BudgetColumnSort.client,
+        CompactDocumentColumn.status => _BudgetColumnSort.status,
+        CompactDocumentColumn.delivery => _BudgetColumnSort.delivery,
+        CompactDocumentColumn.date => _BudgetColumnSort.date,
+        CompactDocumentColumn.taxableBase => _BudgetColumnSort.base,
+        CompactDocumentColumn.vat => _BudgetColumnSort.vat,
+        _ => _BudgetColumnSort.total,
+      };
+
+  bool _budgetFilterActive(CompactDocumentColumn column) => switch (column) {
+        CompactDocumentColumn.identity => _budgetNumberFilter.isNotEmpty,
+        CompactDocumentColumn.client => _budgetClientFilters.isNotEmpty,
+        CompactDocumentColumn.status => _budgetStatusFilters.isNotEmpty,
+        CompactDocumentColumn.delivery => _budgetDeliveryFilters.isNotEmpty,
+        CompactDocumentColumn.date =>
+          _budgetFromDate != null || _budgetToDate != null,
+        CompactDocumentColumn.taxableBase => _budgetBaseRange.active,
+        CompactDocumentColumn.vat => _budgetVatRange.active,
+        CompactDocumentColumn.total => _budgetTotalRange.active,
+        _ => false,
+      };
+
+  void _clearBudgetColumn(CompactDocumentColumn column) => setState(() {
+        switch (column) {
+          case CompactDocumentColumn.identity:
+            _budgetNumberFilter = '';
+          case CompactDocumentColumn.client:
+            _budgetClientFilters = {};
+          case CompactDocumentColumn.status:
+            _budgetStatusFilters = {};
+          case CompactDocumentColumn.delivery:
+            _budgetDeliveryFilters = {};
+          case CompactDocumentColumn.date:
+            _budgetFromDate = null;
+            _budgetToDate = null;
+          case CompactDocumentColumn.taxableBase:
+            _budgetBaseRange = const _BudgetRange();
+          case CompactDocumentColumn.vat:
+            _budgetVatRange = const _BudgetRange();
+          case CompactDocumentColumn.total:
+            _budgetTotalRange = const _BudgetRange();
+          case CompactDocumentColumn.payment:
+          case CompactDocumentColumn.notes:
+            break;
+        }
+      });
+
+  Widget _budgetHeader(
+    BuildContext context,
+    CompactDocumentColumn column,
+    String label,
+    double width,
+    bool numeric,
+  ) {
+    final sort = _budgetSortFor(column);
+    final active = _budgetFilterActive(column);
+    final direction = _budgetColumnSort == sort
+        ? (_budgetSortAscending
+            ? HexoraHeaderSortDirection.ascending
+            : HexoraHeaderSortDirection.descending)
+        : null;
+    final l = AppLocalizations.of(context)!;
+    final clients = _budgets
+        .map((item) => _budgetClientName(item, l).trim().toLowerCase())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    final statuses =
+        _budgets.map(_normalizedBudgetStatus).toSet().toList(growable: false);
+    final deliveryStatuses = _budgets
+        .map((item) =>
+            normalizedDeliveryStatus(item['deliveryStatus']?.toString()))
+        .toSet()
+        .toList(growable: false);
+    Widget filter = const SizedBox.shrink();
+    if (column == CompactDocumentColumn.identity) {
+      filter = TextFormField(
+        initialValue: _budgetNumberFilter,
+        autofocus: true,
+        decoration: const InputDecoration(
+          labelText: 'Número de presupuesto',
+          hintText: 'Búsqueda exacta o parcial',
+          prefixIcon: Icon(Icons.search_rounded, size: 18),
+          isDense: true,
+        ),
+        onChanged: (value) =>
+            setState(() => _budgetNumberFilter = value.trim()),
+      );
+    } else if (column == CompactDocumentColumn.client) {
+      filter = HexoraMultiSelectFilter(
+        values: clients,
+        selected: _budgetClientFilters,
+        labelFor: (value) => value,
+        onChanged: (value) => setState(() => _budgetClientFilters = value),
+        searchable: true,
+        searchHint: 'Buscar cliente...',
+        emptyLabel: 'No se encontraron clientes',
+        selectionSingularLabel: 'cliente seleccionado',
+        selectionPluralLabel: 'clientes seleccionados',
+      );
+    } else if (column == CompactDocumentColumn.status) {
+      filter = HexoraMultiSelectFilter(
+        values: statuses,
+        selected: _budgetStatusFilters,
+        labelFor: _budgetStatusLabel,
+        onChanged: (value) => setState(() => _budgetStatusFilters = value),
+      );
+    } else if (column == CompactDocumentColumn.delivery) {
+      filter = HexoraMultiSelectFilter(
+        values: deliveryStatuses,
+        selected: _budgetDeliveryFilters,
+        labelFor: (value) => deliveryStatusLabel(value),
+        onChanged: (value) => setState(() => _budgetDeliveryFilters = value),
+      );
+    } else if (column == CompactDocumentColumn.date) {
+      filter = Wrap(spacing: 6, runSpacing: 6, children: [
+        ActionChip(
+            label: const Text('Mes'), onPressed: () => _setBudgetDateMonths(1)),
+        ActionChip(
+            label: const Text('Trimestre'),
+            onPressed: () => _setBudgetDateMonths(3)),
+        ActionChip(
+            label: const Text('Año'),
+            onPressed: () => _setBudgetDateMonths(12)),
+        ActionChip(
+            avatar: const Icon(Icons.date_range_outlined, size: 15),
+            label: const Text('Rango'),
+            onPressed: _pickBudgetDateRange),
+      ]);
+    } else if (column == CompactDocumentColumn.taxableBase) {
+      filter = HexoraAmountRangeInput(
+        min: _budgetBaseRange.min,
+        max: _budgetBaseRange.max,
+        onChanged: (min, max) =>
+            setState(() => _budgetBaseRange = _BudgetRange(min: min, max: max)),
+      );
+    } else if (column == CompactDocumentColumn.vat) {
+      filter = HexoraAmountRangeInput(
+        min: _budgetVatRange.min,
+        max: _budgetVatRange.max,
+        onChanged: (min, max) =>
+            setState(() => _budgetVatRange = _BudgetRange(min: min, max: max)),
+      );
+    } else if (column == CompactDocumentColumn.total) {
+      filter = HexoraAmountRangeInput(
+        min: _budgetTotalRange.min,
+        max: _budgetTotalRange.max,
+        onChanged: (min, max) => setState(
+            () => _budgetTotalRange = _BudgetRange(min: min, max: max)),
+      );
+    }
+    return HexoraFilterableHeaderCell(
+      label: label,
+      width: width,
+      numeric: numeric,
+      centered: column == CompactDocumentColumn.status,
+      filterActive: active,
+      sortDirection: direction,
+      menuBuilder: (_) => HexoraColumnFilterMenu(
+        label: label,
+        sortDirection: direction,
+        onSortAscending: () => setState(() {
+          _budgetColumnSort = sort;
+          _budgetSortAscending = true;
+        }),
+        onSortDescending: () => setState(() {
+          _budgetColumnSort = sort;
+          _budgetSortAscending = false;
+        }),
+        filterActive: active,
+        onClear: () => _clearBudgetColumn(column),
+        child: filter,
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _filteredBudgets(
+    List<Map<String, dynamic>> source,
+    AppLocalizations l,
+  ) {
+    final start =
+        _budgetFromDate == null ? null : DateUtils.dateOnly(_budgetFromDate!);
+    final end = _budgetToDate == null
+        ? null
+        : DateTime(_budgetToDate!.year, _budgetToDate!.month,
+            _budgetToDate!.day, 23, 59, 59);
+    final result = source.where((item) {
+      final client = _budgetClientName(item, l).trim().toLowerCase();
+      final query = _budgetSearchQuery.trim().toLowerCase();
+      if (query.isNotEmpty) {
+        final searchable = [
+          _budgetNumber(item),
+          client,
+          _budgetDescription(item),
+          _budgetStatusLabel(_normalizedBudgetStatus(item)),
+          deliveryStatusLabel(item['deliveryStatus']?.toString()),
+          _budgetTotal(item).toString(),
+        ].join(' ').toLowerCase();
+        if (!searchable.contains(query)) return false;
+      }
+      if (_budgetNumberFilter.isNotEmpty &&
+          !_budgetNumber(item)
+              .toLowerCase()
+              .contains(_budgetNumberFilter.toLowerCase())) {
+        return false;
+      }
+      if (_budgetClientFilters.isNotEmpty &&
+          !_budgetClientFilters.contains(client)) {
+        return false;
+      }
+      if (_budgetStatusFilters.isNotEmpty &&
+          !_budgetStatusFilters.contains(_normalizedBudgetStatus(item))) {
+        return false;
+      }
+      if (_budgetDeliveryFilters.isNotEmpty &&
+          !_budgetDeliveryFilters.contains(
+            normalizedDeliveryStatus(item['deliveryStatus']?.toString()),
+          )) {
+        return false;
+      }
+      final date = _budgetDate(item);
+      if (start != null && (date == null || date.isBefore(start))) {
+        return false;
+      }
+      if (end != null && (date == null || date.isAfter(end))) {
+        return false;
+      }
+      final base = _budgetBaseAmount(item) ?? 0;
+      if (_budgetBaseRange.active && !_budgetBaseRange.includes(base)) {
+        return false;
+      }
+      final vat = _budgetVatAmount(item);
+      if (_budgetVatRange.active && !_budgetVatRange.includes(vat)) {
+        return false;
+      }
+      if (_budgetTotalRange.active &&
+          !_budgetTotalRange.includes(_budgetTotal(item))) {
+        return false;
+      }
+      return true;
+    }).toList();
+    int compare(Map<String, dynamic> a, Map<String, dynamic> b) =>
+        switch (_budgetColumnSort) {
+          _BudgetColumnSort.number => _budgetNumber(a)
+              .toLowerCase()
+              .compareTo(_budgetNumber(b).toLowerCase()),
+          _BudgetColumnSort.client => _budgetClientName(a, l)
+              .toLowerCase()
+              .compareTo(_budgetClientName(b, l).toLowerCase()),
+          _BudgetColumnSort.status =>
+            _normalizedBudgetStatus(a).compareTo(_normalizedBudgetStatus(b)),
+          _BudgetColumnSort.delivery => normalizedDeliveryStatus(
+              a['deliveryStatus']?.toString(),
+            ).compareTo(
+              normalizedDeliveryStatus(b['deliveryStatus']?.toString()),
+            ),
+          _BudgetColumnSort.date => (_budgetDate(a) ?? DateTime(9999))
+              .compareTo(_budgetDate(b) ?? DateTime(9999)),
+          _BudgetColumnSort.base =>
+            (_budgetBaseAmount(a) ?? 0).compareTo(_budgetBaseAmount(b) ?? 0),
+          _BudgetColumnSort.vat =>
+            _budgetVatAmount(a).compareTo(_budgetVatAmount(b)),
+          _BudgetColumnSort.total => _budgetTotal(a).compareTo(_budgetTotal(b)),
+          null => 0,
+        };
+    if (_budgetColumnSort != null) {
+      result.sort((a, b) {
+        final value = compare(a, b);
+        return _budgetSortAscending ? value : -value;
+      });
+    }
+    return result;
+  }
+
   Widget _buildBudgetsListLayout(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     final drafts = _budgets.where(_isDraftBudget).toList(growable: false);
+    // Keep cancelled, accepted and other non-draft records accessible after
+    // removing the legacy "Todos" tab.
     final issuedBudgets =
-        _budgets.where(_isIssuedBudget).toList(growable: false);
-    final activeList = switch (_budgetsTabIndex) {
-      1 => drafts,
-      2 => issuedBudgets,
-      _ => _budgets,
-    };
-    final sortState = _effectiveBudgetSortState;
+        _budgets.where((item) => !_isDraftBudget(item)).toList(growable: false);
+    final filteredDrafts = _filteredBudgets(drafts, l);
+    final filteredIssuedBudgets = _filteredBudgets(issuedBudgets, l);
+    final activeList =
+        _budgetsTabIndex == 0 ? filteredDrafts : filteredIssuedBudgets;
     final selected = activeList.cast<Map<String, dynamic>?>().firstWhere(
           (e) =>
               _budgetId(e ?? const {}).trim() ==
@@ -2135,345 +2745,140 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           orElse: () => activeList.isNotEmpty ? activeList.first : null,
         );
 
-    Widget statusTab(int index, String label) {
-      final selected = _budgetsTabIndex == index;
-      return Expanded(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(999),
-          onTap: () => setState(() => _budgetsTabIndex = index),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(999),
-              color: selected ? cs.primaryContainer : Colors.transparent,
-            ),
-            child: Center(
-              child: Text(
-                label,
-                style: t.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-                ),
-              ),
-            ),
+    // 18px icons with 36px targets, matching the document row actions.
+    Widget toolbarIconButton({
+      required String tooltip,
+      required VoidCallback? onPressed,
+      required IconData icon,
+      bool busy = false,
+    }) =>
+        SizedBox(
+          width: 36,
+          height: 36,
+          child: IconButton(
+            tooltip: tooltip,
+            onPressed: onPressed,
+            padding: EdgeInsets.zero,
+            iconSize: 18,
+            color: cs.onSurfaceVariant,
+            icon: busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(icon),
           ),
-        ),
-      );
-    }
+        );
 
     Widget budgetListCard(Map<String, dynamic> item) {
-      final isLight = Theme.of(context).brightness == Brightness.light;
       final id = _budgetId(item);
       final selectedRow = (_selectedBudgetId ?? '').trim() == id.trim();
       final date = _budgetDate(item);
-      final dateLabel = date == null
-          ? '-'
-          : DateFormat.yMMMd(l.localeName).format(date.toLocal());
       final totalLabel = NumberFormat.currency(
         locale: l.localeName,
         symbol: '€',
       ).format(_budgetTotal(item));
       final isDraft = _isDraftBudget(item);
-      final isIssued = _isIssuedBudget(item);
+      final normalizedStatus = _normalizedBudgetStatus(item);
       final isIssuing = _issuingBudgetIds.contains(id);
       final missingClientFields = _missingClientBillingFieldsForBudget(item);
       final canIssueBudget = isDraft && missingClientFields.isEmpty;
       final isDeleting = _deletingBudgetIds.contains(id);
-      final issueTooltip = !isDraft
-          ? (_isSpanishLocale ? 'Presupuesto emitido' : 'Budget already issued')
-          : missingClientFields.isNotEmpty
-              ? 'Completa datos del cliente antes de emitir: ${missingClientFields.join(', ')}'
-              : 'Emitir';
-
-      Widget budgetBadge(String label, Color color) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.11),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              label,
-              style: t.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          );
-
-      Widget busySpinner(Color color) => SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: color,
-            ),
-          );
-
-      Widget budgetActionButton({
-        required String tooltip,
-        required IconData icon,
-        required VoidCallback? onPressed,
-        required Color color,
-        Widget? busyIcon,
-      }) {
-        final enabled = onPressed != null;
-        var hovered = false;
-        return StatefulBuilder(
-          builder: (context, setHoverState) {
-            return Tooltip(
-              message: tooltip,
-              child: MouseRegion(
-                cursor: enabled
-                    ? SystemMouseCursors.click
-                    : SystemMouseCursors.basic,
-                onEnter: (_) => setHoverState(() => hovered = true),
-                onExit: (_) => setHoverState(() => hovered = false),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(9),
-                  onTap: onPressed,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 110),
-                    curve: Curves.easeOut,
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: enabled
-                          ? color.withValues(alpha: hovered ? 0.16 : 0.07)
-                          : cs.surfaceContainerHighest.withValues(alpha: 0.24),
-                      borderRadius: BorderRadius.circular(9),
-                      border: Border.all(
-                        color: enabled && hovered
-                            ? color.withValues(alpha: 0.30)
-                            : enabled
-                                ? Colors.transparent
-                                : cs.outlineVariant.withValues(alpha: 0.20),
-                      ),
-                    ),
-                    child: Center(
-                      child: busyIcon ??
-                          Icon(
-                            icon,
-                            size: 15,
-                            color: enabled
-                                ? color.withValues(alpha: hovered ? 1.0 : 0.75)
-                                : cs.onSurfaceVariant.withValues(alpha: 0.42),
-                          ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
+      final statusLabel = _budgetStatusLabel(normalizedStatus);
+      final documentStatus = switch (normalizedStatus) {
+        'draft' => HexoraDocumentStatus.draft,
+        'cancelled' || 'rejected' => HexoraDocumentStatus.cancelled,
+        _ => HexoraDocumentStatus.issued,
+      };
+      final number = _budgetNumber(item).trim();
+      final hasNumber = number.isNotEmpty && number != '-';
+      final description = _budgetDescription(item);
+      void selectBudget() {
+        setState(() => _selectedBudgetId = id);
+        _loadDetailPreviewPdf(id);
       }
 
-      return InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () {
-          setState(() => _selectedBudgetId = id);
-          _loadDetailPreviewPdf(id);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          decoration: BoxDecoration(
-            color: selectedRow
-                ? cs.primaryContainer.withValues(alpha: 0.12)
-                : isLight
-                    ? Colors.white
-                    : cs.surfaceContainerHighest.withValues(alpha: 0.13),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selectedRow
-                  ? cs.primary.withValues(alpha: 0.55)
-                  : cs.outlineVariant.withValues(alpha: 0.28),
-            ),
-            boxShadow: isLight || selectedRow
-                ? [
-                    BoxShadow(
-                      color: (selectedRow ? cs.primary : Colors.black)
-                          .withValues(alpha: selectedRow ? 0.07 : 0.028),
-                      blurRadius: selectedRow ? 12 : 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                width: 3,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: selectedRow ? cs.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    colors: [
-                      cs.primary.withValues(alpha: selectedRow ? 0.24 : 0.14),
-                      cs.tertiary.withValues(alpha: selectedRow ? 0.16 : 0.08),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border.all(
-                    color: cs.primary.withValues(alpha: 0.18),
-                  ),
-                ),
-                child: Icon(
-                  Icons.request_quote_outlined,
-                  size: 17,
-                  color: selectedRow ? cs.primary : cs.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _budgetClientName(item, l),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          t.bodyMedium?.copyWith(fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${_budgetNumber(item)} · $dateLabel',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 132,
-                child: Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 5,
-                  runSpacing: 4,
-                  children: [
-                    budgetBadge(
-                      _isSpanishLocale ? 'Partidas' : 'Itemized',
-                      cs.primary,
-                    ),
-                    budgetBadge(
-                      isDraft
-                          ? (_isSpanishLocale ? 'Borrador' : 'Draft')
-                          : isIssued
-                              ? (_isSpanishLocale ? 'Emitido' : 'Issued')
-                              : (_isSpanishLocale ? 'Anulado' : 'Void'),
-                      isDraft
-                          ? cs.tertiary
-                          : isIssued
-                              ? Colors.green.shade700
-                              : cs.error,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 88,
-                child: Text(
-                  totalLabel,
-                  maxLines: 1,
-                  textAlign: TextAlign.right,
-                  style: t.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: cs.onSurface,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 164,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: cs.surface.withValues(alpha: 0.34),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: cs.outlineVariant.withValues(alpha: 0.22),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (isDraft) ...[
-                          budgetActionButton(
-                            tooltip: issueTooltip,
-                            icon: Icons.publish_outlined,
-                            onPressed: (canIssueBudget && !isIssuing)
-                                ? () => _issueBudgetFromList(item)
-                                : null,
-                            color: cs.tertiary,
-                            busyIcon:
-                                isIssuing ? busySpinner(cs.tertiary) : null,
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        budgetActionButton(
-                          tooltip: l.download,
-                          icon: Icons.download_rounded,
-                          onPressed: () => _downloadBudgetPdf(item),
-                          color: cs.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 6),
-                        budgetActionButton(
-                          tooltip: _isSpanishLocale
-                              ? 'Editar presupuesto'
-                              : 'Edit budget',
-                          onPressed: widget.onEditDraftBudget == null
-                              ? null
-                              : () => widget.onEditDraftBudget!.call(id),
-                          icon: Icons.edit_outlined,
-                          color: cs.primary,
-                        ),
-                        if (isDraft) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            width: 1,
-                            height: 16,
-                            color: cs.outlineVariant.withValues(alpha: 0.4),
-                          ),
-                          const SizedBox(width: 6),
-                          budgetActionButton(
-                            tooltip: l.delete,
-                            onPressed: (!isDeleting && !isIssuing)
-                                ? () => _deleteDraftBudget(item)
-                                : null,
-                            icon: Icons.delete_outline_rounded,
-                            color: cs.error,
-                            busyIcon: isDeleting ? busySpinner(cs.error) : null,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+      return CompactDocumentRow(
+        icon: Icons.request_quote_outlined,
+        title: hasNumber ? number : statusLabel,
+        metadata: _budgetClientName(item, l),
+        concept: Tooltip(
+          message: description,
+          child: Text(
+            description,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ),
+        amount: totalLabel,
+        date: date,
+        taxableBase: _budgetBaseAmount(item),
+        vat: _budgetVatAmount(item),
+        visibleFinancialColumns: _budgetVisibleColumns,
+        selected: selectedRow,
+        onTap: selectBudget,
+        previewLabel: _isSpanishLocale ? 'Vista previa' : 'Preview',
+        status: HexoraStatusBadge.document(context,
+            status: documentStatus, label: statusLabel),
+        showDeliveryColumn: true,
+        delivery: DeliveryStatusBadge(
+          status: item['deliveryStatus']?.toString(),
+          channel: item['deliveryChannel']?.toString(),
+          sentAt: DateTime.tryParse(item['sentAt']?.toString() ?? ''),
+          deliveryError: item['deliveryError']?.toString(),
+        ),
+        primaryActionWidth: 0,
+        quickActionSlots: 0,
+        quickActions: const [],
+        actions: [
+          CompactDocumentAction(
+            _isSpanishLocale ? 'Vista previa' : 'Preview',
+            selectedRow && _loadingDetailPreview ? null : selectBudget,
+            icon: Icons.visibility_outlined,
+            opensPreviewDrawer: true,
+          ),
+          if (isDraft && widget.onEditDraftBudget != null)
+            CompactDocumentAction(
+              _isSpanishLocale ? 'Editar presupuesto' : 'Edit budget',
+              () => widget.onEditDraftBudget!.call(id),
+              icon: Icons.edit_outlined,
+            ),
+          if (!isDraft && widget.onEditDraftBudget != null)
+            CompactDocumentAction(
+              _isSpanishLocale
+                  ? 'Editar presupuesto emitido'
+                  : 'Edit issued proposal',
+              () => widget.onEditDraftBudget!.call(id),
+              icon: Icons.edit_outlined,
+            ),
+          if (isDraft)
+            CompactDocumentAction(
+              _isSpanishLocale ? 'Emitir' : 'Issue',
+              canIssueBudget && !isIssuing && !isDeleting
+                  ? () => _issueBudgetFromList(item)
+                  : null,
+              primary: true,
+              icon: Icons.publish_outlined,
+            ),
+          CompactDocumentAction(
+            l.download,
+            () => _downloadBudgetPdf(item),
+            icon: Icons.download_rounded,
+          ),
+          if (isDraft)
+            CompactDocumentAction(
+              isDeleting
+                  ? (_isSpanishLocale ? 'Eliminando…' : 'Deleting…')
+                  : l.delete,
+              (!isDeleting && !isIssuing)
+                  ? () => _deleteDraftBudget(item)
+                  : null,
+              destructive: true,
+              icon: Icons.delete_outline_rounded,
+            ),
+        ],
       );
     }
 
@@ -2491,23 +2896,79 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       final dateLabel = date == null
           ? '-'
           : DateFormat.yMMMd(l.localeName).format(date.toLocal());
-      return Padding(
-        padding: const EdgeInsets.all(10),
-        child: Column(
+      final selectedIndex = activeList.indexWhere(
+        (item) => _budgetId(item).trim() == budgetId.trim(),
+      );
+      final isDraft = _isDraftBudget(selected);
+      final statusLabel = isDraft
+          ? (_isSpanishLocale ? 'Borrador' : 'Draft')
+          : (_isSpanishLocale ? 'Emitido' : 'Issued');
+      final statusColor = isDraft ? cs.secondary : Colors.green.shade700;
+
+      void selectAt(int index) {
+        if (index < 0 || index >= activeList.length) return;
+        final id = _budgetId(activeList[index]);
+        setState(() => _selectedBudgetId = id);
+        _loadDetailPreviewPdf(id);
+      }
+
+      return ValueListenableBuilder<DocumentViewMode?>(
+        valueListenable: _budgetSplitModeNotifier,
+        builder: (context, mode, _) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              _budgetClientName(selected, l),
-              style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              dateLabel,
-              style: t.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
+            HexoraDocumentDetailHeader(
+              title: _budgetNumber(selected).trim().isEmpty
+                  ? (_isSpanishLocale ? 'Presupuesto' : 'Budget')
+                  : _budgetNumber(selected),
+              clientName: _budgetClientName(selected, l),
+              statusLabel: statusLabel,
+              statusColor: statusColor,
+              statusIcon: isDraft
+                  ? Icons.edit_note_rounded
+                  : Icons.check_circle_outline,
+              dateLabel: dateLabel,
+              onPrevious:
+                  selectedIndex > 0 ? () => selectAt(selectedIndex - 1) : null,
+              onNext:
+                  selectedIndex >= 0 && selectedIndex + 1 < activeList.length
+                      ? () => selectAt(selectedIndex + 1)
+                      : null,
+              onExpand: null,
+              isExpanded: false,
+              onClose: () => setState(() => _selectedBudgetId = null),
+              moreActions: PopupMenuButton<String>(
+                tooltip: _isSpanishLocale ? 'Más acciones' : 'More actions',
+                icon: const Icon(Icons.more_horiz_rounded, size: 18),
+                padding: EdgeInsets.zero,
+                onSelected: (value) {
+                  switch (value) {
+                    case 'download':
+                      _downloadBudgetPdf(selected);
+                    case 'history':
+                      _showBudgetHistoryDialog(selected);
+                    case 'edit':
+                      widget.onEditDraftBudget?.call(budgetId);
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'download',
+                    child: Text(l.download),
+                  ),
+                  PopupMenuItem(
+                    value: 'history',
+                    child: Text(_isSpanishLocale ? 'Historial' : 'History'),
+                  ),
+                  if (widget.onEditDraftBudget != null)
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Text(_isSpanishLocale ? 'Editar' : 'Edit'),
+                    ),
+                ],
               ),
             ),
-            if (_isIssuedBudget(selected) &&
+            if (!_isDraftBudget(selected) &&
                 widget.onEditDraftBudget != null) ...[
               const SizedBox(height: 10),
               Align(
@@ -2525,7 +2986,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
             ],
             const SizedBox(height: 10),
             const Divider(height: 1),
-            const SizedBox(height: 10),
             if (_loadingDetailPreview)
               const Expanded(
                 child: Center(
@@ -2579,8 +3039,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                     OutlinedButton.icon(
                       onPressed: () async {
                         final fileName = budgetId.isEmpty
-                            ? '${Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto' : 'budget'}-preview.pdf'
-                            : '${Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto' : 'budget'}-$budgetId-preview.pdf';
+                            ? 'presupuesto-preview.pdf'
+                            : 'presupuesto-$budgetId-preview.pdf';
                         await pdf_launcher.launchPdfPreview(
                           Uint8List.fromList(_detailPreviewPdfBytes!),
                           fileName: fileName,
@@ -2630,251 +3090,153 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         final contentHeight = availableHeight.clamp(680.0, 920.0);
         return SizedBox(
           height: contentHeight,
-          child: Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                color: cs.surfaceContainerHighest
-                                    .withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color:
-                                      cs.outlineVariant.withValues(alpha: 0.35),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  statusTab(
-                                    0,
-                                    '${_isSpanishLocale ? 'Todos' : 'All'} (${_budgets.length})',
-                                  ),
-                                  statusTab(
-                                    1,
-                                    '${_isSpanishLocale ? 'Borradores' : 'Drafts'} (${drafts.length})',
-                                  ),
-                                  statusTab(
-                                    2,
-                                    '${_isSpanishLocale ? 'Emitidos' : 'Issued'} (${issuedBudgets.length})',
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            tooltip: l.refreshAction,
-                            onPressed: _loadingBudgets ? null : _loadBudgets,
-                            icon: _loadingBudgets
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.refresh),
-                          ),
-                          IconButton(
-                            tooltip: '${l.download} ZIP',
-                            onPressed: (_loadingBudgets ||
-                                    _downloadingBudgetsZip ||
-                                    _budgets.isEmpty)
-                                ? null
-                                : _downloadBudgetsZip,
-                            icon: _downloadingBudgetsZip
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.folder_zip_outlined),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      if (!_loadingBudgets &&
-                          (_budgetsError ?? '').trim().isEmpty &&
-                          activeList.isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 57,
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: _BudgetSortMenuButton(
-                                    state: sortState,
-                                    enabled: !_loadingBudgets,
-                                    isSpanishLocale: _isSpanishLocale,
-                                    onChanged: (by) async {
-                                      final next = nextBudgetSortState(
-                                        _effectiveBudgetSortState,
-                                        by,
-                                      );
-                                      if (next.by ==
-                                              _effectiveBudgetSortState.by &&
-                                          next.dir ==
-                                              _effectiveBudgetSortState.dir) {
-                                        return;
-                                      }
-                                      setState(() => _budgetSortState = next);
-                                      await _loadBudgets();
-                                    },
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  _isSpanishLocale
-                                      ? 'CLIENTE · PRESUPUESTO'
-                                      : 'CLIENT · BUDGET',
-                                  style: t.labelSmall?.copyWith(
-                                    color: cs.onSurfaceVariant
-                                        .withValues(alpha: 0.65),
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.35,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              SizedBox(
-                                width: 132,
-                                child: Text(
-                                  _isSpanishLocale
-                                      ? 'TIPO · ESTADO'
-                                      : 'TYPE · STATUS',
-                                  textAlign: TextAlign.right,
-                                  style: t.labelSmall?.copyWith(
-                                    color: cs.onSurfaceVariant
-                                        .withValues(alpha: 0.65),
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.35,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              SizedBox(
-                                width: 88,
-                                child: Text(
-                                  _isSpanishLocale ? 'TOTAL' : 'TOTAL',
-                                  textAlign: TextAlign.right,
-                                  style: t.labelSmall?.copyWith(
-                                    color: cs.onSurfaceVariant
-                                        .withValues(alpha: 0.65),
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.35,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              SizedBox(
-                                width: 164,
-                                child: Text(
-                                  _isSpanishLocale ? 'ACCIONES' : 'ACTIONS',
-                                  textAlign: TextAlign.right,
-                                  style: t.labelSmall?.copyWith(
-                                    color: cs.onSurfaceVariant
-                                        .withValues(alpha: 0.65),
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.35,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+          child: DocumentSplitView(
+            storageKey: 'quotes',
+            modeNotifier: _budgetSplitModeNotifier,
+            // The explicit choice, not the first-row fallback, so a tab switch
+            // doesn't pop the preview open on narrow screens.
+            selectionKey: _selectedBudgetId,
+            list: Container(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                children: [
+                  HexoraDocumentToolbar(
+                    statusTabs: HexoraDocumentStatusTabs(
+                      selectedIndex: _budgetsTabIndex,
+                      onSelected: (index) =>
+                          setState(() => _budgetsTabIndex = index),
+                      tabs: [
+                        HexoraDocumentStatusTab(
+                          label: _isSpanishLocale ? 'Borradores' : 'Drafts',
+                          count: filteredDrafts.length,
+                          icon: Icons.edit_note_outlined,
                         ),
-                        const SizedBox(height: 6),
+                        HexoraDocumentStatusTab(
+                          label:
+                              _isSpanishLocale ? 'Presupuestos' : 'Proposals',
+                          count: filteredIssuedBudgets.length,
+                          icon: Icons.task_alt_outlined,
+                        ),
                       ],
-                      Expanded(
-                        child: _loadingBudgets
-                            ? const Center(child: CircularProgressIndicator())
-                            : (_budgetsError ?? '').trim().isNotEmpty
+                    ),
+                    viewSwitcher: const DocumentLayoutSelector(
+                      key: ValueKey('budget-layout-selector'),
+                      embedded: true,
+                    ),
+                    searchHint: _isSpanishLocale
+                        ? 'Buscar presupuestos o clientes...'
+                        : 'Search proposals or clients...',
+                    searchValue: _budgetSearchQuery,
+                    onSearchChanged: (value) =>
+                        setState(() => _budgetSearchQuery = value),
+                    actions: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_hasBudgetFilters)
+                          toolbarIconButton(
+                            tooltip: _isSpanishLocale
+                                ? 'Limpiar filtros'
+                                : 'Clear filters',
+                            onPressed: _clearBudgetFilters,
+                            icon: Icons.filter_alt_off_outlined,
+                          ),
+                        HexoraColumnVisibilityMenu(
+                          moduleKey: 'presupuestos_description_v1',
+                          availableColumns: _budgetAvailableColumns,
+                          visibleColumns: _budgetVisibleColumns,
+                          onChanged: (value) =>
+                              setState(() => _budgetVisibleColumns = value),
+                          columnLabels: const {
+                            HexoraFinancialColumn.concept: 'Descripción',
+                          },
+                        ),
+                        toolbarIconButton(
+                          tooltip: l.refreshAction,
+                          onPressed: _loadingBudgets ? null : _loadBudgets,
+                          busy: _loadingBudgets,
+                          icon: Icons.refresh_rounded,
+                        ),
+                        toolbarIconButton(
+                          tooltip: '${l.download} ZIP',
+                          onPressed: (_loadingBudgets ||
+                                  _downloadingBudgetsZip ||
+                                  _budgets.isEmpty)
+                              ? null
+                              : _downloadBudgetsZip,
+                          busy: _downloadingBudgetsZip,
+                          icon: Icons.folder_zip_outlined,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  if (!_loadingBudgets &&
+                      (_budgetsError ?? '').trim().isEmpty &&
+                      activeList.isNotEmpty)
+                    CompactDocumentTableHeader(
+                      identityLabel: 'Presupuesto',
+                      conceptLabel: 'Descripción',
+                      visibleFinancialColumns: _budgetVisibleColumns,
+                      actionsWidth: 32,
+                      previewActionInFullView: true,
+                      showDeliveryColumn: true,
+                      headerBuilder: _budgetHeader,
+                    ),
+                  Expanded(
+                    child: _loadingBudgets
+                        ? const Center(child: CircularProgressIndicator())
+                        : (_budgetsError ?? '').trim().isNotEmpty
+                            ? Center(
+                                child: Text(
+                                  _budgetsError!,
+                                  style: TextStyle(color: cs.error),
+                                  textAlign: TextAlign.center,
+                                ),
+                              )
+                            : activeList.isEmpty
                                 ? Center(
                                     child: Text(
-                                      _budgetsError!,
-                                      style: TextStyle(color: cs.error),
-                                      textAlign: TextAlign.center,
+                                      switch (_budgetsTabIndex) {
+                                        0 => _isSpanishLocale
+                                            ? 'No hay borradores.'
+                                            : 'There are no drafts.',
+                                        1 => _isSpanishLocale
+                                            ? 'No hay presupuestos emitidos.'
+                                            : 'There are no issued budgets.',
+                                        _ => _isSpanishLocale
+                                            ? 'No hay presupuestos por partidas.'
+                                            : 'There are no itemized budgets.',
+                                      },
+                                      style: t.bodyMedium?.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                      ),
                                     ),
                                   )
-                                : activeList.isEmpty
-                                    ? Center(
-                                        child: Text(
-                                          switch (_budgetsTabIndex) {
-                                            1 => _isSpanishLocale
-                                                ? 'No hay borradores.'
-                                                : 'There are no drafts.',
-                                            2 => _isSpanishLocale
-                                                ? 'No hay presupuestos emitidos.'
-                                                : 'There are no issued budgets.',
-                                            _ => _isSpanishLocale
-                                                ? 'No hay presupuestos por partidas.'
-                                                : 'There are no itemized budgets.',
-                                          },
-                                          style: t.bodyMedium?.copyWith(
-                                            color: cs.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      )
-                                    : Builder(builder: (context) {
-                                        final locale =
-                                            Localizations.localeOf(context)
-                                                .toString();
-                                        final items = <Object>[];
-                                        String? lastKey;
-                                        for (final b in activeList) {
-                                          final date = _budgetDate(b);
-                                          final key = date == null
-                                              ? '__none__'
-                                              : '${date.year}-${date.month.toString().padLeft(2, '0')}';
-                                          if (key != lastKey) {
-                                            items.add(date == null
-                                                ? '—'
-                                                : _budgetMonthLabel(
-                                                    date, locale));
-                                            lastKey = key;
-                                          }
-                                          items.add(b);
+                                : Builder(builder: (context) {
+                                    final locale =
+                                        Localizations.localeOf(context)
+                                            .toString();
+                                    final items = _groupBudgetsForList(
+                                        activeList, locale);
+                                    return ListView.builder(
+                                      padding: EdgeInsets.zero,
+                                      itemCount: items.length,
+                                      itemBuilder: (_, i) {
+                                        final item = items[i];
+                                        if (item is String) {
+                                          return HexoraMonthSeparator(
+                                              label: item);
                                         }
-                                        return ListView.builder(
-                                          padding: EdgeInsets.zero,
-                                          itemCount: items.length,
-                                          itemBuilder: (_, i) {
-                                            final item = items[i];
-                                            if (item is String) {
-                                              return _BudgetMonthDivider(
-                                                  label: item, first: i == 0);
-                                            }
-                                            return Padding(
-                                              padding: const EdgeInsets.only(
-                                                  bottom: 4),
-                                              child: budgetListCard(
-                                                  item as Map<String, dynamic>),
-                                            );
-                                          },
-                                        );
-                                      }),
-                      ),
-                    ],
+                                        return budgetListCard(
+                                            item as Map<String, dynamic>);
+                                      },
+                                    );
+                                  }),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
-                child: detailPanel(),
-              ),
-            ],
+            ),
+            preview: detailPanel(),
           ),
         );
       },
@@ -2882,59 +3244,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 }
 
-class _BudgetMonthDivider extends StatelessWidget {
-  const _BudgetMonthDivider({required this.label, this.first = false});
-  final String label;
-  final bool first;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Padding(
-      padding: EdgeInsets.only(top: first ? 0 : 14, bottom: 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: Divider(
-              color: cs.outlineVariant.withValues(alpha: 0.35),
-              height: 1,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Text(
-              label,
-              style: t.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-                fontSize: 11,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Divider(
-              color: cs.outlineVariant.withValues(alpha: 0.35),
-              height: 1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class BudgetHistoryDialog extends StatefulWidget {
-  const BudgetHistoryDialog({
+class _BudgetHistoryDialog extends StatefulWidget {
+  const _BudgetHistoryDialog({
     required this.api,
     required this.presupuestoId,
     required this.title,
@@ -2953,10 +3264,10 @@ class BudgetHistoryDialog extends StatefulWidget {
   final VoidCallback? onBack;
 
   @override
-  State<BudgetHistoryDialog> createState() => _BudgetHistoryDialogState();
+  State<_BudgetHistoryDialog> createState() => _BudgetHistoryDialogState();
 }
 
-class _BudgetHistoryDialogState extends State<BudgetHistoryDialog> {
+class _BudgetHistoryDialogState extends State<_BudgetHistoryDialog> {
   late Future<Map<String, dynamic>> _historyFuture;
   final Map<String, Future<Map<String, dynamic>>> _snapshotFutures = {};
   final Map<String, List<String>> _snapshotRowRefs = {};
@@ -4714,101 +5025,6 @@ class _BudgetHistoryDialogState extends State<BudgetHistoryDialog> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _BudgetSortMenuButton extends StatelessWidget {
-  const _BudgetSortMenuButton({
-    required this.state,
-    required this.enabled,
-    required this.isSpanishLocale,
-    required this.onChanged,
-  });
-
-  final BudgetSortState state;
-  final bool enabled;
-  final bool isSpanishLocale;
-  final Future<void> Function(BudgetSortBy by) onChanged;
-
-  String _label(BudgetSortBy by) => switch (by) {
-        BudgetSortBy.date => isSpanishLocale ? 'Fecha' : 'Date',
-        BudgetSortBy.number => isSpanishLocale ? 'Número' : 'Number',
-      };
-
-  IconData _icon(BudgetSortBy by) => switch (by) {
-        BudgetSortBy.date => Icons.calendar_today_outlined,
-        BudgetSortBy.number => Icons.tag_rounded,
-      };
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final ascending = state.dir == BudgetSortDir.asc;
-    final dirIcon =
-        ascending ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
-
-    return PopupMenuButton<BudgetSortBy>(
-      tooltip: isSpanishLocale ? 'Ordenar por' : 'Sort by',
-      enabled: enabled,
-      position: PopupMenuPosition.under,
-      onSelected: onChanged,
-      itemBuilder: (context) => [
-        for (final by in BudgetSortBy.values)
-          PopupMenuItem(
-            value: by,
-            child: Row(
-              children: [
-                Icon(
-                  _icon(by),
-                  size: 16,
-                  color: state.by == by ? cs.secondary : cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _label(by),
-                    style: TextStyle(
-                      fontWeight:
-                          state.by == by ? FontWeight.w700 : FontWeight.w500,
-                      color: state.by == by ? cs.secondary : null,
-                    ),
-                  ),
-                ),
-                if (state.by == by)
-                  Icon(dirIcon, size: 15, color: cs.secondary),
-              ],
-            ),
-          ),
-      ],
-      child: Container(
-        width: 34,
-        height: 34,
-        margin: const EdgeInsets.only(right: 4),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Center(child: Icon(_icon(state.by), size: 16, color: cs.secondary)),
-            Positioned(
-              right: -2,
-              bottom: -2,
-              child: Container(
-                padding: const EdgeInsets.all(1.5),
-                decoration: BoxDecoration(
-                  color: cs.surface,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(dirIcon, size: 10, color: cs.secondary),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

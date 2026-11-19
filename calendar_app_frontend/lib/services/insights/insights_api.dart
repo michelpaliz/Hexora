@@ -219,9 +219,12 @@ class InsightsApi {
     );
     final raw = _decode<Map<String, dynamic>>(response, _toMap)['actions'];
     return raw is List
-        ? raw.whereType<Map>().map((row) => row.map(
-              (key, value) => MapEntry(key.toString(), value),
-            )).toList(growable: false)
+        ? raw
+            .whereType<Map>()
+            .map((row) => row.map(
+                  (key, value) => MapEntry(key.toString(), value),
+                ))
+            .toList(growable: false)
         : const [];
   }
 
@@ -732,8 +735,8 @@ class InsightsApi {
     String? dateFrom,
     String? dateTo,
   }) async {
-    final hasExplicitDateRange =
-        dateFrom?.trim().isNotEmpty == true && dateTo?.trim().isNotEmpty == true;
+    final hasExplicitDateRange = dateFrom?.trim().isNotEmpty == true &&
+        dateTo?.trim().isNotEmpty == true;
     return downloadInsightsExcelFromAction(
       InsightsExcelExportAction(
         type: 'export_excel',
@@ -742,7 +745,8 @@ class InsightsApi {
         body: <String, dynamic>{
           'groupId': groupId.trim(),
           'message': message.trim(),
-          if (!hasExplicitDateRange && days != null) 'days': days.clamp(30, 180),
+          if (!hasExplicitDateRange && days != null)
+            'days': days.clamp(30, 180),
           if (dateFrom?.trim().isNotEmpty == true) 'dateFrom': dateFrom!.trim(),
           if (dateTo?.trim().isNotEmpty == true) 'dateTo': dateTo!.trim(),
         },

@@ -46,44 +46,32 @@ class CalendarTabsTheme extends StatelessWidget {
 class CalendarTabs {
   static List<Tab> build(BuildContext context, {bool large = false}) {
     final loc = AppLocalizations.of(context)!;
-    final iconSize = large ? 18.0 : 16.0;
-    return const [
-      // We pass text; fonts/colors come from TabBarTheme above.
-      Tab(text: '___DAY___', icon: Icon(Icons.today_outlined)),
-      Tab(text: '___WEEK___', icon: Icon(Icons.view_week_outlined)),
-      Tab(
-          text: '___MONTH___',
-          icon: Icon(Icons.calendar_month_outlined)),
-      Tab(text: '___AGENDA___', icon: Icon(Icons.list_alt_outlined)),
-    ].map((t) {
-      // Replace placeholders with localized strings at build time
-      String label;
-      switch (t.text) {
-        case '___DAY___':
-          label = loc.tabDay;
-          break;
-        case '___WEEK___':
-          label = loc.tabWeek;
-          break;
-        case '___MONTH___':
-          label = loc.tabMonth;
-          break;
-        case '___AGENDA___':
-          label = loc.tabAgenda;
-          break;
-        default:
-          label = t.text ?? '';
-      }
-      return Tab(
-        text: label,
-        icon: t.icon != null
-            ? Icon(
-                (t.icon! as Icon).icon,
-                size: iconSize,
-              )
-            : null,
-      );
-    }).toList(growable: false);
+    final iconSize = large ? 16.0 : 14.0;
+
+    Tab buildTab(String label, IconData icon) => Tab(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: iconSize),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+
+    return [
+      buildTab(loc.tabDay, Icons.today_outlined),
+      buildTab(loc.tabWeek, Icons.view_week_outlined),
+      buildTab(loc.tabMonth, Icons.calendar_month_outlined),
+      buildTab(loc.tabAgenda, Icons.list_alt_outlined),
+    ];
   }
 
   /// Pipe Tab index → coordinator view mode

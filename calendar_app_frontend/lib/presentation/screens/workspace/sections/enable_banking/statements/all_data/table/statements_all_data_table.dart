@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../../statements_controller.dart';
@@ -14,12 +15,12 @@ class StatementsAllDataTable extends StatelessWidget {
     required this.entries,
     required this.controller,
     required this.selectedIds,
+    this.activeEntryId,
     required this.onToggleAll,
     required this.onToggleRow,
     required this.onShowDetails,
     this.onShare,
     required this.onSuggest,
-    required this.onLink,
     required this.onLinkInvoice,
     required this.onMarkNoProcede,
     required this.noProcedeReasonForEntry,
@@ -36,17 +37,21 @@ class StatementsAllDataTable extends StatelessWidget {
     required this.clientProviderFilterActive,
     required this.onInvoiceSortTap,
     required this.invoiceSortMode,
+    this.onInvoiceFilterTap,
+    this.invoiceFilterActive = false,
   });
 
   final List<Map<String, dynamic>> entries;
   final StatementsController controller;
   final Set<String> selectedIds;
+
+  /// Entry currently shown in the side panel; its row is highlighted.
+  final String? activeEntryId;
   final ValueChanged<bool> onToggleAll;
   final ValueChanged<String> onToggleRow;
   final ValueChanged<Map<String, dynamic>> onShowDetails;
   final ValueChanged<Map<String, dynamic>>? onShare;
   final ValueChanged<Map<String, dynamic>> onSuggest;
-  final ValueChanged<Map<String, dynamic>> onLink;
   final ValueChanged<Map<String, dynamic>> onLinkInvoice;
   final ValueChanged<Map<String, dynamic>> onMarkNoProcede;
   final String? Function(Map<String, dynamic> entry) noProcedeReasonForEntry;
@@ -63,18 +68,17 @@ class StatementsAllDataTable extends StatelessWidget {
   final bool clientProviderFilterActive;
   final VoidCallback onInvoiceSortTap;
   final int invoiceSortMode;
+  final VoidCallback? onInvoiceFilterTap;
+  final bool invoiceFilterActive;
 
-  bool _isCompact(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 800;
-
-  bool _isTablet(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    return width >= 800 && width < 1500;
-  }
+  double _rowExtent(BuildContext context) =>
+      HexoraTableTokens.rowMinHeight +
+      HexoraTableTokens.gap +
+      math.max(0, MediaQuery.textScalerOf(context).scale(13) - 13) * 3;
 
   double _preferredHeight(BuildContext context) {
-    const headerAndGapHeight = 70.0;
-    const rowExtent = 64.0;
+    const headerAndGapHeight = 52.0;
+    final rowExtent = _rowExtent(context);
     final contentHeight = headerAndGapHeight + (entries.length * rowExtent);
     final viewportHeight = (MediaQuery.sizeOf(context).height * 0.68)
         .clamp(360.0, 720.0)
@@ -85,8 +89,6 @@ class StatementsAllDataTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final isCompact = _isCompact(context);
-    final isTablet = _isTablet(context);
 
     final selectableVisible = entries.where((entry) {
       final id = (entry['_id'] ?? entry['id'])?.toString();
@@ -99,13 +101,21 @@ class StatementsAllDataTable extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Use the space left after sidebars, not the full window width.
+        // Keep enough room for the compact fixed columns and description.
+        final availableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final tableWidth = math.max(800.0, availableWidth);
+        final isCompact = tableWidth < 1100;
+        final isTablet = tableWidth >= 1100 && tableWidth < 1500;
         final tableHeight = constraints.maxHeight.isFinite
             ? constraints.maxHeight
             : _preferredHeight(context);
 
         final list = ListView.builder(
           itemCount: entries.length,
-          itemExtent: 64,
+          itemExtent: _rowExtent(context),
           primary: false,
           addAutomaticKeepAlives: false,
           addRepaintBoundaries: true,
@@ -116,9 +126,7 @@ class StatementsAllDataTable extends StatelessWidget {
             final entryId = (entry['_id'] ?? entry['id'])?.toString() ?? '';
             return Padding(
               key: ValueKey(entryId),
-              padding: index < entries.length - 1
-                  ? const EdgeInsets.only(bottom: 5)
-                  : EdgeInsets.zero,
+              padding: EdgeInsets.zero,
               child: StatementsAllDataTableRow(
                 entry: entry,
                 index: index,
@@ -126,11 +134,11 @@ class StatementsAllDataTable extends StatelessWidget {
                 isTablet: isTablet,
                 controller: controller,
                 selectedIds: selectedIds,
+                activeEntryId: activeEntryId,
                 onToggleRow: onToggleRow,
                 onShowDetails: onShowDetails,
                 onShare: onShare,
                 onSuggest: onSuggest,
-                onLink: onLink,
                 onLinkInvoice: onLinkInvoice,
                 onMarkNoProcede: onMarkNoProcede,
                 noProcedeReason: noProcedeReasonForEntry(entry),
@@ -140,8 +148,13 @@ class StatementsAllDataTable extends StatelessWidget {
           },
         );
 
-        return SizedBox(
+        final table = Container(
           height: tableHeight,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: tableTheme.border),
+          ),
           child: Column(
             children: [
               StatementsAllDataTableHeader(
@@ -163,11 +176,16 @@ class StatementsAllDataTable extends StatelessWidget {
                 clientProviderFilterActive: clientProviderFilterActive,
                 onInvoiceSortTap: onInvoiceSortTap,
                 invoiceSortMode: invoiceSortMode,
+                onInvoiceFilterTap: onInvoiceFilterTap ?? () {},
+                invoiceFilterActive: invoiceFilterActive,
               ),
-              const SizedBox(height: 6),
               Expanded(child: list),
             ],
           ),
+        );
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(width: tableWidth, child: table),
         );
       },
     );

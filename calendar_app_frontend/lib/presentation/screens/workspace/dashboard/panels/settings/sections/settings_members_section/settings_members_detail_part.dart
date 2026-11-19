@@ -4,11 +4,10 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
   Widget _buildDetailPanel(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final l = AppLocalizations.of(context)!;
 
     if (_selectedMember == null) {
       return Container(
-        constraints: const BoxConstraints(maxHeight: 380),
+        constraints: const BoxConstraints(maxHeight: 480),
         decoration: BoxDecoration(
           color: cs.surfaceContainerHighest.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
@@ -40,7 +39,7 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
 
     if (_loadingUser) {
       return Container(
-        constraints: const BoxConstraints(maxHeight: 380),
+        constraints: const BoxConstraints(maxHeight: 480),
         decoration: BoxDecoration(
           color: cs.surfaceContainerHighest.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
@@ -56,8 +55,12 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
 
     final user = _selectedUser;
     if (user == null) {
+      final invitation = _selectedInvitation;
+      if (invitation != null) {
+        return _buildInvitationDetailPanel(context, invitation);
+      }
       return Container(
-        constraints: const BoxConstraints(maxHeight: 380),
+        constraints: const BoxConstraints(maxHeight: 480),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -75,9 +78,17 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
 
     final gd = context.watch<GroupDomain>();
     final currentUserId = context.read<UserDomain?>()?.user?.id ?? '';
-    final rolesMap = gd.userRoles.value;
+    // The domain map is populated asynchronously. Preserve the roles returned
+    // with this group meanwhile, otherwise an owner is incorrectly treated as
+    // a regular member and the selector is rendered read-only.
+    final rolesMap = <String, String>{
+      ...widget.group.userRoles,
+      ...gd.userRoles.value,
+      ..._confirmedRoleOverrides,
+    };
     final roleWire = rolesMap[user.id] ?? _selectedMember!.role;
     final targetRole = GroupRole.fromWire(roleWire);
+    final displayedRole = _pendingRole ?? targetRole;
     final currentRole = GroupRole.fromWire(rolesMap[currentUserId] ?? '');
     final isOwner = user.id == widget.group.ownerId;
     final isSelf = user.id == currentUserId;
@@ -108,7 +119,7 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
     final displayName = user.name.isNotEmpty ? user.name : user.userName;
 
     return Container(
-      constraints: const BoxConstraints(maxHeight: 380),
+      constraints: const BoxConstraints(maxHeight: 480),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
@@ -117,7 +128,7 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
         ),
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -125,13 +136,18 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
             Row(
               children: [
                 GestureDetector(
-                  onTap: () => showDialog<void>(
+                  onTap: () => showHexoraDialog<void>(
                     context: context,
                     barrierColor: Colors.black.withValues(alpha: 0.72),
                     builder: (_) => UserAvatarViewerDialog(user: user),
                   ),
-                  child: AvatarUtils.profileAvatar(context, user.photoUrl,
-                      radius: 28),
+                  child: HexoraUserAvatar(
+                    userId: user.id,
+                    displayName: displayName,
+                    username: user.userName,
+                    photoUrl: user.photoUrl,
+                    size: 48,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -163,14 +179,15 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
               ],
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             // ── Contact info ──
-            _buildCompactInfoRow(
-              context,
-              icon: Icons.alternate_email_rounded,
-              value: user.email,
-            ),
+            if (user.email.isNotEmpty)
+              _buildCompactInfoRow(
+                context,
+                icon: Icons.alternate_email_rounded,
+                value: user.email,
+              ),
             if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty)
               _buildCompactInfoRow(
                 context,
@@ -198,22 +215,17 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
               ),
 
             // ── Invitation timeline (for pending/notAccepted) ──
-            if (inv != null) ...[
-              const SizedBox(height: 10),
-              _buildInvitationCard(context, inv),
-            ],
+            const SizedBox(height: 6),
+            _buildMembershipActivity(
+              context,
+              user: user,
+              invitation: inv,
+              isAccepted: isAccepted,
+            ),
 
             // ── Membership info (for accepted members) ──
-            if (isAccepted && inv == null) ...[
-              const SizedBox(height: 10),
-              _buildMembershipCard(context, user),
-            ],
 
             // ── Role history (lazy) ──
-            if (_roleHistoryFuture != null) ...[
-              const SizedBox(height: 10),
-              _buildRoleHistorySection(context),
-            ],
 
             const SizedBox(height: 12),
             Divider(
@@ -228,12 +240,33 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
                 Icon(Icons.shield_outlined, size: 14, color: cs.primary),
                 const SizedBox(width: 6),
                 Text(
-                  l.roleLabel,
+                  'Rol en el negocio',
                   style: t.caption.copyWith(
                     fontWeight: FontWeight.w700,
                     color: cs.onSurface,
                   ),
                 ),
+                if (_pendingRole != null) ...[
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'Cambio sin guardar',
+                      style: t.caption.copyWith(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: cs.primary,
+                      ),
+                    ),
+                  ),
+                ],
                 if (isOwner) ...[
                   const Spacer(),
                   Icon(
@@ -255,42 +288,63 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
             ),
             const SizedBox(height: 8),
             if (canEditRole && assignableRoles.isNotEmpty)
-              _buildRoleSelector(
-                context,
-                user: user,
-                currentRole: targetRole,
-                assignableRoles: assignableRoles,
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: _buildRoleSelector(
+                  context,
+                  user: user,
+                  currentRole: displayedRole,
+                  assignableRoles: assignableRoles,
+                ),
               )
             else
-              _buildRoleReadOnly(context, targetRole),
-            _buildRoleDescriptionFromPermissions(context, targetRole),
+              _buildRoleReadOnly(context, displayedRole),
+            _buildRoleDescriptionFromPermissions(context, displayedRole),
+            if (_pendingRole != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                '${roleLabelOf(context, targetRole)} → ${roleLabelOf(context, displayedRole)}',
+                style: t.caption.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => _changeRole(user, _pendingRole!),
+                    icon: const Icon(Icons.save_outlined, size: 16),
+                    label: const Text('Guardar cambios'),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => _updateUi(() => _pendingRole = null),
+                    child: const Text('Cancelar'),
+                  ),
+                ],
+              ),
+            ],
 
             if (canRemove) ...[
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
+              Align(
+                alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(
-                  onPressed: () => _confirmRemoveMember(context, user),
-                  icon: Icon(
-                    Icons.person_remove_rounded,
-                    size: 14,
-                    color: cs.error,
-                  ),
-                  label: Text(
-                    l.remove,
-                    style: t.caption.copyWith(
-                      color: cs.error,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
                   style: OutlinedButton.styleFrom(
-                    side: BorderSide(
-                      color: cs.error.withValues(alpha: 0.3),
-                    ),
+                    foregroundColor: cs.error,
+                    side: BorderSide(color: cs.error.withValues(alpha: 0.65)),
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  onPressed: () => _confirmRemoveMember(context, user),
+                  icon: const Icon(Icons.person_remove_rounded, size: 14),
+                  label: Text(
+                    'Quitar del negocio',
+                    style: t.caption.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -302,13 +356,87 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
   }
 
   // ── Status badge ──
+  Widget _buildInvitationDetailPanel(
+    BuildContext context,
+    Invitation invitation,
+  ) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final invitee = invitation.email ?? invitation.userId ?? '—';
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 480),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: cs.primaryContainer.withValues(alpha: 0.5),
+                  child: Icon(Icons.mail_outline_rounded, color: cs.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    invitee,
+                    style: t.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: cs.onSurface,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                _buildStatusBadge(context, false, invitation),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _buildCompactInfoRow(
+              context,
+              icon: Icons.alternate_email_rounded,
+              value: invitee,
+            ),
+            const SizedBox(height: 10),
+            _buildInvitationCard(context, invitation),
+            const SizedBox(height: 12),
+            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.shield_outlined, size: 14, color: cs.primary),
+                const SizedBox(width: 6),
+                Text(
+                  'Rol asignado',
+                  style: t.caption.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _buildRoleReadOnly(context, invitation.role),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatusBadge(
     BuildContext context,
     bool isAccepted,
     Invitation? inv,
   ) {
-    final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
     final String label;
     final Color color;
@@ -371,8 +499,8 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
     required IconData icon,
     required String value,
   }) {
-    final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -395,6 +523,52 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
   }
 
   // ── Invitation timeline card ──
+  Widget _buildMembershipActivity(
+    BuildContext context, {
+    required User user,
+    required Invitation? invitation,
+    required bool isAccepted,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: ExpansionTile(
+        expansionAnimationStyle: HexoraMotion.expansionStyle(context),
+        dense: true,
+        visualDensity: VisualDensity.compact,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 10),
+        childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+        initiallyExpanded: _activityExpanded,
+        onExpansionChanged: (expanded) =>
+            _updateUi(() => _activityExpanded = expanded),
+        leading: Icon(Icons.history_rounded, size: 16, color: cs.primary),
+        title: Text(
+          'Actividad de membresía',
+          style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          isAccepted ? 'Miembro activo' : 'Invitación en curso',
+          style: t.caption.copyWith(color: cs.onSurfaceVariant),
+        ),
+        children: [
+          if (invitation != null)
+            _buildInvitationCard(context, invitation)
+          else
+            _buildMembershipCard(context, user),
+          if (_roleHistoryFuture != null) ...[
+            const SizedBox(height: 8),
+            _buildRoleHistorySection(context),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildInvitationCard(BuildContext context, Invitation inv) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
@@ -627,7 +801,6 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
     required GroupRole currentRole,
     required List<GroupRole> assignableRoles,
   }) {
-    final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
 
     final options = [...assignableRoles];
@@ -636,67 +809,35 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
     }
     options.sort((a, b) => b.rank.compareTo(a.rank));
 
-    return Column(
-      children: [
+    return DropdownButtonFormField<String>(
+      key: ValueKey(currentRole.wire),
+      initialValue: currentRole.wire,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Cambiar rol',
+        prefixIcon: Icon(Icons.manage_accounts_outlined, size: 18),
+      ),
+      items: [
         for (final role in options)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: InkWell(
-              onTap: role.wire == currentRole.wire
-                  ? null
-                  : () => _changeRole(user, role),
-              borderRadius: BorderRadius.circular(10),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: role.wire == currentRole.wire
-                      ? role.roleChipColor(cs).withValues(alpha: 0.1)
-                      : cs.surfaceContainerHighest.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: role.wire == currentRole.wire
-                        ? role.roleChipColor(cs).withValues(alpha: 0.3)
-                        : cs.outlineVariant.withValues(alpha: 0.15),
-                  ),
+          DropdownMenuItem<String>(
+            value: role.wire,
+            child: Row(
+              children: [
+                Icon(role.icon, size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  roleLabelOf(context, role),
+                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      role.icon,
-                      size: 14,
-                      color: role.wire == currentRole.wire
-                          ? role.roleChipColor(cs)
-                          : cs.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        roleLabelOf(context, role),
-                        style: t.caption.copyWith(
-                          fontWeight: role.wire == currentRole.wire
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: role.wire == currentRole.wire
-                              ? role.roleChipColor(cs)
-                              : cs.onSurface,
-                        ),
-                      ),
-                    ),
-                    if (role.wire == currentRole.wire)
-                      Icon(
-                        Icons.check_circle_rounded,
-                        size: 14,
-                        color: role.roleChipColor(cs),
-                      ),
-                  ],
-                ),
-              ),
+              ],
             ),
           ),
       ],
+      onChanged: (wire) {
+        if (wire == null || wire == currentRole.wire) return;
+        final role = options.firstWhere((candidate) => candidate.wire == wire);
+        _updateUi(() => _pendingRole = role);
+      },
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 /// Native mobile theme. Desktop and web keep their existing themes.
@@ -11,16 +12,20 @@ class MobileTheme {
 
   static ThemeData build(ThemeData base) {
     final dark = base.brightness == Brightness.dark;
-    final background = Color(dark ? 0xFF0F141A : 0xFFF6F8FB);
-    final card = Color(dark ? 0xFF1A222C : 0xFFFFFFFF);
-    final raised = Color(dark ? 0xFF24303D : 0xFFEDF2F7);
-    final border = Color(dark ? 0xFF354252 : 0xFFDCE3EB);
-    final text = Color(dark ? 0xFFF3F6FA : 0xFF182230);
-    final secondaryText = Color(dark ? 0xFFB5C0CF : 0xFF526173);
-    final primary = Color(dark ? 0xFF64B5F6 : 0xFF1565C0);
-    final onPrimary = Color(dark ? 0xFF08243A : 0xFFFFFFFF);
-    final selected = Color(dark ? 0xFF193A56 : 0xFFDCEBFB);
-    final onSelected = Color(dark ? 0xFFBADDFF : 0xFF124F91);
+    final background = dark ? AppDarkColors.background : AppColors.background;
+    final card = dark ? AppDarkColors.surface : const Color(0xFFFFFFFF);
+    final raised =
+        dark ? AppDarkColors.surfaceHover : AppColors.inputBackground;
+    final border = dark ? AppDarkColors.border : AppColors.inputBorder;
+    final text = dark ? AppDarkColors.textPrimary : const Color(0xFF182230);
+    final secondaryText =
+        dark ? AppDarkColors.textSecondary : const Color(0xFF526173);
+    final primary = dark ? AppDarkColors.primary : AppColors.primary;
+    final onPrimary = dark ? AppDarkColors.background : const Color(0xFFFFFFFF);
+    final selected =
+        dark ? AppDarkColors.surfaceHover : AppColors.selectedControl;
+    final onSelected =
+        dark ? AppDarkColors.primaryLight : const Color(0xFF124F91);
     final error = Color(dark ? 0xFFFFB4AB : 0xFFB3261E);
     final cs = ColorScheme.fromSeed(
       seedColor: primary,
@@ -67,8 +72,8 @@ class MobileTheme {
       borderSide: BorderSide(color: border),
     );
     final buttonText = textTheme.labelLarge?.copyWith(
-      fontSize: 16,
-      fontWeight: FontWeight.w600,
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
     );
 
     return base.copyWith(
@@ -83,11 +88,12 @@ class MobileTheme {
       materialTapTargetSize: MaterialTapTargetSize.padded,
       textTheme: textTheme.copyWith(
         titleLarge: textTheme.titleLarge
-            ?.copyWith(fontSize: 20, fontWeight: FontWeight.w600),
-        bodyLarge: textTheme.bodyLarge?.copyWith(fontSize: 16),
-        bodyMedium: textTheme.bodyMedium?.copyWith(fontSize: 16),
+            ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
+        bodyLarge:
+            textTheme.bodyLarge?.copyWith(fontSize: HexoraTypography.body),
+        bodyMedium: textTheme.bodyMedium?.copyWith(fontSize: 13),
         bodySmall:
-            textTheme.bodySmall?.copyWith(fontSize: 14, color: secondaryText),
+            textTheme.bodySmall?.copyWith(fontSize: 12, color: secondaryText),
         labelLarge: buttonText,
       ),
       extensions: [
@@ -95,14 +101,15 @@ class MobileTheme {
         typography.copyWith(
           displayLarge: typography.displayLarge.copyWith(color: text),
           displayMedium: typography.displayMedium.copyWith(color: text),
-          titleLarge: typography.titleLarge.copyWith(color: text, fontSize: 20),
-          bodyLarge: typography.bodyLarge.copyWith(color: text, fontSize: 16),
-          bodyMedium: typography.bodyMedium.copyWith(color: text, fontSize: 16),
+          titleLarge: typography.titleLarge.copyWith(color: text, fontSize: 18),
+          bodyLarge: typography.bodyLarge
+              .copyWith(color: text, fontSize: HexoraTypography.body),
+          bodyMedium: typography.bodyMedium.copyWith(color: text, fontSize: 13),
           bodySmall:
-              typography.bodySmall.copyWith(color: secondaryText, fontSize: 14),
+              typography.bodySmall.copyWith(color: secondaryText, fontSize: 12),
           caption:
-              typography.caption.copyWith(color: secondaryText, fontSize: 14),
-          buttonText: typography.buttonText.copyWith(fontSize: 16),
+              typography.caption.copyWith(color: secondaryText, fontSize: 12),
+          buttonText: typography.buttonText.copyWith(fontSize: 13),
           accentHeading: typography.accentHeading.copyWith(color: primary),
           accentText: typography.accentText.copyWith(color: primary),
         ),
@@ -112,15 +119,18 @@ class MobileTheme {
         ),
       ],
       appBarTheme: AppBarTheme(
-        backgroundColor: background,
+        toolbarHeight: 56,
+        titleSpacing: 16,
+        backgroundColor: card,
         foregroundColor: text,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: textTheme.titleLarge
-            ?.copyWith(fontSize: 20, fontWeight: FontWeight.w600),
-        iconTheme: IconThemeData(color: text, size: 24),
+            ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
+        iconTheme: IconThemeData(color: text, size: 22),
+        actionsIconTheme: IconThemeData(color: secondaryText, size: 22),
         systemOverlayStyle:
             (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
                 .copyWith(
@@ -178,7 +188,7 @@ class MobileTheme {
         // RawChip resolves stateful colors, not stateful TextStyles.
         labelStyle: TextStyle(
           fontFamily: textTheme.bodyMedium?.fontFamily,
-          fontSize: 14,
+          fontSize: HexoraTypography.body,
           color: WidgetStateColor.resolveWith(
               (states) => states.contains(WidgetState.disabled)
                   ? secondaryText.withValues(alpha: 0.38)
@@ -186,30 +196,76 @@ class MobileTheme {
                       ? onSelected
                       : secondaryText),
         ),
-        secondaryLabelStyle: TextStyle(color: onSelected, fontSize: 14),
+        secondaryLabelStyle:
+            TextStyle(color: onSelected, fontSize: HexoraTypography.body),
         side: BorderSide(color: border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: card,
+        fillColor: dark ? card : AppColors.inputBackground,
         contentPadding: const EdgeInsets.all(16),
         border: inputBorder,
         enabledBorder: inputBorder,
         focusedBorder: inputBorder.copyWith(
-            borderSide: BorderSide(color: primary, width: 2)),
+            borderSide: BorderSide(
+                color: dark ? primary : AppColors.inputFocus, width: 2)),
         errorBorder: inputBorder.copyWith(borderSide: BorderSide(color: error)),
         focusedErrorBorder: inputBorder.copyWith(
             borderSide: BorderSide(color: error, width: 2)),
         hintStyle: TextStyle(color: secondaryText),
-        labelStyle: TextStyle(color: secondaryText),
+        labelStyle: textTheme.labelMedium?.copyWith(color: secondaryText),
       ),
       tabBarTheme: TabBarThemeData(
         labelColor: primary,
         unselectedLabelColor: secondaryText,
-        indicatorColor: primary,
+        indicator: UnderlineTabIndicator(
+          borderSide: BorderSide(color: primary, width: 2),
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: border,
+        labelStyle: textTheme.labelLarge?.copyWith(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelStyle: textTheme.labelLarge?.copyWith(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+        overlayColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.pressed) ||
+                  states.contains(WidgetState.hovered)
+              ? primary.withValues(alpha: .06)
+              : null,
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(48, 40)),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          elevation: const WidgetStatePropertyAll(0),
+          side: WidgetStatePropertyAll(BorderSide(color: border)),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? selected
+                : Colors.transparent,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? onSelected
+                : secondaryText,
+          ),
+          textStyle: WidgetStatePropertyAll(
+            textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: card,
@@ -241,9 +297,18 @@ class MobileTheme {
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       ),
       dialogTheme: DialogThemeData(
-          backgroundColor: raised,
-          surfaceTintColor: Colors.transparent,
-          shape: shape),
+        backgroundColor: raised,
+        surfaceTintColor: Colors.transparent,
+        shape: shape,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        titleTextStyle: textTheme.titleLarge?.copyWith(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: text,
+        ),
+        contentTextStyle: textTheme.bodyMedium?.copyWith(color: secondaryText),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      ),
       popupMenuTheme: PopupMenuThemeData(
           color: raised,
           surfaceTintColor: Colors.transparent,

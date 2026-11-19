@@ -6,13 +6,13 @@ extension _SettingsMembersActionsPart on _SettingsMembersSectionState {
     final l = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
 
-    // Optimistic local update
-    final oldRoles = Map<String, String>.from(gd.userRoles.value);
+    // Keep role changes staged until the backend confirms them.
+    final oldRoles = <String, String>{
+      ...widget.group.userRoles,
+      ...gd.userRoles.value,
+    };
     final updatedRoles = Map<String, String>.from(oldRoles)
       ..[user.id] = newRole.wire;
-    gd.userRoles.value = updatedRoles;
-    gd.currentGroup = widget.group.copyWith(userRoles: updatedRoles);
-    _updateUi();
 
     try {
       final repo = gd.groupRepository;
@@ -22,20 +22,49 @@ extension _SettingsMembersActionsPart on _SettingsMembersSectionState {
         roleWire: newRole.wire,
       );
 
+      gd.userRoles.value = updatedRoles;
+      gd.publishCurrentGroupUpdate(
+        widget.group.copyWith(userRoles: updatedRoles),
+      );
+      _updateUi(() {
+        _confirmedRoleOverrides[user.id] = newRole.wire;
+        _pendingRole = null;
+      });
+
       messenger.showSnackBar(
         SnackBar(content: Text(l.saveChanges)),
       );
     } catch (e) {
-      // Revert on failure
-      gd.userRoles.value = oldRoles;
-      gd.currentGroup = widget.group.copyWith(userRoles: oldRoles);
-      _updateUi();
-
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        const SnackBar(content: Text('No se pudo guardar el cambio de rol.')),
       );
     }
+  }
+
+  Future<bool> _confirmDiscardPendingRole(BuildContext context) async {
+    if (_pendingRole == null) return true;
+
+    return await showHexoraDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Descartar cambios'),
+            content: const Text(
+              'Tienes un cambio de rol sin guardar. ¿Quieres descartarlo?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Seguir editando'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Descartar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   Future<void> _confirmRemoveMember(BuildContext context, User user) async {
@@ -45,7 +74,7 @@ extension _SettingsMembersActionsPart on _SettingsMembersSectionState {
     final messenger = ScaffoldMessenger.of(context);
     final displayName = user.name.isNotEmpty ? user.name : user.userName;
 
-    final confirm = await showDialog<bool>(
+    final confirm = await showHexoraDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
             title: Text(l.remove),
@@ -55,10 +84,18 @@ extension _SettingsMembersActionsPart on _SettingsMembersSectionState {
             ),
             actions: [
               TextButton(
+                style: ThemedButtons.button(
+                  context,
+                  variant: ButtonVariant.ghost,
+                ),
                 onPressed: () => Navigator.of(context).pop(false),
                 child: Text(l.cancel),
               ),
               FilledButton(
+                style: ThemedButtons.button(
+                  context,
+                  variant: ButtonVariant.danger,
+                ),
                 onPressed: () => Navigator.of(context).pop(true),
                 child: Text(l.remove),
               ),
@@ -78,9 +115,11 @@ extension _SettingsMembersActionsPart on _SettingsMembersSectionState {
       final updatedRoles = Map<String, String>.from(gd.userRoles.value)
         ..remove(user.id);
       gd.userRoles.value = updatedRoles;
-      gd.currentGroup = widget.group.copyWith(
-        userIds: updatedUserIds,
-        userRoles: updatedRoles,
+      gd.publishCurrentGroupUpdate(
+        widget.group.copyWith(
+          userIds: updatedUserIds,
+          userRoles: updatedRoles,
+        ),
       );
 
       widget.membersVM.refreshAll();

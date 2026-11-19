@@ -1,6 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/app/premium/premium_required_handler.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/invoice.dart';
@@ -8,8 +13,6 @@ import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/emails/email_api.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_email_widgets.dart';
-import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
-import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -28,7 +31,8 @@ class GroupInvoicesEmailsView extends StatefulWidget {
   });
 
   @override
-  State<GroupInvoicesEmailsView> createState() => _GroupInvoicesEmailsViewState();
+  State<GroupInvoicesEmailsView> createState() =>
+      _GroupInvoicesEmailsViewState();
 }
 
 class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
@@ -41,10 +45,11 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
   List<Map<String, dynamic>> _logs = const [];
   String? _resendingLogId;
 
-  bool _canManageEmail() {
-    final userId = context.read<UserDomain?>()?.user?.id;
-    return canManagePremiumFeature(widget.group, userId, PremiumFeature.email);
-  }
+  bool _canManageEmail() => canManagePremiumFeature(
+        widget.group,
+        context.read<UserDomain?>()?.user?.id,
+        PremiumFeature.email,
+      );
 
   @override
   void initState() {
@@ -57,19 +62,30 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
   @override
   void didUpdateWidget(covariant GroupInvoicesEmailsView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_canManageEmail() && oldWidget.selectedInvoice?.id != widget.selectedInvoice?.id) {
+    final previouslyAllowed = canManagePremiumFeature(
+      oldWidget.group,
+      context.read<UserDomain?>()?.user?.id,
+      PremiumFeature.email,
+    );
+    final allowed = _canManageEmail();
+    if (!previouslyAllowed && allowed) {
+      _loadStatus();
+      _loadLogs();
+      return;
+    }
+    if (!allowed) return;
+    if (oldWidget.selectedInvoice?.id != widget.selectedInvoice?.id) {
       _loadLogs();
     }
   }
 
   Future<void> _loadStatus() async {
-    if (!_canManageEmail()) return;
     setState(() {
       _statusLoading = true;
       _statusError = null;
     });
     try {
-      final data = await _emailApi.getStatus(groupId: widget.group.id);
+      final data = await _emailApi.getStatus();
       final raw = data['configured'] ?? data['isConfigured'] ?? data['ready'];
       final configured = raw is bool
           ? raw
@@ -87,7 +103,6 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
   }
 
   Future<void> _loadLogs() async {
-    if (!_canManageEmail()) return;
     final invoice = widget.selectedInvoice;
     if (invoice == null) {
       setState(() {
@@ -168,7 +183,7 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
 
   void _openDetails(Map<String, dynamic> log) {
     const encoder = JsonEncoder.withIndent('  ');
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Email details'),
@@ -191,11 +206,17 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
   Future<void> _openSendInvoice() async {
     final invoice = widget.selectedInvoice;
     if (invoice == null) return;
+    if (!hasPremiumFeature(widget.group, PremiumFeature.email)) {
+      PremiumRequiredHandler.handle('email', widget.group.id);
+      return;
+    }
     final client = widget.clients.firstWhere(
       (c) => c.id == invoice.clientId,
-      orElse: () => GroupClient(id: invoice.clientId, name: '-', isActive: true),
+      orElse: () =>
+          GroupClient(id: invoice.clientId, name: '-', isActive: true),
     );
     await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -216,7 +237,10 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
     final cs = Theme.of(context).colorScheme;
     final currentUserId = context.read<UserDomain?>()?.user?.id;
     final canSend = canManagePremiumFeature(
-      widget.group, currentUserId, PremiumFeature.email);
+      widget.group,
+      currentUserId,
+      PremiumFeature.email,
+    );
     if (!canSend) {
       return PremiumFeatureRequestScreen(
         feature: PremiumFeatureRequest.email,
@@ -260,12 +284,13 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
               ),
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: cs.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -274,8 +299,9 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
                           ? Icons.check_circle_outline
                           : Icons.warning_amber_outlined,
                       size: 18,
-                      color:
-                          _configured == true ? cs.primary : cs.onSurfaceVariant,
+                      color: _configured == true
+                          ? cs.primary
+                          : cs.onSurfaceVariant,
                     ),
                     const SizedBox(width: 8),
                     Expanded(

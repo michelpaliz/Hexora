@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/themes/mobile_theme.dart';
 
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -10,7 +11,7 @@ import '../../statements_formatters.dart';
 import '../../statements_shared.dart';
 import '../statements_all_data_details.dart';
 import '../../shared/bank_transaction_share_dialog.dart';
-import 'statements_mobile_card.dart';
+import 'dense_bank_transaction_row.dart';
 
 enum _DateRange { all, thisMonth, last30, thisYear }
 
@@ -145,6 +146,7 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
     var date = _dateRange;
     var amount = _amountType;
     final result = await showModalBottomSheet<(_DateRange, _AmountType)>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -271,77 +273,73 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
 
     return Column(
       children: [
+        // ── Compact filter selector (~44px) ─────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
           child: Material(
             color: cs.surface,
             borderRadius: BorderRadius.circular(12),
             child: ListTile(
+              dense: true,
+              visualDensity: VisualDensity.compact,
+              minVerticalPadding: 0,
+              horizontalTitleGap: 10,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
-              leading: Icon(Icons.tune_rounded, color: cs.primary),
+              leading: Icon(Icons.tune_rounded, size: 18, color: cs.primary),
               title: Text(
                 '${_dateLabel(_dateRange, isSpanish)} · ${_amountLabel(_amountType, l, isSpanish)}',
-                style: t.bodyMedium.copyWith(color: cs.onSurface),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodyMedium.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13.5,
+                ),
               ),
               subtitle: Text(isSpanish ? 'Cambiar filtros' : 'Change filters',
-                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
-              trailing:
-                  Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+                  style: t.bodySmall
+                      .copyWith(color: cs.onSurfaceVariant, fontSize: 11.5)),
+              trailing: Icon(Icons.chevron_right_rounded,
+                  size: 18, color: cs.onSurfaceVariant),
               onTap: _showFilters,
             ),
           ),
         ),
-        // ── Count + refresh ─────────────────────────────────────────────────
+        // ── Count + refresh (one row) ───────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 10, 4),
+          padding: const EdgeInsets.fromLTRB(16, 4, 8, 2),
           child: Row(
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${filtered.length} ${isSpanish ? 'movimientos' : 'movements'}',
-                      style: t.bodyMedium.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isSpanish
-                          ? 'Pulsa un movimiento para ver el detalle'
-                          : 'Tap a movement to view details',
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontSize: MobileTheme.isActive(context) ? 14 : 11,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  '${filtered.length} ${isSpanish ? 'movimientos' : 'movements'}',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: .2,
+                  ),
                 ),
               ),
               if (s.loadingAllEntries)
-                const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                const Padding(
+                  padding: EdgeInsets.all(10),
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 )
               else
-                Container(
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    padding: EdgeInsets.zero,
-                    constraints: BoxConstraints(
-                        minWidth: MobileTheme.isActive(context) ? 48 : 36,
-                        minHeight: MobileTheme.isActive(context) ? 48 : 36),
-                    tooltip: isSpanish ? 'Actualizar' : 'Refresh',
-                    onPressed: s.loadAllEntries,
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(
+                      minWidth: MobileTheme.isActive(context) ? 48 : 36,
+                      minHeight: MobileTheme.isActive(context) ? 48 : 36),
+                  tooltip: isSpanish ? 'Actualizar' : 'Refresh',
+                  onPressed: s.loadAllEntries,
                 ),
             ],
           ),
@@ -371,7 +369,7 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
                         ],
                       ),
                     )
-                  : ListView.builder(
+                  : ListView.separated(
                       padding: EdgeInsets.fromLTRB(
                           0,
                           2,
@@ -381,9 +379,15 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
                                   ? MediaQuery.paddingOf(context).bottom
                                   : 0)),
                       itemCount: filtered.length,
-                      itemBuilder: (context, i) => StatementsMobileCard(
+                      separatorBuilder: (context, i) => Divider(
+                        height: 1,
+                        thickness: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color: cs.outlineVariant.withValues(alpha: 0.4),
+                      ),
+                      itemBuilder: (context, i) => DenseBankTransactionRow(
                         entry: filtered[i],
-                        index: i,
                         controller: s,
                         onTap: () => _showDetails(context, filtered[i]),
                       ),

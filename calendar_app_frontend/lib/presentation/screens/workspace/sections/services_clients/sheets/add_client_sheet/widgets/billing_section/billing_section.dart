@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_address_form.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_contact_form.dart';
-import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_document_type.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_legal_and_tax.dart';
-import 'package:hexora/l10n/app_localizations.dart';
-
 import '../../add_client_controller.dart';
 
 class BillingSection extends StatefulWidget {
@@ -30,130 +27,80 @@ class _BillingSectionState extends State<BillingSection> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    // mirrors: initiallyExpanded: _billingExpanded || _hasBillingData
-    final initiallyExpanded = c.billingExpanded || c.hasBillingData;
     final requireBilling =
         c.hasBillingData || c.billingExpanded || widget.showValidation;
-    final completed = c.billingCompletedCount;
-    final total = c.billingRequiredTotal;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        boxShadow: Theme.of(context).brightness == Brightness.light
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ]
-            : null,
-      ),
-      child: ExpansionTile(
-        initiallyExpanded: initiallyExpanded,
-        onExpansionChanged: (v) => setState(() => c.billingExpanded = v),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-        leading: const Icon(Icons.receipt_long_outlined, size: 20),
-        title: Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              l.billingDetails,
-              style: text.bodyLarge!.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            _BillingStatusChip(
-              completed: completed,
-              total: total,
-            ),
-          ],
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _BillingGroupLabel(
+          text: isSpanish ? 'Identidad fiscal' : 'Legal identity',
+          icon: Icons.badge_outlined,
+          topGap: 0,
         ),
-        subtitle: Text(
-          l.billingDetailsSubtitle,
-          style: text.bodyMedium!.copyWith(
-            color: cs.onSurfaceVariant,
-          ),
+        BillingLegalAndTax(
+          c: c,
+          requireBilling: requireBilling,
+          showValidation: widget.showValidation,
+          onFieldChanged: widget.onFieldChanged,
+          onFieldBlur: widget.onFieldBlur,
         ),
-        childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-        children: [
-          const SizedBox(height: 6),
-          BillingDocumentType(
-            value: c.billingDocType,
-            onChanged: (value) {
-              setState(() => c.billingDocType = value);
-              widget.onFieldChanged();
-            },
-          ),
-          const SizedBox(height: 12),
-          BillingLegalAndTax(
-            c: c,
-            requireBilling: requireBilling,
-            showValidation: widget.showValidation,
-            onFieldChanged: widget.onFieldChanged,
-            onFieldBlur: widget.onFieldBlur,
-          ),
-          const SizedBox(height: 8),
-          BillingAddressForm(
-            c: c,
-            requireBilling: requireBilling,
-            showValidation: widget.showValidation,
-            onFieldChanged: widget.onFieldChanged,
-            onFieldBlur: widget.onFieldBlur,
-          ),
-          const SizedBox(height: 8),
-          BillingContactForm(
-            c: c,
-            requireBilling: requireBilling,
-            showValidation: widget.showValidation,
-            onFieldChanged: widget.onFieldChanged,
-            onFieldBlur: widget.onFieldBlur,
-          ),
-        ],
-      ),
+        _BillingGroupLabel(
+          text: isSpanish ? 'Dirección y contacto' : 'Address and contact',
+          icon: Icons.location_on_outlined,
+        ),
+        BillingAddressForm(
+          c: c,
+          requireBilling: requireBilling,
+          showValidation: widget.showValidation,
+          onFieldChanged: widget.onFieldChanged,
+          onFieldBlur: widget.onFieldBlur,
+        ),
+        const SizedBox(height: 8),
+        BillingContactForm(
+          c: c,
+          requireBilling: requireBilling,
+          showValidation: widget.showValidation,
+          onFieldChanged: widget.onFieldChanged,
+          onFieldBlur: widget.onFieldBlur,
+        ),
+      ],
     );
   }
 }
 
-class _BillingStatusChip extends StatelessWidget {
-  final int completed;
-  final int total;
-
-  const _BillingStatusChip({
-    required this.completed,
-    required this.total,
+/// A subtle, type-only section label; no card, border, or background colour.
+class _BillingGroupLabel extends StatelessWidget {
+  const _BillingGroupLabel({
+    required this.text,
+    required this.icon,
+    this.topGap = 14,
   });
+
+  final String text;
+  final IconData icon;
+  final double topGap;
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    final complete = completed >= total && total > 0;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: complete ? cs.secondaryContainer : cs.errorContainer,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        l.billingProgressLabel(completed, total),
-        style: text.labelMedium!.copyWith(
-          fontWeight: FontWeight.w600,
-          color: complete ? cs.onSecondaryContainer : cs.onErrorContainer,
-        ),
+    final t = Theme.of(context).textTheme;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(2, topGap, 2, 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: cs.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Text(
+            text.toUpperCase(),
+            style: t.labelSmall?.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              fontSize: 11,
+            ),
+          ),
+        ],
       ),
     );
   }

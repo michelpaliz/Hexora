@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/state/locale_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -10,6 +11,7 @@ void showLanguageSheet(BuildContext context) {
   final bodyS = theme.textTheme.bodySmall!;
 
   showModalBottomSheet(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
     context: context,
     showDragHandle: true,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

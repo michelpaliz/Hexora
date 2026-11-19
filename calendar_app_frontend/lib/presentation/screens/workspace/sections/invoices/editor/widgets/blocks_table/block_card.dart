@@ -63,8 +63,10 @@ class BlockCardState extends State<BlockCard> {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final block = widget.block;
-    final numFmt = NumberFormat('#,##0.##');
-    final moneyFmt = NumberFormat.simpleCurrency(name: '');
+    final localeName = Localizations.localeOf(context).toString();
+    final numFmt = NumberFormat('#,##0.##', localeName);
+    String money(dynamic value) =>
+        '${formatMoneyEu(value, fallback: '0,00')} €';
 
     final inputBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
@@ -88,7 +90,7 @@ class BlockCardState extends State<BlockCard> {
           borderSide: BorderSide(color: cs.primary, width: 1.5),
         ),
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       );
     }
 
@@ -267,7 +269,7 @@ class BlockCardState extends State<BlockCard> {
           unit.isEmpty ? numFmt.format(qty) : '${numFmt.format(qty)} $unit';
       final discountText =
           discountRate > 0 ? ' · Dto. ${numFmt.format(discountRate)}%' : '';
-      return '$qtyText × ${moneyFmt.format(price)}$discountText';
+      return '$qtyText × ${money(price)}$discountText';
     }
 
     String? itemTotalText() {
@@ -280,7 +282,7 @@ class BlockCardState extends State<BlockCard> {
       final base = grossBase - (grossBase * discountRate / 100);
       final tax = base * (taxRate / 100);
       final total = base + tax;
-      return moneyFmt.format(total);
+      return money(total);
     }
 
     bool shouldShowLevel() {
@@ -387,14 +389,25 @@ class BlockCardState extends State<BlockCard> {
                 decoration: fieldDec(
                   label: isEs ? 'Fecha servicio' : 'Service date',
                 ).copyWith(
-                  hintText: 'YYYY-MM-DD',
+                  hintText: isEs ? 'Seleccionar fecha' : 'Select date',
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
                   prefixIcon: IconButton(
                     tooltip: isEs ? 'Seleccionar fecha' : 'Select date',
                     onPressed: pickServiceDate,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 32,
+                      height: 32,
+                    ),
+                    visualDensity: VisualDensity.compact,
                     icon: const Icon(
                       Icons.calendar_today_outlined,
                       size: 15,
                     ),
+                  ),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 34,
+                    minHeight: 32,
                   ),
                 ),
                 inputFormatters: [
@@ -434,109 +447,113 @@ class BlockCardState extends State<BlockCard> {
             },
           );
 
+      Widget detailField() => TextFormField(
+            controller: block.description,
+            decoration: fieldDec(
+              label: descriptionLabel ?? (isEs ? 'Detalle' : 'Detail'),
+            ).copyWith(
+              hintText: isEs
+                  ? 'Corrección de deslizamiento y ajuste.'
+                  : 'Alignment correction and adjustment.',
+            ),
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            validator: (v) {
+              final hasDetail = v?.trim().isNotEmpty == true;
+              final hasConcept =
+                  block.conceptTitleCtrl.text.trim().isNotEmpty ||
+                      block.conceptItemsCtrl.text.trim().isNotEmpty;
+              return hasDetail || hasConcept ? null : l.fieldIsRequired;
+            },
+            onChanged: (_) => widget.onChanged(),
+            maxLines: 1,
+          );
+
+      Widget numericField({
+        required TextEditingController controller,
+        required String label,
+        required String? Function(String?) validator,
+      }) =>
+          TextFormField(
+            controller: controller,
+            textAlign: TextAlign.right,
+            decoration: fieldDec(label: label),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+            ],
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            validator: validator,
+            onChanged: (_) => widget.onChanged(),
+          );
+
+      Widget valuesRow() => LayoutBuilder(
+            builder: (context, constraints) {
+              Widget quantity() => numericField(
+                    controller: block.qtyCtrl,
+                    label: l.lineQuantity,
+                    validator: nonNegativeValidator,
+                  );
+              Widget price() => numericField(
+                    controller: block.unitPriceCtrl,
+                    label: l.lineUnitPrice,
+                    validator: nonNegativeValidator,
+                  );
+              Widget discount() => numericField(
+                    controller: block.discountRateCtrl,
+                    label: isEs ? 'Descuento %' : 'Discount %',
+                    validator: discountValidator,
+                  );
+              Widget tax() => numericField(
+                    controller: block.taxRateCtrl,
+                    label: '${l.taxRateShort} %',
+                    validator: taxValidator,
+                  );
+
+              if (constraints.maxWidth < 720) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    detailField(),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        SizedBox(width: 86, child: quantity()),
+                        SizedBox(width: 82, child: unitField()),
+                        SizedBox(width: 130, child: price()),
+                        SizedBox(width: 104, child: discount()),
+                        SizedBox(width: 78, child: tax()),
+                      ],
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 5, child: detailField()),
+                  const SizedBox(width: 6),
+                  SizedBox(width: 68, child: quantity()),
+                  const SizedBox(width: 6),
+                  SizedBox(width: 68, child: unitField()),
+                  const SizedBox(width: 6),
+                  SizedBox(width: 112, child: price()),
+                  const SizedBox(width: 6),
+                  SizedBox(width: 104, child: discount()),
+                  const SizedBox(width: 6),
+                  SizedBox(width: 66, child: tax()),
+                ],
+              );
+            },
+          );
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           conceptMetadataFields(),
-          const SizedBox(height: 8),
-          // ── Row 1: Description — clean, full-width ────────────────────────
-
-          // ── Row 2: Qty · Unit · Price · Tax% — balanced widths ───────────
-          // flex 1:2:3:1 → Qty≈14% | Unit≈29% | Price≈43% | Tax≈14%
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 4,
-                child: TextFormField(
-                  controller: block.description,
-                  decoration: fieldDec(
-                    label: descriptionLabel ?? (isEs ? 'Detalle' : 'Detail'),
-                  ).copyWith(
-                    hintText: isEs
-                        ? 'Corrección de deslizamiento y ajuste.'
-                        : 'Alignment correction and adjustment.',
-                  ),
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  validator: (v) {
-                    final hasDetail = v?.trim().isNotEmpty == true;
-                    final hasConcept =
-                        block.conceptTitleCtrl.text.trim().isNotEmpty ||
-                            block.conceptItemsCtrl.text.trim().isNotEmpty;
-                    return hasDetail || hasConcept ? null : l.fieldIsRequired;
-                  },
-                  onChanged: (_) => widget.onChanged(),
-                  maxLines: 1,
-                ),
-              ),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 74,
-                child: TextFormField(
-                  controller: block.qtyCtrl,
-                  decoration: fieldDec(label: l.lineQuantity),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                  ],
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  validator: nonNegativeValidator,
-                  onChanged: (_) => widget.onChanged(),
-                ),
-              ),
-              const SizedBox(width: 6),
-              SizedBox(width: 72, child: unitField()),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 118,
-                child: TextFormField(
-                  controller: block.unitPriceCtrl,
-                  decoration: fieldDec(label: l.lineUnitPrice),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                  ],
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  validator: nonNegativeValidator,
-                  onChanged: (_) => widget.onChanged(),
-                ),
-              ),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 70,
-                child: TextFormField(
-                  controller: block.discountRateCtrl,
-                  decoration: fieldDec(label: 'Dto. %'),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                  ],
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  validator: discountValidator,
-                  onChanged: (_) => widget.onChanged(),
-                ),
-              ),
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 64,
-                child: TextFormField(
-                  controller: block.taxRateCtrl,
-                  decoration: fieldDec(label: '${l.taxRateShort}%'),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                  ],
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  validator: taxValidator,
-                  onChanged: (_) => widget.onChanged(),
-                ),
-              ),
-            ],
-          ),
+          const SizedBox(height: 6),
+          valuesRow(),
         ],
       );
     }
@@ -1115,176 +1132,182 @@ class BlockCardState extends State<BlockCard> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: widget.selected
-              ? cs.primaryContainer.withValues(alpha: 0.25)
-              : _hovered
-                  ? cs.primary.withValues(alpha: 0.04)
-                  : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
+      child: Listener(
+        onPointerDown: (_) => widget.onSelect(),
+        child: AnimatedContainer(
+          key: ValueKey('invoice-line-card-${widget.index}'),
+          duration: const Duration(milliseconds: 140),
+          margin: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
             color: widget.selected
-                ? cs.primary.withValues(alpha: 0.6)
-                : cs.outlineVariant.withValues(alpha: 0.35),
+                ? cs.primaryContainer.withValues(alpha: 0.22)
+                : _hovered
+                    ? cs.primary.withValues(alpha: 0.035)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: widget.selected
+                  ? cs.primary.withValues(alpha: 0.62)
+                  : cs.outlineVariant.withValues(alpha: 0.32),
+            ),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header row: action strip on the left (outside InkWell so touch
-            // events always fire), then the tappable expand/collapse area.
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // ── Action buttons: ↑ ↓ | 🗑 ────────────────────────────────
-                _ActionStrip(
-                  index: widget.index,
-                  total: widget.total,
-                  onMoveUp: widget.onMoveUp,
-                  onMoveDown: widget.onMoveDown,
-                  onDelete: widget.onDelete,
-                  l: l,
-                  cs: cs,
-                ),
-                const SizedBox(width: 4),
-                // ── Tappable expand area ─────────────────────────────────────
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      widget.onSelect();
-                      setState(() => _expanded = !_expanded);
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 5),
-                      child: Row(
-                        children: [
-                          typePicker(),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              summaryText(),
-                              style: t.bodySmall.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: cs.onSurface,
-                              ),
-                              maxLines: _expanded ? 2 : 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (itemMeta() != null) ...[
-                            const SizedBox(width: 8),
-                            Text(
-                              itemMeta()!,
-                              style: t.bodySmall.copyWith(
-                                fontSize: 11,
-                                color: cs.onSurfaceVariant,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                          if (itemTotalText() != null) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color:
-                                    cs.primaryContainer.withValues(alpha: 0.45),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                itemTotalText()!,
-                                style: t.bodySmall.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: cs.onPrimaryContainer,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                          const SizedBox(width: 4),
-                          AnimatedRotation(
-                            turns: _expanded ? 0.5 : 0,
-                            duration: const Duration(milliseconds: 150),
-                            child: Icon(
-                              Icons.keyboard_arrow_down,
-                              size: 16,
-                              color: cs.onSurfaceVariant.withValues(alpha: 0.5),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header row: action strip on the left (outside InkWell so touch
+              // events always fire), then the tappable expand/collapse area.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // ── Action buttons: ↑ ↓ | 🗑 ────────────────────────────────
+                  _ActionStrip(
+                    index: widget.index,
+                    total: widget.total,
+                    onMoveUp: widget.onMoveUp,
+                    onMoveDown: widget.onMoveDown,
+                    onDelete: widget.onDelete,
+                    l: l,
+                    cs: cs,
                   ),
-                ), // Expanded (InkWell)
-                // ── Billable toggle icon ─────────────────────────────────────
-                if (block.type == InvoiceBlockType.item ||
-                    block.type == InvoiceBlockType.worker ||
-                    block.type == InvoiceBlockType.section ||
-                    block.type == InvoiceBlockType.checklist) ...[
                   const SizedBox(width: 4),
-                  Tooltip(
-                    message: l.invoiceBlockBillableLabel,
-                    waitDuration: const Duration(milliseconds: 400),
+                  // ── Tappable expand area ─────────────────────────────────────
+                  Expanded(
                     child: InkWell(
                       onTap: () {
-                        setState(() => block.isBillable = !block.isBillable);
-                        widget.onChanged();
+                        widget.onSelect();
+                        setState(() => _expanded = !_expanded);
                       },
-                      borderRadius: BorderRadius.circular(6),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: block.isBillable
-                              ? cs.primaryContainer.withValues(alpha: 0.55)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: block.isBillable
-                                ? cs.primary.withValues(alpha: 0.4)
-                                : cs.outlineVariant.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child: Icon(
-                          block.isBillable
-                              ? Icons.euro_rounded
-                              : Icons.euro_outlined,
-                          size: 13,
-                          color: block.isBillable
-                              ? cs.primary
-                              : cs.onSurfaceVariant.withValues(alpha: 0.45),
+                            horizontal: 5, vertical: 2),
+                        child: Row(
+                          children: [
+                            typePicker(),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                summaryText(),
+                                style: t.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: cs.onSurface,
+                                ),
+                                maxLines: _expanded ? 2 : 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (itemMeta() != null) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                itemMeta()!,
+                                style: t.bodySmall.copyWith(
+                                  fontSize: 11,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                            if (itemTotalText() != null) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: cs.primaryContainer
+                                      .withValues(alpha: 0.45),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  itemTotalText()!,
+                                  style: t.bodySmall.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: cs.onPrimaryContainer,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(width: 4),
+                            AnimatedRotation(
+                              turns: _expanded ? 0.5 : 0,
+                              duration: const Duration(milliseconds: 150),
+                              child: Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 16,
+                                color:
+                                    cs.onSurfaceVariant.withValues(alpha: 0.5),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ], // Row children
-            ), // Row
-            if (_expanded) ...[
-              const SizedBox(height: 10),
-              // Scale down all TextFormField input text uniformly.
-              Theme(
-                data: Theme.of(context).copyWith(
-                  textTheme: Theme.of(context).textTheme.copyWith(
-                        bodyLarge: Theme.of(context)
-                            .textTheme
-                            .bodyLarge
-                            ?.copyWith(fontSize: 12),
+                  ), // Expanded (InkWell)
+                  // ── Billable toggle icon ─────────────────────────────────────
+                  if (block.type == InvoiceBlockType.item ||
+                      block.type == InvoiceBlockType.worker ||
+                      block.type == InvoiceBlockType.section ||
+                      block.type == InvoiceBlockType.checklist) ...[
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: l.invoiceBlockBillableLabel,
+                      waitDuration: const Duration(milliseconds: 400),
+                      child: InkWell(
+                        onTap: () {
+                          setState(() => block.isBillable = !block.isBillable);
+                          widget.onChanged();
+                        },
+                        borderRadius: BorderRadius.circular(6),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: block.isBillable
+                                ? cs.primaryContainer.withValues(alpha: 0.55)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: block.isBillable
+                                  ? cs.primary.withValues(alpha: 0.4)
+                                  : cs.outlineVariant.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Icon(
+                            block.isBillable
+                                ? Icons.euro_rounded
+                                : Icons.euro_outlined,
+                            size: 13,
+                            color: block.isBillable
+                                ? cs.primary
+                                : cs.onSurfaceVariant.withValues(alpha: 0.45),
+                          ),
+                        ),
                       ),
+                    ),
+                  ],
+                ], // Row children
+              ), // Row
+              if (_expanded) ...[
+                const SizedBox(height: 4),
+                // Scale down all TextFormField input text uniformly.
+                Theme(
+                  data: Theme.of(context).copyWith(
+                    textTheme: Theme.of(context).textTheme.copyWith(
+                          bodyLarge: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.copyWith(fontSize: 12),
+                        ),
+                  ),
+                  child: body(),
                 ),
-                child: body(),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -1324,14 +1347,16 @@ class _ActionStrip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(5),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-          child: Icon(
-            icon,
-            size: 13,
-            color: onTap == null
-                ? cs.onSurface.withValues(alpha: 0.18)
-                : (color ?? cs.onSurfaceVariant.withValues(alpha: 0.6)),
+        child: SizedBox.square(
+          dimension: 26,
+          child: Center(
+            child: Icon(
+              icon,
+              size: 15,
+              color: onTap == null
+                  ? cs.onSurface.withValues(alpha: 0.18)
+                  : (color ?? cs.onSurfaceVariant.withValues(alpha: 0.72)),
+            ),
           ),
         ),
       ),
@@ -1340,44 +1365,34 @@ class _ActionStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.3),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _btn(
+          icon: Icons.keyboard_arrow_up,
+          tooltip: l.invoiceBlockMoveUp,
+          onTap: index == 0 ? null : onMoveUp,
         ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _btn(
-            icon: Icons.keyboard_arrow_up,
-            tooltip: l.invoiceBlockMoveUp,
-            onTap: index == 0 ? null : onMoveUp,
+        _btn(
+          icon: Icons.keyboard_arrow_down,
+          tooltip: l.invoiceBlockMoveDown,
+          onTap: index == total - 1 ? null : onMoveDown,
+        ),
+        SizedBox(
+          height: 14,
+          child: VerticalDivider(
+            width: 6,
+            thickness: 0.5,
+            color: cs.outlineVariant.withValues(alpha: 0.5),
           ),
-          _btn(
-            icon: Icons.keyboard_arrow_down,
-            tooltip: l.invoiceBlockMoveDown,
-            onTap: index == total - 1 ? null : onMoveDown,
-          ),
-          SizedBox(
-            height: 12,
-            child: VerticalDivider(
-              width: 6,
-              thickness: 0.5,
-              color: cs.outlineVariant.withValues(alpha: 0.5),
-            ),
-          ),
-          _btn(
-            icon: Icons.delete_outline,
-            tooltip: l.remove,
-            onTap: onDelete,
-            color: cs.error.withValues(alpha: 0.65),
-          ),
-        ],
-      ),
+        ),
+        _btn(
+          icon: Icons.delete_outline,
+          tooltip: l.remove,
+          onTap: onDelete,
+          color: cs.error.withValues(alpha: 0.78),
+        ),
+      ],
     );
   }
 }

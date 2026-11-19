@@ -8,44 +8,9 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
     if (field.readOnly) {
       return _readOnlySummaryField(field);
     }
-    if (_sections.any((section) => section.generatedFrequency) &&
-        (field.key == 'MESES_TEMPORADA_ALTA' || field.key == 'MESES_TEMPORADA_BAJA')) {
-      final high = field.key == 'MESES_TEMPORADA_ALTA';
-      final value = _variables[field.key]!.text;
-      final selected = SeasonalFrequency.monthIndexes(value);
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(high ? 'Meses de temporada alta' : 'Meses de temporada baja · Automático'),
-          const SizedBox(height: 8),
-          if (high)
-            Wrap(spacing: 6, runSpacing: 6, children: [
-              for (var index = 0; index < 12; index++)
-                FilterChip(
-                  key: ValueKey('season_month_$index'),
-                  label: Text(SeasonalFrequency.months[index]),
-                  selected: selected?.contains(index) ?? false,
-                  onSelected: editable ? (chosen) => _updateEditorState(() {
-                    final next = {...?selected};
-                    if (chosen) { next.add(index); } else { next.remove(index); }
-                    final sorted = next.toList()..sort();
-                    _variables['MESES_TEMPORADA_ALTA']!.text = SeasonalFrequency.monthList(sorted);
-                    _variables['MESES_TEMPORADA_BAJA']!.text = SeasonalFrequency.monthList(
-                      List.generate(12, (i) => i).where((i) => !next.contains(i)));
-                  }) : null,
-                ),
-            ])
-          else
-            Text(value.isEmpty ? 'Selecciona los meses de temporada alta.' : value),
-          if (high && selected == null) Text('Periodo personalizado conservado: $value'),
-        ]),
-      );
-    }
     if (field.key == 'SERVICIO_MANTENIMIENTO') {
       final controller = _variables[field.key]!;
-      final selected = controller.text.trim().isEmpty
-          ? 'limpieza de la piscina'
-          : controller.text.trim();
+      final selected = controller.text.trim();
       const options = <String, String>{
         'Jardín y piscina': 'mantenimiento del jardín y la piscina',
         'Solo jardín': 'mantenimiento del jardín',
@@ -56,7 +21,7 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Tipo de servicio'),
+            const Text('Tipo de servicio *'),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -66,17 +31,28 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
                   ChoiceChip(
                     key: ValueKey('service_${option.value}'),
                     label: Text(option.key),
-                    selected: selected == option.value,
+                    selected: selected == option.value &&
+                        (_serviceChosen ||
+                            _documentFlow.presupuestoId != null ||
+                            widget.templateOnly),
                     onSelected: editable
                         ? (chosen) {
                             if (!chosen) return;
-                            _updateEditorState(() => controller.text = option.value);
+                            _updateEditorState(() {
+                              controller.text = option.value;
+                              _serviceChosen = true;
+                              _serviceSelectionError = false;
+                              _bindDefaultServiceDescriptions();
+                            });
                           }
                         : null,
                   ),
               ],
             ),
-            if (!options.containsValue(selected)) ...[
+            if (_serviceSelectionError)
+              Text('Selecciona un tipo de servicio para continuar.',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            if (selected.isNotEmpty && !options.containsValue(selected)) ...[
               const SizedBox(height: 8),
               Text('Servicio personalizado: $selected'),
             ],
@@ -86,10 +62,15 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
     }
     return _field(
       _variables[field.key]!,
-      _variableDisplayLabel(field),
+      '${_variableDisplayLabel(field)}${field.isRequired ? ' *' : ' (opcional)'}',
       fieldKey: ValueKey('variable_${field.key}'),
       hint: field.hint,
-      prefixIcon: field.icon,
+      dense: true,
+      prefixIcon: const ['TOTAL_MENSUAL', 'IMPORTE_MENSUAL'].contains(field.key)
+          ? Icons.euro_rounded
+          : field.inputType == 'currency'
+              ? Icons.euro_rounded
+              : null,
       keyboardType: field.keyboardType,
       maxLines: field.maxLines,
       textCapitalization: field.key == 'CLIENTE'
@@ -123,7 +104,7 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
               children: [
                 Expanded(
                   child: Text(
-                    _variableDisplayLabel(field),
+                    '${_variableDisplayLabel(field)}${field.isRequired ? ' *' : ' (opcional)'}',
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: cs.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
@@ -174,11 +155,23 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
       fieldKey: ValueKey('variable_${field.key}'),
       controller: _variables[field.key]!,
       label: _variableDisplayLabel(field),
-      hint: 'Buscar cliente...',
+      hint: 'Buscar cliente por nombre...',
       selectedClientId: _selectedClientId,
+      customName: _customClientName,
+      onSearchMode: () => _updateEditorState(() => _customClientName = false),
       search: _searchActiveClients,
+      onCustomName: (name) {
+        _updateEditorState(() {
+          _customClientName = true;
+          _selectedClientId = null;
+          _selectedClientName = null;
+          _variables[field.key]!.text = name;
+          _recalculateVariableFields(changedKey: field.key);
+        });
+      },
       onSelected: (client) {
         _updateEditorState(() {
+          _customClientName = false;
           _selectedClientId = client.id;
           _selectedClientName = client.name.trim();
           _variables[field.key]!.text = client.name.trim();
@@ -215,9 +208,7 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
     final priceField =
         priceKey == null ? null : _buildVariableInput(priceDefinition!);
     return _card(
-      title: 'Datos del PDF',
-      subtitle: 'Lo esencial para que el cliente entienda el presupuesto.',
-      icon: Icons.edit_note_rounded,
+      title: 'Datos del presupuesto',
       child: Column(
         children: [
           _field(
@@ -225,6 +216,7 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
             widget.templateOnly
                 ? 'Nombre de plantilla'
                 : 'Nombre del presupuesto',
+            dense: true,
             hint: widget.templateOnly
                 ? 'Ej. Mantenimiento mensual comunidades'
                 : 'Ej. Mantenimiento anual Las Alondras',
@@ -252,7 +244,20 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
               );
             },
           ),
+          if (_hasSeasons) _buildMaintenanceSeasons(),
           _buildTagFields(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTemplateContentCard() {
+    return _card(
+      title: 'Contenido del PDF',
+      subtitle: 'Texto reutilizable y formato del documento.',
+      icon: Icons.text_snippet_outlined,
+      child: Column(
+        children: [
           _field(
             _title,
             'Titulo del PDF',
@@ -271,7 +276,7 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
             _intro,
             'Texto inicial',
             maxLines: 6,
-            minLines: 5,
+            minLines: 4,
             hint: 'Explica brevemente el servicio y el precio propuesto.',
             textCapitalization: TextCapitalization.sentences,
             markdown: true,
@@ -292,6 +297,8 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
         .where(
           (field) =>
               !primaryKeys.contains(field.key) &&
+              !_seasonVariableKeys.contains(field.key) &&
+              !(_hasSeasons && field.key == 'SERVICIO_MANTENIMIENTO') &&
               !_isRedundantPricingField(field) &&
               (_documentFlow.presupuestoId != null ||
                   _isVariableFieldVisible(field)),
@@ -304,10 +311,12 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
         .where((field) => !field.isAutomatic && !field.readOnly)
         .toList(growable: false);
     final usedFields = editableFields
-        .where((field) => field.isUsedInTemplate || field.key == 'SERVICIO_MANTENIMIENTO')
+        .where((field) =>
+            field.isUsedInTemplate || field.key == 'SERVICIO_MANTENIMIENTO')
         .toList(growable: false);
     final optionalFields = editableFields
-        .where((field) => !field.isUsedInTemplate && field.key != 'SERVICIO_MANTENIMIENTO')
+        .where((field) =>
+            !field.isUsedInTemplate && field.key != 'SERVICIO_MANTENIMIENTO')
         .toList(growable: false);
 
     if (fields.isEmpty) return const SizedBox.shrink();
@@ -323,7 +332,7 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
           Row(
             children: [
               Icon(
-                Icons.data_object_rounded,
+                Icons.description_outlined,
                 size: 20,
                 color: theme.colorScheme.primary,
               ),
@@ -348,28 +357,23 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
             _automaticVariablesPanel(theme, automaticFields),
             const SizedBox(height: 18),
           ],
-          if (usedFields.isNotEmpty) _variableFieldsGrid(usedFields),
+          if (usedFields.isNotEmpty) _groupedVariableFields(usedFields),
           if (optionalFields.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(bottom: 14),
-              decoration: BoxDecoration(
-                color: _editorInsetBg(theme),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _editorBorder(theme, alpha: 0.65)),
+            ExpansionTile(
+              expansionAnimationStyle: HexoraMotion.expansionStyle(context),
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              shape: const Border(),
+              collapsedShape: const Border(),
+              leading: Icon(
+                Icons.tune_rounded,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-              child: ExpansionTile(
-                tilePadding: const EdgeInsets.symmetric(horizontal: 14),
-                childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
-                leading: Icon(
-                  Icons.tune_rounded,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                title: const Text('Otros campos opcionales'),
-                subtitle: Text(
-                  '${optionalFields.length} campos no utilizados por la plantilla actual',
-                ),
-                children: [_variableFieldsGrid(optionalFields)],
+              title: const Text('Otros campos opcionales'),
+              subtitle: Text(
+                '${optionalFields.length} campos no utilizados por la plantilla actual',
               ),
+              children: [_variableFieldsGrid(optionalFields)],
             ),
           Divider(color: _editorBorder(theme, alpha: 0.72)),
           const SizedBox(height: 14),
@@ -398,108 +402,87 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
     );
   }
 
+  Widget _groupedVariableFields(List<_TemplateVariableField> fields) {
+    const labels = {
+      'services': 'Servicios y mantenimiento',
+      'pricing': 'Precios adicionales',
+      'contract': 'Condiciones del contrato',
+      'details': 'Información adicional',
+    };
+    const icons = {
+      'services': Icons.home_repair_service_outlined,
+      'pricing': Icons.euro_rounded,
+      'contract': Icons.description_outlined,
+    };
+    final groups = <String, List<_TemplateVariableField>>{};
+    for (final field in fields) {
+      groups.putIfAbsent(field.group, () => []).add(field);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final entry in groups.entries) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 10),
+            child: Row(children: [
+              Icon(icons[entry.key] ?? Icons.notes_rounded,
+                  size: 18, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text(
+                      labels[entry.key] ?? _variableLabel(entry.key, null),
+                      style: Theme.of(context).textTheme.titleSmall)),
+            ]),
+          ),
+          _variableFieldsGrid(entry.value),
+          const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+
   Widget _automaticVariablesPanel(
     ThemeData theme,
     List<_TemplateVariableField> fields,
   ) {
     final cs = theme.colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cs.primary.withValues(alpha: 0.055),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.14)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.auto_awesome_rounded, size: 18, color: cs.primary),
-              const SizedBox(width: 8),
-              Text(
-                'Datos automáticos',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: cs.primary,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Se completan al guardar; no necesitas escribirlos.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final tileWidth = constraints.maxWidth < 480
-                  ? constraints.maxWidth
-                  : (constraints.maxWidth - 10) / 2;
-              return Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final field in fields)
-                    Tooltip(
-                      message: '[${field.key}]',
-                      child: Container(
-                        width: tileWidth,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _editorPanelBg(theme),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: _editorBorder(theme, alpha: 0.65),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(field.icon, size: 18, color: cs.primary),
-                            const SizedBox(width: 9),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _variableDisplayLabel(field),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    _variables[field.key]!.text.trim().isEmpty
-                                        ? 'Se calculará al guardar'
-                                        : _variables[field.key]!.text.trim(),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
+    final unique = <String, _TemplateVariableField>{};
+    for (final field in fields) {
+      unique.putIfAbsent(
+          field.key.toUpperCase().replaceAll('Ñ', 'N'), () => field);
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.info_outline_rounded, size: 18, color: cs.primary),
+        const SizedBox(width: 10),
+        Expanded(
+            child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Datos automáticos', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 4),
+            Text(
+                'Estos datos se completan automáticamente al generar el documento.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant)),
+            const SizedBox(height: 6),
+            Wrap(spacing: 16, runSpacing: 4, children: [
+              for (final field in unique.values)
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text('${_variableDisplayLabel(field)}: ',
+                      style: theme.textTheme.bodySmall),
+                  Text(
+                      (_variables[field.key]?.text.trim().isEmpty ?? true)
+                          ? 'Automático'
+                          : _variables[field.key]!.text.trim(),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                ]),
+            ]),
+          ],
+        )),
+      ],
     );
   }
 }

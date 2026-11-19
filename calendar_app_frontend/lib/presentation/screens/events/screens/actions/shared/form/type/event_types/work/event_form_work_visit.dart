@@ -1,5 +1,6 @@
 // presentation/d-event-section/screens/actions/add_screen/screen/event_form_work_visit.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
 import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/add_screen/utils/form/reminder_options.dart';
@@ -137,6 +138,7 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
   Future<void> _chooseReminder() async {
     final loc = AppLocalizations.of(context)!;
     final selected = await showModalBottomSheet<int>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       showDragHandle: true,
       useSafeArea: true,
@@ -297,6 +299,7 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
             ),
             clipBehavior: Clip.antiAlias,
             child: ExpansionTile(
+              expansionAnimationStyle: HexoraMotion.expansionStyle(context),
               initiallyExpanded: _advancedExpanded,
               onExpansionChanged: (value) =>
                   setState(() => _advancedExpanded = value),

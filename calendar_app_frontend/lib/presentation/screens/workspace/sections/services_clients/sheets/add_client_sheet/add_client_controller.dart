@@ -61,7 +61,7 @@ class AddClientController {
   bool active = true;
   bool billingExpanded = false;
   bool serviceLocationExpanded = false;
-  bool serviceLocationEnabled = true;
+  bool serviceLocationEnabled = false;
   late List<Object> _savedServiceLocationValues;
   bool saving = false;
   final Map<String, bool> _touched = {};
@@ -394,10 +394,10 @@ class AddClientController {
       return 'La longitud debe estar entre -180 y 180.';
     }
     if (latitude == 0 && longitude == 0) {
-      return 'La ubicación 0,0 no es un punto de servicio válido.';
+      return 'Configura una ubicación válida; 0,0 no se guardará.';
     }
-    if (radius == null || radius < 25 || radius > 500) {
-      return 'El radio debe estar entre 25 y 500 metros.';
+    if (radius == null || radius < 10 || radius > 1000) {
+      return 'El radio debe estar entre 10 y 1.000 metros.';
     }
     return null;
   }

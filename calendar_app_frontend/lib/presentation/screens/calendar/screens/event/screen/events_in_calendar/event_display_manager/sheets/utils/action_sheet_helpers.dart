@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/presentation/screens/calendar/screens/event/logic/actions/event_actions_manager.dart';
 
@@ -12,6 +13,7 @@ void showEventActionsSheet({
 
 }) {
   showModalBottomSheet(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
     context: context,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

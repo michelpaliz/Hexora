@@ -14,6 +14,7 @@ import 'package:hexora/services/user/presence_domain.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
 import 'package:hexora/services/user/repository/user_repository.dart';
 import 'package:hexora/state/locale_provider.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:hexora/theme/theme_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -78,4 +79,15 @@ final List<SingleChildWidget> coreProviders = [
   ChangeNotifierProvider(create: (_) => PresenceDomain()),
   ChangeNotifierProvider(create: (_) => ThemeModeProvider()),
   ChangeNotifierProvider(create: (_) => LocaleProvider()),
+  ChangeNotifierProxyProvider<UserDomain, UserPreferencesProvider>(
+    create: (_) => UserPreferencesProvider(),
+    update: (_, userDomain, preferences) {
+      final provider = preferences ?? UserPreferencesProvider();
+      final userId = userDomain.user?.id;
+      if (provider.userId != userId) {
+        Future.microtask(() => provider.bindUser(userId));
+      }
+      return provider;
+    },
+  ),
 ];

@@ -74,9 +74,9 @@
   "errorEventNote": "¡La nota del evento no puede estar vacía!",
   "name": "Nombre",
   "userName": "Nombre de usuario",
-  "currentPassword": "Introduce tu contraseña actual",
-  "newPassword": "Actualiza tu contraseña actual",
-  "confirmPassword": "Confirmar contraseña",
+  "currentPassword": "Contraseña actual",
+  "newPassword": "Nueva contraseña",
+  "confirmPassword": "Confirmar nueva contraseña",
   "password": "Contraseña",
   "register": "Registrarse",
   "login": "Iniciar sesión",
@@ -89,6 +89,7 @@
   "confirmPasswordHint": "Introduce tu contraseña de nuevo",
   "logoutMessage": "¿Estás seguro de que quieres cerrar sesión?",
   "passwordNotMatch": "La nueva contraseña y la confirmación no coinciden.",
+  "newPasswordMustDiffer": "La nueva contraseña debe ser distinta de la contraseña actual.",
   "userNameTaken": "El nombre de usuario ya está en uso",
   "weakPassword": "Contraseña débil",
   "emailTaken": "El correo electrónico ya está en uso",
@@ -984,6 +985,10 @@
   "completedEventsSectionSubtitle": "Visitas y tareas completadas recientemente.",
   "completedEventsEmpty": "Aún no hay eventos completados.",
   "roleCardTapHint": "Toca para ver todas las capacidades del rol.",
+  "accessPermissionsTitle": "Permisos de acceso",
+  "accessFullBusiness": "Acceso completo al negocio",
+  "viewRolePermissions": "Ver permisos del rol",
+  "businessHoursScheduleHint": "Establece el horario permitido para programar eventos.",
   "createdByLabel": "Creado por",
   "sectionManage": "Administrar",
   "sectionStatus": "Estado",
@@ -1648,7 +1653,7 @@
     }
   },
   "openInvoicesWorkspace": "Abrir espacio de facturas",
-  "invoiceNumberLabel": "Número de factura (NNN-AA)",
+  "invoiceNumberLabel": "Número de factura",
   "invoiceNumberHelper": "El sufijo de año está fijado a {year}. Introduce los 3 dígitos.",
   "@invoiceNumberHelper": {
     "placeholders": {
@@ -1847,7 +1852,7 @@
   "invoiceNotesHideCta": "Ocultar",
   "invoiceNotesOptionalLabel": "Opcional",
   "invoiceClientInvoicesThisMonthLabel": "Facturas este mes",
-  "clientMissingInvoiceThisMonth": "Factura pendiente este mes",
+  "clientMissingInvoiceThisMonth": "Sin factura este mes",
   "clientInvoiceAllGood": "Factura emitida este mes",
   "clientAllHaveInvoiceTitle": "Todos los clientes facturados",
   "clientInvoiceStatusUnavailableTitle": "Estado de factura no disponible",
@@ -1862,7 +1867,7 @@
       "date": { "type": "String" }
     }
   },
-  "clientMissingCountThisMonth": "{count, plural, =0{Ninguno pendiente} =1{1 pendiente este mes} other{{count} pendientes este mes}}",
+  "clientMissingCountThisMonth": "{count, plural, =0{Todos facturados este mes} =1{1 sin factura este mes} other{{count} sin factura este mes}}",
   "@clientMissingCountThisMonth": {
     "placeholders": {
       "count": { "type": "int" }
@@ -2543,14 +2548,14 @@
   "statementsInvoiceAlreadyLinkedToast": "Esta factura ya estaba vinculada a otra transacción bancaria.",
   "statementsInvalidInvoiceToast": "Factura inválida.",
   "statementsInvoiceNotFoundToast": "Factura no encontrada.",
-  "statementsRepetitiveInvoiceBadge": "Pago fraccionado",
+  "statementsRepetitiveInvoiceBadge": "Factura repetida",
   "statementsRepetitiveInvoiceTooltip": "Esta factura está vinculada a {count} movimientos bancarios.",
   "@statementsRepetitiveInvoiceTooltip": {
     "placeholders": {
       "count": {}
     }
   },
-  "statementsRepetitiveInvoiceLinkedToast": "Pago añadido. La factura tiene ahora {count} movimientos vinculados.",
+  "statementsRepetitiveInvoiceLinkedToast": "Factura vinculada, pero ya estaba usada en otros movimientos ({count}).",
   "@statementsRepetitiveInvoiceLinkedToast": {
     "placeholders": {
       "count": {}
@@ -2861,12 +2866,16 @@
     }
   },
   "mailConversationSignature": "Firma",
+  "mailConversationShowQuoted": "Mostrar contenido citado",
+  "mailConversationHideQuoted": "Ocultar contenido citado",
+  "mailConversationViewComplete": "Ver mensaje completo",
+  "mailConversationViewCompact": "Mostrar vista compacta",
   "mailConversationReply": "Responder",
   "mailConversationReplyAll": "Responder a todos",
   "mailConversationForward": "Reenviar",
   "mailConversationSortNewestFirst": "Más recientes primero",
   "mailConversationSortOldestFirst": "Más antiguos primero",
-  "mailConversationMessageCount": "{count, plural, one {# mensaje} other {# mensajes}}",
+  "mailConversationMessageCount": "{count, plural, one {1 mensaje} other {{count} mensajes}}",
   "@mailConversationMessageCount": {
     "description": "Message count shown above a thread's conversation list.",
     "placeholders": {
@@ -3015,7 +3024,7 @@
   "budgetStepBudget": "Presupuesto",
   "budgetStepLines": "Líneas",
   "budgetStepConfirm": "Confirmar",
-  "budgetStepPreview": "Preview",
+  "budgetStepPreview": "Vista previa",
   "budgetClientInfoPrompt": "La información del cliente en presupuestos es flexible. Elige un cliente existente o escribe un nombre de cliente. Se requiere al menos uno. Esto aplica solo a Presupuestos: facturas y recibos siguen requiriendo un cliente guardado.",
   "budgetClientSelectSavedLabel": "Selecciona un cliente guardado (opcional para Presupuestos).",
   "budgetClientNoneSaved": "Sin cliente guardado",
@@ -3361,9 +3370,9 @@
   "expenseBatchDocListClearAll": "Limpiar todo",
   "expenseBatchDocListRemove": "Quitar",
   "expenseBatchErrorCopyList": "Copiar lista",
-  "expenseTotalsUseSummaryLabel": "Usar resumen del documento",
-  "expenseTotalsSummaryMode": "Totales extraidos del resumen",
-  "expenseTotalsCalculateMode": "Calcular desde lineas",
+  "expenseTotalsUseSummaryLabel": "Origen de los importes",
+  "expenseTotalsSummaryMode": "Desde documento",
+  "expenseTotalsCalculateMode": "Desde líneas",
   "expenseTotalsSummaryHelp": "El IVA de este documento aparece en el resumen inferior del ticket/factura. No es necesario que cada linea muestre IVA por separado.",
   "expenseTotalsLockToLinesHelp": "Base, IVA y total se calculan desde las lineas y descuentos. Activa el resumen si el documento solo muestra el IVA en el pie.",
   "expenseTotalsDirectReviewHelp": "Puedes revisar los totales del documento directamente desde este bloque.",
@@ -3610,6 +3619,10 @@
   "groupSettingsDeleteNamePrompt": "Escribe «{name}» para confirmar la eliminación permanente. Esta acción no se puede deshacer.",
   "@groupSettingsDeleteNamePrompt": {"placeholders": {"name": {"type": "String"}}},
   "groupSettingsDeleteGroup": "Eliminar negocio",
+  "invoiceIssueChronologyError": "Este borrador tiene fecha {draftDate}, pero la factura {invoiceNumber} ya se emitió con la fecha posterior {issuedDate}. Cambia la fecha del borrador antes de emitirlo.",
+  "@invoiceIssueChronologyError": {"placeholders": {"draftDate": {}, "invoiceNumber": {}, "issuedDate": {}}},
+  "invoiceBatchIssueStoppedAfter": "Se emitieron {count} facturas antes de que se detuviera el proceso.",
+  "@invoiceBatchIssueStoppedAfter": {"placeholders": {"count": {}}},
   "agendaCompleted": "Completado",
   "agendaEmptyDay": "No hay trabajos para este día. Selecciona otra fecha o Todos.",
   "downloadsTitle": "Descargas",
@@ -3631,5 +3644,18 @@
   "downloadsRefresh": "Actualizar",
   "downloadsEmpty": "No hay descargas recientes",
   "downloadsChecking": "Comprobando archivos…",
-  "downloadsGeneratedFile": "Archivo generado"
+  "downloadsGeneratedFile": "Archivo generado",
+  "preferencesTitle": "Preferencias",
+  "preferencesNavigation": "Navegación",
+  "preferencesAppearance": "Apariencia",
+  "preferencesLanguage": "Idioma",
+  "preferencesAutomatic": "Automático",
+  "preferencesNavigationAutomatic": "Automático",
+  "preferencesNavigationAutomaticDescription": "Muestra las etiquetas cuando hay espacio disponible.",
+  "preferencesNavigationIconsAndText": "Iconos y texto",
+  "preferencesNavigationIconsAndTextDescription": "Muestra siempre los iconos y nombres de los módulos.",
+  "preferencesNavigationIconsOnly": "Solo iconos",
+  "preferencesNavigationIconsOnlyDescription": "Usa una navegación compacta con ayudas emergentes.",
+  "preferencesThemeLight": "Claro",
+  "preferencesThemeDark": "Oscuro"
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -41,7 +42,7 @@ List<Widget> buildProfileDialogActions(
           if (!rootNavigator.mounted) return;
           final overlayContext = rootNavigator.context;
           if (!overlayContext.mounted) return;
-          showDialog(
+          showHexoraDialog(
             context: overlayContext,
             barrierDismissible: false,
             builder: (_) => const Center(child: CircularProgressIndicator()),
@@ -100,7 +101,7 @@ List<Widget> buildProfileDialogActions(
             final overlayContext =
                 Navigator.of(context, rootNavigator: true).context;
 
-            showDialog(
+            showHexoraDialog(
               context: overlayContext,
               barrierDismissible: false,
               builder: (_) => const Center(child: CircularProgressIndicator()),

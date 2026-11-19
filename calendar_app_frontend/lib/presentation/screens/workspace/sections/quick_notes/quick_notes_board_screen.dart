@@ -1,19 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_popup_menu.dart';
 import 'package:hexora/services/quick_notes/quick_notes_api.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
+import 'package:provider/provider.dart';
 
 class QuickNotesBoardScreen extends StatefulWidget {
-  const QuickNotesBoardScreen({super.key, required this.group});
+  const QuickNotesBoardScreen({
+    super.key,
+    required this.group,
+    this.embedded = false,
+  });
 
   final Group group;
+  final bool embedded;
 
   @override
   State<QuickNotesBoardScreen> createState() => _QuickNotesBoardScreenState();
 }
 
 class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
+  static const _statuses = ['todo', 'in_progress', 'done'];
   final _api = QuickNotesApi();
+  final _searchController = TextEditingController();
   List<Map<String, dynamic>> _notes = const [];
+  Map<String, String> _auditNames = const {};
   Map<String, int?> _limits = const {
     'todo': null,
     'in_progress': null,
@@ -22,8 +36,141 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
   bool _loading = true;
   String? _error;
 
-  bool get _isEs =>
-      Localizations.localeOf(context).languageCode.toLowerCase().startsWith('es');
+  bool get _isEs => Localizations.localeOf(context)
+      .languageCode
+      .toLowerCase()
+      .startsWith('es');
+
+  String _statusLabel(String status) => switch (status) {
+        'todo' => _isEs ? 'Por hacer' : 'To Do',
+        'in_progress' => _isEs ? 'En progreso' : 'In Progress',
+        'done' => _isEs ? 'Hecho' : 'Done',
+        _ => status,
+      };
+
+  String _emptyLabel(String status) => switch (status) {
+        'todo' => _isEs ? 'No hay notas pendientes.' : 'No pending notes.',
+        'in_progress' =>
+          _isEs ? 'No hay notas en progreso.' : 'No notes in progress.',
+        'done' => _isEs ? 'No hay notas completadas.' : 'No completed notes.',
+        _ => '',
+      };
+
+  Color _statusColor(String status, ColorScheme cs) => switch (status) {
+        'todo' => cs.primary,
+        'in_progress' => Colors.amber.shade700,
+        'done' => Colors.green.shade600,
+        _ => cs.outline,
+      };
+
+  String _noteId(Map<String, dynamic> note) =>
+      (note['id'] ?? note['_id'] ?? '').toString();
+
+  String _auditUser(Map<String, dynamic> note, String userKey) {
+    final prefix = userKey.startsWith('created') ? 'created' : 'updated';
+    final user = note[userKey];
+    final legacyUser = note['${prefix}By'];
+    final candidates = <Object?>[
+      if (user is Map) ...[
+        user['name'],
+        user['displayName'],
+        user['fullName'],
+      ],
+      if (legacyUser is Map) ...[
+        legacyUser['name'],
+        legacyUser['displayName'],
+        legacyUser['fullName'],
+      ],
+      if (legacyUser is String) legacyUser,
+      note['${prefix}ByName'],
+      note['${prefix}ByUserName'],
+      note['${prefix}ByUsername'],
+    ];
+    for (final candidate in candidates) {
+      final name = _validAuditName(candidate);
+      if (name != null) return name;
+    }
+    final actorId = note['${prefix}By'] ?? note['${prefix}ById'];
+    final resolved = _resolveAuditName(actorId);
+    if (resolved != null) return resolved;
+    if (prefix == 'updated') {
+      final history = _historyEntries(note);
+      if (history.isNotEmpty) {
+        final historyName = _historyUserNameOrNull(
+          history.first,
+          history.first['user'] as Map?,
+        );
+        if (historyName != null) return historyName;
+      }
+    }
+    return _auditFallback;
+  }
+
+  String get _auditFallback => _isEs ? 'Usuario' : 'User';
+
+  String? _validAuditName(Object? value) {
+    final name = value?.toString().trim() ?? '';
+    final normalized = name.toLowerCase();
+    if (name.isEmpty ||
+        RegExp(r'^[a-fA-F0-9]{24}$').hasMatch(name) ||
+        normalized == 'usuario' ||
+        normalized == 'user') {
+      return null;
+    }
+    return name;
+  }
+
+  String? _resolveAuditName(Object? actorId) {
+    final id = actorId is Map
+        ? (actorId['id'] ?? actorId['_id'])?.toString().trim() ?? ''
+        : actorId?.toString().trim() ?? '';
+    if (id.isEmpty) return null;
+    final cached = _validAuditName(_auditNames[id]);
+    if (cached != null) return cached;
+    try {
+      final current = context.read<UserDomain>().user;
+      if (current != null && current.id == id) {
+        return _validAuditName(current.displayName) ??
+            _validAuditName(current.name);
+      }
+    } catch (_) {}
+    try {
+      final members = context.read<GroupDomain>().usersInGroup.value;
+      for (final member in members) {
+        if (member.id == id) {
+          return _validAuditName(member.displayName) ??
+              _validAuditName(member.name);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  String _auditTimestamp(Object? value) {
+    final date = DateTime.tryParse(value?.toString() ?? '')?.toLocal();
+    if (date == null) return '';
+    final time = MaterialLocalizations.of(context).formatTimeOfDay(
+      TimeOfDay.fromDateTime(date),
+      alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+    );
+    return '${MaterialLocalizations.of(context).formatMediumDate(date)} · $time';
+  }
+
+  String _historyFieldLabel(String field) => switch (field) {
+        'status' => _isEs ? 'Estado' : 'Status',
+        'title' => _isEs ? 'Título' : 'Title',
+        'details' => _isEs ? 'Detalles' : 'Details',
+        'dueDate' => _isEs ? 'Fecha límite' : 'Due date',
+        'clientId' => _isEs ? 'Cliente' : 'Client',
+        'assigneeIds' => _isEs ? 'Asignados' : 'Assignees',
+        _ => field,
+      };
+
+  String _historyValue(String field, Object? value) {
+    final raw = value?.toString() ?? '—';
+    if (field == 'status' && _statuses.contains(raw)) return _statusLabel(raw);
+    return raw;
+  }
 
   @override
   void initState() {
@@ -31,10 +178,36 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
-    if (mounted) setState(() { _loading = true; _error = null; });
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
+      UserDomain? userDomain;
+      try {
+        userDomain = context.read<UserDomain>();
+      } catch (_) {}
       final data = await _api.board(widget.group.id);
+      try {
+        if (userDomain != null) {
+          final users = await userDomain.getUsersForGroup(widget.group);
+          _auditNames = {
+            for (final user in users)
+              user.id: _validAuditName(user.displayName) ??
+                  _validAuditName(user.name) ??
+                  _auditFallback,
+          };
+        }
+      } catch (_) {}
       final rawNotes = data['notes'] as List? ?? const [];
       final rawLimits = data['columnLimits'] as Map? ?? const {};
       if (!mounted) return;
@@ -44,58 +217,58 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
             .map((item) => Map<String, dynamic>.from(item))
             .toList();
         _limits = {
-          for (final key in const ['todo', 'in_progress', 'done'])
+          for (final key in _statuses)
             key: int.tryParse(rawLimits[key]?.toString() ?? ''),
         };
         _loading = false;
       });
     } catch (error) {
       if (!mounted) return;
-      setState(() { _loading = false; _error = error.toString(); });
+      setState(() {
+        _loading = false;
+        _error = error.toString();
+      });
     }
   }
 
   Future<void> _move(Map<String, dynamic> note, String status) async {
     if (note['status'] == status) return;
-    final oldStatus = note['status'];
     String? reason;
-    if (status == 'done' || oldStatus == 'done') {
-      reason = await _requestReason(
-        status == 'done'
+    if (_requiresStatusReason(note, status)) {
+      reason = await _askReason(
+        title: status == 'done'
             ? (_isEs
                 ? '¿Por qué se completa esta nota?'
                 : 'Why is this note being completed?')
             : (_isEs
                 ? '¿Por qué se vuelve a abrir esta nota?'
                 : 'Why is this note being reopened?'),
+        message: _isEs
+            ? 'Añade un motivo para registrar este cambio.'
+            : 'Add a reason to record this change.',
       );
-      if (reason == null) return;
+      if (reason == null || reason.trim().isEmpty) return;
     }
+    final oldStatus = note['status'];
     setState(() => note['status'] = status);
     try {
       final response = await _api.update(
         widget.group.id,
-        note['id'].toString(),
+        _noteId(note),
         {
           'status': status,
           if (reason != null) 'reason': reason,
         },
       );
-      final saved = response['note'];
-      if (saved is Map && mounted) {
-        final index = _notes.indexWhere((item) => item['id'] == note['id']);
-        if (index >= 0) {
-          setState(() => _notes[index] = Map<String, dynamic>.from(saved));
-        }
+      final updated = response['note'];
+      if (updated is Map) {
+        setState(() {
+          note
+            ..clear()
+            ..addAll(Map<String, dynamic>.from(updated));
+        });
       }
-      final warning = response['warning'] as Map?;
-      if (warning != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_isEs
-              ? 'La columna ha superado su límite de ${warning['limit']} tarjetas.'
-              : 'This column is over its ${warning['limit']} card limit.'),
-        ));
-      }
+      _showLimitWarning(response['warning'] as Map?);
     } catch (error) {
       if (!mounted) return;
       setState(() => note['status'] = oldStatus);
@@ -103,42 +276,21 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
     }
   }
 
-  Future<String?> _requestReason(String title) async {
-    final controller = TextEditingController();
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 500,
-          minLines: 2,
-          maxLines: 4,
-          decoration: InputDecoration(
-            labelText: _isEs ? 'Motivo' : 'Reason',
-            hintText: _isEs
-                ? 'Explica brevemente el cambio'
-                : 'Briefly explain the change',
-          ),
+  void _showLimitWarning(Map? warning, {bool created = false}) {
+    if (warning == null || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _isEs
+              ? created
+                  ? 'Nota creada. La columna supera el límite configurado.'
+                  : 'La columna ha superado su límite de ${warning['limit']} tarjetas.'
+              : created
+                  ? 'Note created. The column is over its configured limit.'
+                  : 'This column is over its ${warning['limit']} card limit.',
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(_isEs ? 'Cancelar' : 'Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final value = controller.text.trim();
-              if (value.isNotEmpty) Navigator.pop(context, value);
-            },
-            child: Text(_isEs ? 'Continuar' : 'Continue'),
-          ),
-        ],
       ),
     );
-    controller.dispose();
-    return result;
   }
 
   void _showError(Object error) {
@@ -147,31 +299,719 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
     );
   }
 
-  Future<void> _create() async {
-    final title = TextEditingController();
-    final details = TextEditingController();
-    final result = await showDialog<Map<String, String>>(
+  bool _requiresStatusReason(Map<String, dynamic> note, String nextStatus) =>
+      nextStatus == 'done' || note['status'] == 'done';
+
+  bool _requiresPayloadReason(
+    Map<String, dynamic> note,
+    Map<String, dynamic> payload,
+  ) {
+    if (payload.containsKey('clientId') || payload.containsKey('assigneeIds')) {
+      return true;
+    }
+    return false;
+  }
+
+  Future<String?> _askReason({
+    required String title,
+    required String message,
+  }) async {
+    var reason = '';
+    String? error;
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(message),
+              const SizedBox(height: 12),
+              TextFormField(
+                autofocus: true,
+                minLines: 2,
+                maxLines: 4,
+                onChanged: (value) {
+                  reason = value;
+                  if (error != null && value.trim().isNotEmpty) {
+                    setDialogState(() => error = null);
+                  }
+                },
+                decoration: InputDecoration(
+                  labelText: _isEs ? 'Motivo *' : 'Reason *',
+                  errorText: error,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(_isEs ? 'Cancelar' : 'Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (reason.trim().isEmpty) {
+                  setDialogState(() {
+                    error = _isEs
+                        ? 'Escribe un motivo para continuar.'
+                        : 'Enter a reason to continue.';
+                  });
+                  return;
+                }
+                Navigator.pop(dialogContext, reason.trim());
+              },
+              child: Text(_isEs ? 'Continuar' : 'Continue'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _create({String initialStatus = 'todo'}) async {
+    final payload = await _showNoteDialog(initialStatus: initialStatus);
+    if (payload == null) return;
+    try {
+      final response = await _api.create(widget.group.id, payload);
+      final note = response['note'];
+      if (note is Map && mounted) {
+        setState(() => _notes = [Map<String, dynamic>.from(note), ..._notes]);
+      }
+      _showLimitWarning(response['warning'] as Map?, created: true);
+    } catch (error) {
+      if (mounted) _showError(error);
+    }
+  }
+
+  Future<void> _edit(Map<String, dynamic> note) async {
+    final payload = await _showNoteDialog(note: note);
+    if (payload == null) return;
+    final statusReason = payload['status'] != note['status'] &&
+        _requiresStatusReason(note, payload['status'].toString());
+    if (statusReason || _requiresPayloadReason(note, payload)) {
+      final reason = await _askReason(
+        title: statusReason && payload['status'] == 'done'
+            ? (_isEs
+                ? '¿Por qué se completa esta nota?'
+                : 'Why is this note being completed?')
+            : statusReason
+                ? (_isEs
+                    ? '¿Por qué se vuelve a abrir esta nota?'
+                    : 'Why is this note being reopened?')
+                : (_isEs
+                    ? '¿Por qué se modifica esta nota?'
+                    : 'Why is this note being changed?'),
+        message: _isEs
+            ? 'Añade un motivo para registrar este cambio.'
+            : 'Add a reason to record this change.',
+      );
+      if (reason == null || reason.trim().isEmpty) return;
+      payload['reason'] = reason.trim();
+    }
+    try {
+      final response =
+          await _api.update(widget.group.id, _noteId(note), payload);
+      if (!mounted) return;
+      final updated = response['note'];
+      setState(() {
+        if (updated is Map) {
+          note
+            ..clear()
+            ..addAll(Map<String, dynamic>.from(updated));
+        } else {
+          note.addAll(payload);
+        }
+      });
+      _showLimitWarning(response['warning'] as Map?);
+      await _preview(note);
+    } catch (error) {
+      if (mounted) _showError(error);
+    }
+  }
+
+  Future<void> _preview(Map<String, dynamic> note) async {
+    await _showNoteDialog(note: note, startInEdit: false);
+  }
+
+  Future<Map<String, dynamic>?> _showNoteDialog({
+    Map<String, dynamic>? note,
+    String initialStatus = 'todo',
+    bool startInEdit = true,
+  }) async {
+    var title = note?['title']?.toString() ?? '';
+    var details = note?['details']?.toString() ?? '';
+    var status = note?['status']?.toString() ?? initialStatus;
+    var editing = note == null || startInEdit;
+    String? titleError;
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        clipBehavior: Clip.antiAlias,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: StatefulBuilder(
+            builder: (context, setDialogState) {
+              final cs = Theme.of(context).colorScheme;
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.note_alt_outlined,
+                              size: 19, color: cs.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              !editing
+                                  ? (_isEs
+                                      ? 'Detalle de la nota'
+                                      : 'Note details')
+                                  : note == null
+                                      ? (_isEs
+                                          ? 'Nueva nota rápida'
+                                          : 'New quick note')
+                                      : (_isEs ? 'Editar nota' : 'Edit note'),
+                              style: const TextStyle(
+                                fontFamily: HexoraTypography.fontFamily,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: _isEs ? 'Cerrar' : 'Close',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => Navigator.pop(dialogContext),
+                            icon: const Icon(Icons.close_rounded, size: 19),
+                          ),
+                        ],
+                      ),
+                      if (editing)
+                        ..._editNoteFields(
+                          dialogContext: dialogContext,
+                          note: note,
+                          title: title,
+                          details: details,
+                          status: status,
+                          titleError: titleError,
+                          setDialogState: setDialogState,
+                          onTitleChanged: (value) {
+                            title = value;
+                            if (titleError != null && value.trim().isNotEmpty) {
+                              setDialogState(() => titleError = null);
+                            }
+                          },
+                          onDetailsChanged: (value) => details = value,
+                          onStatusChanged: (value) =>
+                              setDialogState(() => status = value),
+                          onValidateAndSave: () {
+                            if (title.trim().isEmpty) {
+                              setDialogState(() {
+                                titleError = _isEs
+                                    ? 'Escribe un título para continuar.'
+                                    : 'Enter a title to continue.';
+                              });
+                              return;
+                            }
+                            Navigator.pop(dialogContext, <String, dynamic>{
+                              'title': title.trim(),
+                              'details': details.trim(),
+                              'status': status,
+                            });
+                          },
+                        )
+                      else
+                        ..._previewNoteFields(
+                          dialogContext: dialogContext,
+                          note: note!,
+                          status: status,
+                          setDialogState: setDialogState,
+                          onStatusChanged: (value) => status = value,
+                          onEdit: () => setDialogState(() => editing = true),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    return result;
+  }
+
+  List<Widget> _editNoteFields({
+    required BuildContext dialogContext,
+    required Map<String, dynamic>? note,
+    required String title,
+    required String details,
+    required String status,
+    required String? titleError,
+    required StateSetter setDialogState,
+    required ValueChanged<String> onTitleChanged,
+    required ValueChanged<String> onDetailsChanged,
+    required ValueChanged<String> onStatusChanged,
+    required VoidCallback onValidateAndSave,
+  }) {
+    return [
+      const SizedBox(height: 16),
+      TextFormField(
+        initialValue: title,
+        autofocus: true,
+        textInputAction: TextInputAction.next,
+        onChanged: onTitleChanged,
+        decoration: InputDecoration(
+          labelText: _isEs ? 'Título *' : 'Title *',
+          hintText: _isEs ? '¿Qué necesitas hacer?' : 'What do you need to do?',
+          errorText: titleError,
+          isDense: true,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        ),
+      ),
+      const SizedBox(height: 14),
+      TextFormField(
+        initialValue: details,
+        onChanged: onDetailsChanged,
+        minLines: 3,
+        maxLines: 7,
+        textInputAction: TextInputAction.newline,
+        decoration: InputDecoration(
+          labelText: _isEs ? 'Detalles' : 'Details',
+          hintText: _isEs
+              ? 'Añade información adicional (opcional)…'
+              : 'Add optional details…',
+          alignLabelWithHint: true,
+          isDense: true,
+          contentPadding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        ),
+      ),
+      const SizedBox(height: 16),
+      _statusLabelWidget(),
+      const SizedBox(height: 6),
+      _statusSelector(status, onStatusChanged),
+      const SizedBox(height: 18),
+      Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+      const SizedBox(height: 12),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          HexoraButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            label: _isEs ? 'Cancelar' : 'Cancel',
+            variant: HexoraButtonVariant.secondary,
+          ),
+          const SizedBox(width: 8),
+          HexoraButton(
+            onPressed: onValidateAndSave,
+            icon: note == null ? Icons.add_rounded : Icons.check_rounded,
+            label: note == null
+                ? (_isEs ? 'Crear nota' : 'Create note')
+                : (_isEs ? 'Guardar' : 'Save'),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  List<Widget> _previewNoteFields({
+    required BuildContext dialogContext,
+    required Map<String, dynamic> note,
+    required String status,
+    required StateSetter setDialogState,
+    required ValueChanged<String> onStatusChanged,
+    required VoidCallback onEdit,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final details = note['details']?.toString().trim() ?? '';
+    final client = note['client'] as Map?;
+    final assignees = note['assignees'] as List? ?? const [];
+    final due = DateTime.tryParse(note['dueDate']?.toString() ?? '')?.toLocal();
+    final createdAt = _auditTimestamp(note['createdAt']);
+    final updatedAt = _auditTimestamp(note['updatedAt']);
+    final createdBy = _auditUser(note, 'createdByUser');
+    final updatedBy = _auditUser(note, 'updatedByUser');
+    final history = _historyEntries(note);
+    return [
+      const SizedBox(height: 12),
+      Text(
+        note['title']?.toString() ?? '',
+        style: const TextStyle(
+          fontFamily: HexoraTypography.fontFamily,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          height: 1.3,
+        ),
+      ),
+      if (details.isNotEmpty) ...[
+        const SizedBox(height: 10),
+        Text(
+          details,
+          style: TextStyle(
+            color: cs.onSurfaceVariant,
+            fontSize: HexoraTypography.body,
+            height: 1.5,
+          ),
+        ),
+      ],
+      if (client != null)
+        _previewMeta(Icons.business_outlined, client['name']?.toString() ?? ''),
+      if (assignees.isNotEmpty)
+        _previewMeta(
+          Icons.group_outlined,
+          assignees
+              .map((item) => item is Map ? item['name']?.toString() : null)
+              .whereType<String>()
+              .join(', '),
+        ),
+      if (due != null)
+        _previewMeta(
+          Icons.event_outlined,
+          MaterialLocalizations.of(context).formatMediumDate(due),
+        ),
+      if (createdAt.isNotEmpty)
+        _previewMeta(
+          Icons.person_outline_rounded,
+          '${_isEs ? 'Creada' : 'Created'} · $createdAt${createdBy.isEmpty ? '' : ' · $createdBy'}',
+        ),
+      if (updatedAt.isNotEmpty)
+        _previewMeta(
+          Icons.update_rounded,
+          '${_isEs ? 'Modificada' : 'Updated'} · $updatedAt${updatedBy.isEmpty ? '' : ' · $updatedBy'}',
+        ),
+      if (history.isNotEmpty) ...[
+        const SizedBox(height: 18),
+        Text(
+          _isEs ? 'Historial de cambios' : 'Change history',
+          style: TextStyle(
+            color: cs.onSurfaceVariant,
+            fontSize: HexoraTypography.label,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        for (final entry in history) _historyEntry(entry),
+      ],
+      const SizedBox(height: 16),
+      Row(
+        children: [
+          Text(
+            _isEs ? 'Estado' : 'Status',
+            style: TextStyle(
+              color: cs.onSurfaceVariant,
+              fontSize: HexoraTypography.label,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 10),
+          _statusChip(status),
+        ],
+      ),
+      const SizedBox(height: 18),
+      Divider(height: 1, color: cs.outlineVariant),
+      const SizedBox(height: 12),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (status != 'done')
+            HexoraButton(
+              onPressed: () async {
+                await _move(note, 'done');
+                if (mounted && note['status'] == 'done') {
+                  onStatusChanged('done');
+                  setDialogState(() {});
+                }
+              },
+              icon: Icons.check_rounded,
+              label: _isEs ? 'Marcar como hecho' : 'Mark as done',
+              variant: HexoraButtonVariant.secondary,
+              size: HexoraButtonSize.compact,
+            ),
+          if (status != 'done') const SizedBox(width: 8),
+          HexoraButton(
+            onPressed: onEdit,
+            icon: Icons.edit_outlined,
+            label: _isEs ? 'Editar' : 'Edit',
+            size: HexoraButtonSize.compact,
+          ),
+        ],
+      ),
+    ];
+  }
+
+  List<Map<String, dynamic>> _historyEntries(Map<String, dynamic> note) {
+    final entries = (note['changeHistory'] as List? ?? const [])
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList();
+    entries.sort((a, b) {
+      final aDate = DateTime.tryParse(a['changedAt']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate = DateTime.tryParse(b['changedAt']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      return bDate.compareTo(aDate);
+    });
+    return entries;
+  }
+
+  Widget _historyEntry(Map<String, dynamic> entry) {
+    final cs = Theme.of(context).colorScheme;
+    final user = entry['user'] as Map?;
+    final userName = _historyUserName(entry, user);
+    final changes = (entry['changes'] as List? ?? const [])
+        .whereType<Map>()
+        .map((change) => Map<String, dynamic>.from(change))
+        .toList();
+    final reason = entry['reason']?.toString().trim() ?? '';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.person_outline_rounded,
+                  size: 15, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  userName,
+                  style: const TextStyle(
+                    fontSize: HexoraTypography.label,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                _auditTimestamp(entry['changedAt']),
+                style: TextStyle(
+                  color: cs.onSurfaceVariant,
+                  fontSize: HexoraTypography.caption,
+                ),
+              ),
+            ],
+          ),
+          for (final change in changes)
+            Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: Text(
+                '${_historyFieldLabel(change['field']?.toString() ?? '')}: ${_historyValue(change['field']?.toString() ?? '', change['fromValue'])} → ${_historyValue(change['field']?.toString() ?? '', change['toValue'])}',
+                style: TextStyle(
+                  color: cs.onSurfaceVariant,
+                  fontSize: HexoraTypography.caption,
+                ),
+              ),
+            ),
+          if (reason.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                '${_isEs ? 'Motivo' : 'Reason'}: $reason',
+                style: TextStyle(
+                  color: cs.onSurfaceVariant,
+                  fontSize: HexoraTypography.caption,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _historyUserName(Map<String, dynamic> entry, Map? user) {
+    return _historyUserNameOrNull(entry, user) ?? _auditFallback;
+  }
+
+  String? _historyUserNameOrNull(Map<String, dynamic> entry, Map? user) {
+    final candidates = <Object?>[
+      user?['name'],
+      user?['displayName'],
+      user?['fullName'],
+      entry['userName'],
+      entry['username'],
+      entry['actorName'],
+    ];
+    for (final candidate in candidates) {
+      final name = _validAuditName(candidate);
+      if (name != null) return name;
+    }
+    for (final actor in <Object?>[
+      entry['userId'],
+      entry['actorId'],
+      entry['changedBy'],
+      entry['changedByUser'],
+    ]) {
+      final resolved = _resolveAuditName(actor);
+      if (resolved != null) return resolved;
+    }
+    return null;
+  }
+
+  Widget _statusLabelWidget() {
+    final cs = Theme.of(context).colorScheme;
+    return Text(
+      _isEs ? 'Estado' : 'Status',
+      style: TextStyle(
+        color: cs.onSurfaceVariant,
+        fontSize: HexoraTypography.label,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
+  Widget _statusChip(String status) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: cs.primaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        _statusLabel(status),
+        style: TextStyle(
+          color: cs.onPrimaryContainer,
+          fontSize: HexoraTypography.label,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _previewMeta(IconData icon, String text) {
+    if (text.trim().isEmpty) return const SizedBox.shrink();
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: cs.onSurfaceVariant),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: cs.onSurfaceVariant,
+                fontSize: HexoraTypography.label,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusSelector(String selected, ValueChanged<String> onChanged) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      height: 38,
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        children: [
+          for (final value in _statuses)
+            Expanded(
+              child: InkWell(
+                onTap: () => onChanged(value),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 140),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected == value
+                        ? cs.primaryContainer
+                        : Colors.transparent,
+                  ),
+                  child: Text(
+                    _statusLabel(value),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected == value
+                          ? cs.onPrimaryContainer
+                          : cs.onSurfaceVariant,
+                      fontSize: HexoraTypography.label,
+                      fontWeight:
+                          selected == value ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _delete(Map<String, dynamic> note) async {
+    final reason = await _askReason(
+      title: _isEs ? 'Eliminar nota' : 'Delete note',
+      message: _isEs
+          ? 'Indica por qué eliminas “${note['title'] ?? ''}”.'
+          : 'Tell us why you are deleting “${note['title'] ?? ''}”.',
+    );
+    if (reason == null || reason.trim().isEmpty) return;
+    try {
+      await _api.delete(
+        widget.group.id,
+        _noteId(note),
+        reason: reason.trim(),
+      );
+      if (mounted) setState(() => _notes.remove(note));
+    } catch (error) {
+      if (mounted) _showError(error);
+    }
+  }
+
+  Future<void> _editLimits() async {
+    final values = {
+      for (final key in _statuses) key: _limits[key]?.toString() ?? '',
+    };
+    final result = await showDialog<Map<String, int?>>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(_isEs ? 'Nueva nota rápida' : 'New quick note'),
+        title: Text(_isEs ? 'Límites de columnas' : 'Column limits'),
         content: SizedBox(
-          width: 420,
+          width: 400,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: title,
-                autofocus: true,
-                decoration: InputDecoration(labelText: _isEs ? 'Título' : 'Title'),
-              ),
+              Text(_isEs
+                  ? 'Déjalo vacío para no usar límite. Los límites avisan, pero no bloquean tarjetas.'
+                  : 'Leave blank for no limit. Limits warn but never block cards.'),
               const SizedBox(height: 12),
-              TextField(
-                controller: details,
-                minLines: 2,
-                maxLines: 5,
-                decoration:
-                    InputDecoration(labelText: _isEs ? 'Detalles' : 'Details'),
-              ),
+              for (final key in values.keys)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: TextFormField(
+                    initialValue: values[key],
+                    onChanged: (value) => values[key] = value,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(labelText: _statusLabel(key)),
+                  ),
+                ),
             ],
           ),
         ),
@@ -181,93 +1021,15 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
             child: Text(_isEs ? 'Cancelar' : 'Cancel'),
           ),
           FilledButton(
-            onPressed: () {
-              if (title.text.trim().isEmpty) return;
-              Navigator.pop(context, {
-                'title': title.text.trim(),
-                'details': details.text.trim(),
-              });
-            },
-            child: Text(_isEs ? 'Crear' : 'Create'),
-          ),
-        ],
-      ),
-    );
-    title.dispose();
-    details.dispose();
-    if (result == null) return;
-    try {
-      final response = await _api.create(widget.group.id, result);
-      final note = response['note'];
-      if (note is Map && mounted) {
-        setState(() => _notes = [
-              Map<String, dynamic>.from(note),
-              ..._notes,
-            ]);
-      }
-      final warning = response['warning'] as Map?;
-      if (warning != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_isEs
-              ? 'Nota creada. La columna supera el límite configurado.'
-              : 'Note created. The column is over its configured limit.'),
-        ));
-      }
-    } catch (error) {
-      if (mounted) _showError(error);
-    }
-  }
-
-  Future<void> _editLimits() async {
-    final controllers = {
-      for (final key in const ['todo', 'in_progress', 'done'])
-        key: TextEditingController(text: _limits[key]?.toString() ?? ''),
-    };
-    final labels = {
-      'todo': _isEs ? 'Por hacer' : 'To Do',
-      'in_progress': _isEs ? 'En progreso' : 'In Progress',
-      'done': _isEs ? 'Hecho' : 'Done',
-    };
-    final result = await showDialog<Map<String, int?>>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(_isEs ? 'Límites de columnas' : 'Column limits'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_isEs
-                ? 'Déjalo vacío para no usar límite. El límite muestra un aviso, pero no bloquea tarjetas.'
-                : 'Leave blank for no limit. Limits show a warning and never block cards.'),
-            const SizedBox(height: 12),
-            for (final key in controllers.keys)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: TextField(
-                  controller: controllers[key],
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: labels[key]),
-                ),
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(_isEs ? 'Cancelar' : 'Cancel'),
-          ),
-          FilledButton(
             onPressed: () => Navigator.pop(context, {
-              for (final entry in controllers.entries)
-                entry.key: int.tryParse(entry.value.text.trim()),
+              for (final entry in values.entries)
+                entry.key: int.tryParse(entry.value.trim()),
             }),
             child: Text(_isEs ? 'Guardar' : 'Save'),
           ),
         ],
       ),
     );
-    for (final controller in controllers.values) {
-      controller.dispose();
-    }
     if (result == null) return;
     try {
       await _api.updateLimits(widget.group.id, result);
@@ -277,126 +1039,445 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
     }
   }
 
+  List<Map<String, dynamic>> _notesFor(String status) {
+    final query = _searchController.text.trim().toLowerCase();
+    return _notes.where((note) {
+      if (note['status'] != status) return false;
+      if (query.isEmpty) return true;
+      final client = note['client'] as Map?;
+      final assignees = note['assignees'] as List? ?? const [];
+      final searchable = [
+        note['title'],
+        note['details'],
+        client?['name'],
+        ...assignees.map((item) => item is Map ? item['name'] : null),
+      ].whereType<Object>().join(' ').toLowerCase();
+      return searchable.contains(query);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEs ? 'Notas rápidas' : 'Quick notes'),
-        actions: [
-          IconButton(
-            tooltip: _isEs ? 'Límites de columnas' : 'Column limits',
-            onPressed: _editLimits,
-            icon: const Icon(Icons.tune_rounded),
-          ),
-          IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
-        ],
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      floatingActionButton: isMobile
+          ? FloatingActionButton.small(
+              onPressed: _create,
+              tooltip: _isEs ? 'Nueva nota' : 'New note',
+              child: const Icon(Icons.add_rounded),
+            )
+          : null,
+      body: SafeArea(
+        top: !widget.embedded,
+        child: Column(
+          children: [
+            _toolbar(isMobile),
+            Expanded(child: _body()),
+          ],
+        ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _create,
-        icon: const Icon(Icons.add_rounded),
-        label: Text(_isEs ? 'Nueva nota' : 'New note'),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: FilledButton.icon(
-                    onPressed: _load,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: Text(_error!),
-                  ),
-                )
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = constraints.maxWidth >= 1050
-                        ? (constraints.maxWidth - 64) / 3
-                        : 330.0;
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _column('todo', _isEs ? 'Por hacer' : 'To Do',
-                              Colors.blue, width, cs),
-                          const SizedBox(width: 16),
-                          _column('in_progress',
-                              _isEs ? 'En progreso' : 'In Progress',
-                              Colors.amber.shade700, width, cs),
-                          const SizedBox(width: 16),
-                          _column('done', _isEs ? 'Hecho' : 'Done',
-                              Colors.green, width, cs),
-                        ],
-                      ),
-                    );
-                  },
-                ),
     );
   }
 
-  Widget _column(
-    String status,
-    String label,
-    Color color,
-    double width,
-    ColorScheme cs,
-  ) {
-    final notes = _notes.where((note) => note['status'] == status).toList();
-    final limit = _limits[status];
-    final over = limit != null && notes.length >= limit;
-    return DragTarget<Map<String, dynamic>>(
-      onWillAcceptWithDetails: (_) => true,
-      onAcceptWithDetails: (details) => _move(details.data, status),
-      builder: (context, candidates, rejected) => AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: width,
-        constraints: const BoxConstraints(minHeight: 260),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: candidates.isNotEmpty
-              ? color.withValues(alpha: .14)
-              : cs.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: over ? cs.error : color.withValues(alpha: .3)),
+  Widget _toolbar(bool isMobile) {
+    final cs = Theme.of(context).colorScheme;
+    final title = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!widget.embedded) ...[
+          HexoraButton.iconOnly(
+            onPressed: () => Navigator.maybePop(context),
+            icon: Icons.arrow_back_rounded,
+            tooltip: _isEs ? 'Volver' : 'Back',
+          ),
+          const SizedBox(width: 6),
+        ],
+        Icon(Icons.view_kanban_outlined, size: 20, color: cs.primary),
+        const SizedBox(width: 8),
+        Text(
+          _isEs ? 'Notas rápidas' : 'Quick notes',
+          style: const TextStyle(
+            fontFamily: HexoraTypography.fontFamily,
+            fontSize: HexoraTypography.pageTitle,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-        child: Column(
-          children: [
-            Row(
+      ],
+    );
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        HexoraButton.iconOnly(
+          onPressed: _editLimits,
+          icon: Icons.tune_rounded,
+          tooltip: _isEs ? 'Límites de columnas' : 'Column limits',
+        ),
+        const SizedBox(width: 4),
+        HexoraButton.iconOnly(
+          onPressed: _load,
+          icon: Icons.refresh_rounded,
+          tooltip: _isEs ? 'Actualizar' : 'Refresh',
+        ),
+        if (!isMobile) ...[
+          const SizedBox(width: 8),
+          HexoraButton(
+            onPressed: _create,
+            icon: Icons.add_rounded,
+            label: _isEs ? 'Nueva nota' : 'New note',
+          ),
+        ],
+      ],
+    );
+    final search = SizedBox(
+      height: 34,
+      child: TextField(
+        controller: _searchController,
+        onChanged: (_) => setState(() {}),
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(fontSize: HexoraTypography.body),
+        decoration: InputDecoration(
+          hintText: _isEs ? 'Buscar notas…' : 'Search notes…',
+          prefixIcon: const Icon(Icons.search_rounded, size: 18),
+          suffixIcon: _searchController.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: _isEs ? 'Limpiar búsqueda' : 'Clear search',
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {});
+                  },
+                  icon: const Icon(Icons.close_rounded, size: 16),
+                ),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+          filled: true,
+          fillColor: cs.surfaceContainerLow,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(HexoraDimensions.radius),
+            borderSide: BorderSide(color: cs.outlineVariant),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(HexoraDimensions.radius),
+            borderSide: BorderSide(color: cs.outlineVariant),
+          ),
+        ),
+      ),
+    );
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(bottom: BorderSide(color: cs.outlineVariant)),
+      ),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, isMobile ? 10 : 8),
+      child: isMobile
+          ? Column(
               children: [
-                Container(width: 10, height: 10,
-                    decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-                const SizedBox(width: 8),
-                Expanded(child: Text(label,
-                    style: const TextStyle(fontWeight: FontWeight.w800))),
-                Text(limit == null ? '${notes.length}' : '${notes.length}/$limit',
-                    style: TextStyle(
-                      color: over ? cs.error : cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    )),
+                Row(children: [Expanded(child: title), actions]),
+                const SizedBox(height: 8),
+                search,
+              ],
+            )
+          : Row(
+              children: [
+                title,
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Align(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 360),
+                      child: search,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                actions,
               ],
             ),
+    );
+  }
+
+  Widget _body() {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off_outlined, size: 32),
+              const SizedBox(height: 10),
+              Text(_error!.replaceFirst('Exception: ', ''),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              HexoraButton(
+                onPressed: _load,
+                icon: Icons.refresh_rounded,
+                label: _isEs ? 'Reintentar' : 'Try again',
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 14.0;
+        if (constraints.maxWidth >= 900) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var index = 0; index < _statuses.length; index++) ...[
+                  if (index > 0) const SizedBox(width: gap),
+                  Expanded(child: _column(_statuses[index])),
+                ],
+              ],
+            ),
+          );
+        }
+        final columnWidth = constraints.maxWidth < 600
+            ? (constraints.maxWidth * .86).clamp(280.0, 340.0)
+            : 320.0;
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.all(12),
+          child: SizedBox(
+            height: constraints.maxHeight - 24,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var index = 0; index < _statuses.length; index++) ...[
+                  if (index > 0) const SizedBox(width: 12),
+                  SizedBox(
+                    width: columnWidth,
+                    child: _column(_statuses[index]),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _column(String status) {
+    final cs = Theme.of(context).colorScheme;
+    final color = _statusColor(status, cs);
+    final notes = _notesFor(status);
+    final totalCount = _notes.where((note) => note['status'] == status).length;
+    final limit = _limits[status];
+    final over = limit != null && totalCount >= limit;
+    final searching = _searchController.text.trim().isNotEmpty;
+    return DragTarget<Map<String, dynamic>>(
+      onWillAcceptWithDetails: (details) => details.data['status'] != status,
+      onAcceptWithDetails: (details) => _move(details.data, status),
+      builder: (context, candidates, rejected) => AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        decoration: BoxDecoration(
+          color: candidates.isNotEmpty
+              ? color.withValues(alpha: .10)
+              : cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+          border: candidates.isNotEmpty
+              ? Border.all(color: color.withValues(alpha: .55), width: 1.5)
+              : null,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            SizedBox(
+              height: 40,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration:
+                          BoxDecoration(color: color, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        _statusLabel(status),
+                        style: const TextStyle(
+                          fontFamily: HexoraTypography.fontFamily,
+                          fontSize: HexoraTypography.sectionTitle,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: over
+                            ? cs.errorContainer
+                            : cs.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        limit == null ? '$totalCount' : '$totalCount/$limit',
+                        style: TextStyle(
+                          fontSize: HexoraTypography.caption,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              over ? cs.onErrorContainer : cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: HexoraPopupMenuButton<String>(
+                        tooltip:
+                            _isEs ? 'Acciones de columna' : 'Column actions',
+                        icon: Icon(
+                          Icons.more_vert_rounded,
+                          size: 17,
+                          color: cs.onSurfaceVariant,
+                        ),
+                        onSelected: (value) {
+                          if (value == 'add') _create(initialStatus: status);
+                          if (value == 'limits') _editLimits();
+                        },
+                        itemBuilder: (_) => [
+                          HexoraPopupMenuActionItem(
+                            value: 'add',
+                            icon: Icons.add_rounded,
+                            label: _isEs ? 'Añadir nota' : 'Add note',
+                            tone: HexoraPopupMenuTone.primary,
+                          ),
+                          HexoraPopupMenuActionItem(
+                            value: 'limits',
+                            icon: Icons.tune_rounded,
+                            label: _isEs ? 'Editar límites' : 'Edit limits',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             if (over)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
+              Container(
+                width: double.infinity,
+                color: cs.errorContainer.withValues(alpha: .55),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 child: Text(
                   _isEs ? 'Límite alcanzado' : 'Column limit reached',
-                  style: TextStyle(color: cs.error, fontSize: 12),
+                  style: TextStyle(
+                    color: cs.onErrorContainer,
+                    fontSize: HexoraTypography.caption,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            const SizedBox(height: 10),
-            for (final note in notes) ...[
-              LongPressDraggable<Map<String, dynamic>>(
-                data: note,
-                feedback: Material(
-                  elevation: 8,
-                  borderRadius: BorderRadius.circular(14),
-                  child: SizedBox(width: width - 24, child: _card(note, color)),
-                ),
-                childWhenDragging: Opacity(opacity: .35, child: _card(note, color)),
-                child: _card(note, color),
+            Expanded(
+              child: notes.isEmpty
+                  ? _emptyState(status, searching)
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(10, 4, 10, 12),
+                      itemCount: notes.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final note = notes[index];
+                        return _draggableCard(note);
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _draggableCard(Map<String, dynamic> note) {
+    final desktop = MediaQuery.sizeOf(context).width >= 900;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final feedback = Material(
+          color: Colors.transparent,
+          elevation: 6,
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            width: constraints.maxWidth,
+            child: _card(note, dragging: true),
+          ),
+        );
+        final placeholder = Opacity(
+          opacity: .28,
+          child: _card(note),
+        );
+        final card = MouseRegion(
+          cursor: SystemMouseCursors.grab,
+          child: _card(note),
+        );
+
+        if (desktop) {
+          return Draggable<Map<String, dynamic>>(
+            data: note,
+            rootOverlay: true,
+            dragAnchorStrategy: pointerDragAnchorStrategy,
+            feedback: feedback,
+            childWhenDragging: placeholder,
+            child: card,
+          );
+        }
+
+        return LongPressDraggable<Map<String, dynamic>>(
+          data: note,
+          delay: const Duration(milliseconds: 260),
+          rootOverlay: true,
+          dragAnchorStrategy: pointerDragAnchorStrategy,
+          feedback: feedback,
+          childWhenDragging: placeholder,
+          child: card,
+        );
+      },
+    );
+  }
+
+  Widget _emptyState(String status, bool searching) {
+    final cs = Theme.of(context).colorScheme;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              searching ? Icons.search_off_rounded : Icons.note_alt_outlined,
+              size: 24,
+              color: cs.onSurfaceVariant.withValues(alpha: .65),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              searching
+                  ? (_isEs ? 'No hay resultados.' : 'No matching notes.')
+                  : _emptyLabel(status),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: cs.onSurfaceVariant,
+                fontSize: HexoraTypography.body,
               ),
-              const SizedBox(height: 10),
+            ),
+            if (!searching) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () => _create(initialStatus: status),
+                icon: const Icon(Icons.add_rounded, size: 16),
+                label: Text(_isEs ? 'Añadir nota' : 'Add note'),
+              ),
             ],
           ],
         ),
@@ -404,189 +1485,174 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
     );
   }
 
-  Widget _card(Map<String, dynamic> note, Color color) {
+  Widget _card(Map<String, dynamic> note, {bool dragging = false}) {
+    final cs = Theme.of(context).colorScheme;
     final client = note['client'] as Map?;
     final assignees = note['assignees'] as List? ?? const [];
     final due = DateTime.tryParse(note['dueDate']?.toString() ?? '')?.toLocal();
-    final createdAt =
-        DateTime.tryParse(note['createdAt']?.toString() ?? '')?.toLocal();
-    final updatedAt =
-        DateTime.tryParse(note['updatedAt']?.toString() ?? '')?.toLocal();
-    final createdBy = note['createdByUser'] as Map?;
-    final updatedBy = note['updatedByUser'] as Map?;
-    final createdByName = _safeUserName(createdBy?['name']);
-    final updatedByName = _safeUserName(updatedBy?['name']);
-    final history = note['changeHistory'] as List? ?? const [];
-    final latestHistory =
-        history.isNotEmpty && history.last is Map ? history.last as Map : null;
+    final details = note['details']?.toString().trim() ?? '';
+    final createdAt = _auditTimestamp(note['createdAt']);
+    final updatedAt = _auditTimestamp(note['updatedAt']);
+    final createdBy = _auditUser(note, 'createdByUser');
+    final updatedBy = _auditUser(note, 'updatedByUser');
+    final history = _historyEntries(note);
+    final latestReason = history
+        .map((entry) => entry['reason']?.toString().trim() ?? '')
+        .firstWhere((value) => value.isNotEmpty, orElse: () => '');
     return Card(
+      elevation: 0,
       margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => _showHistory(note),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+      color: cs.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: .55)),
+      ),
+      child: Stack(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: dragging ? null : () => _preview(note),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(12, 10, dragging ? 12 : 40, 10),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      note['title']?.toString() ?? '',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                  Text(
+                    note['title']?.toString() ?? '',
+                    style: const TextStyle(
+                      fontFamily: HexoraTypography.fontFamily,
+                      fontSize: HexoraTypography.body,
+                      fontWeight: FontWeight.w600,
+                      height: 1.28,
                     ),
                   ),
-                  PopupMenuButton<String>(
-                    onSelected: (status) => _move(note, status),
-                    itemBuilder: (_) => [
-                      PopupMenuItem(
-                        value: 'todo',
-                        child: Text(_isEs ? 'Por hacer' : 'To Do'),
+                  if (details.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Text(
+                        details,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
+                          fontSize: HexoraTypography.label,
+                          height: 1.35,
+                        ),
                       ),
-                      PopupMenuItem(
-                        value: 'in_progress',
-                        child: Text(_isEs ? 'En progreso' : 'In Progress'),
-                      ),
-                      PopupMenuItem(
-                        value: 'done',
-                        child: Text(_isEs ? 'Hecho' : 'Done'),
-                      ),
-                    ],
-                  ),
+                    ),
+                  if (client != null)
+                    _meta(Icons.business_outlined,
+                        client['name']?.toString() ?? ''),
+                  if (assignees.isNotEmpty)
+                    _meta(
+                      Icons.group_outlined,
+                      assignees
+                          .map((item) =>
+                              item is Map ? item['name']?.toString() : null)
+                          .whereType<String>()
+                          .join(', '),
+                    ),
+                  if (due != null)
+                    _meta(
+                      Icons.event_outlined,
+                      MaterialLocalizations.of(context).formatMediumDate(due),
+                    ),
+                  if (createdAt.isNotEmpty)
+                    _meta(
+                      Icons.person_outline_rounded,
+                      '${_isEs ? 'Creada' : 'Created'} · $createdAt${createdBy.isEmpty ? '' : ' · $createdBy'}',
+                    ),
+                  if (updatedAt.isNotEmpty)
+                    _meta(
+                      Icons.update_rounded,
+                      '${_isEs ? 'Modificada' : 'Updated'} · $updatedAt${updatedBy.isEmpty ? '' : ' · $updatedBy'}',
+                    ),
+                  if (latestReason.isNotEmpty)
+                    _meta(
+                      Icons.info_outline_rounded,
+                      '${_isEs ? 'Motivo' : 'Reason'} · $latestReason',
+                    ),
                 ],
               ),
-              if ((note['details']?.toString().trim() ?? '').isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    note['details'].toString(),
-                    maxLines: 4,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              if (client != null)
-                _meta(Icons.business_outlined, client['name']?.toString() ?? ''),
-              if (assignees.isNotEmpty)
-                _meta(
-                  Icons.group_outlined,
-                  assignees
-                      .map((item) =>
-                          item is Map ? item['name']?.toString() : null)
-                      .whereType<String>()
-                      .join(', '),
-                ),
-              if (due != null)
-                _meta(
-                  Icons.event_outlined,
-                  MaterialLocalizations.of(context).formatMediumDate(due),
-                ),
-              if (createdAt != null)
-                _meta(
-                  Icons.person_add_alt_1_outlined,
-                  '${_isEs ? 'Creada' : 'Created'} ${_formatDateTime(createdAt)}'
-                  '${createdByName.isEmpty ? '' : ' · $createdByName'}',
-                ),
-              if (updatedAt != null &&
-                  createdAt != null &&
-                  updatedAt.difference(createdAt).inSeconds.abs() > 1)
-                _meta(
-                  Icons.edit_outlined,
-                  '${_isEs ? 'Modificada' : 'Modified'} ${_formatDateTime(updatedAt)}'
-                  '${updatedByName.isEmpty ? '' : ' · $updatedByName'}',
-                ),
-              if ((latestHistory?['reason']?.toString().trim() ?? '').isNotEmpty)
-                _meta(
-                  Icons.comment_outlined,
-                  latestHistory!['reason'].toString(),
-                ),
-            ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
-
-  String _formatDateTime(DateTime value) {
-    final localizations = MaterialLocalizations.of(context);
-    return '${localizations.formatMediumDate(value)} · '
-        '${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(value))}';
-  }
-
-  String _safeUserName(dynamic value) {
-    final name = value?.toString().trim() ?? '';
-    if (RegExp(r'^[0-9a-f]{24}$', caseSensitive: false).hasMatch(name)) {
-      return '';
-    }
-    return name;
-  }
-
-  Future<void> _showHistory(Map<String, dynamic> note) async {
-    final history = note['changeHistory'] as List? ?? const [];
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(_isEs ? 'Historial de la nota' : 'Note history'),
-        content: SizedBox(
-          width: 520,
-          child: history.isEmpty
-              ? Text(_isEs
-                  ? 'Esta nota todavía no tiene modificaciones.'
-                  : 'This note has not been modified yet.')
-              : ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: history.length,
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final entry = history[history.length - 1 - index] as Map;
-                    final user = entry['user'] as Map?;
-                    final userName = _safeUserName(user?['name']);
-                    final changedAt = DateTime.tryParse(
-                      entry['changedAt']?.toString() ?? '',
-                    )?.toLocal();
-                    final changes = entry['changes'] as List? ?? const [];
-                    final fields = changes
-                        .whereType<Map>()
-                        .map((change) => change['field']?.toString() ?? '')
-                        .where((field) => field.isNotEmpty)
-                        .join(', ');
-                    final reason = entry['reason']?.toString().trim() ?? '';
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.history_rounded),
-                      title: Text(
-                        userName.isEmpty
-                            ? (_isEs ? 'Usuario' : 'User')
-                            : userName,
-                      ),
-                      subtitle: Text([
-                        if (changedAt != null) _formatDateTime(changedAt),
-                        if (fields.isNotEmpty)
-                          '${_isEs ? 'Cambios' : 'Changes'}: $fields',
-                        if (reason.isNotEmpty)
-                          '${_isEs ? 'Motivo' : 'Reason'}: $reason',
-                      ].join('\n')),
-                    );
-                  },
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(_isEs ? 'Cerrar' : 'Close'),
-          ),
+          if (!dragging)
+            Positioned(
+              top: 2,
+              right: 2,
+              child: SizedBox(
+                width: 32,
+                height: 32,
+                child: _cardMenu(note),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _meta(IconData icon, String text) => Padding(
-    padding: const EdgeInsets.only(top: 8),
-    child: Row(children: [
-      Icon(icon, size: 15),
-      const SizedBox(width: 6),
-      Expanded(child: Text(text, style: const TextStyle(fontSize: 12))),
-    ]),
-  );
+  Widget _cardMenu(Map<String, dynamic> note) {
+    final cs = Theme.of(context).colorScheme;
+    return HexoraPopupMenuButton<String>(
+      tooltip: _isEs ? 'Acciones de nota' : 'Note actions',
+      icon: Icon(
+        Icons.more_vert_rounded,
+        size: 16,
+        color: cs.onSurfaceVariant.withValues(alpha: .7),
+      ),
+      onSelected: (value) {
+        if (_statuses.contains(value)) _move(note, value);
+        if (value == 'edit') _edit(note);
+        if (value == 'delete') _delete(note);
+      },
+      itemBuilder: (_) => [
+        HexoraPopupMenuActionItem(
+          value: 'edit',
+          icon: Icons.edit_outlined,
+          label: _isEs ? 'Editar' : 'Edit',
+        ),
+        for (final status in _statuses)
+          if (note['status'] != status)
+            HexoraPopupMenuActionItem(
+              value: status,
+              icon: status == 'done'
+                  ? Icons.check_circle_outline_rounded
+                  : Icons.arrow_forward_rounded,
+              label: '${_isEs ? 'Mover a' : 'Move to'} ${_statusLabel(status)}',
+            ),
+        const HexoraPopupMenuDivider(),
+        HexoraPopupMenuActionItem(
+          value: 'delete',
+          icon: Icons.delete_outline_rounded,
+          label: _isEs ? 'Eliminar' : 'Delete',
+          tone: HexoraPopupMenuTone.destructive,
+        ),
+      ],
+    );
+  }
+
+  Widget _meta(IconData icon, String text) {
+    if (text.trim().isEmpty) return const SizedBox.shrink();
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: cs.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: cs.onSurfaceVariant,
+                fontSize: HexoraTypography.caption,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

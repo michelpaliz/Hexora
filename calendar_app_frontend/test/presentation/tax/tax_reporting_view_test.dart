@@ -509,22 +509,19 @@ void main() {
       Text label(String value) => tester
           .widget<Text>(find.descendant(of: menu, matching: find.text(value)));
       final expected = _typography.bodySmall.copyWith(
-        fontSize: 12.3,
-        fontWeight: FontWeight.w600,
+        fontSize: 12.5,
+        fontWeight: FontWeight.w500,
         letterSpacing: 0,
       );
       final inactive = label('IVA repercutido').style!;
       expect(inactive, expected.copyWith(color: inactive.color));
       final active = label('IVA soportado').style!;
       expect(active,
-          expected.copyWith(color: active.color, fontWeight: FontWeight.w700));
-      final theme = Theme.of(tester.element(menu));
-      expect(
-          label('Impuestos').style,
-          theme.textTheme.labelLarge?.copyWith(
-            color: theme.colorScheme.onSurface,
-            fontWeight: FontWeight.w900,
-          ));
+          expected.copyWith(color: active.color, fontWeight: FontWeight.w600));
+      // The module title is intentionally no longer repeated inside the menu
+      // header (it is shown in the content area / global bar instead).
+      expect(find.descendant(of: menu, matching: find.text('Impuestos')),
+          findsNothing);
       expect(tester.takeException(), isNull);
     });
   }
@@ -966,8 +963,14 @@ void main() {
               'totalExpenses': 4,
               'comparisonAvailable': true,
               'comparison': {
-                'previousQuarter': '2026-T2',
-                'salesVatChangePercent': 12.5
+                'previousQuarter': {
+                  'year': 2026,
+                  'quarter': 'T2',
+                  'salesVat': 400,
+                  'purchaseVat': 300,
+                  'netVat': 100,
+                },
+                'salesVatChangePercent': 12.5,
               },
               'insights': [
                 {'message': 'Observación del servidor'}
@@ -976,8 +979,8 @@ void main() {
       await _pump(tester, api);
       await _select(tester, 'quarterly');
       expect(find.text(sample.$2), findsOneWidget);
-      expect(find.text('Trimestre anterior: 2026-T2'), findsOneWidget);
-      expect(find.text('IVA repercutido: 12.5 %'), findsOneWidget);
+      expect(find.byKey(const ValueKey('tax-quarterly-comparison-selector')),
+          findsOneWidget);
       expect(find.text('Observación del servidor'), findsOneWidget);
     });
   }
@@ -988,6 +991,20 @@ void main() {
     await _pump(tester, api);
     await _select(tester, 'quarterly');
     expect(find.text('No hay datos comparables del trimestre anterior.'),
+        findsOneWidget);
+  });
+
+  testWidgets('quarterly review only appears for expenses with known zero VAT',
+      (tester) async {
+    final api = _Api()
+      ..respond = (_) async => {
+            'netVat': 0,
+            'purchaseVat': 0,
+            'totalExpenses': 2,
+          };
+    await _pump(tester, api);
+    await _select(tester, 'quarterly');
+    expect(find.byKey(const ValueKey('tax-deductible-vat-review')),
         findsOneWidget);
   });
 

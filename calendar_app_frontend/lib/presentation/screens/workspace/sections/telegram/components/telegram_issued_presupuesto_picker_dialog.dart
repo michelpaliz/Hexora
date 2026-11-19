@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:intl/intl.dart';
 
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_workspace.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 
 class TelegramIssuedPresupuestoSelection {
@@ -37,7 +39,7 @@ Future<List<TelegramIssuedPresupuestoSelection>?>
   required String groupId,
   PresupuestosApi? api,
 }) {
-  return showDialog<List<TelegramIssuedPresupuestoSelection>>(
+  return showHexoraDialog<List<TelegramIssuedPresupuestoSelection>>(
     context: context,
     builder: (dialogContext) => Dialog(
       clipBehavior: Clip.antiAlias,
@@ -171,7 +173,7 @@ class _TelegramIssuedPresupuestoPickerDialogState
     if (_selected.isEmpty) return;
     final drafts = _selected.values.where(_isDraft).length;
     if (drafts > 0) {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
         context: context,
         builder: (confirmationContext) => AlertDialog(
           title: Text(
@@ -457,6 +459,7 @@ class _TelegramIssuedPresupuestoPickerDialogState
         final isDraft = _isDraft(document);
         final selected = _selected.containsKey(_id(document));
         final kind = PresupuestoKind.fromJson(document);
+        final total = _presupuestoTotal(document, kind: kind);
         final number = _displayNumber(document, isSpanish: _isSpanish);
         final client = _clientName(document);
         final meta = <String>[
@@ -552,6 +555,19 @@ class _TelegramIssuedPresupuestoPickerDialogState
                     ),
                   ),
                   const SizedBox(width: 6),
+                  if (total != null) ...[
+                    Text(
+                      _formattedAmount(total),
+                      textAlign: TextAlign.right,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: const [
+                          FontFeature.tabularFigures(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
                   Checkbox(
                     value: selected,
                     onChanged: (_) => _toggle(document),
@@ -695,3 +711,74 @@ String _formattedDate(Map<String, dynamic> document) {
   if (date.millisecondsSinceEpoch == 0) return '';
   return DateFormat('dd/MM/yyyy').format(date.toLocal());
 }
+
+num? _presupuestoTotal(
+  Map<String, dynamic> document, {
+  required PresupuestoKind kind,
+}) {
+  if (kind == PresupuestoKind.document) {
+    return presupuestoDocumentAmount(document);
+  }
+
+  final totals = document['totals'];
+  for (final value in <dynamic>[
+    document['grandTotal'],
+    document['total'],
+    document['totalAmount'],
+    document['amountTotal'],
+    document['amount'],
+    if (totals is Map) totals['total'],
+    if (totals is Map) totals['grandTotal'],
+    if (totals is Map) totals['amount'],
+  ]) {
+    final parsed = _parseAmount(value);
+    if (parsed != null) return parsed;
+  }
+
+  for (final group in <dynamic>[document['lines'], document['blocks']]) {
+    if (group is! List || group.isEmpty) continue;
+    num total = 0;
+    var hasAmount = false;
+    for (final raw in group.whereType<Map>()) {
+      if (raw['isBillable'] == false) continue;
+      final lineTotal = _parseAmount(raw['lineTotal'] ?? raw['total']);
+      if (lineTotal != null) {
+        total += lineTotal;
+        hasAmount = true;
+        continue;
+      }
+      final quantity = _parseAmount(raw['quantity'] ?? raw['qty']) ?? 1;
+      final unitPrice = _parseAmount(
+            raw['unitPrice'] ?? raw['price'] ?? raw['unit_price'],
+          ) ??
+          0;
+      if (unitPrice == 0) continue;
+      final discount =
+          _parseAmount(raw['discountRate'] ?? raw['discountPercent']) ?? 0;
+      final tax = _parseAmount(
+            raw['taxRate'] ?? raw['tax'] ?? raw['vat'] ?? raw['iva'],
+          ) ??
+          0;
+      final base = quantity * unitPrice * (1 - discount.clamp(0, 100) / 100);
+      total += base * (1 + tax / 100);
+      hasAmount = true;
+    }
+    if (hasAmount) return total;
+  }
+  return null;
+}
+
+num? _parseAmount(dynamic value) {
+  if (value is num) return value;
+  final text = value?.toString().trim() ?? '';
+  if (text.isEmpty) return null;
+  final normalized =
+      text.contains(',') ? text.replaceAll('.', '').replaceAll(',', '.') : text;
+  return num.tryParse(normalized);
+}
+
+String _formattedAmount(num value) => NumberFormat.currency(
+      locale: 'es_ES',
+      symbol: '€',
+      decimalDigits: 2,
+    ).format(value);

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 
 class GroupDangerZoneCard extends StatelessWidget {
   final bool isOwner;
@@ -59,15 +61,14 @@ class GroupDangerZoneCard extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 14),
-                    backgroundColor: theme.colorScheme.error,
-                    foregroundColor: theme.colorScheme.onError,
+                  style: ThemedButtons.button(
+                    context,
+                    variant: ButtonVariant.danger,
                   ),
                   onPressed: isRemoving ? null : onRemove,
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
+                    duration:
+                        HexoraMotion.duration(context, HexoraMotion.standard),
                     child: isRemoving
                         ? SizedBox(
                             key: const ValueKey('removing'),

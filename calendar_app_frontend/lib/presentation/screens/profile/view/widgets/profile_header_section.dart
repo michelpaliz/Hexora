@@ -89,10 +89,10 @@ class ProfileHeaderSection extends StatelessWidget {
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
                         onPressed: onEdit,
-                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        icon: const Icon(Icons.settings_outlined, size: 18),
                         label: Text(loc.localeName.startsWith('es')
-                            ? 'Editar perfil'
-                            : 'Edit profile'),
+                            ? 'Configuración'
+                            : 'Settings'),
                         style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(48))),
                   ],

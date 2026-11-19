@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 import '../insights_json_utils.dart';
@@ -23,7 +25,7 @@ mixin InsightsBankIncomeMatchUi on InsightsChatSheetStateBase {
     ].where((entry) => entry.$2 is num).toList(growable: false);
     if (entries.isEmpty && groupMatching == null) return;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: sourceContext,
       builder: (context) {
         final cs = Theme.of(context).colorScheme;
@@ -269,6 +271,7 @@ mixin InsightsBankIncomeMatchUi on InsightsChatSheetStateBase {
     final narrow = MediaQuery.sizeOf(sourceContext).width < 700;
     if (narrow) {
       await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: sourceContext,
         showDragHandle: true,
         isScrollControlled: true,
@@ -285,7 +288,7 @@ mixin InsightsBankIncomeMatchUi on InsightsChatSheetStateBase {
       );
       return;
     }
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: sourceContext,
       builder: (context) => Dialog(
         child: ConstrainedBox(
@@ -508,5 +511,4 @@ mixin InsightsBankIncomeMatchUi on InsightsChatSheetStateBase {
             ),
     );
   }
-
 }

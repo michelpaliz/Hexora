@@ -99,9 +99,10 @@ class MailMessage {
         parseBool(json['has_attachments'] ?? json['hasAttachments']) ??
             attachments.isNotEmpty;
 
-    final unread = parseBool(json['unread'] ?? json['is_unread'] ??
-            json['isUnread']) ??
-        !(parseBool(json['read'] ?? json['is_read'] ?? json['isRead']) ?? false);
+    final unread =
+        parseBool(json['unread'] ?? json['is_unread'] ?? json['isUnread']) ??
+            !(parseBool(json['read'] ?? json['is_read'] ?? json['isRead']) ??
+                false);
 
     final from = MailAddress.parse(
         json['from'] ?? json['from_address'] ?? json['fromAddress']);
@@ -124,9 +125,10 @@ class MailMessage {
       replyTo: MailAddress.parse(json['reply_to'] ?? json['replyTo']),
       to: MailAddress.parseList(
           json['to'] ?? json['to_address'] ?? json['toAddress']),
-      cc: MailAddress.parseList(json['cc'] ?? json['cc_address'] ?? json['ccAddress']),
-      bcc:
-          MailAddress.parseList(json['bcc'] ?? json['bcc_address'] ?? json['bccAddress']),
+      cc: MailAddress.parseList(
+          json['cc'] ?? json['cc_address'] ?? json['ccAddress']),
+      bcc: MailAddress.parseList(
+          json['bcc'] ?? json['bcc_address'] ?? json['bccAddress']),
       htmlBody: json['html_body']?.toString() ?? json['htmlBody']?.toString(),
       textBody: json['text_body']?.toString() ?? json['textBody']?.toString(),
       unread: unread,

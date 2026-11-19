@@ -1,15 +1,111 @@
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_group.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/vat/vat_summary_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
-import 'package:hexora/presentation/screens/workspace/sections/expenses/import_history/expense_import_history_screen.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/vat_summary_view.dart';
-import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'tax/tax_reporting_view.dart';
+import 'package:hexora/services/tax/tax_reporting_api.dart';
+
+// ── Module area IDs ───────────────────────────────────────────────────────────
+
+const _kModuleGastos = 'gastos';
+const _kModuleImpuestos = 'impuestos';
+const _kModuleAnalitica = 'analitica';
+const _kModuleModelos = 'modelos';
+const _kModules = [
+  _kModuleGastos,
+  _kModuleImpuestos,
+  _kModuleAnalitica,
+  _kModuleModelos,
+];
+
+// ── Gastos sidebar sections ───────────────────────────────────────────────────
+
+const _kGastosSections = [
+  _GastosRailSection(
+    title: 'Registrar gasto',
+    icon: Icons.add_circle_outline_rounded,
+    storageId: 'expenses-tree-register',
+    items: [
+      _GastosRailEntry(
+        value: 'register_manual',
+        icon: Icons.edit_note_outlined,
+        label: 'Manual',
+      ),
+      _GastosRailEntry(
+        value: 'register_json',
+        icon: Icons.data_object_outlined,
+        label: 'JSON',
+      ),
+      _GastosRailEntry(
+        value: 'register_batch',
+        icon: Icons.library_add_check_outlined,
+        label: 'Lote',
+      ),
+    ],
+  ),
+  _GastosRailSection(
+    title: 'Gastos',
+    icon: Icons.receipt_long_outlined,
+    storageId: 'expenses-tree-documents',
+    items: [
+      _GastosRailEntry(
+        value: 'supplier_invoices',
+        icon: Icons.receipt_long_outlined,
+        label: 'Facturas proveedor',
+        badge: '142',
+      ),
+      _GastosRailEntry(
+        value: 'ocr_documents',
+        icon: Icons.document_scanner_outlined,
+        label: 'OCR documentos',
+      ),
+      _GastosRailEntry(
+        value: 'recurring_expenses',
+        icon: Icons.repeat_rounded,
+        label: 'Gastos recurrentes',
+      ),
+    ],
+  ),
+  _GastosRailSection(
+    title: 'Gestión',
+    icon: Icons.tune_rounded,
+    storageId: 'expenses-tree-management',
+    items: [
+      _GastosRailEntry(
+        value: 'categories',
+        icon: Icons.category_outlined,
+        label: 'Categorias',
+      ),
+      _GastosRailEntry(
+        value: 'exports',
+        icon: Icons.ios_share_outlined,
+        label: 'Exportaciones',
+      ),
+    ],
+  ),
+];
+
+// ── Modelos list ──────────────────────────────────────────────────────────────
+
+const _kModelos = [
+  ('Modelo 303', 'IVA trimestral'),
+  ('Modelo 390', 'Resumen anual IVA'),
+  ('Modelo 111', 'Retenciones profesionales'),
+  ('Modelo 190', 'Resumen anual retenciones'),
+  ('Modelo 347', 'Operaciones con terceros'),
+];
+
+// ── Screen ────────────────────────────────────────────────────────────────────
 
 class GastosModuleScreen extends StatefulWidget {
   const GastosModuleScreen({
@@ -25,886 +121,419 @@ class GastosModuleScreen extends StatefulWidget {
   State<GastosModuleScreen> createState() => _GastosModuleScreenState();
 }
 
-class _GastosModuleScreenState extends State<GastosModuleScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabs;
+class _GastosModuleScreenState extends State<GastosModuleScreen> {
+  String _activeModule = _kModuleGastos;
+  final Set<String> _visitedModules = {_kModuleGastos};
+
   final VatSummaryApi _vatApi = VatSummaryApi();
-  String _gastosSection = 'supplier_invoices';
-  bool _gastosSideRailCollapsed = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _tabs = TabController(length: 4, vsync: this);
-  }
+  // Sub-section within the Gastos module
+  String _gastosSection = 'register_manual';
 
-  @override
-  void dispose() {
-    _tabs.dispose();
-    super.dispose();
-  }
+  // Sub-section within the Modelos module
+  String _modelosSection = 'all';
+  TaxReportSection _taxSection = TaxReportSection.supported;
+
+  bool _sideRailCollapsed = false;
 
   bool get _isEs => Localizations.localeOf(context)
       .languageCode
       .toLowerCase()
       .startsWith('es');
 
+  void _switchModule(String module) {
+    setState(() {
+      _activeModule = module;
+      _visitedModules.add(module);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
     final title = _isEs ? 'Gastos' : 'Expenses';
-    final body = _GastosModuleBody(
-      title: title,
-      showFolderTab: !isNarrow,
-      topPadding: isNarrow ? 10 : 30,
-      tabs: _tabs,
-      isEs: _isEs,
-      isNarrow: isNarrow,
-      group: widget.group,
-      vatApi: _vatApi,
-      gastosSection: _gastosSection,
-      onGastosSectionSelected: (value) =>
-          setState(() => _gastosSection = value),
-      sideRailCollapsed: _gastosSideRailCollapsed,
-      onToggleSideRailCollapsed: () {
-        setState(() => _gastosSideRailCollapsed = !_gastosSideRailCollapsed);
-      },
+
+    // ── Narrow / mobile ────────────────────────────────────────────────────
+    final mobileBody = SafeArea(
+      top: false,
+      child: ExpenseUploadScreen(
+        key: ValueKey('gastos-mobile-${widget.group.id}'),
+        embedded: true,
+        listOnly: true,
+        groupId: widget.group.id,
+        groupName: widget.group.name,
+      ),
     );
 
     if (isNarrow && !widget.embedded) {
-      return Scaffold(
-        appBar: SectionAppBar(
-          title: title,
-        ),
-        body: body,
-      );
+      return Scaffold(appBar: SectionAppBar(title: title), body: mobileBody);
     }
+    if (isNarrow) return mobileBody;
 
-    return body;
-  }
-}
+    // ── Desktop ────────────────────────────────────────────────────────────
+    final activeModuleIdx = _kModules.indexOf(_activeModule);
 
-class _GastosModuleBody extends StatelessWidget {
-  const _GastosModuleBody({
-    required this.title,
-    required this.showFolderTab,
-    required this.topPadding,
-    required this.tabs,
-    required this.isEs,
-    required this.isNarrow,
-    required this.group,
-    required this.vatApi,
-    required this.gastosSection,
-    required this.onGastosSectionSelected,
-    required this.sideRailCollapsed,
-    required this.onToggleSideRailCollapsed,
-  });
-
-  final String title;
-  final bool showFolderTab;
-  final double topPadding;
-  final TabController tabs;
-  final bool isEs;
-  final bool isNarrow;
-  final Group group;
-  final VatSummaryApi vatApi;
-  final String gastosSection;
-  final ValueChanged<String> onGastosSectionSelected;
-  final bool sideRailCollapsed;
-  final VoidCallback onToggleSideRailCollapsed;
-
-  @override
-  Widget build(BuildContext context) {
-    if (isNarrow) {
-      return SafeArea(
-        top: false,
-        child: _GastosTab(
-          isNarrow: true,
-          group: group,
-          selectedSection: gastosSection,
-          onSectionSelected: onGastosSectionSelected,
-        ),
-      );
-    }
-    return Padding(
-      padding: EdgeInsets.fromLTRB(10, showFolderTab ? 0 : 8, 10, 8),
-      child: FolderPanel(
-        title: title,
-        showTab: showFolderTab,
-        contentTopPadding: !isNarrow ? 48 : topPadding,
-        tabContent: !isNarrow
-            ? _GastosTopTabs(
-                controller: tabs,
-                isEs: isEs,
-                isNarrow: isNarrow,
-                inFolderActions: true,
+    final contents = <Widget>[
+      // 0 – Gastos
+      Material(
+        color: Colors.transparent,
+        child: _gastosSection.startsWith('register_')
+            ? ExpenseUploadScreen(
+                key: ValueKey('gastos-register-${widget.group.id}'),
+                embedded: true,
+                uploadOnly: true,
+                initialTabIndex: 1,
+                initialImportTabIndex: _gastosSection == 'register_json'
+                    ? 1
+                    : _gastosSection == 'register_batch'
+                        ? 2
+                        : 0,
+                hideImportTabs: true,
+                groupId: widget.group.id,
+                groupName: widget.group.name,
               )
-            : null,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (isNarrow)
-              _GastosTopTabs(controller: tabs, isEs: isEs, isNarrow: true),
-            Expanded(
-              child: TabBarView(
-                controller: tabs,
-                children: [
-                  _GastosTab(
-                    isNarrow: isNarrow,
-                    group: group,
-                    selectedSection: gastosSection,
-                    onSectionSelected: onGastosSectionSelected,
-                    sideRailCollapsed: sideRailCollapsed,
-                    onToggleSideRailCollapsed: onToggleSideRailCollapsed,
-                  ),
-                  TaxReportingView(groupId: group.id),
-                  _AnaliticaTab(
-                    isNarrow: isNarrow,
-                    group: group,
-                    vatApi: vatApi,
-                    sideRailCollapsed: sideRailCollapsed,
-                    onToggleSideRailCollapsed: onToggleSideRailCollapsed,
-                  ),
-                  const _ModelosTab(),
-                ],
+            : ExpenseUploadScreen(
+                key: ValueKey('gastos-list-${widget.group.id}'),
+                embedded: true,
+                listOnly: true,
+                groupId: widget.group.id,
+                groupName: widget.group.name,
               ),
-            ),
-          ],
-        ),
       ),
-    );
-  }
-}
-
-class _GastosTopTabs extends StatelessWidget {
-  const _GastosTopTabs({
-    required this.controller,
-    required this.isEs,
-    required this.isNarrow,
-    this.inFolderActions = false,
-  });
-
-  final TabController controller;
-  final bool isEs;
-  final bool isNarrow;
-  final bool inFolderActions;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final tabs = <_GastosTopTabData>[
-      _GastosTopTabData(
-        label: isEs ? 'Gastos' : 'Expenses',
-        countLabel: '142',
+      // 1 – Impuestos
+      TaxReportingView(
+        groupId: widget.group.id,
+        initialSection: _taxSection,
+        onSectionChanged: (section) => setState(() => _taxSection = section),
+        showMenu: false,
       ),
-      _GastosTopTabData(
-        label: isEs ? 'Impuestos' : 'Taxes',
+      // 2 – Analítica
+      VatSummaryView(
+        api: _vatApi,
+        groupId: widget.group.id,
+        timezone: widget.group.businessHours?.timezone ?? 'Europe/Madrid',
       ),
-      _GastosTopTabData(
-        label: isEs ? 'Analitica' : 'Analytics',
-      ),
-      _GastosTopTabData(
-        label: isEs ? 'Modelos' : 'Forms',
-        countLabel: '4',
+      // 3 – Modelos
+      _PlaceholderGrid(
+        title: _modelosSection == 'all'
+            ? (_isEs ? 'Modelos fiscales' : 'Tax forms')
+            : _modelosSection,
+        subtitle: _isEs
+            ? 'Preparado para exports AEAT y declaraciones futuras.'
+            : 'Prepared for future AEAT exports and tax filings.',
+        cards: _kModelos
+            .where((m) => _modelosSection == 'all' || m.$1 == _modelosSection)
+            .toList(),
       ),
     ];
 
-    final tabsBar = Material(
-      color: Colors.transparent,
-      child: TabBar(
-        controller: controller,
-        isScrollable: true,
-        tabAlignment: TabAlignment.start,
-        padding: EdgeInsets.zero,
-        dividerColor: Colors.transparent,
-        indicatorSize: TabBarIndicatorSize.tab,
-        indicator: BoxDecoration(
-          color: cs.primary.withValues(alpha: isDark ? 0.22 : 0.12),
-          borderRadius: BorderRadius.circular(inFolderActions ? 12 : 16),
-          border: Border.all(
-            color: cs.primary.withValues(alpha: 0.18),
+    return Row(
+      children: [
+        AnimatedContainer(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : NavigationTokens.motion,
+          curve: Curves.easeOutCubic,
+          width: _sideRailCollapsed
+              ? NavigationTokens.railWidth
+              : NavigationTokens.sidebarWidth,
+          child: _GastosUnifiedRail(
+            isEs: _isEs,
+            activeModule: _activeModule,
+            onModuleSelected: _switchModule,
+            gastosSection: _gastosSection,
+            onGastosSectionSelected: (v) => setState(() => _gastosSection = v),
+            modelosSection: _modelosSection,
+            onModelosSectionSelected: (v) =>
+                setState(() => _modelosSection = v),
+            onTaxSectionSelected: (v) => setState(() => _taxSection = v),
+            taxSection: _taxSection,
+            collapsed: _sideRailCollapsed,
+            onToggleCollapsed: () =>
+                setState(() => _sideRailCollapsed = !_sideRailCollapsed),
           ),
         ),
-        overlayColor: WidgetStateProperty.all(Colors.transparent),
-        splashBorderRadius: BorderRadius.circular(inFolderActions ? 12 : 16),
-        labelColor: cs.onSurface,
-        unselectedLabelColor: cs.onSurfaceVariant,
-        labelStyle: t.bodySmall.copyWith(
-          fontSize: inFolderActions ? 11.5 : null,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0,
-        ),
-        unselectedLabelStyle: t.bodySmall.copyWith(
-          fontSize: inFolderActions ? 11.5 : null,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0,
-        ),
-        tabs: [
-          for (final item in tabs)
-            _GastosTopTab(
-              label: item.label,
-              countLabel: item.countLabel,
-              compact: inFolderActions,
-            ),
-        ],
-      ),
-    );
-
-    if (inFolderActions) {
-      return ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 620),
-        child: tabsBar,
-      );
-    }
-
-    if (isNarrow) return tabsBar;
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 920),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-        decoration: BoxDecoration(
-          color: isDark
-              ? cs.surfaceContainerHighest.withValues(alpha: 0.26)
-              : cs.surface,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.32)),
-          boxShadow: [
-            if (!isDark)
-              BoxShadow(
-                color: cs.shadow.withValues(alpha: 0.05),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
-              ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(
-                isEs ? 'Areas del modulo' : 'Module areas',
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.78),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.22,
-                ),
+        Expanded(
+          child: WorkspaceMainContent(
+            child: HexoraMenuContentTransition.submenu(
+              transitionKey:
+                  '$_activeModule:$_gastosSection:$_modelosSection:$_taxSection',
+              child: IndexedStack(
+                index: activeModuleIdx,
+                sizing: StackFit.expand,
+                children: [
+                  for (var i = 0; i < contents.length; i++)
+                    TickerMode(
+                      enabled: i == activeModuleIdx,
+                      child: _visitedModules.contains(_kModules[i])
+                          ? contents[i]
+                          : const SizedBox.shrink(),
+                    ),
+                ],
               ),
             ),
-            Container(
-              width: 1,
-              height: 22,
-              color: cs.outlineVariant.withValues(alpha: 0.32),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: tabsBar,
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
 
-class _GastosTopTabData {
-  const _GastosTopTabData({
-    required this.label,
-    this.countLabel,
+// ── Unified side rail ─────────────────────────────────────────────────────────
+
+class _GastosUnifiedRail extends StatelessWidget {
+  const _GastosUnifiedRail({
+    required this.isEs,
+    required this.activeModule,
+    required this.onModuleSelected,
+    required this.gastosSection,
+    required this.onGastosSectionSelected,
+    required this.modelosSection,
+    required this.onModelosSectionSelected,
+    required this.onTaxSectionSelected,
+    required this.taxSection,
+    required this.collapsed,
+    required this.onToggleCollapsed,
   });
 
-  final String label;
-  final String? countLabel;
-}
-
-class _GastosTopTab extends StatelessWidget {
-  const _GastosTopTab({
-    required this.label,
-    this.countLabel,
-    this.compact = false,
-  });
-
-  final String label;
-  final String? countLabel;
-  final bool compact;
+  final bool isEs;
+  final String activeModule;
+  final ValueChanged<String> onModuleSelected;
+  final String gastosSection;
+  final ValueChanged<String> onGastosSectionSelected;
+  final String modelosSection;
+  final ValueChanged<String> onModelosSectionSelected;
+  final ValueChanged<TaxReportSection> onTaxSectionSelected;
+  final TaxReportSection taxSection;
+  final bool collapsed;
+  final VoidCallback onToggleCollapsed;
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Tab(
-      height: compact ? 30 : 38,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (countLabel != null) ...[
-              SizedBox(width: compact ? 6 : 8),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: compact ? 6 : 7,
-                  vertical: compact ? 2 : 3,
-                ),
-                decoration: BoxDecoration(
-                  color: cs.surface.withValues(alpha: 0.82),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.24),
-                  ),
-                ),
-                child: Text(
-                  countLabel!,
-                  style: t.caption.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontSize: compact ? 10 : null,
-                    fontWeight: FontWeight.w800,
-                    height: 1,
-                  ),
+  Widget build(BuildContext context) => Theme(
+        data: navigationTheme(Theme.of(context)),
+        child: Builder(builder: _buildNav),
+      );
+
+  Widget _buildNav(BuildContext context) {
+    void selectExpense(String value) {
+      onModuleSelected(_kModuleGastos);
+      onGastosSectionSelected(value);
+    }
+
+    void selectTax(TaxReportSection section) {
+      onModuleSelected(_kModuleImpuestos);
+      onTaxSectionSelected(section);
+    }
+
+    void selectModel(String value) {
+      onModuleSelected(_kModuleModelos);
+      onModelosSectionSelected(value);
+    }
+
+    // ── Collapsed ───────────────────────────────────────────────────────────
+    if (collapsed) {
+      return SidebarEdgeShell(
+        collapsed: true,
+        onToggle: onToggleCollapsed,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(7, 8, 7, 10),
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    for (final section in _kGastosSections)
+                      CollapsedNavigationGroup(
+                        title: section.title,
+                        icon: section.icon,
+                        selected: activeModule == _kModuleGastos &&
+                            section.items
+                                .any((item) => item.value == gastosSection),
+                        destinations: [
+                          for (final item in section.items)
+                            CollapsedNavigationDestination(
+                              label: item.label,
+                              icon: item.icon,
+                              count: _badgeCount(item.badge),
+                              selected: activeModule == _kModuleGastos &&
+                                  item.value == gastosSection,
+                              onTap: () => selectExpense(item.value),
+                            ),
+                        ],
+                      ),
+                    CollapsedNavigationGroup(
+                      title: isEs ? 'Impuestos' : 'Taxes',
+                      icon: Icons.account_balance_outlined,
+                      selected: activeModule == _kModuleImpuestos,
+                      destinations: [
+                        for (final section in TaxReportSection.values)
+                          CollapsedNavigationDestination(
+                            label: section.label,
+                            icon: Icons.percent_rounded,
+                            selected: activeModule == _kModuleImpuestos &&
+                                section == taxSection,
+                            onTap: () => selectTax(section),
+                          ),
+                      ],
+                    ),
+                    CollapsedNavigationGroup(
+                      title: isEs ? 'Analítica' : 'Analytics',
+                      icon: Icons.analytics_outlined,
+                      selected: activeModule == _kModuleAnalitica,
+                      destinations: [
+                        CollapsedNavigationDestination(
+                          label: isEs ? 'Resumen' : 'Overview',
+                          icon: Icons.dashboard_outlined,
+                          selected: activeModule == _kModuleAnalitica,
+                          onTap: () => onModuleSelected(_kModuleAnalitica),
+                        ),
+                      ],
+                    ),
+                    CollapsedNavigationGroup(
+                      title: isEs ? 'Modelos' : 'Tax forms',
+                      icon: Icons.description_outlined,
+                      selected: activeModule == _kModuleModelos,
+                      destinations: [
+                        CollapsedNavigationDestination(
+                          label: isEs ? 'Todos los modelos' : 'All forms',
+                          icon: Icons.grid_view_outlined,
+                          count: _kModelos.length,
+                          selected: activeModule == _kModuleModelos &&
+                              modelosSection == 'all',
+                          onTap: () => selectModel('all'),
+                        ),
+                        for (final model in _kModelos)
+                          CollapsedNavigationDestination(
+                            label: model.$1,
+                            icon: Icons.description_outlined,
+                            selected: activeModule == _kModuleModelos &&
+                                modelosSection == model.$1,
+                            onTap: () => selectModel(model.$1),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GastosTab extends StatelessWidget {
-  const _GastosTab({
-    required this.isNarrow,
-    required this.group,
-    required this.selectedSection,
-    required this.onSectionSelected,
-    this.sideRailCollapsed = false,
-    this.onToggleSideRailCollapsed,
-  });
-
-  final bool isNarrow;
-  final Group group;
-  final String selectedSection;
-  final ValueChanged<String> onSectionSelected;
-  final bool sideRailCollapsed;
-  final VoidCallback? onToggleSideRailCollapsed;
-
-  @override
-  Widget build(BuildContext context) {
-    final isEs = Localizations.localeOf(context)
-        .languageCode
-        .toLowerCase()
-        .startsWith('es');
-    if (isNarrow) {
-      return Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            child: Row(children: [
-              Expanded(
-                  child: TextButton.icon(
-                onPressed: () => onSectionSelected('supplier_invoices'),
-                icon: const Icon(Icons.receipt_long_outlined, size: 16),
-                label: Text(isEs ? 'Facturas' : 'Invoices'),
-              )),
-              Expanded(
-                  child: TextButton.icon(
-                onPressed: () => onSectionSelected('import_history'),
-                icon: const Icon(Icons.history_rounded, size: 16),
-                label: Text(isEs ? 'Historial' : 'History'),
-              )),
-            ]),
           ),
-          Expanded(
-              child: selectedSection == 'import_history'
-                  ? ExpenseImportHistoryScreen(groupId: group.id)
-                  : ExpenseUploadScreen(
-                      key: ValueKey('gastos-mobile-expenses-${group.id}'),
-                      embedded: true,
-                      listOnly: true,
-                      groupId: group.id,
-                      groupName: group.name,
-                    )),
-        ],
-      );
-    }
-
-    final rail = _GastosSideRail(
-      title: isEs ? 'Gastos' : 'Expenses',
-      subtitle: isEs ? 'Menú de datos' : 'Data menu',
-      icon: Icons.payments_outlined,
-      isNarrow: isNarrow,
-      collapsed: sideRailCollapsed,
-      onToggleCollapsed: onToggleSideRailCollapsed,
-      selectedValue: selectedSection,
-      onSelected: onSectionSelected,
-      sections: const [
-        _GastosRailSection(
-          title: 'Gestion',
-          items: [
-            _GastosRailEntry(
-              value: 'register_expense',
-              icon: Icons.add_circle_outline_rounded,
-              label: 'Registrar gasto',
-              highlighted: true,
-            ),
-            _GastosRailEntry(
-              value: 'supplier_invoices',
-              icon: Icons.receipt_long_outlined,
-              label: 'Facturas proveedor',
-              badge: '142',
-            ),
-          ],
-        ),
-        _GastosRailSection(
-          title: 'Automatizacion',
-          items: [
-            _GastosRailEntry(
-              value: 'ocr_documents',
-              icon: Icons.document_scanner_outlined,
-              label: 'OCR documentos',
-            ),
-            _GastosRailEntry(
-              value: 'import_history',
-              icon: Icons.history_rounded,
-              label: 'Historial de lotes',
-            ),
-            _GastosRailEntry(
-              value: 'recurring_expenses',
-              icon: Icons.repeat_rounded,
-              label: 'Gastos recurrentes',
-            ),
-          ],
-        ),
-        _GastosRailSection(
-          title: 'Configuracion',
-          items: [
-            _GastosRailEntry(
-              value: 'categories',
-              icon: Icons.category_outlined,
-              label: 'Categorias',
-            ),
-            _GastosRailEntry(
-              value: 'exports',
-              icon: Icons.ios_share_outlined,
-              label: 'Exportaciones',
-            ),
-          ],
-        ),
-      ],
-    );
-    final contentChild = switch (selectedSection) {
-      'import_history' => ExpenseImportHistoryScreen(
-          key: ValueKey('gastos-import-history-${group.id}'),
-          groupId: group.id,
-        ),
-      'register_expense' => ExpenseUploadScreen(
-          key: ValueKey('gastos-register-expense-${group.id}'),
-          embedded: true,
-          uploadOnly: true,
-          initialTabIndex: 1,
-          groupId: group.id,
-          groupName: group.name,
-        ),
-      _ => ExpenseUploadScreen(
-          key: ValueKey('gastos-expenses-${group.id}'),
-          embedded: true,
-          listOnly: true,
-          groupId: group.id,
-          groupName: group.name,
-        ),
-    };
-    final content = Material(
-      color: Colors.transparent,
-      child: contentChild,
-    );
-
-    if (isNarrow) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          rail,
-          const SizedBox(height: 12),
-          Expanded(child: content),
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        SizedBox(width: sideRailCollapsed ? 62 : 220, child: rail),
-        const SizedBox(width: 10),
-        Expanded(child: content),
-      ],
-    );
-  }
-}
-
-class _AnaliticaTab extends StatelessWidget {
-  const _AnaliticaTab({
-    required this.isNarrow,
-    required this.group,
-    required this.vatApi,
-    this.sideRailCollapsed = false,
-    this.onToggleSideRailCollapsed,
-  });
-
-  final bool isNarrow;
-  final Group group;
-  final VatSummaryApi vatApi;
-  final bool sideRailCollapsed;
-  final VoidCallback? onToggleSideRailCollapsed;
-
-  @override
-  Widget build(BuildContext context) {
-    final isEs = Localizations.localeOf(context)
-        .languageCode
-        .toLowerCase()
-        .startsWith('es');
-    final rail = _GastosSideRail(
-      title: isEs ? 'Analítica' : 'Analytics',
-      subtitle: isEs ? 'Menú de datos' : 'Data menu',
-      icon: Icons.analytics_outlined,
-      isNarrow: isNarrow,
-      collapsed: sideRailCollapsed,
-      onToggleCollapsed: onToggleSideRailCollapsed,
-      sections: const [
-        _GastosRailSection(
-          title: 'Panel analitico',
-          items: [
-            _GastosRailEntry(
-              value: 'vat_comparison',
-              icon: Icons.compare_arrows_rounded,
-              label: 'Ventas vs compras IVA',
-            ),
-            _GastosRailEntry(
-              value: 'tax_summary',
-              icon: Icons.assessment_outlined,
-              label: 'Resumen fiscal',
-            ),
-            _GastosRailEntry(
-              value: 'trends',
-              icon: Icons.show_chart_rounded,
-              label: 'Tendencias',
-            ),
-            _GastosRailEntry(
-              value: 'comparisons',
-              icon: Icons.pie_chart_outline_rounded,
-              label: 'Comparativas',
-            ),
-            _GastosRailEntry(
-              value: 'quarterly_analysis',
-              icon: Icons.calendar_month_outlined,
-              label: 'Analisis trimestral',
-            ),
-          ],
-        ),
-      ],
-    );
-    final content = VatSummaryView(api: vatApi, groupId: group.id);
-
-    if (isNarrow) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          rail,
-          const SizedBox(height: 12),
-          Expanded(child: content),
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        SizedBox(width: sideRailCollapsed ? 62 : 220, child: rail),
-        const SizedBox(width: 10),
-        Expanded(child: content),
-      ],
-    );
-  }
-}
-
-class _ModelosTab extends StatelessWidget {
-  const _ModelosTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _PlaceholderGrid(
-      title: 'Modelos fiscales',
-      subtitle: 'Preparado para exports AEAT y declaraciones futuras.',
-      cards: [
-        ('Modelo 303', 'IVA trimestral'),
-        ('Modelo 390', 'Resumen anual IVA'),
-        ('Modelo 111', 'Retenciones profesionales'),
-        ('Modelo 190', 'Resumen anual retenciones'),
-        ('Modelo 347', 'Operaciones con terceros'),
-      ],
-    );
-  }
-}
-
-class _GastosSideRail extends StatelessWidget {
-  const _GastosSideRail({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.sections,
-    this.isNarrow = false,
-    this.collapsed = false,
-    this.onToggleCollapsed,
-    this.selectedValue,
-    this.onSelected,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final List<_GastosRailSection> sections;
-  final bool isNarrow;
-  final bool collapsed;
-  final VoidCallback? onToggleCollapsed;
-  final String? selectedValue;
-  final ValueChanged<String>? onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isEs = Localizations.localeOf(context)
-        .languageCode
-        .toLowerCase()
-        .startsWith('es');
-    final flattened = [
-      for (final section in sections) ...section.items,
-    ];
-    if (!isNarrow && collapsed) {
-      return Container(
-        padding: const EdgeInsets.fromLTRB(7, 8, 7, 10),
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-          boxShadow: [
-            BoxShadow(
-              color: cs.shadow.withValues(alpha: 0.035),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Tooltip(
-              message: isEs ? 'Expandir menú' : 'Expand menu',
-              child: IconButton.filledTonal(
-                onPressed: onToggleCollapsed,
-                icon: const Icon(Icons.keyboard_double_arrow_right_rounded),
-                iconSize: 18,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(42, 38),
-                  fixedSize: const Size(42, 38),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView.separated(
-                padding: EdgeInsets.zero,
-                itemCount: flattened.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 6),
-                itemBuilder: (context, index) {
-                  final item = flattened[index];
-                  final selected = selectedValue == null
-                      ? index == 0
-                      : item.value == selectedValue;
-                  return _CollapsedGastosRailItem(
-                    entry: item,
-                    selected: selected,
-                    onTap: onSelected == null
-                        ? null
-                        : () => onSelected!(item.value),
-                  );
-                },
-              ),
-            ),
-          ],
         ),
       );
     }
 
-    final child = isNarrow
-        ? SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (var i = 0; i < flattened.length; i++) ...[
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 156),
-                    child: GroupInvoicesSubMenuItem(
-                      icon: flattened[i].icon,
-                      label: flattened[i].label,
-                      selected: selectedValue == null
-                          ? i == 0
-                          : flattened[i].value == selectedValue,
-                      count: _badgeCount(flattened[i].badge),
-                      primaryAction: flattened[i].highlighted,
-                      onPressed: onSelected == null
-                          ? null
-                          : () => onSelected!(flattened[i].value),
-                    ),
-                  ),
-                  if (i != flattened.length - 1) const SizedBox(width: 8),
-                ],
-              ],
-            ),
-          )
-        : Column(
+    // ── Expanded ────────────────────────────────────────────────────────────
+    return SidebarEdgeShell(
+      collapsed: false,
+      onToggle: onToggleCollapsed,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(10, 9, 8, 9),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: cs.outlineVariant.withValues(alpha: 0.38),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: cs.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(11),
-                        ),
-                        child: Icon(icon, size: 18, color: cs.primary),
-                      ),
-                      const SizedBox(width: 9),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelLarge
-                                  ?.copyWith(
-                                    color: cs.onSurface,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                            Text(
-                              subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Tooltip(
-                        message: isEs ? 'Compactar menú' : 'Collapse menu',
-                        child: IconButton.filledTonal(
-                          onPressed: onToggleCollapsed,
-                          icon: const Icon(
-                            Icons.keyboard_double_arrow_left_rounded,
-                          ),
-                          iconSize: 17,
-                          style: IconButton.styleFrom(
-                            minimumSize: const Size(34, 30),
-                            fixedSize: const Size(34, 30),
-                            padding: EdgeInsets.zero,
-                            visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
               Expanded(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.zero,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (var i = 0; i < sections.length; i++) ...[
+                      // ── Module area items ──────────────────────────────────
+                      for (final section in _kGastosSections)
                         _GastosRailGroupView(
-                          section: sections[i],
-                          selectedValue: selectedValue,
-                          onSelected: onSelected,
+                          section: section,
+                          selectedValue: activeModule == _kModuleGastos
+                              ? gastosSection
+                              : null,
+                          onSelected: (value) {
+                            onModuleSelected(_kModuleGastos);
+                            onGastosSectionSelected(value);
+                          },
                         ),
-                        if (i != sections.length - 1) const SizedBox(height: 7),
-                      ],
+                      NavigationGroup(
+                        title: isEs ? 'Impuestos' : 'Taxes',
+                        icon: Icons.account_balance_outlined,
+                        storageId: 'expenses-tree-taxes',
+                        initiallyExpanded: activeModule == _kModuleImpuestos,
+                        child: Column(
+                          children: [
+                            for (final section in TaxReportSection.values)
+                              GroupInvoicesSubMenuItem(
+                                icon: Icons.percent_rounded,
+                                label: section.label,
+                                selected: activeModule == _kModuleImpuestos &&
+                                    section == taxSection,
+                                onPressed: () => selectTax(section),
+                              ),
+                          ],
+                        ),
+                      ),
+                      NavigationGroup(
+                        title: isEs ? 'Analítica' : 'Analytics',
+                        icon: Icons.analytics_outlined,
+                        storageId: 'expenses-tree-analytics',
+                        initiallyExpanded: activeModule == _kModuleAnalitica,
+                        child: GroupInvoicesSubMenuItem(
+                          icon: Icons.dashboard_outlined,
+                          label: isEs ? 'Resumen' : 'Overview',
+                          selected: activeModule == _kModuleAnalitica,
+                          onPressed: () => onModuleSelected(_kModuleAnalitica),
+                        ),
+                      ),
+                      NavigationGroup(
+                        title: isEs ? 'Modelos' : 'Tax forms',
+                        icon: Icons.description_outlined,
+                        storageId: 'expenses-tree-models',
+                        initiallyExpanded: activeModule == _kModuleModelos,
+                        child: Column(
+                          children: [
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.grid_view_outlined,
+                              label: isEs ? 'Todos los modelos' : 'All forms',
+                              count: _kModelos.length,
+                              selected: activeModule == _kModuleModelos &&
+                                  modelosSection == 'all',
+                              onPressed: () => selectModel('all'),
+                            ),
+                            for (final model in _kModelos)
+                              GroupInvoicesSubMenuItem(
+                                icon: Icons.description_outlined,
+                                label: model.$1,
+                                selected: activeModule == _kModuleModelos &&
+                                    modelosSection == model.$1,
+                                onPressed: () => selectModel(model.$1),
+                              ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
             ],
-          );
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.035),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: child,
+        ),
       ),
     );
   }
 
-  int? _badgeCount(String? value) {
-    if (value == null) return null;
-    return int.tryParse(value);
-  }
+  int? _badgeCount(String? value) => value == null ? null : int.tryParse(value);
 }
+
+// ── Rail data models ──────────────────────────────────────────────────────────
 
 class _GastosRailSection {
   const _GastosRailSection({
     required this.title,
+    required this.icon,
+    required this.storageId,
     required this.items,
   });
 
   final String title;
+  final IconData icon;
+  final String storageId;
   final List<_GastosRailEntry> items;
 }
 
@@ -921,23 +550,30 @@ class _GastosRailGroupView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final items = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GroupInvoicesSectionLabel(section.title),
-        for (var i = 0; i < section.items.length; i++) ...[
+        for (final item in section.items) ...[
           GroupInvoicesSubMenuItem(
-            icon: section.items[i].icon,
-            label: section.items[i].label,
-            selected: section.items[i].value == selectedValue,
-            count: int.tryParse(section.items[i].badge ?? ''),
-            primaryAction: section.items[i].highlighted,
-            onPressed: onSelected == null
-                ? null
-                : () => onSelected!(section.items[i].value),
+            icon: item.icon,
+            label: item.label,
+            selected: item.value == selectedValue,
+            count: int.tryParse(item.badge ?? ''),
+            onPressed:
+                onSelected == null ? null : () => onSelected!(item.value),
+            indent: 0,
           ),
         ],
       ],
+    );
+    if (section.title.isEmpty) return items;
+    return NavigationGroup(
+      title: section.title,
+      icon: section.icon,
+      storageId: section.storageId,
+      initiallyExpanded: selectedValue != null &&
+          section.items.any((item) => item.value == selectedValue),
+      child: items,
     );
   }
 }
@@ -948,71 +584,15 @@ class _GastosRailEntry {
     required this.icon,
     required this.label,
     this.badge,
-    this.highlighted = false,
   });
 
   final String value;
   final IconData icon;
   final String label;
   final String? badge;
-  final bool highlighted;
 }
 
-class _CollapsedGastosRailItem extends StatelessWidget {
-  const _CollapsedGastosRailItem({
-    required this.entry,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final _GastosRailEntry entry;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final enabled = onTap != null;
-    return Tooltip(
-      message: entry.label,
-      waitDuration: const Duration(milliseconds: 350),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(13),
-        hoverColor: cs.primary.withValues(alpha: 0.05),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOutCubic,
-          width: 42,
-          height: 38,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected
-                ? cs.primary.withValues(alpha: 0.13)
-                : entry.highlighted
-                    ? cs.primary.withValues(alpha: 0.08)
-                    : cs.surfaceContainerHighest.withValues(alpha: 0.16),
-            borderRadius: BorderRadius.circular(13),
-            border: Border.all(
-              color: selected
-                  ? cs.primary.withValues(alpha: 0.25)
-                  : cs.outlineVariant.withValues(alpha: 0.18),
-            ),
-          ),
-          child: Icon(
-            entry.icon,
-            size: 18,
-            color: selected || entry.highlighted
-                ? cs.primary
-                : enabled
-                    ? cs.onSurfaceVariant
-                    : cs.outline,
-          ),
-        ),
-      ),
-    );
-  }
-}
+// ── Placeholder grid (Modelos content) ───────────────────────────────────────
 
 class _PlaceholderGrid extends StatelessWidget {
   const _PlaceholderGrid({

@@ -1,5 +1,8 @@
+import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/clients/client_contract.dart';
 import 'package:hexora/services/clients/client_contracts_api.dart';
@@ -96,6 +99,7 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
   }) async {
     try {
       return await showModalBottomSheet<ClientContractFormResult>(
+        sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: context,
         isScrollControlled: true,
         showDragHandle: true,
@@ -229,7 +233,8 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
                       : () => _handleMarkCurrent(contract),
                 );
               },
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, __) => SizedBox(
+                  height: MediaQuery.sizeOf(context).width < 650 ? 10 : 0),
               itemCount: _contracts.length,
             ),
           ),
@@ -264,7 +269,7 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
 
   Future<void> _handleDelete(ClientContract contract) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.contractDeleteTitle),
@@ -352,7 +357,7 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          padding: EdgeInsets.fromLTRB(12, widget.compact ? 2 : 12, 12, 4),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxWidth < 700;
@@ -395,6 +400,13 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
                   ),
                 ],
               );
+
+              if (widget.compact) {
+                return Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: actions,
+                );
+              }
 
               if (compact) {
                 return Column(
@@ -688,6 +700,59 @@ class _ClientContractCardState extends State<_ClientContractCard> {
       ),
     );
 
+    if (MediaQuery.sizeOf(context).width >= 650) {
+      return CompactDocumentRow(
+        title: contract.displayTitle,
+        metadata: contract.fileName,
+        icon: Icons.picture_as_pdf_outlined,
+        previewLabel: l.contractViewPdfAction,
+        onPreview: busy ? null : widget.onView,
+        previewBusy: busy,
+        status: Tooltip(
+            message: [
+              clientContractStatusLabel(l, contract.status),
+              if (contract.isCurrent) l.contractCurrentBadge,
+              if (expired) l.contractExpiredBadge,
+              if (expiringSoon) l.contractExpiringSoonBadge
+            ].join(' · '),
+            child: Icon(
+                expired || expiringSoon
+                    ? Icons.warning_amber_rounded
+                    : contract.isCurrent
+                        ? Icons.verified_outlined
+                        : Icons.description_outlined,
+                size: 14,
+                color: expired ? cs.error : cs.onSurfaceVariant)),
+        actions: [
+          CompactDocumentAction(
+              _expanded
+                  ? l.clientDetailsCollapseTooltip
+                  : l.clientDetailsExpandTooltip,
+              () => setState(() => _expanded = !_expanded)),
+          CompactDocumentAction(
+              l.contractDownloadAction, busy ? null : widget.onDownload),
+          CompactDocumentAction(l.edit, busy ? null : widget.onEdit),
+          if (widget.onMarkCurrent != null)
+            CompactDocumentAction(l.contractMarkCurrentAction,
+                busy ? null : widget.onMarkCurrent),
+          CompactDocumentAction(l.delete, busy ? null : widget.onDelete,
+              destructive: true),
+        ],
+        details: !_expanded
+            ? null
+            : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Wrap(spacing: 8, runSpacing: 4, children: chips),
+                if (contract.tags.isNotEmpty)
+                  Wrap(
+                      spacing: 8,
+                      children: contract.tags
+                          .map((tag) => _TagChip(label: tag))
+                          .toList()),
+                if ((contract.notes ?? '').trim().isNotEmpty)
+                  Text(contract.notes!, style: t.bodySmall),
+              ]),
+      );
+    }
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -740,8 +805,8 @@ class _ClientContractCardState extends State<_ClientContractCard> {
                   ],
                 ),
               AnimatedSize(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
+                duration: HexoraMotion.duration(context, HexoraMotion.standard),
+                curve: HexoraMotion.emphasized,
                 alignment: Alignment.topCenter,
                 child: _expanded
                     ? Column(

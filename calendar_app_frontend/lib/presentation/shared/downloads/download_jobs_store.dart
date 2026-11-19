@@ -30,6 +30,7 @@ class DownloadJobsStore extends ChangeNotifier {
     _unseenReadyIds.clear();
     notifyListeners();
   }
+
   bool get loading => _loading;
   bool get loadedOnce => _loadedOnce;
   String? get boundGroupId => _groupId;
@@ -83,7 +84,8 @@ class DownloadJobsStore extends ChangeNotifier {
     _loading = true;
     notifyListeners();
     try {
-      final result = await _api.listJobs(groupId: groupId, mine: true, limit: 50);
+      final result =
+          await _api.listJobs(groupId: groupId, mine: true, limit: 50);
       if (_groupId != groupId) return;
       _replaceJobs(result);
       _loadedOnce = true;
@@ -146,7 +148,8 @@ class DownloadJobsStore extends ChangeNotifier {
   void upsert(DownloadJob job) {
     if (_groupId != null && job.groupId != _groupId) return;
     final index = _jobs.indexWhere((item) => item.id == job.id);
-    if (job.status == 'ready' && job.canDownload &&
+    if (job.status == 'ready' &&
+        job.canDownload &&
         (index == -1 || _jobs[index].status != 'ready')) {
       _unseenReadyIds.add(job.id);
     }
@@ -164,13 +167,15 @@ class DownloadJobsStore extends ChangeNotifier {
     if (_loadedOnce) {
       final previous = {for (final job in _jobs) job.id: job};
       for (final job in jobs) {
-        if (job.status == 'ready' && job.canDownload &&
+        if (job.status == 'ready' &&
+            job.canDownload &&
             previous[job.id]?.status != 'ready') {
           _unseenReadyIds.add(job.id);
         }
       }
     }
-    final readyIds = jobs.where((job) => job.status == 'ready').map((job) => job.id).toSet();
+    final readyIds =
+        jobs.where((job) => job.status == 'ready').map((job) => job.id).toSet();
     _unseenReadyIds.removeWhere((id) => !readyIds.contains(id));
     _jobs
       ..clear()

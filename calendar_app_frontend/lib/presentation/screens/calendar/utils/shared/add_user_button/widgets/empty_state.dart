@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -31,10 +32,11 @@ class EmptyState extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.mail_outline),
-            label: Text(l.inviteByEmail, style: t.buttonText),
+          HexoraButton(
+            icon: Icons.mail_outline,
+            label: l.inviteByEmail,
             onPressed: onInvite,
+            variant: HexoraButtonVariant.secondary,
           ),
         ],
       ),

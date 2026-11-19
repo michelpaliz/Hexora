@@ -20,8 +20,46 @@ extension _TemplateDocumentPreview on _PresupuestoTemplateEditorScreenState {
 
     return _card(
       title: 'Vista previa',
-      subtitle: 'Asi se vera el documento mientras editas.',
-      icon: Icons.preview_outlined,
+      trailing: Wrap(
+        spacing: 6,
+        children: [
+          TextButton.icon(
+            onPressed:
+                _previewing || _mustSelectDefaultTemplate ? null : _previewPdf,
+            icon: _previewing
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.visibility_outlined, size: 17),
+            label: const Text('Previsualizar'),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(0, 34),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: _downloading || _mustSelectDefaultTemplate
+                ? null
+                : _downloadPdf,
+            icon: _downloading
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download_rounded, size: 17),
+            label: const Text('Descargar PDF'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 34),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final previewWidth =
@@ -39,23 +77,16 @@ extension _TemplateDocumentPreview on _PresupuestoTemplateEditorScreenState {
               child: SizedBox(
                 width: previewWidth,
                 child: Container(
-                  padding: const EdgeInsets.all(22),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: _isDark(theme)
                           ? const Color(0xFFBFE7FF).withValues(alpha: 0.22)
                           : theme.colorScheme.outlineVariant
                               .withValues(alpha: 0.8),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
                   ),
                   child: DefaultTextStyle(
                     style: theme.textTheme.bodyMedium!.copyWith(
@@ -67,20 +98,12 @@ extension _TemplateDocumentPreview on _PresupuestoTemplateEditorScreenState {
                       children: [
                         Row(
                           children: [
-                            Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primary
-                                    .withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.description_outlined,
-                                color: theme.colorScheme.primary,
-                              ),
+                            Icon(
+                              Icons.description_outlined,
+                              color: theme.colorScheme.primary,
+                              size: 22,
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,9 +203,9 @@ extension _TemplateDocumentPreview on _PresupuestoTemplateEditorScreenState {
     final items = [
       if (section.generatedFrequency) ..._generatedFrequencyItems(),
       ...section.itemControllers
-        .map((controller) => controller.text.trim())
-        .where((line) => line.isNotEmpty)
-        .map(_resolvePreviewTags),
+          .map((controller) => controller.text.trim())
+          .where((line) => line.isNotEmpty)
+          .map(_resolvePreviewTags),
     ];
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -269,46 +292,6 @@ extension _TemplateDocumentPreview on _PresupuestoTemplateEditorScreenState {
           defaultVerticalAlignment: TableCellVerticalAlignment.middle,
           children: rows,
         ),
-      ),
-    );
-  }
-
-  Widget _buildDocumentActionsCard() {
-    return _card(
-      title: 'Salida del documento',
-      subtitle:
-          'Guarda, revisa y descarga el resultado final antes de compartirlo con el cliente.',
-      icon: Icons.picture_as_pdf_outlined,
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          OutlinedButton.icon(
-            onPressed:
-                _previewing || _mustSelectDefaultTemplate ? null : _previewPdf,
-            icon: _previewing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.visibility_outlined),
-            label: const Text('Previsualizar'),
-          ),
-          FilledButton.icon(
-            onPressed: _downloading || _mustSelectDefaultTemplate
-                ? null
-                : _downloadPdf,
-            icon: _downloading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.download_rounded),
-            label: const Text('Descargar PDF'),
-          ),
-        ],
       ),
     );
   }

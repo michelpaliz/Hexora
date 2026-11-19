@@ -40,7 +40,7 @@ class _AuthSwitcherViewState extends State<AuthSwitcherView> {
       body: DecoratedBox(
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/images/login_bg.png'),
+            image: AssetImage('assets/images/home_page/dark_bg_color.png'),
             fit: BoxFit.cover,
             alignment: Alignment.topCenter,
           ),

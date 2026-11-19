@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
@@ -790,8 +791,9 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
                       ),
                     ),
                     AnimatedSize(
-                      duration: const Duration(milliseconds: 260),
-                      curve: Curves.easeInOut,
+                      duration: HexoraMotion.duration(
+                          context, HexoraMotion.navigation),
+                      curve: HexoraMotion.emphasized,
                       alignment: Alignment.topCenter,
                       child: _changePassword
                           ? Padding(

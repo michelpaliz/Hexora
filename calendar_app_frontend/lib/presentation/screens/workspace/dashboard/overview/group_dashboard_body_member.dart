@@ -5,6 +5,7 @@ import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/header/group_header_view.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/overview/widgets/home_calendar_preview.dart';
 import 'package:hexora/presentation/screens/workspace/sections/business_hours/group_business_hours_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/common/section_header.dart';
 import 'package:hexora/presentation/screens/workspace/sections/role_info/profile_role_card.dart';
@@ -33,6 +34,130 @@ class GroupDashboardBodyMember extends StatelessWidget {
   final GroupRole role;
   final Future<String?> Function(String blobName) fetchReadSas;
 
+  Widget _buildMobile(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final es = l.localeName.startsWith('es');
+    final dashboard = context.read<GroupDashboardState>();
+
+    Widget action(
+      IconData icon,
+      String label,
+      String section, {
+      VoidCallback? onTap,
+    }) =>
+        Material(
+          color: cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(14),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap ?? () => dashboard.openSection(section),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer.withValues(alpha: .65),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, size: 19, color: cs.primary),
+                  ),
+                  Row(children: [
+                    Expanded(
+                      child: Text(label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w700)),
+                    ),
+                    Icon(Icons.arrow_forward_ios_rounded,
+                        size: 13, color: cs.onSurfaceVariant),
+                  ]),
+                ],
+              ),
+            ),
+          ),
+        );
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 24),
+      children: [
+        Text(
+          es ? 'Tu jornada' : 'Your workday',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -.3,
+              ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          es
+              ? 'Todo lo importante en un solo lugar'
+              : 'Everything important in one place',
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant),
+        ),
+        const SizedBox(height: 12),
+        GroupHeaderView(group: group, allowEditing: false),
+        const SizedBox(height: 16),
+        HomeCalendarPreview(
+          groupId: group.id,
+          role: role,
+          currentUserId: user.id,
+        ),
+        const SizedBox(height: 12),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 1.55,
+          children: [
+            action(Icons.calendar_month_outlined, l.calendarTitle,
+                Sections.calendar),
+            action(Icons.view_agenda_outlined, l.agenda, Sections.agenda),
+            action(
+                Icons.forum_outlined,
+                es ? 'Chat de la empresa' : 'Business chat',
+                Sections.businessChat),
+            action(
+              Icons.view_kanban_outlined,
+              es ? 'Notas rápidas' : 'Quick notes',
+              '',
+              onTap: () => Navigator.of(context).pushNamed(
+                AppRoutes.groupQuickNotes,
+                arguments: group,
+              ),
+            ),
+            action(Icons.person_outline_rounded,
+                es ? 'Mi perfil' : 'My profile', Sections.profile),
+          ],
+        ),
+        const SizedBox(height: 12),
+        WorkConditionsCard(groupId: group.id),
+        const SizedBox(height: 12),
+        GroupUndoneEventsSection(group: group, user: user, role: role),
+        const SizedBox(height: 12),
+        // The selected-day agenda is provided by HomeCalendarPreview above.
+        const SizedBox(height: 12),
+        GroupBusinessHoursCard(
+          group: group,
+          description: l.businessHoursMemberSubtitle,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -45,6 +170,10 @@ class GroupDashboardBodyMember extends StatelessWidget {
         );
     final tileSub = t.bodySmall;
     final tileBg = ThemeColors.listTileBg(context);
+
+    if (MediaQuery.sizeOf(context).width < 700) {
+      return _buildMobile(context);
+    }
 
     return Column(
       children: [
@@ -108,9 +237,11 @@ class GroupDashboardBodyMember extends StatelessWidget {
                 color: tileBg,
                 child: ListTile(
                   leading: const Icon(Icons.view_kanban_outlined),
-                  title: Text(l.localeName.startsWith('es')
-                      ? 'Notas rápidas'
-                      : 'Quick notes', style: tileTitle),
+                  title: Text(
+                      l.localeName.startsWith('es')
+                          ? 'Notas rápidas'
+                          : 'Quick notes',
+                      style: tileTitle),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).pushNamed(
                     AppRoutes.groupQuickNotes,
@@ -122,9 +253,11 @@ class GroupDashboardBodyMember extends StatelessWidget {
                 color: tileBg,
                 child: ListTile(
                   leading: const Icon(Icons.forum_outlined),
-                  title: Text(l.localeName.startsWith('es')
-                      ? 'Chat de la empresa'
-                      : 'Business chat', style: tileTitle),
+                  title: Text(
+                      l.localeName.startsWith('es')
+                          ? 'Chat de la empresa'
+                          : 'Business chat',
+                      style: tileTitle),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context
                       .read<GroupDashboardState>()

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/services/auth/email_verification_state.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
@@ -83,8 +84,27 @@ class _LoginFormState extends State<LoginForm> {
       );
     } catch (error) {
       await authService.logOut();
-      if (mounted) _showSnack('No se pudo cambiar la contraseña: $error');
+      if (mounted) {
+        _showSnack(
+          _loginErrorMessage(AppLocalizations.of(context)!, error),
+        );
+      }
     }
+  }
+
+  String _loginErrorMessage(AppLocalizations l10n, Object error) {
+    if (error is WrongPasswordAuthException) {
+      return l10n.loginInvalidCredentials;
+    }
+    if (error is UserNotFoundAuthException) {
+      return l10n.userNotFound;
+    }
+    if (error is LoginRequestFailedAuthException) {
+      final message = error.message.trim();
+      return message.isEmpty ? l10n.authError : message;
+    }
+    // Do not expose raw FormatException, socket, or implementation details.
+    return l10n.authError;
   }
 
   Future<void> _resendVerification({String? overrideEmail}) async {
@@ -116,6 +136,7 @@ class _LoginFormState extends State<LoginForm> {
     final cs = Theme.of(context).colorScheme;
 
     showModalBottomSheet(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -307,14 +328,8 @@ class _LoginFormState extends State<LoginForm> {
                               authService, email);
                         } else if (e is EmailNotVerifiedAuthException) {
                           _promptEmailVerification(email);
-                        } else if (e is WrongPasswordAuthException) {
-                          _showSnack(l10n.loginInvalidCredentials);
                         } else {
-                          final message = e.toString();
-                          _showSnack(message.contains('429') ||
-                                  message.contains('LOGIN_RATE_LIMITED')
-                              ? 'Too many attempts for these credentials. Use password recovery or try again shortly.'
-                              : 'Login failed: $e');
+                          _showSnack(_loginErrorMessage(l10n, e));
                         }
                       } finally {
                         if (mounted) setState(() => _isSubmitting = false);

@@ -12,6 +12,7 @@ import 'package:hexora/presentation/screens/settings/widgets/account_section.dar
 import 'package:hexora/presentation/screens/settings/widgets/contact_section.dart';
 import 'package:hexora/presentation/screens/settings/widgets/language_sheet.dart';
 import 'package:hexora/presentation/screens/settings/widgets/preferences_section.dart';
+import 'package:hexora/presentation/screens/settings/widgets/nav_tile.dart';
 import 'package:hexora/presentation/screens/settings/widgets/section_card.dart';
 import 'package:hexora/state/locale_provider.dart';
 import 'package:hexora/theme/theme_provider.dart';
@@ -215,6 +216,8 @@ class _SettingsState extends State<Settings> {
                   final err = await _changeUsername(newName);
                   _snack(err ?? successMessage);
                 },
+                onEditProfile: () =>
+                    Navigator.pushNamed(context, AppRoutes.profile),
                 onChangePassword: () async {
                   final result = await showChangePasswordDialog(context);
                   if (result == null) return;
@@ -238,11 +241,40 @@ class _SettingsState extends State<Settings> {
                 onToggleDark: () => themeModeProv.toggleLightDark(),
                 languageName: _languageName(context),
                 onChangeLanguage: _openLanguageSheet,
+                showDisplayPreferences: false,
+                onOpenPreferences: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.preferences),
                 autoStatementImportEnabled:
                     authProvider.currentUser?.autoStatementImportEnabled ??
                         false,
                 autoStatementImportBusy: _autoStatementImportLoading,
                 onToggleAutoStatementImport: _toggleAutoStatementImport,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SectionHeader(
+              title: Localizations.localeOf(context).languageCode == 'es'
+                  ? 'Experimentos'
+                  : 'Experiments',
+              textStyle: typography.bodyLarge.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            SectionCard(
+              child: NavTile(
+                leading: Icon(Icons.dashboard_customize_outlined,
+                    color: cs.primary, size: 20),
+                iconBgColor: cs.primary.withValues(alpha: 0.12),
+                title: Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Vista previa del panel'
+                    : 'Dashboard preview',
+                subtitle:
+                    Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Nuevo diseño del inicio (experimental)'
+                        : 'New home design (experimental)',
+                onTap: () => Navigator.pushNamed(
+                    context, AppRoutes.dashboardPreview),
               ),
             ),
             const SizedBox(height: 20),

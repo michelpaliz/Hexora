@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/workers/worker.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -29,45 +28,62 @@ class WorkerSelectionSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        Row(
           children: [
-            Text(
-              l.workersLabel,
-              style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+            Expanded(
+              child: Text(
+                '${l.workersLabel} (${selectedIds.length})',
+                style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+              ),
             ),
-            TextButton(onPressed: onSelectAll, child: Text(l.selectAll)),
-            TextButton(onPressed: onClear, child: Text(l.clearSelection)),
+            PopupMenuButton<String>(
+              tooltip: l.localeName.startsWith('es')
+                  ? 'Opciones de selección'
+                  : 'Selection options',
+              icon: const Icon(Icons.more_horiz_rounded, size: 18),
+              padding: EdgeInsets.zero,
+              onSelected: (value) {
+                if (value == 'all') onSelectAll();
+                if (value == 'clear') onClear();
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(value: 'all', child: Text(l.selectAll)),
+                PopupMenuItem(value: 'clear', child: Text(l.clearSelection)),
+              ],
+            ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: workers.map((w) {
             final selected = selectedIds.contains(w.id);
-            final fg =
-                selected ? cs.onPrimary : ThemeColors.textPrimary(context);
-            final bg = selected
-                ? cs.primary
-                : cs.surfaceContainerHighest.withValues(alpha: 0.65);
             return FilterChip(
               selected: selected,
+              showCheckmark: true,
+              checkmarkColor: cs.primary,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               label: Text(
                 w.displayName ?? w.id,
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: t.bodySmall.copyWith(
-                  color: fg,
+                  color: selected ? cs.primary : cs.onSurface,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              selectedColor: bg,
-              backgroundColor: bg,
+              selectedColor: cs.primary.withValues(alpha: .09),
+              backgroundColor: cs.surface,
+              side: BorderSide(
+                color: selected
+                    ? cs.primary.withValues(alpha: .45)
+                    : cs.outlineVariant.withValues(alpha: .55),
+              ),
               onSelected: (val) => onToggle(w.id, val),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(8),
               ),
             );
           }).toList(),

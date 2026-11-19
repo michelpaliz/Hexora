@@ -15,7 +15,7 @@ class AppBarStyles {
       titleTextStyle: titleStyle?.copyWith(
         color: Colors.white,
         fontWeight: FontWeight.bold,
-        fontSize: 20,
+        fontSize: 18,
       ),
       iconTheme: const IconThemeData(color: Colors.white),
       foregroundColor: Colors.white,

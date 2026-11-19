@@ -10,6 +10,7 @@ class _InvoicesTabList extends StatefulWidget {
   final ValueChanged<Invoice>? onDelete;
   final ValueChanged<Invoice>? onEdit;
   final ValueChanged<Invoice>? onIssue;
+  final ValueChanged<Invoice>? onLinkInvoice;
   final ValueChanged<List<Invoice>>? onIssueAll;
   final InvoiceSortState sortState;
   final ValueChanged<InvoiceSortBy> onSortBySelected;
@@ -18,11 +19,13 @@ class _InvoicesTabList extends StatefulWidget {
   final String? selectedInvoiceId;
   final bool showSummaryTotals;
   final String groupId;
-  final Group group;
   final ValueChanged<String>? onOpenRecurringSeries;
   final ValueChanged<InvoiceDateFilterState>? onDateFilterChanged;
   final Future<void> Function(List<Invoice>)? onDownloadFiltered;
+  final Future<void> Function(List<Invoice>)? onDownloadExcelFiltered;
   final bool allowClientNameSort;
+  final Widget? toolbarLeading;
+  final InvoiceToolbarOptions? toolbarOptions;
 
   const _InvoicesTabList({
     required this.emptyTitle,
@@ -34,6 +37,7 @@ class _InvoicesTabList extends StatefulWidget {
     required this.onDelete,
     required this.onEdit,
     required this.onIssue,
+    this.onLinkInvoice,
     required this.onIssueAll,
     required this.sortState,
     required this.onSortBySelected,
@@ -42,11 +46,13 @@ class _InvoicesTabList extends StatefulWidget {
     required this.selectedInvoiceId,
     required this.showSummaryTotals,
     required this.groupId,
-    required this.group,
     this.onOpenRecurringSeries,
     this.onDateFilterChanged,
     this.onDownloadFiltered,
+    this.onDownloadExcelFiltered,
     this.allowClientNameSort = false,
+    this.toolbarLeading,
+    this.toolbarOptions,
   });
 
   @override
@@ -56,10 +62,10 @@ class _InvoicesTabList extends StatefulWidget {
 class _InvoicesTabListState extends State<_InvoicesTabList> {
   final InvoicesApi _invoicesApi = InvoicesApi();
   final RecurringInvoicesApi _recurringApi = RecurringInvoicesApi();
+  // ignore: unused_field
   DateQuickRange _quickRange = DateQuickRange.none;
   DateTime? _fromDate;
   DateTime? _toDate;
-  bool _filtersExpanded = false;
   String _duplicateFilter = 'all';
   bool _unpaidOnly = false;
   bool _unpaidLoading = false;
@@ -79,11 +85,80 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   String? _summaryError;
   bool _clientNameSortEnabled = false;
   InvoiceSortDir _clientNameSortDir = InvoiceSortDir.asc;
+  String _searchText = '';
+  String _invoiceNumberQuery = '';
+  Timer? _invoiceSearchDebounce;
+  Timer? _globalSearchDebounce;
+  Set<String> _selectedClientNames = {};
+  Set<String> _selectedLifecycleStatuses = {};
+  Set<String> _selectedDeliveryStatuses = {};
+  Set<String> _selectedPaymentStatuses = {};
+  _InvoiceAmountRange _baseRange = const _InvoiceAmountRange();
+  _InvoiceAmountRange _vatRange = const _InvoiceAmountRange();
+  _InvoiceAmountRange _totalRange = const _InvoiceAmountRange();
+  _InvoiceColumnSort? _columnSort;
+  InvoiceSortDir _columnSortDir = InvoiceSortDir.asc;
+  bool _mismatchOnly = false;
+  int _summaryRequestGeneration = 0;
+  static const _availableFinancialColumns = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.concept,
+    HexoraFinancialColumn.notes,
+    HexoraFinancialColumn.taxableBase,
+    HexoraFinancialColumn.vat,
+    HexoraFinancialColumn.total,
+    HexoraFinancialColumn.payment,
+  };
+  static const _defaultFinancialColumns = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.concept,
+    HexoraFinancialColumn.notes,
+    HexoraFinancialColumn.taxableBase,
+    HexoraFinancialColumn.vat,
+    HexoraFinancialColumn.total,
+    HexoraFinancialColumn.payment,
+  };
+  static const _conceptDefaultMigrationKey =
+      'hexora.invoiceColumns.conceptDefault.v1';
+  static const _notesDefaultMigrationKey =
+      'hexora.invoiceColumns.notesDefault.v1';
+  Set<HexoraFinancialColumn> _visibleFinancialColumns =
+      Set.of(_defaultFinancialColumns);
 
   @override
   void initState() {
     super.initState();
+    _loadColumnVisibility();
     _scheduleSummaryLoad();
+  }
+
+  Future<void> _loadColumnVisibility() async {
+    final value = await HexoraColumnVisibilityStore.load(
+      'facturas',
+      _defaultFinancialColumns,
+    );
+    final preferences = await SharedPreferences.getInstance();
+    if (preferences.getBool(_conceptDefaultMigrationKey) != true) {
+      value.add(HexoraFinancialColumn.concept);
+      await preferences.setBool(_conceptDefaultMigrationKey, true);
+    }
+    if (preferences.getBool(_notesDefaultMigrationKey) != true) {
+      value.add(HexoraFinancialColumn.notes);
+      await preferences.setBool(_notesDefaultMigrationKey, true);
+    }
+    await HexoraColumnVisibilityStore.save('facturas', value);
+    if (mounted) setState(() => _visibleFinancialColumns = value);
+  }
+
+  void _setVisibleFinancialColumns(Set<HexoraFinancialColumn> value) {
+    setState(() => _visibleFinancialColumns = value);
+  }
+
+  @override
+  void dispose() {
+    _invoiceSearchDebounce?.cancel();
+    _globalSearchDebounce?.cancel();
+    super.dispose();
   }
 
   @override
@@ -136,6 +211,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   }
 
   Future<void> _loadSummaryTotals() async {
+    final requestGeneration = ++_summaryRequestGeneration;
     final groupId = widget.groupId.trim();
     if (!widget.showSummaryTotals || groupId.isEmpty) {
       if (mounted) {
@@ -160,13 +236,15 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
         to: _apiDate(_toDate, endOfDay: true),
         currency: 'EUR',
       );
-      if (!mounted) return;
+      if (!mounted || requestGeneration != _summaryRequestGeneration) return;
       setState(() => _summaryTotals = summary);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestGeneration != _summaryRequestGeneration) return;
       setState(() => _summaryError = e.toString());
     } finally {
-      if (mounted) setState(() => _summaryLoading = false);
+      if (mounted && requestGeneration == _summaryRequestGeneration) {
+        setState(() => _summaryLoading = false);
+      }
     }
   }
 
@@ -180,6 +258,32 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
       InvoiceSortBy.number => ('number', sortDir),
       InvoiceSortBy.date => (null, sortDir),
     };
+  }
+
+  Future<void> _loadUnlinkedInvoices() async {
+    final groupId = widget.groupId.trim();
+    if (!widget.showSummaryTotals || groupId.isEmpty) return;
+    setState(() {
+      _unlinkedLoading = true;
+      _unlinkedError = null;
+    });
+    try {
+      final (sortBy, sortDir) = _invoiceSortParams();
+      final invoices = await _invoicesApi.listByGroup(
+        groupId,
+        status: 'issued',
+        linkStatus: 'unlinked',
+        sortBy: sortBy,
+        sortDir: sortDir,
+      );
+      if (!mounted) return;
+      setState(() => _unlinkedInvoices = invoices);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _unlinkedError = e.toString());
+    } finally {
+      if (mounted) setState(() => _unlinkedLoading = false);
+    }
   }
 
   Future<void> _loadUnpaidInvoices() async {
@@ -198,11 +302,9 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
         sortBy: sortBy,
         sortDir: sortDir,
       );
-      if (!mounted) return;
-      setState(() => _unpaidInvoices = invoices);
+      if (mounted) setState(() => _unpaidInvoices = invoices);
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _unpaidError = e.toString());
+      if (mounted) setState(() => _unpaidError = e.toString());
     } finally {
       if (mounted) setState(() => _unpaidLoading = false);
     }
@@ -218,33 +320,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
         _paymentSuggestionsError = null;
       }
     });
-    if (next && _unpaidInvoices == null) {
-      _loadUnpaidInvoices();
-    }
-  }
-
-  Future<void> _loadUnlinkedInvoices() async {
-    final groupId = widget.groupId.trim();
-    if (groupId.isEmpty) return;
-    setState(() {
-      _unlinkedLoading = true;
-      _unlinkedError = null;
-    });
-    try {
-      final (sortBy, sortDir) = _invoiceSortParams();
-      final invoices = await _invoicesApi.listByGroup(
-        groupId,
-        status: 'issued',
-        linkStatus: 'unlinked',
-        sortBy: sortBy,
-        sortDir: sortDir,
-      );
-      if (mounted) setState(() => _unlinkedInvoices = invoices);
-    } catch (e) {
-      if (mounted) setState(() => _unlinkedError = e.toString());
-    } finally {
-      if (mounted) setState(() => _unlinkedLoading = false);
-    }
+    if (next && _unpaidInvoices == null) _loadUnpaidInvoices();
   }
 
   void _toggleUnlinkedOnly() {
@@ -252,10 +328,14 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     setState(() {
       _unlinkedOnly = next;
       if (next) _unpaidOnly = false;
-      _unlinkedError = null;
-      if (!next) _paymentSuggestionsError = null;
+      if (!next) {
+        _unlinkedError = null;
+        _paymentSuggestionsError = null;
+      }
     });
-    if (next && _unlinkedInvoices == null) _loadUnlinkedInvoices();
+    if (next && _unlinkedInvoices == null) {
+      _loadUnlinkedInvoices();
+    }
   }
 
   Future<void> _loadPaymentSuggestions() async {
@@ -462,46 +542,6 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     return '${(isSpanish ? es : en)[dt.month - 1]} ${dt.year}';
   }
 
-  Future<void> _pickFromDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _fromDate ?? _toDate ?? now,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (picked == null) return;
-    setState(() {
-      _fromDate = picked;
-      if (_toDate != null && _toDate!.isBefore(_fromDate!)) {
-        _toDate = _fromDate;
-      }
-      _quickRange = DateQuickRange.none;
-    });
-    _notifyDateFilterChanged();
-    _refreshFilteredData();
-  }
-
-  Future<void> _pickToDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _toDate ?? _fromDate ?? now,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (picked == null) return;
-    setState(() {
-      _toDate = picked;
-      if (_fromDate != null && _toDate!.isBefore(_fromDate!)) {
-        _fromDate = _toDate;
-      }
-      _quickRange = DateQuickRange.none;
-    });
-    _notifyDateFilterChanged();
-    _refreshFilteredData();
-  }
-
   Future<void> _pickCustomDateRange() async {
     final now = DateTime.now();
     final picked = await showDateRangePicker(
@@ -511,6 +551,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
           : DateTimeRange(start: _fromDate!, end: _toDate!),
       firstDate: DateTime(now.year - 10),
       lastDate: DateTime(now.year + 5),
+      builder: hexoraCompactDateRangePickerBuilder,
     );
     if (picked == null) return;
     setState(() {
@@ -524,32 +565,141 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
 
   Map<String, dynamic> _summaryFromInvoices(
     List<Invoice> invoices, {
-    required bool outstandingOnly,
+    bool outstandingOnly = false,
   }) {
     num subtotal = 0;
     num taxTotal = 0;
     num total = 0;
+    var mismatchCount = 0;
     for (final invoice in invoices) {
+      final invoiceSubtotal = (invoice.subtotal ?? 0).toDouble();
+      final invoiceTax = (invoice.taxTotal ?? 0).toDouble();
       final invoiceTotal = (invoice.total ?? 0).toDouble();
       final status = (invoice.paymentStatus ?? 'unpaid').toLowerCase();
       final paidAmount = !outstandingOnly
           ? 0.0
           : status == 'paid'
-          ? invoiceTotal
-          : ((invoice.paidAmount ?? 0).toDouble()).clamp(0, invoiceTotal);
+              ? invoiceTotal
+              : ((invoice.paidAmount ?? 0).toDouble()).clamp(0, invoiceTotal);
       final outstanding = (invoiceTotal - paidAmount).clamp(0, invoiceTotal);
       final ratio = invoiceTotal > 0 ? outstanding / invoiceTotal : 0.0;
-      subtotal += (invoice.subtotal ?? 0) * ratio;
-      taxTotal += (invoice.taxTotal ?? 0) * ratio;
+      subtotal += invoiceSubtotal * ratio;
+      taxTotal += invoiceTax * ratio;
       total += outstanding;
+      if (_hasFinancialMismatch(invoice)) {
+        mismatchCount++;
+      }
     }
     return {
       'count': invoices.length,
       'subtotal': subtotal,
       'taxTotal': taxTotal,
       'total': total,
-      'mismatchCount': 0,
+      'mismatchCount': mismatchCount,
     };
+  }
+
+  bool _hasFinancialMismatch(Invoice invoice) {
+    final subtotal = invoice.subtotal;
+    final tax = invoice.taxTotal;
+    final total = invoice.total;
+    return subtotal != null &&
+        tax != null &&
+        total != null &&
+        (subtotal + tax - total).abs() > 0.02;
+  }
+
+  String? _financialMismatchTooltip(
+    Invoice invoice,
+    AppLocalizations l,
+  ) {
+    if (!_hasFinancialMismatch(invoice)) return null;
+    final subtotal = invoice.subtotal!;
+    final tax = invoice.taxTotal!;
+    final total = invoice.total!;
+    final difference = total - (subtotal + tax);
+    final money = NumberFormat.currency(
+      locale: l.localeName,
+      symbol: '€',
+      decimalDigits: 2,
+    );
+    final isSpanish = l.localeName.toLowerCase().startsWith('es');
+    return isSpanish
+        ? 'Base + IVA no coincide con el total. '
+            'Base: ${money.format(subtotal)} · IVA: ${money.format(tax)} · '
+            'Total: ${money.format(total)} · Diferencia: ${money.format(difference)}'
+        : 'Taxable base + VAT does not match the total. '
+            'Base: ${money.format(subtotal)} · VAT: ${money.format(tax)} · '
+            'Total: ${money.format(total)} · Difference: ${money.format(difference)}';
+  }
+
+  void _toggleMismatchOnly() => setState(() {
+        _mismatchOnly = !_mismatchOnly;
+      });
+
+  String _normalizedClientName(Invoice invoice, AppLocalizations l) =>
+      _invoiceFallbackClientName(invoice, l).trim().toLowerCase();
+
+  String _normalizedLifecycleStatus(Invoice invoice) {
+    final raw = (invoice.status ?? '').trim().toLowerCase();
+    if (raw.contains('cancel')) return 'cancelled';
+    if (raw.contains('rectif')) return 'rectified';
+    if (invoice.isDraft) return 'draft';
+    return 'issued';
+  }
+
+  String _normalizedPaymentStatus(Invoice invoice) {
+    final raw = (invoice.paymentStatus ?? '').trim().toLowerCase();
+    return switch (raw) {
+      'paid' => 'paid',
+      'partial' => 'partial',
+      'unpaid' || 'overdue' => 'unpaid',
+      _ => 'unknown',
+    };
+  }
+
+  void _setInvoiceNumberQueryDebounced(String value) {
+    _invoiceSearchDebounce?.cancel();
+    // This filter runs against the already-loaded invoice list. Applying it
+    // immediately avoids losing the last characters when the filter dialog is
+    // dismissed before a debounce timer fires.
+    if (mounted) setState(() => _invoiceNumberQuery = value.trim());
+  }
+
+  void _setGlobalSearchDebounced(String value) {
+    _globalSearchDebounce?.cancel();
+    _globalSearchDebounce = Timer(const Duration(milliseconds: 280), () {
+      if (mounted) setState(() => _searchText = value);
+    });
+  }
+
+  void _applyColumnSort(_InvoiceColumnSort value, InvoiceSortDir direction) {
+    setState(() {
+      _columnSort = value;
+      _columnSortDir = direction;
+    });
+  }
+
+  // ignore: unused_element
+  void _clearColumnFilters() {
+    _invoiceSearchDebounce?.cancel();
+    _globalSearchDebounce?.cancel();
+    setState(() {
+      _searchText = '';
+      _invoiceNumberQuery = '';
+      _selectedClientNames = {};
+      _selectedLifecycleStatuses = {};
+      _selectedPaymentStatuses = {};
+      _baseRange = const _InvoiceAmountRange();
+      _vatRange = const _InvoiceAmountRange();
+      _totalRange = const _InvoiceAmountRange();
+      _mismatchOnly = false;
+      _fromDate = null;
+      _toDate = null;
+      _quickRange = DateQuickRange.none;
+    });
+    _notifyDateFilterChanged();
+    _refreshFilteredData();
   }
 
   @override
@@ -572,6 +722,17 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
       _toDate = now;
       _fromDate = DateTime(now.year, now.month - (months - 1), now.day);
       _quickRange = DateQuickRange.quarter;
+    });
+    _notifyDateFilterChanged();
+    _refreshFilteredData();
+  }
+
+  void _setRangeYear() {
+    final now = DateTime.now();
+    setState(() {
+      _toDate = now;
+      _fromDate = DateTime(now.year - 1, now.month, now.day + 1);
+      _quickRange = DateQuickRange.custom;
     });
     _notifyDateFilterChanged();
     _refreshFilteredData();

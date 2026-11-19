@@ -1,10 +1,17 @@
+import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_popup_menu.dart';
 import 'package:hexora/presentation/shared/widgets/documents/mobile_document_card.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
-import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
-import 'package:hexora/services/invoicing/invoice_lines_api.dart';
+import 'package:hexora/models/invoice/invoice_block.dart';
+import 'package:hexora/models/invoice/invoice_line.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
+import 'package:hexora/services/invoicing/invoice_lines_api.dart';
+import 'package:hexora/services/shared/content_disposition.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -14,36 +21,54 @@ class InvoiceListItem extends StatefulWidget {
   final Invoice invoice;
   final GroupClient client;
   final VoidCallback? onTap;
+  final VoidCallback? onPreview;
   final VoidCallback? onDelete;
   final VoidCallback? onEdit;
   final VoidCallback? onIssue;
-  final VoidCallback? onPreview;
+  final VoidCallback? onLinkInvoice;
   final VoidCallback? onInspectRecurrence;
   final bool warning;
   final String? warningLabel;
   final bool monthWarning;
   final String? monthWarningLabel;
   final String? monthWarningTooltip;
+  final String? dateWarningTooltip;
+  final String? financialMismatchTooltip;
   final bool selected;
   final bool mobile;
+  final Set<HexoraFinancialColumn> visibleFinancialColumns;
+
+  /// Hide the client name when the list is already scoped to one client;
+  /// the invoice number becomes the row title instead.
+  final bool showClient;
 
   const InvoiceListItem({
     super.key,
     required this.invoice,
     required this.client,
     this.onTap,
+    this.onPreview,
     this.onDelete,
     this.onEdit,
     this.onIssue,
-    this.onPreview,
+    this.onLinkInvoice,
     this.onInspectRecurrence,
     this.warning = false,
     this.warningLabel,
     this.monthWarning = false,
     this.monthWarningLabel,
     this.monthWarningTooltip,
+    this.dateWarningTooltip,
+    this.financialMismatchTooltip,
     this.selected = false,
     this.mobile = false,
+    this.showClient = true,
+    this.visibleFinancialColumns = const {
+      HexoraFinancialColumn.date,
+      HexoraFinancialColumn.taxableBase,
+      HexoraFinancialColumn.vat,
+      HexoraFinancialColumn.total,
+    },
   });
 
   @override
@@ -51,21 +76,45 @@ class InvoiceListItem extends StatefulWidget {
 }
 
 class _InvoiceListItemState extends State<InvoiceListItem> {
-  static const double _actionIconGap = 6;
-
   final _linesApi = InvoiceLinesApi();
 
   bool _loadingMeta = false;
-  bool _hovered = false;
-  bool _detailsExpanded = false;
-  String? _internalNotes;
+  bool _downloadingPdf = false;
   bool _savingInternalNotes = false;
+  String? _internalNotes;
+
+  Future<void> _downloadPdf() async {
+    if (_downloadingPdf) return;
+    setState(() => _downloadingPdf = true);
+    try {
+      final r = await InvoicesApi().downloadPdf(widget.invoice.id);
+      final name = widget.invoice.invoiceNumber.trim().isNotEmpty
+          ? widget.invoice.invoiceNumber.trim()
+          : widget.invoice.id.trim();
+      await launchFileDownload(
+        r.bodyBytes,
+        fileName: downloadFileNameFromHeaders(
+          r.headers,
+          fallback: name.endsWith('.pdf') ? name : 'invoice-$name.pdf',
+        ),
+        mimeType: 'application/pdf',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _downloadingPdf = false);
+    }
+  }
+
   int? _lineCount;
   num? _subtotal;
   num? _taxTotal;
   num? _total;
   num? _discountAmount;
   num? _discountPercent;
+  List<String> _conceptDescriptions = const [];
 
   @override
   void initState() {
@@ -84,6 +133,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     }
     if (oldWidget.invoice.id != widget.invoice.id ||
         oldWidget.invoice.lines.length != widget.invoice.lines.length ||
+        oldWidget.invoice.blocks.length != widget.invoice.blocks.length ||
         oldWidget.invoice.subtotal != widget.invoice.subtotal ||
         oldWidget.invoice.taxTotal != widget.invoice.taxTotal ||
         oldWidget.invoice.total != widget.invoice.total) {
@@ -92,41 +142,51 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     }
   }
 
-  void _seedFromInvoice() {
-    final inv = widget.invoice;
-    _discountAmount = inv.discountAmount;
-    _discountPercent = inv.discountPercent;
-    _lineCount = inv.lines.isEmpty ? null : inv.lines.length;
-    _subtotal = inv.subtotal;
-    _taxTotal = inv.taxTotal;
-    _total = inv.total;
-  }
-
   Future<void> _editInternalNotes() async {
     if (_savingInternalNotes) return;
     final isEs = Localizations.localeOf(context).languageCode == 'es';
-    final controller = TextEditingController(text: _internalNotes ?? '');
-    final submitted = await showDialog<String>(
+    final existing = (_internalNotes ?? '').trim();
+    final controller = TextEditingController(text: existing);
+    final submitted = await showDialog<String?>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Nota interna' : 'Internal note'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLines: 4,
-          maxLength: 1000,
-          decoration: InputDecoration(
-            hintText: isEs ? 'Información para el equipo' : 'Information for the team',
-            helperText: isEs ? 'No aparece en la factura ni en el PDF' : 'Not shown on the invoice or PDF',
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: TextField(
+            controller: controller,
+            autofocus: true,
+            minLines: 3,
+            maxLines: 7,
+            maxLength: 1000,
+            decoration: InputDecoration(
+              hintText: isEs
+                  ? 'Visible solo para el equipo de tu negocio'
+                  : 'Visible only to your business team',
+              helperText: isEs
+                  ? 'No se incluye en el PDF ni se comparte con el cliente.'
+                  : 'Not included in the PDF or shared with the client.',
+              helperMaxLines: 2,
+              border: const OutlineInputBorder(),
+            ),
           ),
         ),
         actions: [
+          if (existing.isNotEmpty)
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(''),
+              child: Text(
+                isEs ? 'Eliminar' : 'Remove',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(isEs ? 'Cancelar' : 'Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
             child: Text(isEs ? 'Guardar' : 'Save'),
           ),
         ],
@@ -134,19 +194,119 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     );
     controller.dispose();
     if (submitted == null || !mounted) return;
+    if (submitted.isEmpty && existing.isNotEmpty) {
+      final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title:
+                  Text(isEs ? 'Eliminar nota interna' : 'Remove internal note'),
+              content: Text(isEs
+                  ? 'La nota se eliminará de esta factura.'
+                  : 'The note will be removed from this invoice.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: Text(isEs ? 'Cancelar' : 'Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(isEs ? 'Eliminar' : 'Remove'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!confirmed || !mounted) return;
+    }
+
     setState(() => _savingInternalNotes = true);
     try {
-      final saved = await InvoicesApi().updateInternalNotes(widget.invoice.id, submitted);
+      final saved = await InvoicesApi().updateInternalNotes(
+        widget.invoice.id,
+        submitted.isEmpty ? null : submitted,
+      );
       if (!mounted) return;
       setState(() => _internalNotes = saved);
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(isEs ? 'No se pudo guardar la nota' : 'Could not save the note'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isEs
+              ? 'No se pudo guardar la nota interna.'
+              : 'Could not save the internal note.'),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _savingInternalNotes = false);
     }
+  }
+
+  void _seedFromInvoice([Invoice? source]) {
+    final inv = source ?? widget.invoice;
+    _discountAmount = inv.discountAmount;
+    _discountPercent = inv.discountPercent;
+    if (inv.lines.isNotEmpty) {
+      _applyLineTotals(inv.lines, invoice: inv);
+      return;
+    }
+
+    final billableBlocks = inv.blocks
+        .where((block) =>
+            block.type.trim().toLowerCase() == InvoiceBlockType.item ||
+            block.isBillable == true)
+        .toList(growable: false);
+    if (billableBlocks.isNotEmpty) {
+      _lineCount = billableBlocks.length;
+      _conceptDescriptions = billableBlocks
+          .map((block) =>
+              (block.description ?? block.title ?? block.text ?? '').trim())
+          .where((description) => description.isNotEmpty)
+          .toList(growable: false);
+      final calculatedSubtotal = billableBlocks.fold<num>(0, (sum, block) {
+        final raw = (block.qty ?? 1) * (block.unitPrice ?? 0);
+        final discount = (block.discountRate ?? 0).clamp(0, 100);
+        return sum + (block.lineSubtotal ?? raw * (1 - discount / 100));
+      });
+      final calculatedTax = billableBlocks.fold<num>(0, (sum, block) {
+        final raw = (block.qty ?? 1) * (block.unitPrice ?? 0);
+        final discount = (block.discountRate ?? 0).clamp(0, 100);
+        final subtotal = block.lineSubtotal ?? raw * (1 - discount / 100);
+        return sum + (block.lineTax ?? subtotal * ((block.taxRate ?? 0) / 100));
+      });
+      _subtotal = inv.subtotal ?? calculatedSubtotal;
+      _taxTotal = inv.taxTotal ?? calculatedTax;
+      _total = inv.total ?? calculatedSubtotal + calculatedTax;
+      return;
+    }
+
+    _lineCount = null;
+    _subtotal = inv.subtotal;
+    _taxTotal = inv.taxTotal;
+    _total = inv.total;
+    _conceptDescriptions = const [];
+  }
+
+  void _applyLineTotals(List<InvoiceLine> lines, {required Invoice invoice}) {
+    num subtotalFor(InvoiceLine line) {
+      final raw = line.quantity * line.unitPrice;
+      final discount = line.discountRate.clamp(0, 100);
+      return line.lineSubtotal ?? raw * (1 - discount / 100);
+    }
+
+    num taxFor(InvoiceLine line) =>
+        line.lineTax ?? subtotalFor(line) * (line.taxRate / 100);
+
+    final calculatedSubtotal =
+        lines.fold<num>(0, (sum, line) => sum + subtotalFor(line));
+    final calculatedTax = lines.fold<num>(0, (sum, line) => sum + taxFor(line));
+    _lineCount = lines.length;
+    _conceptDescriptions = lines
+        .map((line) => line.description.trim())
+        .where((description) => description.isNotEmpty)
+        .toList(growable: false);
+    _subtotal = invoice.subtotal ?? calculatedSubtotal;
+    _taxTotal = invoice.taxTotal ?? calculatedTax;
+    _total = invoice.total ?? calculatedSubtotal + calculatedTax;
   }
 
   Future<void> _maybeFetchMeta() async {
@@ -157,16 +317,25 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
 
     setState(() => _loadingMeta = true);
     try {
-      final lines = await _linesApi.list(widget.invoice.id);
+      var source = widget.invoice;
+      var lines = await _linesApi.list(widget.invoice.id);
+      if (lines.isEmpty) {
+        try {
+          source = await InvoicesApi().getById(widget.invoice.id);
+          lines = source.lines;
+        } catch (_) {
+          // Keep the list endpoint result when the detailed draft is unavailable.
+        }
+      }
       if (!mounted) return;
-      final inv = widget.invoice;
       setState(() {
-        _lineCount = lines.length;
-        _subtotal = inv.subtotal;
-        _taxTotal = inv.taxTotal;
-        _total = inv.total;
-        _discountAmount = inv.discountAmount;
-        _discountPercent = inv.discountPercent;
+        if (lines.isNotEmpty) {
+          _applyLineTotals(lines, invoice: source);
+        } else {
+          _seedFromInvoice(source);
+        }
+        _discountAmount = source.discountAmount;
+        _discountPercent = source.discountPercent;
       });
     } catch (_) {
       if (!mounted) return;
@@ -204,9 +373,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                 ? '€'
                 : (invoice.currency ?? '€'),
           ).format(invoice.paidAmount);
-    final source = hasPayment &&
-            canManagePremiumFeatureForGroupId(context, invoice.groupId, PremiumFeature.banking) &&
-            invoice.paymentSource == 'bank_link'
+    final source = hasPayment && invoice.paymentSource == 'bank_link'
         ? (isEs ? 'Transferencia bancaria' : 'Bank transfer')
         : null;
     final details = [
@@ -239,54 +406,78 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   Widget _buildMobileCard(AppLocalizations l, AppTypography t, ColorScheme cs,
       String total, String date) {
     final inv = widget.invoice;
-    final notes = (_internalNotes ?? '').trim();
-    return MobileDocumentCard(
-      title: widget.client.name,
-      amount: total,
-      metadata: [
-        inv.invoiceNumber,
-        date,
-        if (inv.isDuplicate)
-          l.localeName.toLowerCase().startsWith('es') ? 'Duplicado' : 'Duplicate',
-        if (notes.isNotEmpty)
-          '${l.localeName.toLowerCase().startsWith('es') ? 'Nota interna' : 'Internal note'}: $notes',
-      ].where((v) => v.isNotEmpty).join(' · '),
-      isDraft: inv.isDraft,
-      statusLabel: inv.isDraft ? l.statusDraft : l.statusIssued,
-      onTap: widget.onTap,
-      badges: [
-        _paymentBadge(context),
-        DeliveryStatusBadge(
-          groupId: inv.groupId,
-          status: inv.deliveryStatus,
-          channel: inv.deliveryChannel,
-          sentAt: inv.sentAt,
-          deliveryError: inv.deliveryError,
-          feminine: true,
+    final isEs = l.localeName.toLowerCase().startsWith('es');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MobileDocumentCard(
+          title: widget.client.name,
+          amount: total,
+          metadata: [
+            inv.invoiceNumber,
+            date,
+            if (inv.isDuplicate) isEs ? 'Duplicado' : 'Duplicate',
+            if ((inv.notes ?? '').trim().isNotEmpty) inv.notes!.trim(),
+          ].where((v) => v.isNotEmpty).join(' · '),
+          isDraft: inv.isDraft,
+          statusLabel: inv.isDraft ? l.statusDraft : l.statusIssued,
+          onTap: widget.onTap,
+          trailing: HexoraPopupMenuButton<String>(
+            tooltip: isEs ? 'Más acciones' : 'More actions',
+            onSelected: (value) {
+              if (value == 'edit') widget.onEdit?.call();
+              if (value == 'internal_notes') _editInternalNotes();
+              if (value == 'download') _downloadPdf();
+              if (value == 'issue') widget.onIssue?.call();
+              if (value == 'link_invoice') widget.onLinkInvoice?.call();
+              if (value == 'delete') widget.onDelete?.call();
+            },
+            itemBuilder: (_) => [
+              if (widget.onEdit != null)
+                HexoraPopupMenuActionItem<String>(
+                  value: 'edit',
+                  icon: Icons.edit_outlined,
+                  label: l.edit,
+                ),
+              HexoraPopupMenuActionItem<String>(
+                value: 'internal_notes',
+                enabled: !_savingInternalNotes,
+                icon: Icons.lock_outline_rounded,
+                label: (_internalNotes ?? '').trim().isEmpty
+                    ? (isEs ? 'Añadir nota interna' : 'Add internal note')
+                    : (isEs ? 'Editar nota interna' : 'Edit internal note'),
+              ),
+              HexoraPopupMenuActionItem<String>(
+                value: 'download',
+                enabled: !_downloadingPdf,
+                icon: Icons.download_rounded,
+                label: isEs ? 'Descargar PDF' : 'Download PDF',
+              ),
+              if (widget.onIssue != null)
+                HexoraPopupMenuActionItem<String>(
+                  value: 'issue',
+                  icon: Icons.fact_check_outlined,
+                  label: l.invoiceIssueCta,
+                  tone: HexoraPopupMenuTone.primary,
+                ),
+              if (widget.onLinkInvoice != null)
+                HexoraPopupMenuActionItem<String>(
+                  value: 'link_invoice',
+                  icon: Icons.link_rounded,
+                  label: isEs ? 'Vincular factura' : 'Link invoice',
+                ),
+              if (widget.onDelete != null) const HexoraPopupMenuDivider(),
+              if (widget.onDelete != null)
+                HexoraPopupMenuActionItem<String>(
+                  value: 'delete',
+                  icon: Icons.delete_outline_rounded,
+                  label: l.remove,
+                  tone: HexoraPopupMenuTone.destructive,
+                ),
+            ],
+          ),
         ),
       ],
-      trailing: PopupMenuButton<String>(
-              tooltip: l.edit,
-              onSelected: (value) {
-                if (value == 'edit') widget.onEdit?.call();
-                if (value == 'delete') widget.onDelete?.call();
-                if (value == 'notes') _editInternalNotes();
-              },
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  value: 'notes',
-                  child: Text(l.localeName.toLowerCase().startsWith('es')
-                      ? 'Nota interna'
-                      : 'Internal note'),
-                ),
-                if (widget.onEdit != null)
-                  PopupMenuItem(value: 'edit', child: Text(l.edit)),
-                if (widget.onDelete != null)
-                  PopupMenuItem(
-                      value: 'delete',
-                      child: Text(l.remove, style: TextStyle(color: cs.error))),
-              ],
-              ),
     );
   }
 
@@ -304,6 +495,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         ? ''
         : DateFormat.yMMMd(l.localeName).format(date.toLocal());
 
+    // ignore: unused_local_variable
     final linesCountLabel =
         _lineCount?.toString() ?? (_loadingMeta ? '…' : '-');
     final money = NumberFormat.currency(locale: l.localeName, symbol: '€');
@@ -328,9 +520,9 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         (widget.invoice.status ?? '').toLowerCase().contains('issue');
     final isLinked = widget.invoice.isLinkedResolved;
     final invoiceType = (widget.invoice.invoiceType ?? '').trim().toLowerCase();
+    // ignore: unused_local_variable
     final showInvoiceType = invoiceType == 'advance' || invoiceType == 'final';
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final invoiceNotes = (_internalNotes ?? '').trim();
     final showsAdvanceDeduction =
         invoiceType == 'final' && settlementDeduction > 0;
     final effectiveDiscount = showsAdvanceDeduction
@@ -356,26 +548,42 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       if (issuedAtLabel != null) issuedAtLabel,
     ].join(' · ');
 
-    final statusIconColor =
-        isIssued ? cs.primary : cs.onSurface.withValues(alpha: 0.45);
-    final linkIconColor =
-        isLinked ? cs.tertiary : cs.onSurface.withValues(alpha: 0.45);
+    final rawStatus = (widget.invoice.status ?? '').trim().toLowerCase();
+    final isCancelled = rawStatus.contains('cancel');
+    final isRectified = rawStatus.contains('rectif');
+    final documentStatusLabel = isCancelled
+        ? (isEs ? 'Anulada' : 'Cancelled')
+        : isRectified
+            ? (isEs ? 'Rectificativa' : 'Rectified')
+            : isIssued
+                ? l.statusIssued
+                : l.statusDraft;
+    final documentStatus = isCancelled
+        ? HexoraDocumentStatus.cancelled
+        : isRectified
+            ? HexoraDocumentStatus.rectified
+            : isIssued
+                ? HexoraDocumentStatus.issued
+                : HexoraDocumentStatus.draft;
     final backendLinkStatusLabel =
         (widget.invoice.linkStatusLabel ?? '').trim();
+    // ignore: unused_local_variable
     final linkTooltip = backendLinkStatusLabel.isNotEmpty
         ? backendLinkStatusLabel
         : (isLinked
-            ? l.statementsInvoiceAlreadyLinkedBadge
-            : l.statementsUnlinked);
+            ? (isEs
+                ? 'Conciliada con un movimiento bancario'
+                : 'Reconciled with a bank transaction')
+            : (isEs
+                ? 'Sin conciliar con movimientos bancarios'
+                : 'Not reconciled with a bank transaction'));
 
-    final isSelected = widget.selected;
-    final isActive = isSelected || _hovered;
     final warning = widget.warning;
     final monthWarning = widget.monthWarning;
     final amber = isLight ? const Color(0xFF9A5B00) : const Color(0xFFFFC247);
-    final amberBg = isLight ? const Color(0xFFFFF4D6) : const Color(0xFF5A3600);
 
     // Subtotal/IVA tooltip string
+    // ignore: unused_local_variable
     String? breakdownTooltip;
     if (_subtotal != null || _taxTotal != null) {
       final parts = <String>[];
@@ -387,700 +595,330 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       breakdownTooltip = parts.join('  ·  ');
     }
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 130),
-        curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          color: warning
-              ? cs.errorContainer.withValues(alpha: 0.14)
-              : monthWarning
-                  ? amberBg.withValues(alpha: isLight ? 0.72 : 0.22)
-                  : isSelected
-                      ? cs.primaryContainer.withValues(alpha: 0.4)
-                      : isLight
-                          ? Colors.white
-                          : _hovered
-                              ? cs.surfaceContainerHighest
-                                  .withValues(alpha: 0.5)
-                              : cs.surface,
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(
-            color: warning
-                ? cs.error.withValues(alpha: 0.38)
-                : monthWarning
-                    ? amber.withValues(alpha: 0.54)
-                    : isSelected
-                        ? cs.primary.withValues(alpha: 0.65)
-                        : _hovered
-                            ? cs.outlineVariant.withValues(alpha: 0.65)
-                            : cs.outlineVariant.withValues(alpha: 0.3),
-            width: isSelected ? 1.4 : 1,
-          ),
-          boxShadow: isLight
-              ? [
-                  BoxShadow(
-                    color:
-                        Colors.black.withValues(alpha: isActive ? 0.06 : 0.035),
-                    blurRadius: isActive ? 16 : 10,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(11),
-          onTap: widget.onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // ── Icon box ─────────────────────────────────────────────────
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: warning
-                        ? cs.errorContainer.withValues(alpha: 0.5)
-                        : monthWarning
-                            ? amberBg.withValues(alpha: isLight ? 0.92 : 0.35)
-                            : isIssued
-                                ? cs.primary.withValues(alpha: 0.10)
-                                : cs.surfaceContainerHighest
-                                    .withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(
-                      color: warning
-                          ? cs.error.withValues(alpha: 0.3)
-                          : monthWarning
-                              ? amber.withValues(alpha: 0.34)
-                              : isIssued
-                                  ? cs.primary.withValues(alpha: 0.18)
-                                  : cs.outlineVariant.withValues(alpha: 0.35),
+    String warningText(String? text) => (text ?? '').trim().isNotEmpty
+        ? text!.trim()
+        : (isEs ? 'Requiere atención' : 'Requires attention');
+    final numberLabel = widget.invoice.displayNumber(draftLabel: l.statusDraft);
+    final paymentStatus =
+        (widget.invoice.paymentStatus ?? '').trim().toLowerCase();
+    final paymentLabel = switch (paymentStatus) {
+      'paid' => isEs ? 'Pagada' : 'Paid',
+      'partial' => isEs ? 'Parcial' : 'Partial',
+      'overdue' => isEs ? 'Vencida' : 'Overdue',
+      'unpaid' => isEs ? 'No pagada' : 'Unpaid',
+      _ => isEs ? 'Sin información' : 'No information',
+    };
+    final paymentColor = switch (paymentStatus) {
+      'paid' => isLight ? const Color(0xFF2E7D32) : const Color(0xFF81C784),
+      'partial' => amber,
+      'overdue' => cs.error,
+      'unpaid' => cs.onSurfaceVariant,
+      _ => cs.onSurfaceVariant,
+    };
+    final delivery = DeliveryStatusBadge(
+      groupId: widget.invoice.groupId,
+      status: widget.invoice.deliveryStatus,
+      channel: widget.invoice.deliveryChannel,
+      sentAt: widget.invoice.sentAt,
+      deliveryError: widget.invoice.deliveryError,
+      feminine: true,
+    );
+    final concept =
+        _conceptDescriptions.isEmpty || _conceptDescriptions.first.isEmpty
+            ? null
+            : Tooltip(
+                message: _conceptDescriptions
+                    .where((description) => description.isNotEmpty)
+                    .join('\n'),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _conceptDescriptions.first,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodySmall.copyWith(
+                          fontSize: 11.5,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Icon(
-                    warning
-                        ? Icons.warning_amber_rounded
-                        : monthWarning
-                            ? Icons.calendar_month_outlined
-                            : isIssued
-                                ? Icons.receipt_long_rounded
-                                : Icons.receipt_long_outlined,
-                    size: 16,
-                    color: warning
-                        ? cs.error
-                        : monthWarning
-                            ? amber
-                            : isIssued
-                                ? cs.primary.withValues(alpha: 0.85)
-                                : cs.onSurfaceVariant.withValues(alpha: 0.65),
-                  ),
-                ),
-                const SizedBox(width: 10),
-
-                // ── Main content (2 lines) ────────────────────────────────────
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // ─ Line 1: client name + badges ──────────────────────
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    widget.client.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: t.bodySmall.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: cs.onSurface,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                                if (warning &&
-                                    (widget.warningLabel?.trim().isNotEmpty ??
-                                        false)) ...[
-                                  const SizedBox(width: 5),
-                                  _InlinePill(
-                                    label: widget.warningLabel!,
-                                    color: cs.error,
-                                    bg: cs.errorContainer
-                                        .withValues(alpha: 0.35),
-                                  ),
-                                ],
-                                if (showInvoiceType) ...[
-                                  const SizedBox(width: 5),
-                                  _InlinePill(
-                                    label: invoiceType == 'advance'
-                                        ? (isEs ? 'Anticipo' : 'Advance')
-                                        : 'Final',
-                                    color: cs.primary,
-                                    bg: cs.primary.withValues(alpha: 0.10),
-                                  ),
-                                ],
-                                if (monthWarning &&
-                                    (widget.monthWarningLabel
-                                            ?.trim()
-                                            .isNotEmpty ??
-                                        false)) ...[
-                                  const SizedBox(width: 5),
-                                  Tooltip(
-                                    message: widget.monthWarningTooltip ??
-                                        widget.monthWarningLabel!,
-                                    child: _InlinePill(
-                                      label: widget.monthWarningLabel!,
-                                      color: amber,
-                                      bg: amberBg.withValues(
-                                        alpha: isLight ? 0.86 : 0.42,
-                                      ),
-                                      icon: Icons.warning_amber_rounded,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (totalLabel.isNotEmpty)
-                            Tooltip(
-                              message: breakdownTooltip ?? '',
-                              child: Text(
-                                totalLabel,
-                                style: t.bodySmall.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                  color:
-                                      hasDiscount ? cs.tertiary : cs.onSurface,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-
-                      // ─ Line 2: invoice number + date + status + actions ──────────────
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Invoice number + date + line count
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    widget.invoice.displayNumber(
-                                      draftLabel: l.statusDraft,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: t.bodySmall.copyWith(
-                                      fontSize: 11,
-                                      color: cs.onSurfaceVariant.withValues(alpha: 0.8),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                if (widget.invoice.isDuplicate) ...[
-                                  const SizedBox(width: 6),
-                                  _InlinePill(
-                                    label: isEs ? 'Duplicado' : 'Duplicate',
-                                    color: amber,
-                                    bg: amberBg.withValues(alpha: isLight ? 0.86 : 0.42),
-                                    icon: Icons.content_copy_rounded,
-                                  ),
-                                ],
-                                if (_lineCount != null || _loadingMeta || dateLabel.isNotEmpty) ...[
-                                  const SizedBox(width: 7),
-                                  Expanded(
-                                    child: Text(
-                                      [
-                                        if (_lineCount != null || _loadingMeta)
-                                          '${l.invoiceLinesTitle}: $linesCountLabel',
-                                        if (dateLabel.isNotEmpty) dateLabel,
-                                      ].join('  ·  '),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: t.bodySmall.copyWith(
-                                        fontSize: 11,
-                                        color: cs.onSurfaceVariant.withValues(alpha: 0.8),
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-
-                          // Status pill
-                          _StatusPill(
-                            isIssued: isIssued,
-                            isLinked: isLinked,
-                            showLink: canManagePremiumFeatureForGroupId(
-                              context, widget.invoice.groupId, PremiumFeature.banking),
-                            statusIconColor: statusIconColor,
-                            linkIconColor: linkIconColor,
-                            statusTooltip: isIssued
-                                ? '${l.statusIssued}\n$issuedByTooltip'
-                                : l.statusDraft,
-                            linkTooltip: linkTooltip,
-                            deliveryBadge: DeliveryStatusBadge(
-                              groupId: widget.invoice.groupId,
-                              status: widget.invoice.deliveryStatus,
-                              channel: widget.invoice.deliveryChannel,
-                              sentAt: widget.invoice.sentAt,
-                              deliveryError: widget.invoice.deliveryError,
-                              compact: true,
-                              feminine: true,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          _paymentBadge(context),
-                          const SizedBox(width: 6),
-
-                          // Action buttons
-                          AnimatedOpacity(
-                            duration: const Duration(milliseconds: 130),
-                            opacity: isActive ? 1.0 : 0.45,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _ActionBtn(
-                                  icon: _detailsExpanded
-                                      ? Icons.keyboard_arrow_up_rounded
-                                      : Icons.keyboard_arrow_down_rounded,
-                                  tooltip: _detailsExpanded
-                                      ? (isEs
-                                          ? 'Ocultar detalles'
-                                          : 'Hide details')
-                                      : (isEs
-                                          ? 'Ver detalles'
-                                          : 'Show details'),
-                                  color: cs.onSurfaceVariant,
-                                  onTap: () => setState(
-                                    () => _detailsExpanded = !_detailsExpanded,
-                                  ),
-                                ),
-                                const SizedBox(width: _actionIconGap),
-                                _ActionBtn(
-                                  icon: Icons.visibility_outlined,
-                                  tooltip: isEs ? 'Vista previa' : 'Preview',
-                                  color: cs.primary,
-                                  onTap: widget.onPreview ?? widget.onTap,
-                                ),
-                                if (widget.onEdit != null) ...[
-                                  const SizedBox(width: _actionIconGap),
-                                  _ActionBtn(
-                                    icon: Icons.edit_outlined,
-                                    tooltip: l.edit,
-                                    color: cs.primary,
-                                    onTap: widget.onEdit,
-                                  ),
-                                ],
-                                if (widget.onIssue != null) ...[
-                                  const SizedBox(width: _actionIconGap),
-                                  _ActionBtn(
-                                    icon: Icons.publish_outlined,
-                                    tooltip: l.invoiceIssueCta,
-                                    color: cs.tertiary,
-                                    onTap: widget.onIssue,
-                                  ),
-                                ],
-                                if (widget.onInspectRecurrence != null) ...[
-                                  const SizedBox(width: _actionIconGap),
-                                  _ActionBtn(
-                                    icon: Icons.rule_folder_outlined,
-                                    tooltip:
-                                        isEs ? 'Ver recurrencia' : 'Recurrence',
-                                    color: cs.secondary,
-                                    onTap: widget.onInspectRecurrence,
-                                  ),
-                                ],
-                                if (widget.onDelete != null) ...[
-                                  const SizedBox(width: _actionIconGap),
-                                  Container(
-                                    width: 1,
-                                    height: 14,
-                                    color: cs.outlineVariant
-                                        .withValues(alpha: 0.4),
-                                  ),
-                                  const SizedBox(width: _actionIconGap),
-                                  _ActionBtn(
-                                    icon: Icons.delete_outline_rounded,
-                                    tooltip: l.delete,
-                                    color: cs.error,
-                                    onTap: widget.onDelete,
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      AnimatedCrossFade(
-                        duration: const Duration(milliseconds: 160),
-                        firstCurve: Curves.easeOut,
-                        secondCurve: Curves.easeOut,
-                        sizeCurve: Curves.easeOut,
-                        crossFadeState: _detailsExpanded
-                            ? CrossFadeState.showSecond
-                            : CrossFadeState.showFirst,
-                        firstChild: const SizedBox.shrink(),
-                        secondChild: Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: cs.surfaceContainerHighest
-                                  .withValues(alpha: 0.28),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color:
-                                    cs.outlineVariant.withValues(alpha: 0.22),
-                              ),
-                            ),
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (dateLabel.isNotEmpty)
-                                    _DetailChip(
-                                      label: 'Fecha',
-                                      value: dateLabel,
-                                    ),
-                                  if (isIssued)
-                                    _DetailChip(
-                                      label: isEs ? 'Emitida por' : 'Issued by',
-                                      value: issuedByValue,
-                                    ),
-                                  if (isIssued && issuedAtLabel != null)
-                                    _DetailChip(
-                                      label: isEs ? 'Emisión' : 'Issued at',
-                                      value: issuedAtLabel,
-                                    ),
-                                  _DetailChip(
-                                    label: 'Base',
-                                    value: _subtotal == null
-                                        ? (_loadingMeta ? '…' : '-')
-                                        : money.format(_subtotal),
-                                  ),
-                                  if (hasDiscount)
-                                    _DetailChip(
-                                      label: discountLabel,
-                                      value:
-                                          '-${money.format(effectiveDiscount)}',
-                                      accentColor: showsAdvanceDeduction
-                                          ? cs.tertiary
-                                          : cs.error,
-                                    ),
-                                  _DetailChip(
-                                    label: 'IVA',
-                                    value: _taxTotal == null
-                                        ? (_loadingMeta ? '…' : '-')
-                                        : money.format(_taxTotal),
-                                  ),
-                                  _DetailChip(
-                                    label: 'Total',
-                                    value: _total == null
-                                        ? (_loadingMeta ? '…' : '-')
-                                        : money.format(_total),
-                                    accentColor: cs.onSurface,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                    if (_conceptDescriptions.length > 1) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        '+${_conceptDescriptions.length - 1}',
+                        style: t.caption.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 124,
-                  child: Tooltip(
-                    message: invoiceNotes.isEmpty
-                        ? (isEs ? 'Añadir nota interna' : 'Add internal note')
-                        : invoiceNotes,
-                    child: InkWell(
-                      onTap: _savingInternalNotes ? null : _editInternalNotes,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          isEs ? 'Nota interna' : 'Internal note',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: t.bodySmall.copyWith(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.72),
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          invoiceNotes.isEmpty ? '—' : invoiceNotes,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: t.bodySmall.copyWith(
-                            fontSize: 11,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.9),
-                          ),
-                        ),
-                      ],
-                    ),
-                    ),
-                  ),
+              );
+    final notes = (widget.invoice.notes ?? '').trim();
+    final notesCell = notes.isEmpty
+        ? null
+        : Tooltip(
+            message: notes,
+            child: Text(
+              notes,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.bodySmall.copyWith(
+                fontSize: 11.5,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+          );
+    final warningTooltip = [
+      if (warning) warningText(widget.warningLabel),
+      if (monthWarning)
+        warningText(widget.monthWarningTooltip ?? widget.monthWarningLabel),
+      if ((widget.financialMismatchTooltip ?? '').trim().isNotEmpty)
+        widget.financialMismatchTooltip!.trim(),
+    ].join('\n');
+    return CompactDocumentRow(
+      title: numberLabel,
+      titleTrailing: warningTooltip.isEmpty
+          ? (widget.invoice.isDuplicate
+              ? Tooltip(
+                  message: isEs ? 'Factura duplicada' : 'Duplicate invoice',
+                  child:
+                      Icon(Icons.content_copy_rounded, size: 15, color: amber),
+                )
+              : null)
+          : Tooltip(
+              message: warningTooltip,
+              child: Icon(Icons.warning_amber_rounded,
+                  size: 16, color: warning ? cs.error : amber),
+            ),
+      metadata: widget.showClient ? widget.client.name : '',
+      amount: totalLabel,
+      date: date,
+      dateWarningTooltip: widget.dateWarningTooltip,
+      payment: Tooltip(
+        message: paymentStatus.isEmpty
+            ? (isEs
+                ? 'No hay información de pago confirmada'
+                : 'No confirmed payment information')
+            : paymentLabel,
+        child: HexoraStatusBadge(
+          label: paymentLabel,
+          color: paymentColor,
+        ),
+      ),
+      taxableBase: _subtotal,
+      vat: _taxTotal,
+      visibleFinancialColumns: widget.visibleFinancialColumns,
+      invoiceColumnOrder: true,
+      preferWideClient: true,
+      selected: widget.selected,
+      onTap: widget.onTap,
+      previewLabel: isEs ? 'Vista previa' : 'Preview',
+      quickActionSlots: 0,
+      quickActions: const [],
+      status: Row(mainAxisSize: MainAxisSize.min, children: [
+        Flexible(
+          child: Tooltip(
+            message: isIssued
+                ? '$documentStatusLabel\n$issuedByTooltip'
+                : documentStatusLabel,
+            child: HexoraStatusBadge.document(
+              context,
+              status: documentStatus,
+              label: documentStatusLabel,
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+      ]),
+      delivery: delivery,
+      concept: concept,
+      notes: notesCell,
+      showDeliveryColumn: true,
+      compactSplitLayout: true,
+      hideActionsInSplitView: true,
+      compactTitle: widget.invoice.invoiceNumber.trim().isEmpty
+          ? (isEs ? 'Factura' : 'Invoice')
+          : null,
+      separatorWidth: 0,
+      actions: [
+        if (widget.onPreview != null)
+          CompactDocumentAction(
+            isEs ? 'Vista previa' : 'Preview',
+            widget.onPreview,
+            icon: Icons.visibility_outlined,
+            opensPreviewDrawer: true,
+          ),
+        if (widget.onEdit != null)
+          CompactDocumentAction(
+            l.edit,
+            widget.onEdit,
+            icon: Icons.edit_outlined,
+          ),
+        CompactDocumentAction(
+          (_internalNotes ?? '').trim().isEmpty
+              ? (isEs ? 'Añadir nota interna' : 'Add internal note')
+              : (isEs ? 'Editar nota interna' : 'Edit internal note'),
+          _savingInternalNotes ? null : _editInternalNotes,
+          icon: Icons.lock_outline_rounded,
+        ),
+        CompactDocumentAction(
+          isEs ? 'Descargar PDF' : 'Download PDF',
+          _downloadingPdf ? null : _downloadPdf,
+          icon: Icons.download_rounded,
+        ),
+        if (widget.onIssue != null)
+          CompactDocumentAction(
+            l.invoiceIssueCta,
+            widget.onIssue,
+            primary: true,
+            icon: Icons.fact_check_outlined,
+          ),
+        if (widget.onLinkInvoice != null)
+          CompactDocumentAction(
+            isEs ? 'Vincular factura' : 'Link invoice',
+            widget.onLinkInvoice,
+            icon: Icons.link_rounded,
+          ),
+        if (widget.onInspectRecurrence != null)
+          CompactDocumentAction(isEs ? 'Ver recurrencia' : 'Recurrence',
+              widget.onInspectRecurrence),
+        if (widget.onDelete != null)
+          CompactDocumentAction(l.delete, widget.onDelete,
+              destructive: true, icon: Icons.delete_outline_rounded),
+      ],
+      details: null,
+      /* details: !_detailsExpanded
+          ? null
+          : Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                      [
+                        '${l.invoiceLinesTitle}: $linesCountLabel',
+                        if (dateLabel.isNotEmpty) dateLabel,
+                        if (isIssued) issuedByTooltip,
+                        if (showInvoiceType) invoiceType,
+                        if (breakdownTooltip != null) breakdownTooltip,
+                        linkTooltip,
+                        if (widget.warningLabel != null) widget.warningLabel!,
+                        if (widget.monthWarningTooltip != null)
+                          widget.monthWarningTooltip!,
+                      ].join(' · '),
+                      style: t.bodySmall),
+                  const SizedBox(height: 8),
+                  _InvoiceDeliveryTracking(invoice: widget.invoice),
+                ],
+              )), */
+    );
+  }
+}
+
+// ignore: unused_element
+class _InvoiceDeliveryTracking extends StatelessWidget {
+  const _InvoiceDeliveryTracking({required this.invoice});
+
+  final Invoice invoice;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final status = normalizedDeliveryStatus(invoice.deliveryStatus);
+    final isDelivered = status == 'delivered';
+    final isSent = status == 'sent' || isDelivered;
+    final isFailed = status == 'failed';
+    final sentAtLabel = invoice.sentAt == null
+        ? null
+        : DateFormat.yMMMd(Localizations.localeOf(context).toString())
+            .add_Hm()
+            .format(invoice.sentAt!.toLocal());
+    final channel = (invoice.deliveryChannel ?? '').trim().isEmpty
+        ? null
+        : deliveryChannelLabel(invoice.deliveryChannel);
+    final sentDetail = [sentAtLabel, channel]
+        .whereType<String>()
+        .where((value) => value.isNotEmpty)
+        .join(' · ');
+    final success = isLight ? const Color(0xFF2E7D32) : const Color(0xFF81C784);
+
+    Widget statusItem({
+      required IconData icon,
+      required String label,
+      required Color color,
+      String? detail,
+    }) {
+      return Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(label,
+              style: t.caption
+                  .copyWith(color: color, fontWeight: FontWeight.w600)),
+          if ((detail ?? '').isNotEmpty) ...[
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(detail!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
+            ),
+          ],
+        ],
+      );
+    }
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(isEs ? 'Seguimiento de entrega' : 'Delivery tracking',
+                style: t.caption.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            if (isFailed)
+              statusItem(
+                icon: Icons.send_outlined,
+                label: isEs ? 'Error de envío' : 'Delivery failed',
+                color: cs.error,
+                detail: invoice.deliveryError,
+              )
+            else if (!isSent)
+              statusItem(
+                icon: Icons.send_outlined,
+                label: isEs ? 'No enviada' : 'Not sent',
+                color: cs.onSurfaceVariant,
+              )
+            else ...[
+              statusItem(
+                icon: Icons.send_rounded,
+                label: isEs ? 'Enviada' : 'Sent',
+                color: cs.primary,
+                detail: sentDetail,
+              ),
+              if (isDelivered) ...[
+                const SizedBox(height: 6),
+                statusItem(
+                  icon: Icons.done_all_rounded,
+                  label: isEs ? 'Entregada' : 'Delivered',
+                  color: success,
                 ),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Inline pill badge ──────────────────────────────────────────────────────────
-
-class _InlinePill extends StatelessWidget {
-  final String label;
-  final Color color;
-  final Color bg;
-  final IconData? icon;
-
-  const _InlinePill({
-    required this.label,
-    required this.color,
-    required this.bg,
-    this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 10, color: color),
-            const SizedBox(width: 3),
+            ],
           ],
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: color,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Status / Link / Delivery pill ─────────────────────────────────────────────
-
-class _DetailChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? accentColor;
-
-  const _DetailChip({
-    required this.label,
-    required this.value,
-    this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(right: 14),
-      child: RichText(
-        text: TextSpan(
-          style: t.bodySmall.copyWith(
-            color: cs.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
-          ),
-          children: [
-            TextSpan(text: '$label: '),
-            TextSpan(
-              text: value,
-              style: t.bodySmall.copyWith(
-                color: accentColor ?? cs.onSurface,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  final bool isIssued;
-  final bool isLinked;
-  final bool showLink;
-  final Color statusIconColor;
-  final Color linkIconColor;
-  final String statusTooltip;
-  final String linkTooltip;
-  final Widget deliveryBadge;
-
-  const _StatusPill({
-    required this.isIssued,
-    required this.isLinked,
-    required this.showLink,
-    required this.statusIconColor,
-    required this.linkIconColor,
-    required this.statusTooltip,
-    required this.linkTooltip,
-    required this.deliveryBadge,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.45),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _PillIcon(
-            icon: isIssued ? Icons.task_alt_outlined : Icons.edit_note_outlined,
-            color: statusIconColor,
-            tooltip: statusTooltip,
-          ),
-          if (showLink)
-            _PillIcon(
-              icon: isLinked ? Icons.link_rounded : Icons.link_off_rounded,
-              color: linkIconColor,
-              tooltip: linkTooltip,
-            ),
-          deliveryBadge,
-          Icon(
-            Icons.keyboard_arrow_down_rounded,
-            size: 12,
-            color: cs.onSurfaceVariant.withValues(alpha: 0.45),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PillIcon extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String tooltip;
-
-  const _PillIcon(
-      {required this.icon, required this.color, required this.tooltip});
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Icon(icon, size: 13, color: color),
-      ),
-    );
-  }
-}
-
-// ── Action button ──────────────────────────────────────────────────────────────
-
-class _ActionBtn extends StatefulWidget {
-  final IconData icon;
-  final Color color;
-  final String tooltip;
-  final VoidCallback? onTap;
-
-  const _ActionBtn({
-    required this.icon,
-    required this.color,
-    required this.tooltip,
-    this.onTap,
-  });
-
-  @override
-  State<_ActionBtn> createState() => _ActionBtnState();
-}
-
-class _ActionBtnState extends State<_ActionBtn> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        cursor: widget.onTap != null
-            ? SystemMouseCursors.click
-            : SystemMouseCursors.basic,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(7),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 110),
-            curve: Curves.easeOut,
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              color: _hovered
-                  ? widget.color.withValues(alpha: 0.16)
-                  : widget.color.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(
-                color: _hovered
-                    ? widget.color.withValues(alpha: 0.3)
-                    : Colors.transparent,
-              ),
-            ),
-            child: Icon(
-              widget.icon,
-              size: 14,
-              color: widget.color.withValues(alpha: _hovered ? 1.0 : 0.75),
-            ),
-          ),
         ),
       ),
     );

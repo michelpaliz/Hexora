@@ -1,9 +1,18 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:hexora/presentation/shared/widgets/panels/hexora_side_panel.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/components/hexora_ai_output_tokens.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/services/insights/insights_api.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 
 import '../insights_chat_enums.dart';
 import '../insights_chat_message.dart';
@@ -21,8 +30,46 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
 
   @override
   Widget build(BuildContext context) {
+    final base = Theme.of(context);
+    final navy =
+        kIsWeb && widget.embedded && MediaQuery.sizeOf(context).width >= 1180;
+    if (!navy) return _buildShell(context, base, navy: false);
+    final navigation = navigationTheme(base);
+    final chatTheme = navigation.copyWith(
+      colorScheme: navigation.colorScheme.copyWith(
+        onPrimary: Colors.white,
+        surfaceContainerLowest: AppColors.dashboardTopBar,
+        surfaceContainerLow: const Color(0xFF1C3047),
+        surfaceContainer: const Color(0xFF223750),
+        surfaceContainerHigh: const Color(0xFF293F59),
+      ),
+      popupMenuTheme: navigation.popupMenuTheme.copyWith(
+        color: const Color(0xFF1C3047),
+        surfaceTintColor: Colors.transparent,
+        textStyle: navigation.textTheme.bodySmall,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+      )),
+      inputDecorationTheme: navigation.inputDecorationTheme.copyWith(
+        hintStyle: navigation.textTheme.bodySmall
+            ?.copyWith(color: const Color(0xFFAFBFD4)),
+      ),
+    );
+    return Theme(
+        data: chatTheme,
+        child: Builder(
+          builder: (context) => _buildShell(context, base, navy: true),
+        ));
+  }
+
+  Widget _buildShell(BuildContext context, ThemeData resultsTheme,
+      {required bool navy}) {
+    final workspaceChrome = WorkspaceTabChromeScope.maybeOf(context);
     final cs = Theme.of(context).colorScheme;
-    final canvas = Theme.of(context).canvasColor;
+    final canvas = resultsTheme.canvasColor;
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
@@ -42,26 +89,65 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
         : 'Taking longer than expected...';
     final retryText = isEs ? 'Reintentar' : 'Retry';
     final quickSummaryText = isEs ? 'Resumen rapido' : 'Quick summary';
+    final modeLabel = mode == InsightsResponseMode.auto
+        ? l.insightsChatModeAuto
+        : l.insightsChatModeStream;
     final dateRange = runtime.dateRange;
     final helperText = isEs
-        ? 'Contexto activo: últimos $days días. Pregunta solo sobre este negocio: ingresos, gastos, facturas, clientes y tareas de Hexora. Límite: 60 mensajes por hora.'
-        : 'Active context: last $days days. Ask only about this business: income, expenses, invoices, clients, and Hexora tasks. Limit: 60 messages per hour.';
+        ? 'Contexto activo: ultimos $days dias · modo $modeLabel. Puedes pedir resumenes, tendencias, clientes con mas carga o gastos e ingresos.'
+        : 'Active context: last $days days · $modeLabel mode. Ask for summaries, trends, busiest clients, or expense and revenue breakdowns.';
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // The embedded chat intentionally applies a dark navigation theme to its
+    // left pane. Use the host theme here so the results workspace still uses
+    // the real application light/dark surface.
+    final isDark = resultsTheme.brightness == Brightness.dark;
     final dateRangeLabel = dateRange?.label(isEs: isEs);
     final contextTooltip =
         dateRangeLabel == null ? helperText : '$helperText\n$dateRangeLabel';
+    bool legacyToolbarEnabled() => false;
+
+    Future<void> showContextDays() async {
+      final choices = [30, 60, 90, 120, 180];
+      await showHexoraDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(isEs ? 'Contexto del asistente' : 'Assistant context'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final choice in choices)
+                ListTile(
+                  dense: true,
+                  leading: Icon(
+                    choice == days
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_off_rounded,
+                    size: 19,
+                    color: choice == days ? cs.primary : cs.onSurfaceVariant,
+                  ),
+                  title: Text('$choice ${isEs ? 'días' : 'days'}'),
+                  onTap: () {
+                    runtime.setDays(choice);
+                    Navigator.of(dialogContext).pop();
+                  },
+                ),
+            ],
+          ),
+        ),
+      );
+    }
 
     Future<void> showActionHistory() async {
       final history = InsightsApi().loadActionHistory(widget.groupId);
       String actionLabel(String action) => switch (action) {
             'event_created' => isEs ? 'Evento creado' : 'Event created',
             'income_linked' => isEs ? 'Ingreso vinculado' : 'Income linked',
-            'income_unlinked' => isEs ? 'Ingreso desvinculado' : 'Income unlinked',
+            'income_unlinked' =>
+              isEs ? 'Ingreso desvinculado' : 'Income unlinked',
             'excel_exported' => isEs ? 'Excel exportado' : 'Excel exported',
             _ => action,
           };
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: Text(isEs ? 'Actividad del asistente' : 'Assistant activity'),
@@ -72,13 +158,25 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
               future: history,
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  return Center(child: snapshot.hasError
-                      ? Text(isEs ? 'No se pudo cargar la actividad.' : 'Could not load activity.')
-                      : const CircularProgressIndicator());
+                  return Center(
+                    child: snapshot.hasError
+                        ? Text(
+                            isEs
+                                ? 'No se pudo cargar la actividad.'
+                                : 'Could not load activity.',
+                          )
+                        : const CircularProgressIndicator(),
+                  );
                 }
                 final actions = snapshot.data!;
                 if (actions.isEmpty) {
-                  return Center(child: Text(isEs ? 'Aún no hay acciones registradas.' : 'No actions recorded yet.'));
+                  return Center(
+                    child: Text(
+                      isEs
+                          ? 'Aun no hay acciones registradas.'
+                          : 'No actions recorded yet.',
+                    ),
+                  );
                 }
                 return ListView.builder(
                   itemCount: actions.length,
@@ -86,25 +184,52 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                     final row = actions[index];
                     final actor = row['userId'];
                     final name = actor is Map
-                        ? (actor['userName'] ?? actor['name'] ?? actor['email'] ?? '').toString()
+                        ? (actor['userName'] ??
+                                actor['name'] ??
+                                actor['email'] ??
+                                '')
+                            .toString()
                         : '';
-                    final date = DateTime.tryParse(row['createdAt']?.toString() ?? '')?.toLocal();
-                    final when = date == null ? '' : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+                    final date = DateTime.tryParse(
+                      row['createdAt']?.toString() ?? '',
+                    )?.toLocal();
+                    final when = date == null
+                        ? ''
+                        : '${date.day.toString().padLeft(2, '0')}/'
+                            '${date.month.toString().padLeft(2, '0')}/'
+                            '${date.year} '
+                            '${date.hour.toString().padLeft(2, '0')}:'
+                            '${date.minute.toString().padLeft(2, '0')}';
                     final details = row['details'];
                     final what = details is Map
-                        ? (details['title'] ?? details['filename'] ?? details['concept'] ?? '').toString()
+                        ? (details['title'] ??
+                                details['filename'] ??
+                                details['concept'] ??
+                                '')
+                            .toString()
                         : '';
                     return ListTile(
                       dense: true,
-                      title: Text(actionLabel(row['action']?.toString() ?? '')),
-                      subtitle: Text([name, when, what].where((value) => value.isNotEmpty).join(' · ')),
+                      title: Text(
+                        actionLabel(row['action']?.toString() ?? ''),
+                      ),
+                      subtitle: Text(
+                        [name, when, what]
+                            .where((value) => value.isNotEmpty)
+                            .join(' · '),
+                      ),
                     );
                   },
                 );
               },
             ),
           ),
-          actions: [TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(isEs ? 'Cerrar' : 'Close'))],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(isEs ? 'Cerrar' : 'Close'),
+            ),
+          ],
         ),
       );
     }
@@ -112,7 +237,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
     Future<void> showContextInfo() async {
       InsightsDateRange? draftRange = runtime.dateRange;
       final now = DateTime.now();
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (dialogContext, setDialogState) {
@@ -310,6 +435,159 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
       );
     }
 
+    Widget buildVisitPlannerGuideButton() => ActionChip(
+          avatar: Icon(Icons.event_note_outlined, size: 15, color: cs.primary),
+          label: Text(isEs ? 'Guía de visitas' : 'Visit guide'),
+          onPressed: showVisitPlannerGuide,
+          visualDensity: VisualDensity.compact,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          labelStyle: t.bodySmall.copyWith(
+            color: cs.primary,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+          side: BorderSide(color: cs.primary.withValues(alpha: 0.28)),
+          backgroundColor: cs.primary.withValues(alpha: 0.08),
+        );
+
+    Widget buildOptionsButton() => PopupMenuButton<String>(
+          tooltip: isEs ? 'Opciones del asistente' : 'Assistant options',
+          onSelected: (value) async {
+            switch (value) {
+              case 'guide':
+                await showVisitPlannerGuide();
+              case 'info':
+                await showContextInfo();
+              case 'history':
+                await showActionHistory();
+              case 'reset':
+                await confirmClearChat();
+              case 'context':
+                await showContextDays();
+              case 'auto':
+                runtime.setMode(InsightsResponseMode.auto);
+              case 'stream':
+                runtime.setMode(InsightsResponseMode.stream);
+            }
+          },
+          constraints: const BoxConstraints(minWidth: 260),
+          itemBuilder: (context) => [
+            PopupMenuItem<String>(
+              enabled: false,
+              child: Text(isEs ? 'Ayuda' : 'Help',
+                  style: t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant, fontWeight: FontWeight.w800)),
+            ),
+            PopupMenuItem<String>(
+              value: 'guide',
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.event_note_outlined,
+                    size: 17, color: cs.primary),
+                title: Text(isEs ? 'Guía de visitas' : 'Visit guide'),
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'info',
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.info_outline_rounded,
+                    size: 17, color: cs.onSurfaceVariant),
+                title: Text(isEs ? 'Información' : 'Information'),
+              ),
+            ),
+            const PopupMenuDivider(),
+            PopupMenuItem<String>(
+              enabled: false,
+              child: Text(isEs ? 'Conversación' : 'Conversation',
+                  style: t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant, fontWeight: FontWeight.w800)),
+            ),
+            PopupMenuItem<String>(
+              value: 'history',
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.history_rounded,
+                    size: 17, color: cs.onSurfaceVariant),
+                title: Text(isEs ? 'Historial' : 'History'),
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'reset',
+              enabled: !sending,
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.restart_alt_rounded,
+                    size: 17, color: cs.onSurfaceVariant),
+                title: Text(
+                    isEs ? 'Reiniciar conversación' : 'Reset conversation'),
+              ),
+            ),
+            const PopupMenuDivider(),
+            PopupMenuItem<String>(
+              enabled: false,
+              child: Text(isEs ? 'Configuración' : 'Settings',
+                  style: t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant, fontWeight: FontWeight.w800)),
+            ),
+            PopupMenuItem<String>(
+              value: 'context',
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.calendar_today_rounded,
+                    size: 17, color: cs.onSurfaceVariant),
+                title: Text('${l.insightsChatDaysPrefix}: ${days}d'),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 16),
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'auto',
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.auto_fix_high_rounded,
+                    size: 17, color: cs.onSurfaceVariant),
+                title: Text(l.insightsChatModeAuto),
+                trailing: mode == InsightsResponseMode.auto
+                    ? Icon(Icons.check_rounded, size: 17, color: cs.primary)
+                    : null,
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'stream',
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.stream_rounded,
+                    size: 17, color: cs.onSurfaceVariant),
+                title: Text(l.insightsChatModeStream),
+                trailing: mode == InsightsResponseMode.stream
+                    ? Icon(Icons.check_rounded, size: 17, color: cs.primary)
+                    : null,
+              ),
+            ),
+          ],
+          child: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest
+                  .withValues(alpha: isDark ? 0.34 : 0.52),
+              border:
+                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            alignment: Alignment.center,
+            child:
+                Icon(Icons.tune_rounded, size: 17, color: cs.onSurfaceVariant),
+          ),
+        );
+
     Widget buildDateRangeChip() {
       if (dateRangeLabel == null) return const SizedBox.shrink();
       return InputChip(
@@ -369,75 +647,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
     Widget buildActionHistoryButton() => IconButton(
           tooltip: isEs ? 'Actividad del asistente' : 'Assistant activity',
           onPressed: showActionHistory,
-          icon: const Icon(Icons.history_rounded, size: 18),
-          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-          padding: EdgeInsets.zero,
-        );
-
-    Widget buildInteractionModeTabs() => Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
-          child: SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<InsightsInteractionMode>(
-              segments: [
-                ButtonSegment(
-                  value: InsightsInteractionMode.guided,
-                  icon: const Icon(Icons.dashboard_customize_outlined, size: 17),
-                  label: Text(isEs ? 'Respuestas guiadas' : 'Guided answers'),
-                ),
-                ButtonSegment(
-                  value: InsightsInteractionMode.openQuestions,
-                  icon: const Icon(Icons.edit_note_rounded, size: 19),
-                  label: Text(isEs ? 'Preguntas abiertas' : 'Open questions'),
-                ),
-              ],
-              selected: {runtime.interactionMode},
-              onSelectionChanged: sending
-                  ? null
-                  : (selection) {
-                      final nextMode = selection.first;
-                      runtime.setInteractionMode(nextMode);
-                      if (nextMode == InsightsInteractionMode.openQuestions) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted) {
-                            FocusScope.of(context)
-                                .requestFocus(chatComposerFocusNode);
-                          }
-                        });
-                      }
-                    },
-              showSelectedIcon: false,
-              style: ButtonStyle(
-                textStyle: WidgetStatePropertyAll(
-                  t.bodySmall.copyWith(fontWeight: FontWeight.w700),
-                ),
-                visualDensity:
-                    const WidgetStatePropertyAll(VisualDensity.compact),
-                padding: const WidgetStatePropertyAll(
-                  EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                ),
-              ),
-            ),
-          ),
-        );
-
-    Widget buildDesktopPaneToggleButton({required bool collapsed}) {
-      final label = collapsed
-          ? (isEs ? 'Mostrar chat' : 'Show chat')
-          : (isEs ? 'Compactar chat' : 'Compact chat');
-      return Tooltip(
-        message: label,
-        child: IconButton(
-          tooltip: label,
-          onPressed: () => setState(
-            () => desktopChatPaneCollapsed = !collapsed,
-          ),
-          icon: Icon(
-            collapsed
-                ? Icons.keyboard_double_arrow_right_rounded
-                : Icons.keyboard_double_arrow_left_rounded,
-            size: 18,
-          ),
+          icon: const Icon(Icons.history_rounded, size: 17),
           constraints: const BoxConstraints.tightFor(width: 32, height: 32),
           padding: EdgeInsets.zero,
           visualDensity: VisualDensity.compact,
@@ -451,26 +661,114 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-        ),
-      );
-    }
+        );
+
+    Widget buildInteractionModeTabs() => Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 420;
+              final selector = Container(
+                height: 34,
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.52),
+                  ),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: SegmentedButton<InsightsInteractionMode>(
+                  segments: [
+                    ButtonSegment(
+                      value: InsightsInteractionMode.guided,
+                      icon: const Icon(
+                        Icons.dashboard_customize_outlined,
+                        size: 17,
+                      ),
+                      label: Text(
+                        compact
+                            ? (isEs ? 'Guiadas' : 'Guided')
+                            : (isEs ? 'Respuestas guiadas' : 'Guided answers'),
+                      ),
+                    ),
+                    ButtonSegment(
+                      value: InsightsInteractionMode.openQuestions,
+                      icon: const Icon(Icons.edit_note_rounded, size: 19),
+                      label: Text(
+                        compact
+                            ? (isEs ? 'Abiertas' : 'Open')
+                            : (isEs ? 'Preguntas abiertas' : 'Open questions'),
+                      ),
+                    ),
+                  ],
+                  selected: {runtime.interactionMode},
+                  onSelectionChanged: sending
+                      ? null
+                      : (selection) =>
+                          runtime.setInteractionMode(selection.first),
+                  showSelectedIcon: false,
+                  style: ButtonStyle(
+                    minimumSize: const WidgetStatePropertyAll(Size(0, 32)),
+                    padding: const WidgetStatePropertyAll(
+                      EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor:
+                        WidgetStateProperty.resolveWith<Color?>((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return const Color(0xFFDDEBFF);
+                      }
+                      return Colors.transparent;
+                    }),
+                    foregroundColor:
+                        WidgetStateProperty.resolveWith<Color?>((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return const Color(0xFF1457C5);
+                      }
+                      return const Color(0xFFB8C9DD);
+                    }),
+                    side: const WidgetStatePropertyAll(BorderSide.none),
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+              final tabs = compact
+                  ? SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: selector,
+                    )
+                  : SizedBox(width: double.infinity, child: selector);
+              return Row(
+                children: [
+                  Expanded(child: tabs),
+                  const SizedBox(width: 8),
+                  buildOptionsButton(),
+                ],
+              );
+            },
+          ),
+        );
 
     final isDesktopEmbedded =
         widget.embedded && MediaQuery.of(context).size.width >= 1180;
+    // Keep the conversation column readable while giving structured results
+    // most of the desktop width. The previous 360px minimum made compact
+    // dashboards feel cramped, especially beside tables.
     final desktopChatPaneWidth =
-        (MediaQuery.of(context).size.width * 0.25).clamp(360.0, 480.0);
+        (MediaQuery.of(context).size.width * 0.34).clamp(520.0, 620.0);
     final selectedAssistantKey = resolveSelectedAssistantKey(messages);
     final selectedAssistantMessage =
         findMessageByKey(messages, selectedAssistantKey);
     final latestAssistantMessage = latestAssistantMessageFrom(messages);
-    final openQuestions =
-        runtime.interactionMode == InsightsInteractionMode.openQuestions;
-    final latestIncomeAmountPromptMessage = openQuestions
-        ? null
-        : latestIncomeAmountPromptMessageFrom(messages);
+    final latestIncomeAmountPromptMessage =
+        latestIncomeAmountPromptMessageFrom(messages);
     final latestAssistantMenuMessage =
-        !openQuestions &&
-                latestIncomeAmountPromptMessage == null &&
+        latestIncomeAmountPromptMessage == null &&
                 latestAssistantMessage != null &&
                 messageHasMenu(latestAssistantMessage)
             ? latestAssistantMessage
@@ -514,7 +812,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 t: t,
                 isEs: isEs,
               ),
-              if (showEmptyComposer && openQuestions)
+              if (showEmptyComposer)
                 buildChatComposer(
                   context,
                   cs: cs,
@@ -584,12 +882,30 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
           final linkedReply = firstReplyForUser(message);
           final tableReply = tableReplyForUser(message);
           final hasStructuredReply = tableReply != null;
+          final tableExportAction = tableReply == null
+              ? null
+              : getExportActionFromMessage(tableReply);
+          final tableMessageKey =
+              tableReply == null ? null : messageKeyFor(tableReply);
           final isSelected = tableReply != null &&
               messageKeyFor(tableReply) == selectedAssistantKey;
+          final conversationKey = messageKeyFor(message);
+          final expanded =
+              expandedConversationPreviews.contains(conversationKey);
+          void togglePreview() {
+            setState(() {
+              if (expanded) {
+                expandedConversationPreviews.remove(conversationKey);
+              } else {
+                expandedConversationPreviews.add(conversationKey);
+              }
+            });
+          }
+
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: tableReply == null
-                ? null
+                ? togglePreview
                 : () => selectAssistantMessage(tableReply),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
@@ -618,7 +934,9 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         width: 3,
-                        color: isSelected ? cs.primary : Colors.transparent,
+                        color: isSelected
+                            ? (navy ? AppColors.primary : cs.primary)
+                            : Colors.transparent,
                       ),
                       Expanded(
                         child: Padding(
@@ -653,12 +971,11 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      visibleMessageText(
-                                        message,
-                                        isEs: isEs,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
+                                      visibleMessageText(message, isEs: isEs),
+                                      maxLines: expanded ? null : 1,
+                                      overflow: expanded
+                                          ? TextOverflow.visible
+                                          : TextOverflow.ellipsis,
                                       style: t.bodySmall.copyWith(
                                         color: cs.onSurface,
                                         fontWeight: FontWeight.w700,
@@ -676,8 +993,10 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                           preserveStructuredAssistantText:
                                               hasStructuredReply,
                                         ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: expanded ? null : 2,
+                                        overflow: expanded
+                                            ? TextOverflow.visible
+                                            : TextOverflow.ellipsis,
                                         style: t.bodySmall.copyWith(
                                           color: cs.onSurfaceVariant,
                                           fontSize: 11.5,
@@ -745,19 +1064,86 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                           ),
                                         ],
                                         const SizedBox(width: 3),
-                                        Icon(
-                                          hasStructuredReply
-                                              ? Icons.chevron_right_rounded
-                                              : Icons.remove_rounded,
-                                          size: isSelected ? 12 : 15,
-                                          color: isSelected
-                                              ? cs.primary
-                                                  .withValues(alpha: 0.9)
-                                              : cs.onSurfaceVariant
-                                                  .withValues(alpha: 0.55),
+                                        Tooltip(
+                                          message: expanded
+                                              ? (isEs ? 'Contraer' : 'Collapse')
+                                              : (isEs ? 'Expandir' : 'Expand'),
+                                          child: IconButton(
+                                            onPressed: togglePreview,
+                                            icon: Icon(
+                                              expanded
+                                                  ? Icons.expand_less_rounded
+                                                  : Icons.expand_more_rounded,
+                                              size: 16,
+                                              color: isSelected
+                                                  ? cs.primary
+                                                      .withValues(alpha: 0.9)
+                                                  : cs.onSurfaceVariant
+                                                      .withValues(alpha: 0.65),
+                                            ),
+                                            constraints:
+                                                const BoxConstraints.tightFor(
+                                                    width: 26, height: 26),
+                                            padding: EdgeInsets.zero,
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                          ),
                                         ),
                                       ],
                                     ),
+                                    if (tableExportAction != null) ...[
+                                      const SizedBox(height: 6),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: OutlinedButton.icon(
+                                          onPressed: exportingMessageKey != null
+                                              ? null
+                                              : () => exportMessageToExcel(
+                                                    tableReply!,
+                                                  ),
+                                          icon: exportingMessageKey ==
+                                                  tableMessageKey
+                                              ? SizedBox(
+                                                  width: 13,
+                                                  height: 13,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: cs.primary,
+                                                  ),
+                                                )
+                                              : const Icon(
+                                                  Icons.download_rounded,
+                                                  size: 15,
+                                                ),
+                                          label: Text(
+                                            isEs
+                                                ? 'Descargar Excel'
+                                                : 'Download Excel',
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: cs.primary,
+                                            side: BorderSide(
+                                              color: cs.primary
+                                                  .withValues(alpha: 0.35),
+                                            ),
+                                            minimumSize: const Size(0, 30),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 9,
+                                              vertical: 5,
+                                            ),
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            tapTargetSize: MaterialTapTargetSize
+                                                .shrinkWrap,
+                                            textStyle: t.bodySmall.copyWith(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -775,7 +1161,24 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
       );
     }
 
-    Widget buildDesktopResponsePanel() {
+    Widget buildDesktopResponsePanel(BuildContext context) {
+      final cs = Theme.of(context).colorScheme;
+      final t = AppTypography.of(context);
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final useNavyResults = navy && isDark;
+      final outputForeground =
+          useNavyResults ? HexoraAiOutputTokens.panelForeground : cs.onSurface;
+      final outputMuted = useNavyResults
+          ? HexoraAiOutputTokens.panelMutedForeground
+          : cs.onSurfaceVariant;
+      final outputAccent = useNavyResults ? AppDarkColors.primary : cs.primary;
+      final outputBorder = useNavyResults
+          ? HexoraAiOutputTokens.panelBorder.withValues(alpha: 0.72)
+          : cs.outlineVariant.withValues(alpha: isDark ? 0.22 : 0.28);
+      if (runtime.interactionMode == InsightsInteractionMode.openQuestions &&
+          selectedAssistantMessage == null) {
+        return const InsightsVisitPlannerGuide(embedded: true);
+      }
       if (selectedAssistantMessage == null) {
         return Center(
           child: Padding(
@@ -786,14 +1189,14 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 Icon(
                   Icons.auto_awesome_rounded,
                   size: 34,
-                  color: cs.primary.withValues(alpha: 0.8),
+                  color: outputAccent.withValues(alpha: 0.8),
                 ),
                 const SizedBox(height: 14),
                 Text(
                   isEs ? 'Selecciona una respuesta' : 'Select a response',
                   style: t.bodyLarge.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
+                    color: outputForeground,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -803,7 +1206,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                       : 'Use the left panel for the conversation. Select an assistant response to inspect it here in more detail.',
                   textAlign: TextAlign.center,
                   style: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
+                    color: outputMuted,
                     height: 1.45,
                   ),
                 ),
@@ -813,8 +1216,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
         );
       }
 
-      final exportAction =
-          getExportActionFromMessage(selectedAssistantMessage);
+      final exportAction = getExportActionFromMessage(selectedAssistantMessage);
       final selectedKey = messageKeyFor(selectedAssistantMessage);
       final isTableResponse =
           messageHasStructuredTable(selectedAssistantMessage);
@@ -830,14 +1232,14 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 Icon(
                   Icons.table_chart_outlined,
                   size: 34,
-                  color: cs.primary.withValues(alpha: 0.8),
+                  color: outputAccent.withValues(alpha: 0.8),
                 ),
                 const SizedBox(height: 14),
                 Text(
                   isEs ? 'Sin datos tabulares' : 'No tabular data',
                   style: t.bodyLarge.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
+                    color: outputForeground,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -847,7 +1249,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                       : 'The right panel only shows data responses such as tables and structured breakdowns.',
                   textAlign: TextAlign.center,
                   style: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
+                    color: outputMuted,
                     height: 1.45,
                   ),
                 ),
@@ -889,6 +1291,9 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
               icon: const Icon(Icons.filter_alt_rounded, size: 15),
               label: Text(isEs ? 'Filtrar fechas' : 'Filter dates'),
               style: OutlinedButton.styleFrom(
+                foregroundColor: outputAccent,
+                backgroundColor: Colors.transparent,
+                side: BorderSide(color: outputBorder),
                 visualDensity: VisualDensity.compact,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 padding:
@@ -908,7 +1313,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 avatar: Icon(
                   Icons.event_rounded,
                   size: 14,
-                  color: cs.primary,
+                  color: outputAccent,
                 ),
                 label: Text(
                   filterLabel,
@@ -917,28 +1322,27 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 ),
                 onPressed: () =>
                     showTableDateFilterDialog(selectedAssistantMessage),
-                onDeleted: () =>
-                    clearTableDateFilter(selectedAssistantMessage),
+                onDeleted: () => clearTableDateFilter(selectedAssistantMessage),
                 deleteIcon: const Icon(Icons.close_rounded, size: 14),
+                deleteIconColor: outputAccent,
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 labelStyle: t.bodySmall.copyWith(
-                  color: cs.primary,
+                  color: outputAccent,
                   fontWeight: FontWeight.w800,
                   fontSize: 11,
                 ),
                 side: BorderSide(
-                  color: cs.primary.withValues(alpha: 0.22),
+                  color: outputAccent.withValues(alpha: 0.36),
                 ),
-                backgroundColor: cs.primary.withValues(alpha: 0.08),
+                backgroundColor: outputAccent.withValues(alpha: 0.10),
               ),
             ),
             const SizedBox(width: 6),
             Tooltip(
               message: isEs ? 'Limpiar filtro' : 'Clear filter',
               child: IconButton(
-                onPressed: () =>
-                    clearTableDateFilter(selectedAssistantMessage),
+                onPressed: () => clearTableDateFilter(selectedAssistantMessage),
                 icon: const Icon(Icons.filter_alt_off_rounded, size: 17),
                 constraints: const BoxConstraints.tightFor(
                   width: 34,
@@ -946,6 +1350,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 ),
                 padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
+                style: IconButton.styleFrom(foregroundColor: outputAccent),
               ),
             ),
           ],
@@ -956,40 +1361,26 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: HexoraAiOutputTokens.workspacePadding,
+              vertical: 8,
+            ),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color:
-                      cs.outlineVariant.withValues(alpha: isDark ? 0.22 : 0.28),
+                  color: outputBorder,
                 ),
               ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        cs.primary.withValues(alpha: 0.22),
-                        cs.primary.withValues(alpha: 0.08),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.table_chart_rounded,
-                    size: 16,
-                    color: cs.primary,
-                  ),
+                Icon(
+                  Icons.table_chart_rounded,
+                  size: 18,
+                  color: outputForeground,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1006,25 +1397,25 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                     : 'Selected response'),
                             style: t.bodySmall.copyWith(
                               fontWeight: FontWeight.w800,
-                              fontSize: 13.5,
-                              color: cs.onSurface,
+                              fontSize: 13,
+                              color: outputForeground,
                             ),
                           ),
                           if (rowCount > 0) ...[
-                            const SizedBox(width: 7),
+                            const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 2,
+                                horizontal: 6,
+                                vertical: 1,
                               ),
                               decoration: BoxDecoration(
-                                color: cs.primary.withValues(alpha: 0.12),
+                                color: outputForeground.withValues(alpha: 0.14),
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
                                 rowCountLabel,
                                 style: t.bodySmall.copyWith(
-                                  color: cs.primary,
+                                  color: outputForeground,
                                   fontSize: 10,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -1033,23 +1424,31 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                           ],
                         ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(
-                            Icons.alt_route_rounded,
-                            size: 12,
-                            color: cs.primary.withValues(alpha: 0.75),
-                          ),
-                          const SizedBox(width: 4),
+                          if (!isLinkedIncomeReview) ...[
+                            Icon(
+                              Icons.alt_route_rounded,
+                              size: 11,
+                              color: outputForeground.withValues(alpha: 0.88),
+                            ),
+                            const SizedBox(width: 3),
+                          ],
                           Expanded(
                             child: Text(
-                              selectedActionLabel,
+                              // The menu breadcrumb is noise here; tell the
+                              // user what the review is for instead.
+                              isLinkedIncomeReview
+                                  ? (isEs
+                                      ? 'Revisa las coincidencias antes de confirmar las vinculaciones.'
+                                      : 'Check each match before confirming the links.')
+                                  : selectedActionLabel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontSize: 11.5,
+                                color: outputMuted,
+                                fontSize: 11,
                                 height: 1.3,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -1072,25 +1471,40 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                   const SizedBox(width: 8),
                   Tooltip(
                     message: isEs ? 'Descargar Excel' : 'Download Excel',
-                    child: IconButton(
+                    child: OutlinedButton.icon(
                       onPressed: exportingMessageKey != null
                           ? null
                           : () =>
                               exportMessageToExcel(selectedAssistantMessage),
-                      icon: Icon(
-                        exportingMessageKey == selectedKey
-                            ? Icons.hourglass_top_rounded
-                            : Icons.download_rounded,
-                        size: 17,
+                      icon: exportingMessageKey == selectedKey
+                          ? SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: outputAccent,
+                              ),
+                            )
+                          : const Icon(Icons.download_rounded, size: 16),
+                      label: Text(
+                        isEs ? 'Descargar Excel' : 'Download Excel',
                       ),
-                      style: IconButton.styleFrom(
-                        foregroundColor: cs.primary,
-                        backgroundColor: cs.primary.withValues(alpha: 0.10),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: outputAccent,
+                        backgroundColor: outputAccent.withValues(alpha: 0.10),
+                        side: BorderSide(
+                          color: outputAccent.withValues(alpha: 0.28),
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(9),
                         ),
-                        padding: const EdgeInsets.all(7),
-                        minimumSize: const Size(34, 34),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        minimumSize: const Size(0, 34),
+                        visualDensity: VisualDensity.compact,
+                        textStyle: t.bodySmall.copyWith(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -1100,7 +1514,9 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+              padding: const EdgeInsets.all(
+                HexoraAiOutputTokens.workspacePadding,
+              ),
               child: buildInsightsTableView(
                 context,
                 message: selectedAssistantMessage,
@@ -1280,22 +1696,17 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
             ),
           ),
 
-        buildInteractionModeTabs(),
-
         // ── Toolbar chips ────────────────────────────────────────────
-        if (bottomInset == 0)
+        if (bottomInset == 0) buildInteractionModeTabs(),
+
+        if (legacyToolbarEnabled())
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  ActionChip(
-                    avatar: const Icon(Icons.help_outline_rounded, size: 14),
-                    label: Text(isEs ? 'Guía de visitas' : 'Visit guide'),
-                    onPressed: showVisitPlannerGuide,
-                    visualDensity: VisualDensity.compact,
-                  ),
+                  buildVisitPlannerGuideButton(),
                   const SizedBox(width: 6),
                   buildContextInfoButton(),
                   const SizedBox(width: 6),
@@ -1314,11 +1725,11 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                     tooltip: l.insightsChatDaysTooltip,
                     onSelected: runtime.setDays,
                     itemBuilder: (context) => const [
-                      PopupMenuItem(value: 30, child: Text('30d')),
-                      PopupMenuItem(value: 60, child: Text('60d')),
-                      PopupMenuItem(value: 90, child: Text('90d')),
-                      PopupMenuItem(value: 120, child: Text('120d')),
-                      PopupMenuItem(value: 180, child: Text('180d')),
+                      NavigationPopupMenuItem(value: 30, child: Text('30d')),
+                      NavigationPopupMenuItem(value: 60, child: Text('60d')),
+                      NavigationPopupMenuItem(value: 90, child: Text('90d')),
+                      NavigationPopupMenuItem(value: 120, child: Text('120d')),
+                      NavigationPopupMenuItem(value: 180, child: Text('180d')),
                     ],
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -1350,6 +1761,66 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  ChoiceChip(
+                    avatar: Icon(
+                      Icons.auto_fix_high_rounded,
+                      size: 13,
+                      color: mode == InsightsResponseMode.auto
+                          ? cs.onPrimaryContainer
+                          : cs.onSurfaceVariant,
+                    ),
+                    label: Text(l.insightsChatModeAuto),
+                    selected: mode == InsightsResponseMode.auto,
+                    selectedColor: cs.primaryContainer,
+                    backgroundColor: cs.surfaceContainerHighest.withValues(
+                      alpha: isDark ? 0.34 : 0.52,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    labelStyle: t.bodySmall.copyWith(
+                      fontSize: 11,
+                      color: mode == InsightsResponseMode.auto
+                          ? cs.onPrimaryContainer
+                          : cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    side: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.6),
+                    ),
+                    onSelected: sending
+                        ? null
+                        : (_) => runtime.setMode(InsightsResponseMode.auto),
+                  ),
+                  const SizedBox(width: 6),
+                  ChoiceChip(
+                    avatar: Icon(
+                      Icons.stream_rounded,
+                      size: 13,
+                      color: mode == InsightsResponseMode.stream
+                          ? cs.onPrimaryContainer
+                          : cs.onSurfaceVariant,
+                    ),
+                    label: Text(l.insightsChatModeStream),
+                    selected: mode == InsightsResponseMode.stream,
+                    selectedColor: cs.primaryContainer,
+                    backgroundColor: cs.surfaceContainerHighest.withValues(
+                      alpha: isDark ? 0.34 : 0.52,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    labelStyle: t.bodySmall.copyWith(
+                      fontSize: 11,
+                      color: mode == InsightsResponseMode.stream
+                          ? cs.onPrimaryContainer
+                          : cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    side: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.6),
+                    ),
+                    onSelected: sending
+                        ? null
+                        : (_) => runtime.setMode(InsightsResponseMode.stream),
+                  ),
                 ],
               ),
             ),
@@ -1370,8 +1841,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
               if (index == contentCount) {
                 return Column(children: [
                   if (messages.isEmpty && !sending)
-                    buildStarterQuestionCard(context,
-                        cs: cs, t: t, isEs: isEs),
+                    buildStarterQuestionCard(context, cs: cs, t: t, isEs: isEs),
                   mobileConversationFooter,
                 ]);
               }
@@ -1446,9 +1916,10 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                     !message.isUser && messageHasStructuredTable(message),
                 canExportToExcel: exportAction != null,
                 isExporting: exportingMessageKey == messageKey,
-                onExportExcel: exportAction == null || exportingMessageKey != null
-                    ? null
-                    : () => exportMessageToExcel(message),
+                onExportExcel:
+                    exportAction == null || exportingMessageKey != null
+                        ? null
+                        : () => exportMessageToExcel(message),
                 showInlineMenuActions: false,
               );
             },
@@ -1462,7 +1933,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
             t: t,
             isEs: isEs,
           ),
-        if (showComposer && (!showEmptyComposer || openQuestions))
+        if (showComposer)
           buildChatComposer(
             context,
             cs: cs,
@@ -1475,340 +1946,474 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
 
     if (widget.embedded) {
       if (isDesktopEmbedded) {
+        // The link panel docks beside the chat and results panes; both stay
+        // mounted so the conversation and table keep their state.
+        // The embedded assistant owns the full workspace surface. Using the
+        // host canvas here leaves a light gutter around the dark assistant
+        // when the host theme is light.
+        final panelBg = navy ? HexoraAiOutputTokens.panelBackground : canvas;
         return Container(
           decoration: BoxDecoration(
-            color: canvas,
-            borderRadius: BorderRadius.circular(16),
+            color: panelBg,
           ),
-          clipBehavior: Clip.antiAlias,
           child: SafeArea(
             top: false,
             bottom: false,
-            child: Column(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+            child: HexoraSidePanelLayout(
+              panel: inlineSurface,
+              backgroundColor: panelBg,
+              child: Column(
+                children: [
+                  Expanded(
                     child: Row(
                       children: [
                         AnimatedContainer(
+                          key: const ValueKey('insights-desktop-chat-pane'),
                           duration: const Duration(milliseconds: 180),
                           curve: Curves.easeOutCubic,
                           width: desktopChatPaneCollapsed
-                              ? 48
+                              ? NavigationTokens.railWidth
                               : desktopChatPaneWidth.toDouble(),
-                          child: desktopChatPaneCollapsed
-                              ? Container(
-                                  decoration: BoxDecoration(
-                                    color: cs.surface.withValues(
-                                      alpha: isDark ? 0.20 : 0.35,
-                                    ),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: cs.outlineVariant.withValues(
-                                        alpha: isDark ? 0.18 : 0.22,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          8,
-                                          8,
-                                          8,
-                                          6,
-                                        ),
-                                        child: Column(
-                                          children: [
-                                            buildDesktopPaneToggleButton(
-                                              collapsed: true,
+                          child: SidebarEdgeShell(
+                            collapsed: desktopChatPaneCollapsed,
+                            onToggle: () => setState(() =>
+                                desktopChatPaneCollapsed =
+                                    !desktopChatPaneCollapsed),
+                            backgroundColor: AppColors.dashboardTopBar,
+                            expandTooltip: isEs ? 'Mostrar chat' : 'Show chat',
+                            collapseTooltip:
+                                isEs ? 'Compactar chat' : 'Compact chat',
+                            child: desktopChatPaneCollapsed
+                                ? Container(
+                                    decoration: BoxDecoration(
+                                      color: navy
+                                          ? AppColors.dashboardTopBar
+                                          : cs.surface.withValues(
+                                              alpha: isDark ? 0.20 : 0.35,
                                             ),
-                                            const SizedBox(height: 6),
-                                            buildContextInfoButton(),
-                                            const SizedBox(height: 6),
-                                            buildStartOverButton(),
-                                          ],
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: cs.outlineVariant.withValues(
+                                          alpha: isDark ? 0.18 : 0.22,
                                         ),
                                       ),
-                                      Expanded(
-                                        child: Center(
-                                          child: RotatedBox(
-                                            quarterTurns: 3,
-                                            child: Text(
-                                              isEs ? 'Chat' : 'Chat',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: t.bodySmall.copyWith(
-                                                color: cs.onSurfaceVariant,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w800,
-                                                letterSpacing: 0,
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            8,
+                                            8,
+                                            8,
+                                            6,
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              buildOptionsButton(),
+                                            ],
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Center(
+                                            child: RotatedBox(
+                                              quarterTurns: 3,
+                                              child: Text(
+                                                isEs ? 'Chat' : 'Chat',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: t.bodySmall.copyWith(
+                                                  color: cs.onSurfaceVariant,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w800,
+                                                  letterSpacing: 0,
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : Container(
-                                  decoration: BoxDecoration(
-                                    color: cs.surface.withValues(
-                                        alpha: isDark ? 0.20 : 0.35),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: cs.outlineVariant.withValues(
-                                        alpha: isDark ? 0.18 : 0.22,
+                                      ],
+                                    ),
+                                  )
+                                : Container(
+                                    decoration: BoxDecoration(
+                                      color: navy
+                                          ? AppColors.dashboardTopBar
+                                          : cs.surface.withValues(
+                                              alpha: isDark ? 0.20 : 0.35),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: cs.outlineVariant.withValues(
+                                          alpha: isDark ? 0.18 : 0.22,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: Column(
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                            12, 8, 12, 6),
-                                        child: SingleChildScrollView(
-                                          scrollDirection: Axis.horizontal,
-                                          child: Row(
-                                            children: [
-                                              buildContextInfoButton(),
-                                              const SizedBox(width: 6),
-                                              buildStartOverButton(),
-                                              const SizedBox(width: 6),
-                                              buildActionHistoryButton(),
-                                              const SizedBox(width: 6),
-                                              if (dateRangeLabel != null) ...[
-                                                ConstrainedBox(
-                                                  constraints:
-                                                      const BoxConstraints(
-                                                    maxWidth: 190,
+                                    clipBehavior: Clip.antiAlias,
+                                    child: Column(
+                                      children: [
+                                        if (legacyToolbarEnabled())
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                12, 8, 12, 6),
+                                            child: SingleChildScrollView(
+                                              scrollDirection: Axis.horizontal,
+                                              child: Row(
+                                                children: [
+                                                  buildVisitPlannerGuideButton(),
+                                                  const SizedBox(width: 6),
+                                                  buildContextInfoButton(),
+                                                  const SizedBox(width: 6),
+                                                  buildStartOverButton(),
+                                                  const SizedBox(width: 6),
+                                                  buildActionHistoryButton(),
+                                                  const SizedBox(width: 6),
+                                                  if (dateRangeLabel !=
+                                                      null) ...[
+                                                    ConstrainedBox(
+                                                      constraints:
+                                                          const BoxConstraints(
+                                                        maxWidth: 190,
+                                                      ),
+                                                      child:
+                                                          buildDateRangeChip(),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                  ],
+                                                  PopupMenuButton<int>(
+                                                    tooltip: l
+                                                        .insightsChatDaysTooltip,
+                                                    onSelected: runtime.setDays,
+                                                    itemBuilder: (context) =>
+                                                        const [
+                                                      NavigationPopupMenuItem(
+                                                          value: 30,
+                                                          child: Text('30d')),
+                                                      NavigationPopupMenuItem(
+                                                          value: 60,
+                                                          child: Text('60d')),
+                                                      NavigationPopupMenuItem(
+                                                          value: 90,
+                                                          child: Text('90d')),
+                                                      NavigationPopupMenuItem(
+                                                          value: 120,
+                                                          child: Text('120d')),
+                                                      NavigationPopupMenuItem(
+                                                          value: 180,
+                                                          child: Text('180d')),
+                                                    ],
+                                                    child: Container(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 5,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: navy
+                                                            ? cs.surfaceContainerLow
+                                                            : canvas,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(20),
+                                                        border: Border.all(
+                                                          color: cs
+                                                              .outlineVariant
+                                                              .withValues(
+                                                                  alpha: 0.6),
+                                                        ),
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Icon(
+                                                            Icons
+                                                                .calendar_today_rounded,
+                                                            size: 11,
+                                                            color: cs
+                                                                .onSurfaceVariant,
+                                                          ),
+                                                          const SizedBox(
+                                                              width: 5),
+                                                          Text(
+                                                            '${l.insightsChatDaysPrefix}: ${days}d',
+                                                            style: t.bodySmall
+                                                                .copyWith(
+                                                              color:
+                                                                  cs.onSurface,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              fontSize: 11,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
                                                   ),
-                                                  child: buildDateRangeChip(),
-                                                ),
-                                                const SizedBox(width: 6),
-                                              ],
-                                              buildDesktopPaneToggleButton(
-                                                collapsed: false,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              PopupMenuButton<int>(
-                                                tooltip:
-                                                    l.insightsChatDaysTooltip,
-                                                onSelected: runtime.setDays,
-                                                itemBuilder: (context) =>
-                                                    const [
-                                                  PopupMenuItem(
-                                                      value: 30,
-                                                      child: Text('30d')),
-                                                  PopupMenuItem(
-                                                      value: 60,
-                                                      child: Text('60d')),
-                                                  PopupMenuItem(
-                                                      value: 90,
-                                                      child: Text('90d')),
-                                                  PopupMenuItem(
-                                                      value: 120,
-                                                      child: Text('120d')),
-                                                  PopupMenuItem(
-                                                      value: 180,
-                                                      child: Text('180d')),
-                                                ],
-                                                child: Container(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 5,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: canvas,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            20),
-                                                    border: Border.all(
+                                                  const SizedBox(width: 6),
+                                                  ChoiceChip(
+                                                    avatar: Icon(
+                                                      Icons
+                                                          .auto_fix_high_rounded,
+                                                      size: 13,
+                                                      color: mode ==
+                                                              InsightsResponseMode
+                                                                  .auto
+                                                          ? cs.onPrimaryContainer
+                                                          : cs.onSurfaceVariant,
+                                                    ),
+                                                    label: Text(
+                                                        l.insightsChatModeAuto),
+                                                    selected: mode ==
+                                                        InsightsResponseMode
+                                                            .auto,
+                                                    selectedColor:
+                                                        cs.primaryContainer,
+                                                    backgroundColor: cs
+                                                        .surfaceContainerHighest
+                                                        .withValues(
+                                                            alpha: isDark
+                                                                ? 0.34
+                                                                : 0.52),
+                                                    visualDensity:
+                                                        VisualDensity.compact,
+                                                    labelStyle:
+                                                        t.bodySmall.copyWith(
+                                                      fontSize: 11,
+                                                      color: mode ==
+                                                              InsightsResponseMode
+                                                                  .auto
+                                                          ? cs.onPrimaryContainer
+                                                          : cs.onSurfaceVariant,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                    side: BorderSide(
                                                       color: cs.outlineVariant
                                                           .withValues(
                                                               alpha: 0.6),
                                                     ),
+                                                    onSelected: sending
+                                                        ? null
+                                                        : (_) => runtime.setMode(
+                                                            InsightsResponseMode
+                                                                .auto),
                                                   ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      Icon(
-                                                        Icons
-                                                            .calendar_today_rounded,
-                                                        size: 11,
-                                                        color:
-                                                            cs.onSurfaceVariant,
-                                                      ),
-                                                      const SizedBox(width: 5),
-                                                      Text(
-                                                        '${l.insightsChatDaysPrefix}: ${days}d',
-                                                        style: t.bodySmall
-                                                            .copyWith(
-                                                          color: cs.onSurface,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          fontSize: 11,
-                                                        ),
-                                                      ),
-                                                    ],
+                                                  const SizedBox(width: 6),
+                                                  ChoiceChip(
+                                                    avatar: Icon(
+                                                      Icons.stream_rounded,
+                                                      size: 13,
+                                                      color: mode ==
+                                                              InsightsResponseMode
+                                                                  .stream
+                                                          ? cs.onPrimaryContainer
+                                                          : cs.onSurfaceVariant,
+                                                    ),
+                                                    label: Text(l
+                                                        .insightsChatModeStream),
+                                                    selected: mode ==
+                                                        InsightsResponseMode
+                                                            .stream,
+                                                    selectedColor:
+                                                        cs.primaryContainer,
+                                                    backgroundColor: cs
+                                                        .surfaceContainerHighest
+                                                        .withValues(
+                                                            alpha: isDark
+                                                                ? 0.34
+                                                                : 0.52),
+                                                    visualDensity:
+                                                        VisualDensity.compact,
+                                                    labelStyle:
+                                                        t.bodySmall.copyWith(
+                                                      fontSize: 11,
+                                                      color: mode ==
+                                                              InsightsResponseMode
+                                                                  .stream
+                                                          ? cs.onPrimaryContainer
+                                                          : cs.onSurfaceVariant,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                    side: BorderSide(
+                                                      color: cs.outlineVariant
+                                                          .withValues(
+                                                              alpha: 0.6),
+                                                    ),
+                                                    onSelected: sending
+                                                        ? null
+                                                        : (_) => runtime.setMode(
+                                                            InsightsResponseMode
+                                                                .stream),
                                                   ),
-                                                ),
+                                                ],
                                               ),
-                                            ],
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                      buildInteractionModeTabs(),
-                                      Expanded(
-                                          child: buildDesktopMessageList()),
-                                      if (latestIncomeAmountPromptMessage !=
-                                          null)
-                                        buildIncomeAmountPromptInput(
-                                          context,
-                                          promptMessage:
-                                              latestIncomeAmountPromptMessage,
-                                          cs: cs,
-                                          t: t,
-                                          isEs: isEs,
-                                        ),
-                                      if (latestAssistantMenuMessage !=
-                                          null) ...[
-                                        Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                              12, 4, 12, 0),
-                                          child: buildMenuActions(
+                                        buildInteractionModeTabs(),
+                                        Expanded(
+                                            child: buildDesktopMessageList()),
+                                        if (latestIncomeAmountPromptMessage !=
+                                            null)
+                                          buildIncomeAmountPromptInput(
                                             context,
-                                            message: latestAssistantMenuMessage,
+                                            promptMessage:
+                                                latestIncomeAmountPromptMessage,
                                             cs: cs,
                                             t: t,
                                             isEs: isEs,
                                           ),
-                                        ),
-                                      ],
-                                      if (latestAssistantMenuMessage !=
-                                          null) ...[
-                                        Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                              12, 4, 12, 0),
-                                          child: Text(
-                                            isEs
-                                                ? 'Selecciona una opcion para continuar.'
-                                                : 'Select an option to continue.',
-                                            style: t.bodySmall.copyWith(
-                                              color: cs.onSurfaceVariant,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
+                                        if (latestAssistantMenuMessage !=
+                                            null) ...[
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                12, 4, 12, 0),
+                                            child: buildMenuActions(
+                                              context,
+                                              message:
+                                                  latestAssistantMenuMessage,
+                                              cs: cs,
+                                              t: t,
+                                              isEs: isEs,
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                      if (error != null) ...[
-                                        Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                              12, 4, 12, 0),
-                                          child: Text(
-                                            error,
-                                            style: t.bodySmall.copyWith(
-                                              color: cs.error,
-                                              fontSize: 12,
+                                        ],
+                                        if (latestAssistantMenuMessage !=
+                                            null) ...[
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                12, 4, 12, 0),
+                                            child: Text(
+                                              isEs
+                                                  ? 'Selecciona una opcion para continuar.'
+                                                  : 'Select an option to continue.',
+                                              style: t.bodySmall.copyWith(
+                                                color: cs.onSurfaceVariant,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                      if (showTimeoutActions) ...[
-                                        Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                              12, 4, 12, 0),
-                                          child: Wrap(
-                                            spacing: 6,
-                                            runSpacing: 6,
-                                            children: [
-                                              OutlinedButton.icon(
-                                                onPressed: retryLast,
-                                                icon: const Icon(
-                                                    Icons.refresh_rounded,
-                                                    size: 14),
-                                                label: Text(
-                                                  retryText,
-                                                  style: t.bodySmall
-                                                      .copyWith(fontSize: 12),
-                                                ),
-                                                style: OutlinedButton.styleFrom(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 6),
-                                                  minimumSize: Size.zero,
-                                                  tapTargetSize:
-                                                      MaterialTapTargetSize
-                                                          .shrinkWrap,
-                                                ),
+                                        ],
+                                        if (error != null) ...[
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                12, 4, 12, 0),
+                                            child: Text(
+                                              error,
+                                              style: t.bodySmall.copyWith(
+                                                color: cs.error,
+                                                fontSize: 12,
                                               ),
-                                              FilledButton.tonalIcon(
-                                                onPressed: quickSummary,
-                                                icon: const Icon(
-                                                    Icons.summarize_outlined,
-                                                    size: 14),
-                                                label: Text(
-                                                  quickSummaryText,
-                                                  style: t.bodySmall
-                                                      .copyWith(fontSize: 12),
-                                                ),
-                                                style: FilledButton.styleFrom(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 6),
-                                                  minimumSize: Size.zero,
-                                                  tapTargetSize:
-                                                      MaterialTapTargetSize
-                                                          .shrinkWrap,
-                                                ),
-                                              ),
-                                            ],
+                                            ),
                                           ),
-                                        ),
+                                        ],
+                                        if (showTimeoutActions) ...[
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                12, 4, 12, 0),
+                                            child: Wrap(
+                                              spacing: 6,
+                                              runSpacing: 6,
+                                              children: [
+                                                OutlinedButton.icon(
+                                                  onPressed: retryLast,
+                                                  icon: const Icon(
+                                                      Icons.refresh_rounded,
+                                                      size: 14),
+                                                  label: Text(
+                                                    retryText,
+                                                    style: t.bodySmall
+                                                        .copyWith(fontSize: 12),
+                                                  ),
+                                                  style:
+                                                      OutlinedButton.styleFrom(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 6),
+                                                    minimumSize: Size.zero,
+                                                    tapTargetSize:
+                                                        MaterialTapTargetSize
+                                                            .shrinkWrap,
+                                                  ),
+                                                ),
+                                                FilledButton.tonalIcon(
+                                                  onPressed: quickSummary,
+                                                  icon: const Icon(
+                                                      Icons.summarize_outlined,
+                                                      size: 14),
+                                                  label: Text(
+                                                    quickSummaryText,
+                                                    style: t.bodySmall
+                                                        .copyWith(fontSize: 12),
+                                                  ),
+                                                  style: FilledButton.styleFrom(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 6),
+                                                    minimumSize: Size.zero,
+                                                    tapTargetSize:
+                                                        MaterialTapTargetSize
+                                                            .shrinkWrap,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                        if (showComposer && !showEmptyComposer)
+                                          buildChatComposer(
+                                            context,
+                                            cs: cs,
+                                            t: t,
+                                            isEs: isEs,
+                                          ),
+                                        const SizedBox(height: 12),
                                       ],
-                                      if (showComposer &&
-                                          (!showEmptyComposer || openQuestions))
-                                        buildChatComposer(
-                                          context,
-                                          cs: cs,
-                                          t: t,
-                                          isEs: isEs,
-                                        ),
-                                      const SizedBox(height: 12),
-                                    ],
+                                    ),
                                   ),
-                                ),
+                          ),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 10),
                         Expanded(
                           flex: 9,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: cs.surface
-                                  .withValues(alpha: isDark ? 0.20 : 0.35),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: cs.outlineVariant.withValues(
-                                  alpha: isDark ? 0.18 : 0.22,
+                          child: Column(
+                            children: [
+                              if (workspaceChrome?.active == true)
+                                Theme(
+                                  data: resultsTheme,
+                                  child: Builder(
+                                    builder: (tabContext) => workspaceChrome!
+                                        .tabBarBuilder(tabContext),
+                                  ),
+                                ),
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: resultsTheme.colorScheme.surface,
+                                    borderRadius: BorderRadius.circular(
+                                      HexoraAiOutputTokens.surfaceRadius,
+                                    ),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Theme(
+                                    data: resultsTheme,
+                                    child: Builder(
+                                      builder: buildDesktopResponsePanel,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: buildDesktopResponsePanel(),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -1822,7 +2427,11 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
         child: SafeArea(
           top: false,
           bottom: false,
-          child: panel,
+          child: HexoraSidePanelLayout(
+            panel: inlineSurface,
+            backgroundColor: canvas,
+            child: panel,
+          ),
         ),
       );
     }
@@ -1851,7 +2460,11 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
         ),
         child: SafeArea(
           top: false,
-          child: panel,
+          child: HexoraSidePanelLayout(
+            panel: inlineSurface,
+            backgroundColor: canvas,
+            child: panel,
+          ),
         ),
       ),
     );

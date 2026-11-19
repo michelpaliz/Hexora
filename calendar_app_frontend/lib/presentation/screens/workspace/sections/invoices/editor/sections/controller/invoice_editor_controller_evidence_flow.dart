@@ -185,7 +185,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     final title = (_lastOcrImageName ?? '').trim().isEmpty
         ? l.invoiceLinesModePhoto
         : _lastOcrImageName!.trim();
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;
@@ -441,7 +441,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
         return;
       }
 
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (dialogContext) {
           final l = AppLocalizations.of(dialogContext)!;
@@ -811,7 +811,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
         if (reason == null) return;
         _issuedChangeReason = reason;
       } else if (editing && confirmIfEditing) {
-        final confirmed = await showDialog<bool>(
+        final confirmed = await showHexoraDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('Update Draft Invoice'),
@@ -899,7 +899,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     final formKey = GlobalKey<FormState>();
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     try {
-      return await showDialog<String>(
+      return await showHexoraDialog<String>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: Text(isEs ? 'Confirmar cambios' : 'Confirm changes'),
@@ -934,21 +934,30 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+            PointerInterceptor(
+              child: TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child:
+                    Text(MaterialLocalizations.of(context).cancelButtonLabel),
+              ),
             ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() != true) return;
-                Navigator.of(dialogContext).pop(controller.text.trim());
-              },
-              child: Text(isEs ? 'Guardar cambios' : 'Save changes'),
+            PointerInterceptor(
+              child: FilledButton(
+                onPressed: () {
+                  if (formKey.currentState?.validate() != true) return;
+                  Navigator.of(dialogContext).pop(controller.text.trim());
+                },
+                child: Text(isEs ? 'Guardar cambios' : 'Save changes'),
+              ),
             ),
           ],
         ),
       );
     } finally {
+      // showDialog completes before its exit transition has removed the
+      // TextFormField. Disposing immediately makes the still-mounted field
+      // read a disposed controller during that final frame.
+      await Future<void>.delayed(kThemeAnimationDuration);
       controller.dispose();
     }
   }
@@ -959,86 +968,15 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     required String message,
     required String dismissLabel,
   }) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final successColor =
-        isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32);
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final snackWidth = screenWidth < 472 ? screenWidth - 32 : 440.0;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          width: snackWidth,
-          elevation: 10,
-          backgroundColor: cs.surface,
-          dismissDirection: DismissDirection.horizontal,
-          duration: const Duration(seconds: 4),
-          padding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: BorderSide(
-              color: successColor.withValues(alpha: isDark ? 0.32 : 0.18),
-            ),
-          ),
-          action: SnackBarAction(
-            label: dismissLabel,
-            textColor: successColor,
-            onPressed: messenger.hideCurrentSnackBar,
-          ),
-          content: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: successColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.check_circle_rounded,
-                    color: successColor,
-                    size: 21,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        message,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: cs.onSurfaceVariant,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+    // Reuse the shared document-saved toast so receipts, invoices and
+    // presupuestos all confirm a save the same way.
+    showDocumentSavedSnack(
+      context,
+      title: title,
+      message: message,
+      reference: _savedInvoice?.invoiceNumber,
+      dismissLabel: dismissLabel,
+    );
   }
 
   Future<void> previewPdf(BuildContext context) async {
@@ -1208,7 +1146,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     }
 
     if (!context.mounted) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.invoiceIssueConfirmTitle),
@@ -1350,7 +1288,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     final draft = _savedInvoice;
     if (draft == null) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.invoiceDraftRemoveTitle),
@@ -1429,7 +1367,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
 
   Future<void> deleteDraftById(BuildContext context, Invoice draft) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.invoiceDraftRemoveTitle),

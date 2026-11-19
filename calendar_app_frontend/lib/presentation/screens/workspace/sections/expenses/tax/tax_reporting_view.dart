@@ -1,12 +1,14 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/services/tax/tax_reporting_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/all_data/statements_all_data_skeleton.dart';
 import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/vat_summary/vat_summary_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/common/empty_hint.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
-import 'package:hexora/theme/shapes/rounded/rounded_section_card.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:intl/intl.dart';
 
 part 'tax_report_content.dart';
@@ -19,9 +21,20 @@ String formatTaxEur(dynamic value) {
 const double _summaryBarItemHeight = 66;
 
 class TaxReportingView extends StatefulWidget {
-  const TaxReportingView({super.key, required this.groupId, this.api});
+  const TaxReportingView(
+      {super.key,
+      required this.groupId,
+      this.api,
+      this.header,
+      this.initialSection = TaxReportSection.supported,
+      this.onSectionChanged,
+      this.showMenu = true});
   final String groupId;
   final TaxReportingApi? api;
+  final Widget? header;
+  final TaxReportSection initialSection;
+  final ValueChanged<TaxReportSection>? onSectionChanged;
+  final bool showMenu;
 
   @override
   State<TaxReportingView> createState() => _TaxReportingViewState();
@@ -29,7 +42,7 @@ class TaxReportingView extends StatefulWidget {
 
 class _TaxReportingViewState extends State<TaxReportingView> {
   late TaxReportingApi _api;
-  TaxReportSection _section = TaxReportSection.supported;
+  late TaxReportSection _section;
   bool _collapsed = false;
   bool _loading = true;
   bool _datesExpanded = false;
@@ -46,6 +59,7 @@ class _TaxReportingViewState extends State<TaxReportingView> {
   @override
   void initState() {
     super.initState();
+    _section = widget.initialSection;
     _api = widget.api ?? TaxReportingApi();
     final range = quarterRangeDates(_year, _quarter);
     _from = range.$1;
@@ -105,6 +119,7 @@ class _TaxReportingViewState extends State<TaxReportingView> {
   void _select(TaxReportSection section) {
     if (_section == section) return;
     setState(() => _section = section);
+    widget.onSectionChanged?.call(section);
     _load();
   }
 
@@ -164,8 +179,9 @@ class _TaxReportingViewState extends State<TaxReportingView> {
     ];
     return CollapsibleSidebar(
       title: 'Impuestos',
+      secondaryHeader: true,
       titleTextStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface,
+            color: AppColors.navigationForeground,
             fontWeight: FontWeight.w900,
           ),
       itemTextStyle: itemStyle,
@@ -200,8 +216,7 @@ class _TaxReportingViewState extends State<TaxReportingView> {
           fontSize: 11,
           letterSpacing: 0.1,
         );
-    const valueStyle =
-        TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5);
+    const valueStyle = TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5);
     if (_section == TaxReportSection.quarterly) {
       return _FilterSurface(
         boxed: boxed,
@@ -272,7 +287,7 @@ class _TaxReportingViewState extends State<TaxReportingView> {
             onSelected: _selectPreset,
             itemBuilder: (context) => [
               for (var i = 0; i < presetLabels.length; i++)
-                PopupMenuItem<int>(
+                NavigationPopupMenuItem<int>(
                   value: i,
                   child: Row(children: [
                     if (_preset == i) ...[
@@ -428,6 +443,7 @@ class _TaxReportingViewState extends State<TaxReportingView> {
                           icon: const Icon(Icons.menu),
                           onPressed: () => Scaffold.of(context).openDrawer(),
                         )),
+              if (widget.header != null) widget.header!,
               Expanded(child: _body()),
             ]);
         if (narrow) {
@@ -440,6 +456,12 @@ class _TaxReportingViewState extends State<TaxReportingView> {
                             drawer: true,
                             close: () => Scaffold.of(context).closeDrawer())))),
             body: Builder(builder: (_) => content()),
+          );
+        }
+        if (!widget.showMenu) {
+          return Material(
+            color: Colors.transparent,
+            child: content(),
           );
         }
         return Material(
@@ -468,9 +490,8 @@ class _FilterSurface extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final inner = Column(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: footer == null
-            ? MainAxisAlignment.center
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            footer == null ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -479,8 +500,8 @@ class _FilterSurface extends StatelessWidget {
           if (footer != null) footer!,
         ]);
     return AnimatedSize(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
+      duration: HexoraMotion.duration(context, HexoraMotion.standard),
+      curve: HexoraMotion.enter,
       child: ConstrainedBox(
         key: const ValueKey('tax-period-filter'),
         constraints: const BoxConstraints(minHeight: _summaryBarItemHeight),
@@ -489,8 +510,8 @@ class _FilterSurface extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: cs.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border:
-                      Border.all(color: cs.outlineVariant.withValues(alpha: .7)),
+                  border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: .7)),
                   boxShadow: [
                     BoxShadow(
                       color: cs.shadow.withValues(alpha: .04),

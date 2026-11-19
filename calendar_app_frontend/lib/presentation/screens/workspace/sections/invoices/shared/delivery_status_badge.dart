@@ -1,11 +1,14 @@
+import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 
-enum DeliveryStatusVisual { neutral, success, error }
-
 String normalizedDeliveryStatus(String? value) {
   switch ((value ?? '').trim().toLowerCase()) {
+    case 'delivered':
+    case 'confirmed_delivered':
+      return 'delivered';
     case 'sent':
       return 'sent';
     case 'failed':
@@ -30,6 +33,8 @@ String deliveryChannelLabel(String? value) {
 
 String deliveryStatusLabel(String? value, {bool feminine = false}) {
   switch (normalizedDeliveryStatus(value)) {
+    case 'delivered':
+      return feminine ? 'Entregada' : 'Entregado';
     case 'sent':
       return feminine ? 'Enviada' : 'Enviado';
     case 'failed':
@@ -49,6 +54,7 @@ class DeliveryStatusBadge extends StatelessWidget {
     this.deliveryError,
     this.compact = false,
     this.feminine = false,
+    this.notSentLabel,
   });
 
   final String? status;
@@ -58,31 +64,38 @@ class DeliveryStatusBadge extends StatelessWidget {
   final String? deliveryError;
   final bool compact;
   final bool feminine;
+  final String? notSentLabel;
 
   @override
   Widget build(BuildContext context) {
-    if (groupId != null) {
-      if (!canManagePremiumFeatureForGroupId(context, groupId!, PremiumFeature.email)) {
-        return const SizedBox.shrink();
-      }
+    if (groupId != null &&
+        !canManagePremiumFeatureForGroupId(
+          context,
+          groupId!,
+          PremiumFeature.email,
+        )) {
+      return const SizedBox.shrink();
     }
     final cs = Theme.of(context).colorScheme;
     final normalized = normalizedDeliveryStatus(status);
-    final label = deliveryStatusLabel(status, feminine: feminine);
-    final visual = switch (normalized) {
-      'sent' => DeliveryStatusVisual.success,
-      'failed' => DeliveryStatusVisual.error,
-      _ => DeliveryStatusVisual.neutral,
-    };
-    final color = switch (visual) {
-      DeliveryStatusVisual.success => cs.primary,
-      DeliveryStatusVisual.error => cs.error,
-      DeliveryStatusVisual.neutral => cs.onSurfaceVariant,
+    final label = normalized == 'not_sent' && notSentLabel != null
+        ? notSentLabel!
+        : deliveryStatusLabel(status, feminine: feminine);
+    final color = switch (normalized) {
+      'delivered' => Theme.of(context).brightness == Brightness.light
+          ? const Color(0xFF2E7D32)
+          : const Color(0xFF81C784),
+      'sent' => Theme.of(context).brightness == Brightness.light
+          ? const Color(0xFF2E7D32)
+          : const Color(0xFF81C784),
+      'failed' => cs.error,
+      _ => cs.onSurfaceVariant,
     };
     final icon = switch (normalized) {
-      'sent' => Icons.mark_email_read_outlined,
+      'delivered' => Icons.done_all_rounded,
+      'sent' => Icons.done_all_rounded,
       'failed' => Icons.error_outline_rounded,
-      _ => Icons.mark_email_unread_outlined,
+      _ => Icons.mail_outline_rounded,
     };
     final locale = Localizations.localeOf(context).toString();
     final sentAtLabel = sentAt == null
@@ -100,33 +113,12 @@ class DeliveryStatusBadge extends StatelessWidget {
     final child = compact
         ? Padding(
             padding: const EdgeInsets.all(2),
-            child: Icon(icon, size: 15, color: color),
+            child: Icon(icon, size: 14, color: color),
           )
-        : Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: color.withValues(alpha: 0.30)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 13, color: color),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                ),
-              ],
-            ),
-          );
-
+        : HexoraStatusBadge(
+            label: label,
+            color: color,
+            leading: Icon(icon, size: HexoraTypography.label, color: color));
     return Semantics(
       label: tooltip,
       child: Tooltip(message: tooltip, child: child),

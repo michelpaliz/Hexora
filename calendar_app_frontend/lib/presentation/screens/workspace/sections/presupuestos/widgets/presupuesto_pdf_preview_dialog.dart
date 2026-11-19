@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 
 /// Full-screen in-app preview for a generated presupuesto PDF. Rendering is
@@ -21,7 +22,7 @@ class PresupuestoPdfPreviewDialog extends StatelessWidget {
     required Uint8List bytes,
     required VoidCallback onDownload,
   }) {
-    return showDialog<void>(
+    return showHexoraDialog<void>(
       context: context,
       barrierDismissible: true,
       builder: (_) =>
@@ -44,9 +45,8 @@ class PresupuestoPdfPreviewDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: SizedBox(
         width: isWide ? 880 : double.infinity,
-        height: isWide
-            ? (size.height - 64).clamp(400.0, 960.0)
-            : size.height - 20,
+        height:
+            isWide ? (size.height - 64).clamp(400.0, 960.0) : size.height - 20,
         child: Column(
           children: [
             Material(

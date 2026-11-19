@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/groups/event/domain/event_domain.dart';
@@ -82,6 +83,17 @@ mixin InsightsEventAssistant on InsightsChatSheetStateBase {
     final hasDateLike = RegExp(r'\b\d{1,2}([/:.-]\d{1,2})?([/:.-]\d{2,4})?\b')
         .hasMatch(normalized);
     return hasCreateVerb && (hasEventWord || hasTimeHint || hasDateLike);
+  }
+
+  bool looksLikeEventEditingRequest(String text) {
+    final normalized = text.trim().toLowerCase();
+    final hasEditVerb = RegExp(
+      r'\b(edit|change|modify|update|move|reschedule|editar|edita|cambiar|cambia|modificar|modifica|actualizar|actualiza|mover|mueve|reprogramar|reprograma)\b',
+    ).hasMatch(normalized);
+    final hasEventWord = RegExp(
+      r'\b(event|visit|appointment|work visit|evento|visita|cita)\b',
+    ).hasMatch(normalized);
+    return hasEditVerb && hasEventWord;
   }
 
   bool looksLikeEventEditingRequest(String text) {
@@ -476,7 +488,7 @@ mixin InsightsEventAssistant on InsightsChatSheetStateBase {
     final assistant = eventAssistantForMessage(message);
     final preview = eventPreviewForMessage(message);
     if (assistant == null || preview == null) return;
-    final updated = await showDialog<Map<String, dynamic>>(
+    final updated = await showHexoraDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => InsightsEventEditDialog(
         groupId: widget.groupId,
@@ -491,5 +503,4 @@ mixin InsightsEventAssistant on InsightsChatSheetStateBase {
       message.copyWith(eventAssistant: updated),
     );
   }
-
 }

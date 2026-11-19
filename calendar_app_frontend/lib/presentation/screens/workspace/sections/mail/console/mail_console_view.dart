@@ -93,10 +93,6 @@ class _MailConsoleView extends StatelessWidget {
 
     void mobileBack() {
       if (state._sendingReply) return;
-      if (state._showCompose && state._replyTarget != null) {
-        state._closeFullReply();
-        return;
-      }
       if (state._replyTarget != null) {
         state._closeReplyComposer();
         return;
@@ -110,13 +106,7 @@ class _MailConsoleView extends StatelessWidget {
     }
 
     String appBarTitle() {
-      if (state._showCompose) {
-        return state._replyTarget == null
-            ? l.mailComposeTitle
-            : (l.localeName.toLowerCase().startsWith('es')
-                ? 'Responder'
-                : 'Reply');
-      }
+      if (state._showCompose) return l.mailComposeTitle;
       if (state._showFooterManager) return l.mailFooterCreateCta;
       if (state._showTemplateManager) return 'Templates';
       if (state._selectedThreadKey != null) {
@@ -134,6 +124,7 @@ class _MailConsoleView extends StatelessWidget {
 
     void openFolderSheet() {
       showModalBottomSheet<void>(
+        sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: context,
         isScrollControlled: true,
         shape: const RoundedRectangleBorder(
@@ -156,16 +147,9 @@ class _MailConsoleView extends StatelessWidget {
       if (state._showCompose) {
         return MailComposeScreen(
           groupId: state._currentGroupId(),
-          replyToMessage: state._replyTarget,
-          initialReplyBody:
-              state._replyTarget == null ? null : state._replyCtrl.text,
-          initialReplySubject:
-              state._replyTarget == null ? null : state._replySubjectCtrl.text,
           embedded: true,
           onClose: mobileBack,
-          onSent: state._replyTarget == null
-              ? mobileBack
-              : _asyncCallback(state._replySent),
+          onSent: mobileBack,
         );
       }
       if (state._showFooterManager) {
@@ -336,14 +320,16 @@ class _MailConsoleView extends StatelessWidget {
         : domain.threadState(state._selectedThreadKey!);
     final selectedThread = threadState?.thread;
 
-    Widget leftColumn() {
-      return _buildMailSidebar(context);
-    }
-
-    Widget threadList() {
-      final threads = threadsState.folder == state._folder
+    Widget threadList(BuildContext navContext) {
+      final navCs = Theme.of(navContext).colorScheme;
+      final folderThreads = threadsState.folder == state._folder
           ? threadsState.threads
           : const <MailThread>[];
+      final threads = switch (state._desktopListFilter) {
+        1 => folderThreads.where((thread) => thread.unreadCount > 0).toList(),
+        2 => folderThreads.where((thread) => thread.important).toList(),
+        _ => folderThreads,
+      };
       final activeQuery = (threadsState.query ?? '').trim();
       final isThreadSearch = activeQuery.length >= 2;
 
@@ -354,7 +340,7 @@ class _MailConsoleView extends StatelessWidget {
           itemCount: 9,
           separatorBuilder: (_, __) => Divider(
             height: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.15),
+            color: navCs.outlineVariant.withValues(alpha: 0.35),
           ),
           itemBuilder: (_, i) => _SkeletonThreadRow(key: ValueKey(i), seed: i),
         );
@@ -393,7 +379,7 @@ class _MailConsoleView extends StatelessWidget {
         itemCount: itemCount,
         separatorBuilder: (_, __) => Divider(
           height: 1,
-          color: cs.outlineVariant.withValues(alpha: 0.15),
+          color: navCs.outlineVariant.withValues(alpha: 0.35),
         ),
         itemBuilder: (context, index) {
           if (index >= threads.length) {
@@ -420,71 +406,132 @@ class _MailConsoleView extends StatelessWidget {
       );
     }
 
-    Widget middleColumn() {
-      final activeQuery = (threadsState.query ?? '').trim();
-      final isSearchActive = activeQuery.length >= 2;
-      return Expanded(
-        flex: 2,
-        child: Focus(
-          focusNode: state._threadListFocus,
-          onKeyEvent: (_, event) {
-            if (event is! KeyDownEvent) return KeyEventResult.ignored;
-            if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-              state._navigateThread(1);
-              return KeyEventResult.handled;
-            }
-            if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-              state._navigateThread(-1);
-              return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
-          },
-          child: Column(
-            children: [
-              _ThreadToolbar(
-                folder: state._folder,
-                searchController: state._threadSearchController,
-                searching: threadsState.loading &&
-                    (threadsState.query ?? '').trim().length >= 2,
-                onSearchChanged: state._onThreadSearchChanged,
-                onClearSearch: state._clearThreadSearch,
-                hasSelection: selectedThread != null,
-                hasUnread:
-                    selectedThread?.messages.any((m) => m.unread) ?? false,
-                onRefresh: _asyncCallback(state._refreshAll),
-                onToggleRead: _asyncCallback(
-                  () => state._markSelectedRead(
-                    unread: !(selectedThread?.messages.any((m) => m.unread) ??
-                        false),
-                  ),
-                ),
-                onArchive: _asyncCallback(
-                  () => state._moveSelectedThread(
-                    context.read<MailDomain>().archive,
-                    toastMessage: l.mailDetailArchived,
-                  ),
-                ),
-                onSpam: _asyncCallback(
-                  () => state._moveSelectedThread(
-                    context.read<MailDomain>().spam,
-                    toastMessage: l.mailDetailSpammed,
-                  ),
-                ),
-                onTrash: _asyncCallback(
-                  () => state._moveSelectedThread(
-                    context.read<MailDomain>().trash,
-                    toastMessage: l.mailDetailTrashed,
+    void selectListFilter(int index) {
+      state.update(() => state._desktopListFilter = index);
+      final target = index == 3 ? MailFolder.archive : MailFolder.inbox;
+      if (state._folder != target) state._selectFolder(target);
+    }
+
+    Widget listTabs(BuildContext navContext) {
+      final navTheme = Theme.of(navContext);
+      final navCs = navTheme.colorScheme;
+      final all = threadsState.folder == state._folder
+          ? threadsState.threads
+          : const <MailThread>[];
+      final unread = all.where((thread) => thread.unreadCount > 0).length;
+      final important = all.where((thread) => thread.important).length;
+      final tabs = <(String, int?)>[
+        ('Todos', state._folder == MailFolder.inbox ? all.length : null),
+        ('No leídos', state._folder == MailFolder.inbox ? unread : null),
+        ('Importantes', state._folder == MailFolder.inbox ? important : null),
+        ('Archivados', state._folder == MailFolder.archive ? all.length : null),
+      ];
+      return SizedBox(
+        height: 46,
+        child: Row(
+          children: [
+            for (var index = 0; index < tabs.length; index++)
+              Expanded(
+                child: InkWell(
+                  key: ValueKey('mail-list-filter-$index'),
+                  onTap: () => selectListFilter(index),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          width: 2,
+                          color: state._desktopListFilter == index
+                              ? navCs.primary
+                              : Colors.transparent,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      tabs[index].$2 == null
+                          ? tabs[index].$1
+                          : '${tabs[index].$1} (${tabs[index].$2})',
+                      overflow: TextOverflow.ellipsis,
+                      style: navTheme.textTheme.labelMedium?.copyWith(
+                        fontSize: 12,
+                        fontWeight: state._desktopListFilter == index
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: state._desktopListFilter == index
+                            ? navCs.primary
+                            : navCs.onSurfaceVariant,
+                      ),
+                    ),
                   ),
                 ),
               ),
-              if (isSearchActive)
-                _ActiveSearchChip(
-                  query: activeQuery,
-                  onClear: state._clearThreadSearch,
+          ],
+        ),
+      );
+    }
+
+    Widget middleColumn(BuildContext navContext) {
+      final activeQuery = (threadsState.query ?? '').trim();
+      final isSearchActive = activeQuery.length >= 2;
+      return Focus(
+        focusNode: state._threadListFocus,
+        onKeyEvent: (_, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+            state._navigateThread(1);
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            state._navigateThread(-1);
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Column(
+          children: [
+            _ThreadToolbar(
+              folder: state._folder,
+              searchController: state._threadSearchController,
+              searching: threadsState.loading &&
+                  (threadsState.query ?? '').trim().length >= 2,
+              onSearchChanged: state._onThreadSearchChanged,
+              onClearSearch: state._clearThreadSearch,
+              hasSelection: selectedThread != null,
+              hasUnread: selectedThread?.messages.any((m) => m.unread) ?? false,
+              onRefresh: _asyncCallback(state._refreshAll),
+              onToggleRead: _asyncCallback(
+                () => state._markSelectedRead(
+                  unread:
+                      !(selectedThread?.messages.any((m) => m.unread) ?? false),
                 ),
-              Expanded(child: threadList()),
-            ],
-          ),
+              ),
+              onArchive: _asyncCallback(
+                () => state._moveSelectedThread(
+                  context.read<MailDomain>().archive,
+                  toastMessage: l.mailDetailArchived,
+                ),
+              ),
+              onSpam: _asyncCallback(
+                () => state._moveSelectedThread(
+                  context.read<MailDomain>().spam,
+                  toastMessage: l.mailDetailSpammed,
+                ),
+              ),
+              onTrash: _asyncCallback(
+                () => state._moveSelectedThread(
+                  context.read<MailDomain>().trash,
+                  toastMessage: l.mailDetailTrashed,
+                ),
+              ),
+            ),
+            if (isSearchActive)
+              _ActiveSearchChip(
+                query: activeQuery,
+                onClear: state._clearThreadSearch,
+              ),
+            listTabs(navContext),
+            Expanded(child: threadList(navContext)),
+          ],
         ),
       );
     }
@@ -493,26 +540,16 @@ class _MailConsoleView extends StatelessWidget {
       return state._showCompose
           ? MailComposeScreen(
               groupId: state._currentGroupId(),
-              replyToMessage: state._replyTarget,
-              initialReplyBody:
-                  state._replyTarget == null ? null : state._replyCtrl.text,
-              initialReplySubject: state._replyTarget == null
-                  ? null
-                  : state._replySubjectCtrl.text,
               embedded: true,
-              onClose: state._replyTarget == null
-                  ? () => state.update(() => state._showCompose = false)
-                  : state._closeFullReply,
-              onSent: state._replyTarget == null
-                  ? () => state.update(() => state._showCompose = false)
-                  : _asyncCallback(state._replySent),
+              onClose: () => state.update(() => state._showCompose = false),
+              onSent: () => state.update(() => state._showCompose = false),
             )
           : state._showFooterManager
               ? _FooterManagerPanel(state: state)
               : state._showTemplateManager
                   ? _TemplatesManagerPanel(state: state)
                   : state._selectedThreadKey == null
-                      ? Center(child: Text(l.mailConsoleSelectThread))
+                      ? const _MailReadingEmptyState()
                       : (selectedThread == null)
                           ? (threadState?.error != null)
                               ? Center(
@@ -556,58 +593,50 @@ class _MailConsoleView extends StatelessWidget {
                             );
     }
 
-    Widget rightColumn() {
-      return Expanded(
-        flex: 3,
-        child: rightPaneContent(),
-      );
-    }
-
-    final content = Row(
+    final workspace = Column(
       children: [
-        leftColumn(),
-        const SizedBox(width: 10),
         Expanded(
           child: state._showFooterManager ||
                   state._showTemplateManager ||
                   state._showCompose
-              ? FolderSectionCard(
-                  label: state._showCompose
-                      ? (state._replyTarget == null
-                          ? l.mailComposeTitle
-                          : (l.localeName.toLowerCase().startsWith('es')
-                              ? 'Responder'
-                              : 'Reply'))
-                      : state._showFooterManager
-                          ? l.mailFooterCreateCta
-                          : 'Templates',
-                  leftTabOffset: 0,
-                  child: rightPaneContent(),
-                )
-              : FolderSectionCard(
-                  label:
-                      '${l.mailConsoleTitle} · ${_folderLabel(state._folder, l)}',
-                  leftTabOffset: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 15),
-                    child: Row(
+              ? rightPaneContent()
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final listWidth =
+                        (constraints.maxWidth * 0.41).clamp(440.0, 720.0);
+                    return Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        middleColumn(),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: VerticalDivider(
-                            width: 1,
-                            thickness: 1,
-                            color: cs.outlineVariant.withValues(alpha: 0.4),
+                        SizedBox(
+                          width: listWidth,
+                          child: ColoredBox(
+                            key: const ValueKey('mail-desktop-list-surface'),
+                            color: cs.surface,
+                            child: middleColumn(context),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        rightColumn(),
+                        VerticalDivider(
+                          width: 1,
+                          thickness: 1,
+                          color: cs.outlineVariant.withValues(alpha: 0.4),
+                        ),
+                        Expanded(child: rightPaneContent()),
                       ],
-                    ),
-                  ),
+                    );
+                  },
                 ),
+        ),
+      ],
+    );
+
+    final content = Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildMailSidebar(context),
+        Expanded(
+          child: state.widget.embedded
+              ? WorkspaceMainContent(child: workspace)
+              : workspace,
         ),
       ],
     );

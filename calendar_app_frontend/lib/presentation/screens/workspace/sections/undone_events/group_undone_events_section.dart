@@ -16,12 +16,14 @@ class GroupUndoneEventsSection extends StatelessWidget {
     required this.user,
     required this.role,
     this.onSeeAll,
+    this.compact = false,
   });
 
   final Group group;
   final User user;
   final GroupRole role;
   final VoidCallback? onSeeAll;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +49,7 @@ class GroupUndoneEventsSection extends StatelessWidget {
         user: user,
         role: role,
         onSeeAll: onSeeAll,
+        compact: compact,
       ),
     );
   }
@@ -58,12 +61,14 @@ class _GroupUndoneEventsSectionBody extends StatelessWidget {
     required this.user,
     required this.role,
     this.onSeeAll,
+    required this.compact,
   });
 
   final Group group;
   final User user;
   final GroupRole role;
   final VoidCallback? onSeeAll;
+  final bool compact;
 
   Future<void> _openFullList(BuildContext context) async {
     if (onSeeAll != null && MediaQuery.sizeOf(context).width >= 900) {
@@ -85,46 +90,59 @@ class _GroupUndoneEventsSectionBody extends StatelessWidget {
     final loc = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final vm = context.watch<GroupUndoneEventsViewModel>();
+    final tile = ListTile(
+      minTileHeight: compact ? 48 : null,
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: compact ? 14 : 16,
+        vertical: compact ? 0 : 4,
+      ),
+      leading:
+          Icon(Icons.pending_actions_outlined, color: cs.primary, size: 20),
+      title: Text(
+        loc.pendingEventsSectionTitle,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+      ),
+      subtitle: vm.errorMessage == null ? null : Text(loc.pendingEventsError),
+      onTap: () => _openFullList(context),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (vm.isLoading)
+            const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2))
+          else if (vm.errorMessage != null)
+            IconButton(
+                onPressed: vm.refresh,
+                tooltip: loc.tryAgain,
+                icon: const Icon(Icons.refresh_rounded, size: 18))
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(10)),
+              child: Text('${vm.pendingEvents.length}',
+                  style: TextStyle(
+                      color: cs.onPrimaryContainer,
+                      fontWeight: FontWeight.w700)),
+            ),
+          const SizedBox(width: 4),
+          Icon(Icons.chevron_right_rounded,
+              size: 18, color: cs.onSurfaceVariant),
+        ],
+      ),
+    );
+    if (compact) return tile;
+
     return Card(
       margin: EdgeInsets.zero,
       elevation: 0,
       color: cs.surfaceContainerLow,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Icon(Icons.pending_actions_outlined, color: cs.primary),
-        title: Text(loc.pendingEventsSectionTitle),
-        subtitle: vm.errorMessage == null ? null : Text(loc.pendingEventsError),
-        onTap: () => _openFullList(context),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (vm.isLoading)
-              const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-            else if (vm.errorMessage != null)
-              IconButton(
-                  onPressed: vm.refresh,
-                  tooltip: loc.tryAgain,
-                  icon: const Icon(Icons.refresh_rounded))
-            else
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                    color: cs.primaryContainer,
-                    borderRadius: BorderRadius.circular(12)),
-                child: Text('${vm.pendingEvents.length}',
-                    style: TextStyle(
-                        color: cs.onPrimaryContainer,
-                        fontWeight: FontWeight.w700)),
-              ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right),
-          ],
-        ),
-      ),
+      child: tile,
     );
   }
 }

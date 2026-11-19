@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group_business_hours.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 
 Future<GroupBusinessHours?> showBusinessHoursDialog(
   BuildContext context, {
   GroupBusinessHours? initial,
 }) {
-  return showDialog<GroupBusinessHours>(
+  return showHexoraDialog<GroupBusinessHours>(
     context: context,
     builder: (_) => _BusinessHoursDialog(initial: initial),
   );
@@ -119,7 +121,7 @@ class _BusinessHoursDialogState extends State<_BusinessHoursDialog> {
           Text(l.sectionBusinessHours, style: textTheme.titleLarge),
           const SizedBox(height: 6),
           Text(
-            l.businessHoursMemberSubtitle,
+            l.businessHoursScheduleHint,
             style: textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
@@ -203,13 +205,14 @@ class _BusinessHoursDialogState extends State<_BusinessHoursDialog> {
               onPressed: () => Navigator.of(context).pop(),
               child: Text(l.cancel),
             ),
-            OutlinedButton(
+            HexoraButton(
               onPressed: () => _submit(clearWindow: true),
-              child: Text(l.businessHoursReset),
+              label: l.businessHoursReset,
+              variant: HexoraButtonVariant.secondary,
             ),
-            FilledButton.icon(
-              icon: const Icon(Icons.check_rounded),
-              label: Text(l.businessHoursSave),
+            HexoraButton(
+              icon: Icons.check_rounded,
+              label: l.businessHoursSave,
               onPressed: _hasPartialSelection ? null : () => _submit(),
             ),
           ],

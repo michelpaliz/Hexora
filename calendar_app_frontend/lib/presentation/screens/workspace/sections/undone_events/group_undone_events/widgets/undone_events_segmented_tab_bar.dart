@@ -36,12 +36,13 @@ class UndoneEventsSegmentedTabBar extends StatelessWidget {
           dividerColor: Colors.transparent,
           indicatorSize: TabBarIndicatorSize.tab,
           indicatorPadding: EdgeInsets.zero,
-          labelColor: cs.onPrimary,
+          labelColor: cs.onPrimaryContainer,
           unselectedLabelColor: cs.onSurfaceVariant,
           labelStyle:
               const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           indicator: BoxDecoration(
-              color: cs.primary, borderRadius: BorderRadius.circular(12)),
+              color: cs.primaryContainer,
+              borderRadius: BorderRadius.circular(12)),
           splashBorderRadius: BorderRadius.circular(12),
         ),
       ),

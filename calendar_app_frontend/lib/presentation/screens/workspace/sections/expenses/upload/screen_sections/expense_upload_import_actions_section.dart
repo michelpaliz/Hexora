@@ -1,6 +1,7 @@
 part of '../expense_upload_screen.dart';
 
 mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
+  void clearBatchArchive();
   List<String> _duplicateBatchNames(List<String> names) {
     final counts = <String, int>{};
     final originals = <String, String>{};
@@ -200,17 +201,38 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       ],
     );
     final files = picked?.files ?? const <PlatformFile>[];
-    if (files.isEmpty) return;
+    if (files.isEmpty) {
+      return;
+    }
     if (!mounted ||
         _batchSubmitting ||
         _batchStartingJob ||
-        _hasRunningBatchJob) return;
+        _hasRunningBatchJob) {
+      return;
+    }
     await _applyBatchUploadSelection(
       [
         for (final file in files)
           (fileName: file.name, fileBytes: file.bytes ?? Uint8List(0)),
       ],
       selectedCount: files.length,
+    );
+  }
+
+  Future<void> _pickBatchZip() async {
+    if (_batchSubmitting || _batchStartingJob || _hasRunningBatchJob) return;
+    final picked = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      withData: true,
+      type: FileType.custom,
+      allowedExtensions: const ['zip'],
+    );
+    final file =
+        (picked?.files.isNotEmpty ?? false) ? picked!.files.first : null;
+    if (file == null || !mounted) return;
+    await _applyBatchUploadSelection(
+      [(fileName: file.name, fileBytes: file.bytes ?? Uint8List(0))],
+      selectedCount: 1,
     );
   }
 
@@ -240,19 +262,21 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
         return;
       }
       _resetBatchJobTracking(clearResult: true, clearCache: true);
+      final inspectionToken = ++_batchArchiveInspectionToken;
       setState(() {
         _batchArchiveBytes = archive.fileBytes;
         _batchArchiveName = archive.fileName;
+        _batchArchiveInspecting = true;
         _batchArchiveInspection = null;
         _batchArchiveInspectionError = null;
-        _batchArchiveInspecting = true;
+        _batchArchiveFilesExpanded = false;
         _batchDocumentBytes = [];
         _batchDocumentNames = [];
         _batchError = null;
         _batchSkippedDetails = [];
         _batchVerifyMessage = null;
       });
-      await _inspectSelectedBatchArchive();
+      await _inspectSelectedBatchArchive(expectedToken: inspectionToken);
       return;
     }
     if (files.isEmpty) {
@@ -265,6 +289,121 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       files,
       selectedCount: selectedCount,
     );
+  }
+
+  String _batchArchiveExclusionLabel(String code) => switch (code) {
+        'system_file' => 'Metadatos del sistema',
+        'unsupported_type' => 'Formato no compatible',
+        'oversized' => 'Supera el limite por documento',
+        'nested_archive' => 'Archivo comprimido interno',
+        'encrypted' => 'Archivo cifrado',
+        'corrupt_file' => 'Archivo danado',
+        'unsafe_path' => 'Ruta no segura',
+        'symlink' => 'Enlace simbolico',
+        _ => 'No compatible',
+      };
+
+  Map<String, dynamic> _normalizeBatchArchiveInspection(
+      Map<String, dynamic> inspection) {
+    final entries = (inspection['entries'] as List? ?? const [])
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList(growable: false);
+    final files = <Map<String, dynamic>>[];
+    final skipped = <Map<String, dynamic>>[];
+    final reasonCounts = <String, int>{};
+    for (final entry in entries) {
+      final name = (entry['filename'] ?? '').toString();
+      if (entry['entryType'] == 'file' && entry['compatible'] == true) {
+        files.add({'name': name, 'sizeBytes': 0});
+        continue;
+      }
+      final code = entry['entryType'] == 'directory'
+          ? 'directory'
+          : (entry['exclusionCode'] ?? 'unsupported_type').toString();
+      final reason =
+          code == 'directory' ? 'Carpeta' : _batchArchiveExclusionLabel(code);
+      skipped.add({
+        'name': name,
+        'sizeBytes': 0,
+        'reason': reason,
+        'code': code,
+        'entryType': entry['entryType'],
+      });
+      if (entry['entryType'] == 'file') {
+        reasonCounts[reason] = (reasonCounts[reason] ?? 0) + 1;
+      }
+    }
+    return {
+      ...inspection,
+      'files': files,
+      'skipped': skipped,
+      'warnings': reasonCounts.entries
+          .map((entry) => '${entry.key}: ${entry.value}')
+          .toList(growable: false),
+    };
+  }
+
+  Future<void> _inspectSelectedBatchArchive({int? expectedToken}) async {
+    final archiveBytes = _batchArchiveBytes;
+    final archiveName = _batchArchiveName;
+    if (archiveBytes == null || archiveName == null) return;
+    final groupId = resolveGroupId().trim();
+    final token = expectedToken ?? ++_batchArchiveInspectionToken;
+    if (groupId.isEmpty) {
+      setState(() {
+        _batchArchiveInspecting = false;
+        _batchArchiveInspectionError =
+            'Selecciona un grupo para inspeccionar el ZIP.';
+      });
+      return;
+    }
+    setState(() {
+      _batchArchiveInspecting = true;
+      _batchArchiveInspectionError = null;
+      _batchError = null;
+    });
+    try {
+      final response = await _api.inspectBatchExpenseZip(
+        archiveBytes: archiveBytes,
+        archiveName: archiveName,
+        groupId: groupId,
+      );
+      if (!mounted || token != _batchArchiveInspectionToken) return;
+      final inspection = _normalizeBatchArchiveInspection(response);
+      final supported = _batchJobInt(inspection['compatibleDocuments']);
+      final blocked = inspection['blocked'] == true;
+      setState(() {
+        _batchArchiveInspecting = false;
+        _batchArchiveInspection = inspection;
+        _batchArchiveInspectionError = null;
+        _batchSkippedDetails = (inspection['warnings'] as List? ?? const [])
+            .map((item) => item.toString())
+            .toList(growable: false);
+        _batchVerifyMessage = supported == 1
+            ? '1 documento compatible listo para confirmar.'
+            : '$supported documentos compatibles listos para confirmar.';
+        if (blocked) {
+          _batchError = 'El ZIP contiene entradas no seguras o danadas.';
+        } else if (supported == 0) {
+          _batchError = 'El ZIP no contiene documentos compatibles.';
+        }
+      });
+    } on ExpensesApiException catch (error) {
+      if (!mounted || token != _batchArchiveInspectionToken) return;
+      setState(() {
+        _batchArchiveInspecting = false;
+        _batchArchiveInspection = null;
+        _batchArchiveInspectionError = error.message;
+      });
+    } catch (error) {
+      if (!mounted || token != _batchArchiveInspectionToken) return;
+      setState(() {
+        _batchArchiveInspecting = false;
+        _batchArchiveInspection = null;
+        _batchArchiveInspectionError = _friendlyNetworkError(error);
+      });
+    }
   }
 
   Future<void> _applyBatchDocuments(
@@ -335,7 +474,12 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
 
     if (!mounted) return;
     setState(() {
-      clearBatchArchive();
+      _batchArchiveInspectionToken++;
+      _batchArchiveBytes = null;
+      _batchArchiveName = null;
+      _batchArchiveInspecting = false;
+      _batchArchiveInspection = null;
+      _batchArchiveFilesExpanded = false;
       _batchDocumentBytes = bytes;
       _batchDocumentNames = names;
       _batchSkippedDetails = skippedDetails;
@@ -853,7 +997,12 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
     _resetBatchJobTracking(clearResult: true, clearCache: true);
     _batchDocumentBytes.clear();
     _batchDocumentNames.clear();
-    clearBatchArchive();
+    _batchArchiveInspectionToken++;
+    _batchArchiveBytes = null;
+    _batchArchiveName = null;
+    _batchArchiveInspecting = false;
+    _batchArchiveInspection = null;
+    _batchArchiveFilesExpanded = false;
     _batchSkippedDetails.clear();
     _batchVerifyMessage = null;
     _batchError = null;
@@ -894,6 +1043,51 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
     setState(_clearConsumedBatchState);
     await _removeCompletedBatchMapping(completedBackgroundJobId);
     return true;
+  }
+
+  Future<List<Map<String, dynamic>>> _loadRecentBatchJobs() async {
+    final groupId = resolveGroupId().trim();
+    if (groupId.isEmpty) return const [];
+    if (mounted) setState(() => _recentBatchJobsLoading = true);
+    try {
+      final jobs = await _api.listBatchExpensePreviewJobs(groupId);
+      if (mounted) {
+        setState(() {
+          _recentBatchJobs = jobs;
+          _recentBatchJobsError = null;
+        });
+      }
+      return jobs;
+    } catch (error) {
+      if (mounted) {
+        setState(() => _recentBatchJobsError = _friendlyNetworkError(error));
+      }
+      return const [];
+    } finally {
+      if (mounted) setState(() => _recentBatchJobsLoading = false);
+    }
+  }
+
+  Future<void> _openRecentBatchJob(Map<String, dynamic> job) async {
+    if (job['canResume'] != true) return;
+    final jobId = _batchJobText(job['jobId']);
+    if (jobId.isEmpty) return;
+    setState(() {
+      _resetBatchJobTracking();
+      _batchDocumentBytes.clear();
+      _batchDocumentNames.clear();
+      clearBatchArchive();
+      _batchJobId = jobId;
+      _batchBackgroundJobId = _batchJobText(job['backgroundJobId']);
+      _batchArchiveName = _batchJobText(job['sourceArchiveName']).isEmpty
+          ? null
+          : _batchJobText(job['sourceArchiveName']);
+      _batchJobStatus = Map<String, dynamic>.from(job);
+      _batchError = null;
+    });
+    _cacheBatchJobSnapshot();
+    await _pollBatchJobStatus();
+    if (_hasRunningBatchJob) _startBatchJobPolling();
   }
 
   Future<void> _resumeCachedBatchJobIfNeeded() async {
@@ -938,95 +1132,6 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
     _startBatchJobPolling();
   }
 
-  Future<List<Map<String, dynamic>>> _loadRecentBatchJobs() async {
-    final groupId = resolveGroupId().trim();
-    if (groupId.isEmpty) return const [];
-    if (mounted) setState(() => _recentBatchJobsLoading = true);
-    try {
-      final jobs = await _api.listBatchExpensePreviewJobs(groupId);
-      if (mounted)
-        setState(() {
-          _recentBatchJobs = jobs;
-          _recentBatchJobsError = null;
-        });
-      return jobs;
-    } catch (error) {
-      if (mounted)
-        setState(() => _recentBatchJobsError = _friendlyNetworkError(error));
-      return const [];
-    } finally {
-      if (mounted) setState(() => _recentBatchJobsLoading = false);
-    }
-  }
-
-  Future<void> _openRecentBatchJob(Map<String, dynamic> job) async {
-    if (job['canResume'] != true) return;
-    final jobId = _batchJobText(job['jobId']);
-    if (jobId.isEmpty) return;
-    setState(() {
-      _resetBatchJobTracking();
-      _batchDocumentBytes.clear();
-      _batchDocumentNames.clear();
-      clearBatchArchive();
-      _batchJobId = jobId;
-      _batchBackgroundJobId = _batchJobText(job['backgroundJobId']);
-      _batchArchiveName = _batchJobText(job['sourceArchiveName']).isEmpty
-          ? null
-          : _batchJobText(job['sourceArchiveName']);
-      _batchJobStatus = Map<String, dynamic>.from(job);
-      _batchError = null;
-    });
-    _cacheBatchJobSnapshot();
-    await _pollBatchJobStatus();
-    if (_hasRunningBatchJob) _startBatchJobPolling();
-  }
-
-  Future<void> _inspectSelectedBatchArchive() async {
-    final archiveBytes = _batchArchiveBytes;
-    final archiveName = _batchArchiveName;
-    if (archiveBytes == null || archiveName == null) return;
-    final groupId = resolveGroupId().trim();
-    if (groupId.isEmpty) {
-      setState(() {
-        _batchArchiveInspecting = false;
-        _batchArchiveInspectionError =
-            'Selecciona un grupo para inspeccionar el ZIP.';
-      });
-      return;
-    }
-    setState(() {
-      _batchArchiveInspecting = true;
-      _batchArchiveInspectionError = null;
-    });
-    try {
-      final inspection = await _api.inspectBatchExpenseZip(
-        archiveBytes: archiveBytes,
-        archiveName: archiveName,
-        groupId: groupId,
-      );
-      if (!mounted || !identical(_batchArchiveBytes, archiveBytes)) return;
-      setState(() {
-        _batchArchiveInspection = inspection;
-        _batchArchiveInspectionError = null;
-        _batchArchiveInspecting = false;
-      });
-    } on ExpensesApiException catch (error) {
-      if (!mounted || !identical(_batchArchiveBytes, archiveBytes)) return;
-      setState(() {
-        _batchArchiveInspection = null;
-        _batchArchiveInspectionError = error.message;
-        _batchArchiveInspecting = false;
-      });
-    } catch (error) {
-      if (!mounted || !identical(_batchArchiveBytes, archiveBytes)) return;
-      setState(() {
-        _batchArchiveInspection = null;
-        _batchArchiveInspectionError = _friendlyNetworkError(error);
-        _batchArchiveInspecting = false;
-      });
-    }
-  }
-
   Future<void> _submitBatchImport() async {
     if (_batchSubmitting || _batchGeneratingJson || _batchStartingJob) return;
     final attemptId = 'expbatch_${DateTime.now().microsecondsSinceEpoch}';
@@ -1051,15 +1156,17 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       return;
     }
 
-    if (_batchArchiveBytes != null &&
-        (_batchArchiveInspecting ||
-            _batchArchiveInspection == null ||
-            _batchJobInt(_batchArchiveInspection?['compatibleDocuments']) ==
-                0 ||
-            _batchArchiveInspection?['blocked'] == true)) {
-      setState(() => _batchError =
-          'No hay documentos ZIP compatibles confirmados para analizar. Revisa el desglose del archivo.');
-      return;
+    if (_batchArchiveBytes != null) {
+      if (_batchArchiveInspecting) return;
+      final supported =
+          (_batchArchiveInspection?['files'] as List? ?? const []).length;
+      if (_batchArchiveInspection == null ||
+          _batchArchiveInspection?['blocked'] == true ||
+          supported == 0) {
+        setState(() => _batchError =
+            'Inspecciona un ZIP válido antes de iniciar el análisis.');
+        return;
+      }
     }
 
     if (_hasRunningBatchJob) {
@@ -1110,6 +1217,9 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
             backgroundJobId.isEmpty ? _batchBackgroundJobId : backgroundJobId;
         _batchJobStatus = Map<String, dynamic>.from(response);
         _batchArchiveBytes = null;
+        _batchArchiveInspection = null;
+        _batchArchiveInspectionError = null;
+        _batchArchiveInspecting = false;
         _batchSkippedDetails = <String>{
           ..._batchSkippedDetails,
           ...(response['extractionWarnings'] is List
@@ -1224,6 +1334,29 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       return;
     }
 
+    final confirmed = await showHexoraDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Confirmar importación'),
+            content: Text(
+              'Se crearán ${selected.length} gasto(s) con los datos revisados. '
+              'Los documentos no seleccionados, duplicados o fallidos no se importarán.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Confirmar e importar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !mounted || _batchSubmitting) return;
+
     setState(() {
       _batchSubmitting = true;
       _batchError = null;
@@ -1252,6 +1385,47 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       await loadRecentUploads();
       if (!mounted) return;
       widget.onUploaded?.call();
+      if (!mounted) return;
+      final resultDetails = (response['errors'] as List? ?? const [])
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .take(5)
+          .toList(growable: false);
+      await showHexoraDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          icon: Icon(
+            skippedCount > 0
+                ? Icons.info_outline_rounded
+                : Icons.check_circle_outline_rounded,
+          ),
+          title: const Text('Importación completada'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('$importedCount gasto(s) importados.'),
+              Text('$skippedCount documento(s) omitidos.'),
+              if (resultDetails.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                ...resultDetails.map(
+                  (detail) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text('• $detail'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
       showSafeSnackBar(
         context,
         SnackBar(
@@ -1797,6 +1971,7 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
         _jsonTaxController.clear();
         _jsonTotalController.clear();
         _jsonUseSummaryTotals = false;
+        _jsonSummaryTotalsDraft = null;
         _jsonAdvancedExpanded = false;
         _jsonSettlement.setExpenseType(ExpenseDocumentType.standard);
         _jsonSettlement.advancePercentController.clear();

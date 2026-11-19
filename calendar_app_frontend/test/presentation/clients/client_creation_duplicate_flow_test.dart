@@ -47,6 +47,9 @@ class _ConflictClientsApi extends ClientsApi {
     String? groupId,
     String? search,
     bool? active,
+    String? customerType,
+    String? propertyRelationship,
+    String? propertyType,
     bool includeCurrentMonthInvoiceFlag = false,
     bool? missingCurrentMonthInvoice,
   }) async =>
@@ -95,7 +98,10 @@ void main() {
     await tester.pump();
 
     expect(find.text('Este cliente ya existe.'), findsOneWidget);
-    expect(find.text('CLIENTE EXISTENTE'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'CLIENTE EXISTENTE'),
+      findsOneWidget,
+    );
     tester.widget<SnackBarAction>(find.byType(SnackBarAction)).onPressed();
     await tester.pump();
     expect(opened?.id, 'client-1');
@@ -122,7 +128,21 @@ void main() {
       find.byType(TextFormField).first,
       '  Cliente Duplicado  ',
     );
-    await tester.tap(find.byType(ExpansionTile));
+    await tester.ensureVisible(find.text('Detalles de facturación'));
+    await tester.pumpAndSettle();
+    final billingTile = find.ancestor(
+        of: find.text('Detalles de facturación'),
+        matching: find.byType(ExpansionTile));
+    if (find
+        .descendant(of: billingTile, matching: find.byType(TextFormField))
+        .evaluate()
+        .isEmpty) {
+      tester
+          .widget<ListTile>(find
+              .descendant(of: billingTile, matching: find.byType(ListTile))
+              .first)
+          .onTap!();
+    }
     await tester.pumpAndSettle();
 
     final fields = find.byType(TextFormField);
@@ -149,7 +169,8 @@ void main() {
       find.text('Ya existe un cliente con este nombre en el grupo.'),
       findsOneWidget,
     );
-    expect(find.text('Cliente Duplicado'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Cliente Duplicado'),
+        findsOneWidget);
     expect(
       tester.widgetList<FilledButton>(filledButtons).last.onPressed,
       isNotNull,

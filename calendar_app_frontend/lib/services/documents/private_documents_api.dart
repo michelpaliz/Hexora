@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:hexora/models/documents/private_document.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
@@ -157,6 +158,24 @@ class PrivateDocumentsApi {
       throw Exception('Missing download URL in server response');
     }
     return url;
+  }
+
+  /// Downloads the raw file bytes for inline preview. Resolves a short-lived
+  /// signed URL and fetches it directly (the URL carries its own access token,
+  /// so no auth headers are added).
+  Future<Uint8List> downloadFileBytes({
+    required String groupId,
+    required String documentId,
+  }) async {
+    final url = await getFileDownloadUrl(
+      groupId: groupId,
+      documentId: documentId,
+    );
+    final r = await http.get(Uri.parse(url));
+    if (r.statusCode >= 200 && r.statusCode < 300) {
+      return r.bodyBytes;
+    }
+    throw Exception('Could not download file (${r.statusCode})');
   }
 
   Future<PrivateDocument> upload({
