@@ -18,7 +18,8 @@ class SidebarItem extends StatelessWidget {
       this.groupHeader = false,
       this.activeAncestor = false,
       this.rowHeight,
-      this.iconSize});
+      this.iconSize,
+      this.tooltipLabel});
   final IconData icon;
   final String label;
   final bool isSelected;
@@ -39,6 +40,7 @@ class SidebarItem extends StatelessWidget {
   final bool activeAncestor;
   final double? rowHeight;
   final double? iconSize;
+  final String? tooltipLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -73,9 +75,10 @@ class SidebarItem extends StatelessWidget {
         selected: isSelected,
         button: true,
         enabled: onTap != null,
-        label: collapsed ? label : null,
+        label: tooltipLabel ?? (collapsed ? label : null),
+        excludeSemantics: tooltipLabel != null,
         child: Tooltip(
-            message: label,
+            message: tooltipLabel ?? label,
             child: Material(
                 animationDuration: selectionDuration,
                 color: isSelected

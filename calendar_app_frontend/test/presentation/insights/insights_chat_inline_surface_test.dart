@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_message.dart';
+import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_enums.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_runtime.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_sheet.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat/sheet/insights_chat_sheet_base.dart';
@@ -83,8 +84,8 @@ void main() {
     );
     final tableDecoration = tableSurface.decoration! as BoxDecoration;
     final dataTable = tester.widget<DataTable>(find.byType(DataTable));
-    expect(chatWidth, inInclusiveRange(500, 520));
-    expect(tableWidth, greaterThan(1100));
+    expect(chatWidth, inInclusiveRange(600, 620));
+    expect(tableWidth, greaterThan(1000));
     expect(tableSurface.clipBehavior, Clip.antiAlias);
     expect(tableDecoration.borderRadius, BorderRadius.circular(9));
     expect(dataTable.headingRowHeight, 38);
@@ -147,6 +148,70 @@ void main() {
     state.closeInlineSurface();
     await tester.pumpAndSettle();
     expect(find.text('INLINE_SURFACE_NARROW'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('open questions shows selected table and visible Excel actions',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1600, 900);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final runtime = InsightsChatRuntime.instanceFor('open-export-regression');
+    runtime.setInteractionMode(InsightsInteractionMode.openQuestions);
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.forPlatform(
+        Brightness.light,
+        platform: TargetPlatform.windows,
+      ),
+      locale: const Locale('es'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: InsightsChatSheet(
+          groupId: 'open-export-regression',
+          embedded: true,
+          runtime: runtime,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await runtime.appendMessage(ChatMessage(
+      isUser: true,
+      text: 'Genera un Excel de las nominas pagadas',
+      timestamp: DateTime(2026, 11, 19, 8, 53),
+    ));
+    await runtime.appendMessage(ChatMessage(
+      isUser: false,
+      text: 'Estas son las nominas pagadas.',
+      timestamp: DateTime(2026, 11, 19, 8, 53),
+      view: 'table',
+      table: const <String, dynamic>{
+        'columns': [
+          {'key': 'worker', 'label': 'Trabajador'},
+          {'key': 'amount', 'label': 'Importe'},
+        ],
+        'rows': [
+          {'worker': 'Amir', 'amount': '1200 EUR'},
+        ],
+      },
+      canExport: true,
+      exportAction: const <String, dynamic>{
+        'type': 'export_excel',
+        'endpoint': '/api/insights/chat/export/table',
+        'method': 'POST',
+        'body': {'groupId': 'open-export-regression'},
+        'filename': 'nominas.xlsx',
+      },
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DataTable), findsOneWidget);
+    expect(find.text('Descargar Excel'), findsNWidgets(2));
+    expect(find.text('Como usar el planificador de visitas'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

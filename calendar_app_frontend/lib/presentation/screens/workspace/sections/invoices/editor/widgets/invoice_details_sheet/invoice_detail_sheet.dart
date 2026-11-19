@@ -28,6 +28,9 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/invoice_bank_link_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
+import 'package:hexora/app/premium/premium_required_handler.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
@@ -93,6 +96,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
   bool _previewMenuOpen = false;
   int _inlineTabIndex = 0;
   bool _issuingInvoice = false;
+  bool _savingInternalNotes = false;
 
   String get _pdfLink {
     final url = _invoice.pdfUrl?.trim();
@@ -112,6 +116,10 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
 
   Future<void> _openSendInvoice({required bool canSend}) async {
     if (!canSend) return;
+    if (!hasPremiumFeature(widget.group, PremiumFeature.email)) {
+      PremiumRequiredHandler.handle('email', widget.group.id);
+      return;
+    }
     await showModalBottomSheet<void>(
       sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
@@ -134,6 +142,14 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
   }
 
   void _openBankTransactions() {
+    if (!canManagePremiumFeature(
+      widget.group,
+      context.read<UserDomain?>()?.user?.id,
+      PremiumFeature.banking,
+    )) {
+      PremiumRequiredHandler.handle('banking', widget.group.id);
+      return;
+    }
     final dashboard = Provider.of<GroupDashboardState?>(context, listen: false);
     if (dashboard != null) {
       dashboard.openSection(Sections.enableBanking);
@@ -197,6 +213,107 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
       if (mounted) await _loadInvoiceDetail();
     } finally {
       if (mounted) setState(() => _issuingInvoice = false);
+    }
+  }
+
+  Future<void> _editInternalNotes({required bool isEs}) async {
+    if (_savingInternalNotes) return;
+    final controller =
+        TextEditingController(text: _invoice.internalNotes ?? '');
+    final notes = await showDialog<String?>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Nota interna' : 'Internal note'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: TextField(
+            controller: controller,
+            autofocus: true,
+            minLines: 4,
+            maxLines: 8,
+            maxLength: 1000,
+            decoration: InputDecoration(
+              hintText: isEs
+                  ? 'Visible solo para el equipo de tu negocio'
+                  : 'Visible only to your business team',
+              helperText: isEs
+                  ? 'Esta nota no se incluye en el PDF ni se comparte con el cliente.'
+                  : 'This note is not included in the PDF or shared with the client.',
+              helperMaxLines: 2,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(isEs ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
+            child: Text(isEs ? 'Guardar' : 'Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (notes == null || !mounted) return;
+    await _saveInternalNotes(notes, isEs: isEs);
+  }
+
+  Future<void> _removeInternalNotes({required bool isEs}) async {
+    if (_savingInternalNotes) return;
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title:
+                Text(isEs ? 'Eliminar nota interna' : 'Remove internal note'),
+            content: Text(isEs
+                ? 'La nota se eliminará de esta factura.'
+                : 'The note will be removed from this invoice.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(isEs ? 'Cancelar' : 'Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(isEs ? 'Eliminar' : 'Remove'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !mounted) return;
+    await _saveInternalNotes('', isEs: isEs);
+  }
+
+  Future<void> _saveInternalNotes(String notes, {required bool isEs}) async {
+    setState(() => _savingInternalNotes = true);
+    try {
+      await _invoicesApi.updateInternalNotes(
+        _invoice.id,
+        notes.trim().isEmpty ? null : notes.trim(),
+      );
+      await _loadInvoiceDetail();
+      await _notifyInvoiceChanged();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              isEs ? 'Nota interna actualizada.' : 'Internal note updated.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _savingInternalNotes = false);
     }
   }
 
@@ -311,6 +428,11 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     final moneyFormat =
         NumberFormat.currency(locale: l.localeName, symbol: 'EUR ');
     final isEs = l.localeName.toLowerCase().startsWith('es');
+    final userId = context.read<UserDomain?>()?.user?.id;
+    final canUseEmail =
+        canManagePremiumFeature(widget.group, userId, PremiumFeature.email);
+    final canUseBanking =
+        canManagePremiumFeature(widget.group, userId, PremiumFeature.banking);
     return ListView(
       controller: scrollCtrl,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
@@ -496,7 +618,9 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         _PaymentStatusSection(
           invoice: invoice,
           localeName: l.localeName,
-          onOpenPayments: onOpenPayments ?? _openBankTransactions,
+          showBankingDetails: canUseBanking,
+          onOpenPayments:
+              canUseBanking ? onOpenPayments ?? _openBankTransactions : null,
         ),
         if ((invoice.status ?? '').toLowerCase() == 'issued') ...[
           const SizedBox(height: 12),
@@ -504,13 +628,24 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         ],
 
         // Delivery status
+        if (canUseEmail) ...[
+          const SizedBox(height: 12),
+          _DeliverySection(
+            invoice: invoice,
+            deliveryStatus: deliveryStatus,
+            sentAtLabel: sentAtLabel,
+            channelLabel: channelLabel,
+            onOpenDelivery: onOpenDelivery ?? widget.onOpenDeliveryRecord,
+          ),
+        ],
+
         const SizedBox(height: 12),
-        _DeliverySection(
-          invoice: invoice,
-          deliveryStatus: deliveryStatus,
-          sentAtLabel: sentAtLabel,
-          channelLabel: channelLabel,
-          onOpenDelivery: onOpenDelivery ?? widget.onOpenDeliveryRecord,
+        _InternalNotesSection(
+          notes: invoice.internalNotes,
+          saving: _savingInternalNotes,
+          isEs: isEs,
+          onEdit: () => _editInternalNotes(isEs: isEs),
+          onRemove: () => _removeInternalNotes(isEs: isEs),
         ),
 
         // History
@@ -589,6 +724,11 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             role == 'admin' ||
             role == 'co-admin');
     final canEditDraft = invoice.isDraft && widget.onEditInvoice != null;
+    final canUseBanking = canManagePremiumFeature(
+      widget.group,
+      currentUserId,
+      PremiumFeature.banking,
+    );
 
     final headerMenu = ListTileTheme(
       data: const ListTileThemeData(
@@ -752,7 +892,9 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                 _InvoiceDetailTabs(
                   selectedIndex: _inlineTabIndex,
                   isEs: isEs,
-                  showLinkTab: widget.actionsInHeader && !invoice.isDraft,
+                  showLinkTab: widget.actionsInHeader &&
+                      !invoice.isDraft &&
+                      canUseBanking,
                   onSelected: (index) =>
                       setState(() => _inlineTabIndex = index),
                 ),
@@ -830,6 +972,18 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     // Tab 3 = Vincular. Reuses the bank transaction linking workflow with
     // this invoice already selected.
     if (selectedIndex == 3) {
+      final userId = context.read<UserDomain?>()?.user?.id;
+      if (!canManagePremiumFeature(
+        widget.group,
+        userId,
+        PremiumFeature.banking,
+      )) {
+        return PremiumFeatureRequestScreen(
+          feature: PremiumFeatureRequest.banking,
+          group: widget.group,
+          embedded: true,
+        );
+      }
       return InvoiceBankLinkPanel(
         key: ValueKey('invoice-bank-link-tab-${_invoice.id}'),
         groupId: widget.group.id,
@@ -923,6 +1077,11 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
   Widget _buildResumenTab(ColorScheme cs, AppLocalizations l,
       {required bool isEs}) {
     final invoice = _invoice;
+    final userId = context.read<UserDomain?>()?.user?.id;
+    final canUseEmail =
+        canManagePremiumFeature(widget.group, userId, PremiumFeature.email);
+    final canUseBanking =
+        canManagePremiumFeature(widget.group, userId, PremiumFeature.banking);
     final t = AppTypography.of(context);
     final money = NumberFormat.currency(locale: l.localeName, symbol: '€ ');
     final status = (invoice.status ?? '').toLowerCase();
@@ -1032,21 +1191,31 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         _PaymentStatusSection(
           invoice: invoice,
           localeName: l.localeName,
+          showBankingDetails: canUseBanking,
           onOpenPayments: invoice.isLinkedResolved ||
                   (invoice.linkedEntryId ?? '').trim().isNotEmpty
               ? _openBankTransactions
               : null,
         ),
 
-        const SizedBox(height: 10),
+        if (canUseEmail) ...[
+          const SizedBox(height: 10),
+          _DeliverySection(
+            invoice: invoice,
+            deliveryStatus: deliveryStatus,
+            sentAtLabel: sentAtLine ?? '-',
+            channelLabel: channelLabel,
+            onOpenDelivery: widget.onOpenDeliveryRecord,
+          ),
+        ],
 
-        // ── Delivery section ──
-        _DeliverySection(
-          invoice: invoice,
-          deliveryStatus: deliveryStatus,
-          sentAtLabel: sentAtLine ?? '-',
-          channelLabel: channelLabel,
-          onOpenDelivery: widget.onOpenDeliveryRecord,
+        const SizedBox(height: 10),
+        _InternalNotesSection(
+          notes: invoice.internalNotes,
+          saving: _savingInternalNotes,
+          isEs: isEs,
+          onEdit: () => _editInternalNotes(isEs: isEs),
+          onRemove: () => _removeInternalNotes(isEs: isEs),
         ),
 
         // ── Final settlement ──
@@ -1535,11 +1704,13 @@ class _PaymentStatusSection extends StatelessWidget {
   const _PaymentStatusSection({
     required this.invoice,
     required this.localeName,
+    this.showBankingDetails = true,
     this.onOpenPayments,
   });
 
   final Invoice invoice;
   final String localeName;
+  final bool showBankingDetails;
   final VoidCallback? onOpenPayments;
 
   @override
@@ -1560,22 +1731,31 @@ class _PaymentStatusSection extends StatelessWidget {
     final label = isPaid
         ? (isEs ? 'Pagada' : 'Paid')
         : isPartial
-            ? (isEs ? 'Pago parcial' : 'Partially paid')
+            ? (isEs ? 'Pago fraccionado' : 'Split payment')
             : (isEs ? 'Pendiente' : 'Pending');
     final total = invoice.total?.toDouble();
     final paid =
         invoice.paidAmount?.toDouble() ?? (isPaid && total != null ? total : 0);
     final outstanding = total == null ? null : (total - paid).clamp(0, total);
-    final money = NumberFormat.currency(locale: localeName, symbol: '€');
+    final progress = total != null && total > 0
+        ? (paid / total).clamp(0.0, 1.0).toDouble()
+        : null;
+    final money = NumberFormat.simpleCurrency(
+      locale: localeName,
+      name: invoice.currency ?? 'EUR',
+    );
     final paidAt = invoice.paidAt == null
         ? null
         : DateFormat.yMMMd(localeName)
             .add_Hm()
             .format(invoice.paidAt!.toLocal());
     final method = _paymentMethodLabel(invoice.paymentMethod, isEs: isEs);
-    final source = _paymentSourceLabel(invoice.paymentSource, isEs: isEs);
-    final linkedCount = invoice.linkedEntriesCountSafe;
-    final linkedEntryId = (invoice.linkedEntryId ?? '').trim();
+    final source = showBankingDetails
+        ? _paymentSourceLabel(invoice.paymentSource, isEs: isEs)
+        : null;
+    final linkedCount = showBankingDetails ? invoice.linkedEntriesCountSafe : 0;
+    final linkedEntryId =
+        showBankingDetails ? (invoice.linkedEntryId ?? '').trim() : '';
     final canOpenPayments =
         onOpenPayments != null && (linkedCount > 0 || linkedEntryId.isNotEmpty);
 
@@ -1588,6 +1768,15 @@ class _PaymentStatusSection extends StatelessWidget {
       title: isEs ? 'Pago' : 'Payment',
       color: color,
       status: label,
+      body: progress == null
+          ? null
+          : _PaymentProgress(
+              paid: paid,
+              total: total!,
+              progress: progress,
+              money: money,
+              color: color,
+            ),
       metadata: [
         _MetaChip(
           icon: Icons.payments_outlined,
@@ -1605,6 +1794,13 @@ class _PaymentStatusSection extends StatelessWidget {
           _MetaChip(icon: Icons.credit_card_outlined, label: method),
         if (source != null)
           _MetaChip(icon: Icons.source_outlined, label: source),
+        if (linkedCount > 0)
+          _MetaChip(
+            icon: Icons.account_tree_outlined,
+            label: isEs
+                ? '$linkedCount movimientos vinculados'
+                : '$linkedCount linked transactions',
+          ),
       ],
       action: canOpenPayments
           ? HexoraButton(
@@ -1643,6 +1839,195 @@ class _PaymentStatusSection extends StatelessWidget {
         isEs ? 'Conciliación bancaria' : 'Bank reconciliation',
       _ => raw,
     };
+  }
+}
+
+class _PaymentProgress extends StatelessWidget {
+  const _PaymentProgress({
+    required this.paid,
+    required this.total,
+    required this.progress,
+    required this.money,
+    required this.color,
+  });
+
+  final double paid;
+  final double total;
+  final double progress;
+  final NumberFormat money;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${money.format(paid)} / ${money.format(total)}',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                '${(progress * 100).round()}%',
+                style: t.bodySmall.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              color: color,
+              backgroundColor: cs.outlineVariant.withValues(alpha: 0.35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InternalNotesSection extends StatelessWidget {
+  const _InternalNotesSection({
+    required this.notes,
+    required this.saving,
+    required this.isEs,
+    required this.onEdit,
+    required this.onRemove,
+  });
+
+  final String? notes;
+  final bool saving;
+  final bool isEs;
+  final VoidCallback onEdit;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final value = (notes ?? '').trim();
+    final hasNotes = value.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
+              Icons.lock_outline_rounded,
+              size: 15,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEs ? 'Nota interna' : 'Internal note',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  hasNotes
+                      ? value
+                      : (isEs
+                          ? 'Añade información privada para tu equipo.'
+                          : 'Add private information for your team.'),
+                  style: t.bodySmall.copyWith(
+                    color: hasNotes
+                        ? cs.onSurface
+                        : cs.onSurfaceVariant.withValues(alpha: 0.8),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          if (saving)
+            const Padding(
+              padding: EdgeInsets.all(8),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            PopupMenuButton<String>(
+              tooltip:
+                  isEs ? 'Acciones de nota interna' : 'Internal note actions',
+              onSelected: (action) {
+                if (action == 'edit') onEdit();
+                if (action == 'remove') onRemove();
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      hasNotes ? Icons.edit_outlined : Icons.add_rounded,
+                    ),
+                    title: Text(hasNotes
+                        ? (isEs ? 'Editar' : 'Edit')
+                        : (isEs ? 'Añadir nota' : 'Add note')),
+                  ),
+                ),
+                if (hasNotes)
+                  PopupMenuItem(
+                    value: 'remove',
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading:
+                          Icon(Icons.delete_outline_rounded, color: cs.error),
+                      title: Text(
+                        isEs ? 'Eliminar' : 'Remove',
+                        style: TextStyle(color: cs.error),
+                      ),
+                    ),
+                  ),
+              ],
+              icon: const Icon(Icons.more_horiz_rounded, size: 18),
+              style: IconButton.styleFrom(
+                fixedSize: const Size(32, 32),
+                minimumSize: const Size(32, 32),
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1729,6 +2114,7 @@ class _CompactStatusSection extends StatelessWidget {
     required this.color,
     required this.status,
     required this.metadata,
+    this.body,
     this.action,
   });
 
@@ -1737,6 +2123,7 @@ class _CompactStatusSection extends StatelessWidget {
   final Color color;
   final String status;
   final List<Widget> metadata;
+  final Widget? body;
   final Widget? action;
 
   @override
@@ -1781,6 +2168,7 @@ class _CompactStatusSection extends StatelessWidget {
               ),
             ],
           ),
+          if (body != null) body!,
           if (metadata.isNotEmpty || action != null) ...[
             const SizedBox(height: 6),
             LayoutBuilder(

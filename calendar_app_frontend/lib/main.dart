@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hexora/app/bootstrap/app_bootstrap.dart';
 import 'package:hexora/app/init_main.dart';
 import 'package:hexora/app/session/session_expiry_handler.dart';
+import 'package:hexora/app/premium/premium_required_handler.dart';
 import 'package:hexora/presentation/screens/auth/auth_gate.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/presentation/routes/routes.dart';
@@ -58,6 +59,8 @@ class _AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     AuthenticatedHttpClient.setSessionExpiredHandler(
         SessionExpiryHandler.handle);
+    AuthenticatedHttpClient.setPremiumFeatureRequiredHandler(
+        PremiumRequiredHandler.handle);
 
     return Consumer2<ThemeModeProvider, LocaleProvider>(
       builder: (context, themeModeProvider, localeProvider, _) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -28,7 +29,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
   final List<int> _topOptions = const [5, 10, 20, 50];
   bool _showAllExpense = false;
   bool _showAllIncome = false;
-  bool _filtersExpanded = false;
+  int _merchantTab = 0; // 0 = Gastos (expense), 1 = Ingresos (income)
 
   @override
   bool get wantKeepAlive => true;
@@ -70,43 +71,8 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
       StatementsAnalyticsCompareMode.delta: l.statementsAnalyticsCompareDelta,
     };
 
-    String filterSummary() {
-      final parts = <String>[];
-      final modeLabel =
-          c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow
-              ? l.statementsAnalyticsModeSettlement
-              : l.statementsAnalyticsModeCalendar;
-      parts.add(l.statementsAnalyticsModeLabel(modeLabel));
-      parts.add(
-          '${l.statementsAnalyticsBatch}: ${c.selectedBatchId == 'all' ? l.statementsAnalyticsAllBatches : c.selectedBatchId}');
-      if (c.selectedYear != null) {
-        parts.add('${l.statementsFilterYear}: ${c.selectedYear}');
-      }
-      if (c.selectedMonth != null) {
-        parts.add('${l.statementsAnalyticsMonth}: ${c.selectedMonth}');
-      }
-      parts.add('${l.statementsAnalyticsTop}: ${c.top}');
-      if (c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow) {
-        final range = c.settlementRange();
-        if (range == null) {
-          parts.add(l.statementsAnalyticsPeriodPending);
-        } else {
-          final from = StatementsFormatters.formatDate(context, range.start);
-          final to = StatementsFormatters.formatDate(context, range.end);
-          parts.add(l.statementsAnalyticsPeriodLabel(from, to));
-        }
-      }
-      return parts.join(' • ');
-    }
-
     Widget buildSelectors(BoxConstraints constraints) {
-      final width = constraints.maxWidth;
-      final batchWidth = width < 980 ? 200.0 : 220.0;
-      const yearWidth = 110.0;
-      final monthWidth = width < 980 ? 150.0 : 160.0;
-      final modeWidth = width < 980 ? 150.0 : 165.0;
-      final compareWidth = width < 980 ? 160.0 : 175.0;
-      const topWidth = 92.0;
+      final fieldWidth = constraints.maxWidth;
 
       Widget wrapField({required double width, required Widget child}) {
         return SizedBox(width: width, child: child);
@@ -136,7 +102,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
           fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.3),
           isDense: true,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
         );
       }
 
@@ -146,7 +112,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           wrapField(
-            width: batchWidth,
+            width: fieldWidth,
             child: DropdownButtonFormField<String>(
               initialValue: c.selectedBatchId,
               isExpanded: true,
@@ -175,7 +141,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             ),
           ),
           wrapField(
-            width: yearWidth,
+            width: fieldWidth,
             child: DropdownButtonFormField<int?>(
               initialValue: c.selectedYear,
               isExpanded: true,
@@ -197,7 +163,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             ),
           ),
           wrapField(
-            width: monthWidth,
+            width: fieldWidth,
             child: DropdownButtonFormField<int?>(
               initialValue: c.selectedMonth,
               isExpanded: true,
@@ -219,7 +185,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             ),
           ),
           wrapField(
-            width: modeWidth,
+            width: fieldWidth,
             child: DropdownButtonFormField<StatementsAnalyticsPeriodMode>(
               initialValue: c.periodMode,
               isExpanded: true,
@@ -242,7 +208,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             ),
           ),
           wrapField(
-            width: compareWidth,
+            width: fieldWidth,
             child: DropdownButtonFormField<StatementsAnalyticsCompareMode>(
               initialValue: c.compareMode,
               isExpanded: true,
@@ -264,7 +230,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
           ),
           if (c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow)
             wrapField(
-              width: 96,
+              width: fieldWidth,
               child: DropdownButtonFormField<int>(
                 initialValue: c.settlementStartDay,
                 isExpanded: true,
@@ -285,7 +251,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             ),
           if (c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow)
             wrapField(
-              width: 96,
+              width: fieldWidth,
               child: DropdownButtonFormField<int>(
                 initialValue: c.settlementEndDay,
                 isExpanded: true,
@@ -305,7 +271,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
               ),
             ),
           wrapField(
-            width: topWidth,
+            width: fieldWidth,
             child: DropdownButtonFormField<int>(
               initialValue: c.top,
               isExpanded: true,
@@ -325,122 +291,76 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
       );
     }
 
-    Widget buildFilterChips() {
-      Widget chip(String label, {VoidCallback? onDelete}) {
-        final active = onDelete != null;
-        return MouseRegion(
-          cursor:
-              active ? SystemMouseCursors.click : SystemMouseCursors.basic,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: EdgeInsets.only(
-                left: 10, right: active ? 6 : 10, top: 5, bottom: 5),
-            decoration: BoxDecoration(
-              color: active
-                  ? cs.primaryContainer.withValues(alpha: 0.85)
-                  : cs.surfaceContainerHighest.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: active
-                    ? cs.primary.withValues(alpha: 0.25)
-                    : cs.outlineVariant.withValues(alpha: 0.22),
-              ),
-            ),
-            child: Row(
+    String reportTitle() => switch (widget.section) {
+          EnableBankingMenu.analyticsSplit =>
+            StatementsAnalyticsCopy.splitTitle(context),
+          EnableBankingMenu.analyticsVolume =>
+            StatementsAnalyticsCopy.volumeTitle(context),
+          EnableBankingMenu.analyticsTicket =>
+            StatementsAnalyticsCopy.ticketTitle(context),
+          EnableBankingMenu.analyticsLinked =>
+            StatementsAnalyticsCopy.linkedTitle(context),
+          EnableBankingMenu.analyticsActivity =>
+            StatementsAnalyticsCopy.activityTitle(context),
+          EnableBankingMenu.analyticsStatus =>
+            StatementsAnalyticsCopy.statusTitle(context),
+          EnableBankingMenu.analyticsTrends => l.statementsAnalyticsTrends,
+          EnableBankingMenu.analyticsTopMerchants =>
+            StatementsAnalyticsCopy.topMerchantsMenu(context),
+          EnableBankingMenu.analyticsComparison =>
+            StatementsAnalyticsCopy.comparisonMenu(context),
+          _ => StatementsAnalyticsCopy.billableOverviewLabel(context),
+        };
+
+    Widget filterPanel({VoidCallback? onClose, double contentWidth = 276}) {
+      final maxHeight = MediaQuery.sizeOf(context).height * 0.68;
+      return ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: maxHeight.clamp(320, 560).toDouble(),
+        ),
+        child: Material(
+          color: cs.surfaceContainer,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+            child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  label,
-                  style: t.bodySmall.copyWith(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: active
-                        ? cs.onPrimaryContainer
-                        : cs.onSurfaceVariant,
-                  ),
-                ),
-                if (active) ...[
-                  const SizedBox(width: 5),
-                  GestureDetector(
-                    onTap: onDelete,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: cs.onPrimaryContainer.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.close_rounded,
-                        size: 10,
-                        color: cs.onPrimaryContainer.withValues(alpha: 0.75),
+                Row(
+                  children: [
+                    Icon(Icons.tune_rounded, size: 17, color: cs.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l.statementsFiltersTitle,
+                        style: t.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
+                    if (onClose != null)
+                      IconButton(
+                        onPressed: onClose,
+                        tooltip: l.dialogClose,
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.close_rounded, size: 19),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: buildSelectors(
+                      BoxConstraints.tightFor(width: contentWidth),
+                    ),
                   ),
-                ],
+                ),
               ],
             ),
           ),
-        );
-      }
-
-      final chips = <Widget>[];
-      final batchLabel = c.selectedBatchId == null ||
-              c.selectedBatchId == 'all'
-          ? l.statementsAnalyticsAllBatches
-          : c.selectedBatchId!;
-      final modeLabel =
-          c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow
-              ? l.statementsAnalyticsModeSettlement
-              : l.statementsAnalyticsModeCalendar;
-      final compareLabel = compareOptions[c.compareMode]!;
-
-      chips.add(chip(
-        '${l.statementsAnalyticsBatch}: $batchLabel',
-        onDelete: c.selectedBatchId == null || c.selectedBatchId == 'all'
-            ? null
-            : () => c.selectBatch('all'),
-      ));
-      chips.add(chip(
-        '${l.statementsAnalyticsMode}: $modeLabel',
-        onDelete: c.periodMode == StatementsAnalyticsPeriodMode.calendarMonth
-            ? null
-            : () =>
-                c.setPeriodMode(StatementsAnalyticsPeriodMode.calendarMonth),
-      ));
-      chips.add(chip(
-        '${l.statementsAnalyticsCompareMode}: $compareLabel',
-        onDelete: c.compareMode == StatementsAnalyticsCompareMode.both
-            ? null
-            : () => c.setCompareMode(StatementsAnalyticsCompareMode.both),
-      ));
-      chips.add(chip(
-        '${l.statementsAnalyticsTop}: ${c.top}',
-        onDelete: c.top == _topOptions.first
-            ? null
-            : () => c.setTop(_topOptions.first),
-      ));
-      if (c.selectedYear != null) {
-        chips.add(chip(
-          '${l.statementsFilterYear}: ${c.selectedYear}',
-          onDelete: () => c.setYear(null),
-        ));
-      }
-      if (c.selectedMonth != null) {
-        chips.add(chip(
-          '${l.statementsAnalyticsMonth}: ${c.selectedMonth}',
-          onDelete: () => c.setMonth(null),
-        ));
-      }
-      if (c.periodMode == StatementsAnalyticsPeriodMode.settlementWindow) {
-        final range = c.settlementRange();
-        if (range != null) {
-          final from = StatementsFormatters.formatDate(context, range.start);
-          final to = StatementsFormatters.formatDate(context, range.end);
-          chips.add(chip(l.statementsAnalyticsPeriodLabel(from, to)));
-        }
-      }
-      return Wrap(spacing: 8, runSpacing: 6, children: chips);
+        ),
+      );
     }
 
     Widget buildTrend() {
@@ -702,52 +622,53 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
     }
 
     Widget buildTopMerchants() {
+      final isExpense = _merchantTab == 0;
       return FolderSectionCard(
         label: l.statementsAnalyticsTopMerchants,
         leftTabOffset: 0,
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: DefaultTabController(
-            length: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(l.statementsAnalyticsTopHelpSubtitle, style: t.bodySmall),
-                const SizedBox(height: 8),
-                TabBar(
-                  labelStyle: t.bodyMedium,
-                  tabs: [
-                    Tab(text: l.statementsSummaryExpense),
-                    Tab(text: l.statementsSummaryIncome),
-                  ],
-                ),
-                const SizedBox(
-                  height: 16,
-                ),
-                SizedBox(
-                  height: 380,
-                  child: TabBarView(
-                    children: [
-                      TopMerchantsChart(
-                        rows: c.topExpense,
-                        title: l.statementsSummaryExpense,
-                        expanded: _showAllExpense,
-                        onToggle: () =>
-                            setState(() => _showAllExpense = !_showAllExpense),
-                      ),
-                      TopMerchantsChart(
-                        rows: c.topIncome,
-                        title: l.statementsSummaryIncome,
-                        expanded: _showAllIncome,
-                        onToggle: () =>
-                            setState(() => _showAllIncome = !_showAllIncome),
-                      ),
-                    ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Text(l.statementsAnalyticsTopHelpSubtitle, style: t.bodySmall),
+              const SizedBox(height: 10),
+              AnalyticsSegmented<int>(
+                value: _merchantTab,
+                onChanged: (v) => setState(() => _merchantTab = v),
+                segments: [
+                  AnalyticsSegment(
+                    value: 0,
+                    label: l.statementsSummaryExpense,
                   ),
+                  AnalyticsSegment(
+                    value: 1,
+                    label: l.statementsSummaryIncome,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 380,
+                child: TopMerchantsChart(
+                  key: ValueKey('top-merchants-$_merchantTab'),
+                  rows: isExpense ? c.topExpense : c.topIncome,
+                  title: isExpense
+                      ? l.statementsSummaryExpense
+                      : l.statementsSummaryIncome,
+                  isExpense: isExpense,
+                  expanded: isExpense ? _showAllExpense : _showAllIncome,
+                  onToggle: () => setState(() {
+                    if (isExpense) {
+                      _showAllExpense = !_showAllExpense;
+                    } else {
+                      _showAllIncome = !_showAllIncome;
+                    }
+                  }),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       );
@@ -1304,8 +1225,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
                           tooltipValue: linkedLabel,
                         ),
                         AnalyticsDonutSlice(
-                          label:
-                              StatementsAnalyticsCopy.unlinkedLabel(context),
+                          label: StatementsAnalyticsCopy.unlinkedLabel(context),
                           value: stats.unlinkedCount,
                           color: const Color(0xFFEF6C00),
                           legendValue: unlinkedLabel,
@@ -1346,13 +1266,11 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
                               icon: Icons.link_off_outlined,
                             ),
                             AnalyticsMetricCard(
-                              title:
-                                  StatementsAnalyticsCopy.linkedRateLabel(
+                              title: StatementsAnalyticsCopy.linkedRateLabel(
                                 context,
                               ),
                               value: linkedPct,
-                              subtitle:
-                                  '${stats.total} movimientos analizados',
+                              subtitle: '${stats.total} movimientos analizados',
                               icon: Icons.analytics_outlined,
                             ),
                           ],
@@ -1373,6 +1291,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
         return FolderSectionCard(
           label: StatementsAnalyticsCopy.activityTitle(context),
           leftTabOffset: 0,
+          showTitle: false,
           child: const Padding(
             padding: EdgeInsets.all(16),
             child: AnalyticsSkeleton(),
@@ -1383,6 +1302,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
         return FolderSectionCard(
           label: StatementsAnalyticsCopy.activityTitle(context),
           leftTabOffset: 0,
+          showTitle: false,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: AnalyticsStateMessage(
@@ -1398,6 +1318,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
         return FolderSectionCard(
           label: StatementsAnalyticsCopy.activityTitle(context),
           leftTabOffset: 0,
+          showTitle: false,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: AnalyticsStateMessage(
@@ -1414,16 +1335,17 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
       return FolderSectionCard(
         label: StatementsAnalyticsCopy.activityTitle(context),
         leftTabOffset: 0,
+        showTitle: false,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 StatementsAnalyticsCopy.activitySubtitle(context),
-                style: t.bodySmall,
+                style: t.caption.copyWith(color: cs.onSurfaceVariant),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               AnalyticsHeatmap(days: days),
               const SizedBox(height: 12),
               Wrap(
@@ -1431,8 +1353,8 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
                 runSpacing: 12,
                 children: [
                   AnalyticsMetricCard(
-                    title:
-                        StatementsAnalyticsCopy.activityActiveDaysLabel(context),
+                    title: StatementsAnalyticsCopy.activityActiveDaysLabel(
+                        context),
                     value: StatementsFormatters.formatCount(
                       context,
                       activeDays,
@@ -1636,104 +1558,64 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 980;
-        final headerHeight = _filtersExpanded
-            ? (isNarrow ? 190.0 : 138.0)
-            : (isNarrow ? 106.0 : 82.0);
-        final headerMax = _filtersExpanded
-            ? (isNarrow ? 220.0 : 162.0)
-            : (isNarrow ? 124.0 : 96.0);
+        final useBottomSheet = constraints.maxWidth < 700;
+        final appliedFilterCount = c.activeFilterCount;
+
+        Future<void> openFilterSheet() => showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              useSafeArea: true,
+              builder: (sheetContext) => Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+                ),
+                child: ListenableBuilder(
+                  listenable: c,
+                  builder: (_, __) => filterPanel(
+                    onClose: () => Navigator.of(sheetContext).pop(),
+                    contentWidth: MediaQuery.sizeOf(sheetContext).width - 28,
+                  ),
+                ),
+              ),
+            );
+
         return CustomScrollView(
           slivers: [
-            // SliverToBoxAdapter(
-            //   child: Padding(
-            //     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            //     child: Row(
-            //       children: [
-            //         const Icon(Icons.analytics_outlined),
-            //         const SizedBox(width: 8),
-            //         Text(l.statementsAnalyticsTitle, style: t.displayMedium),
-            //       ],
-            //     ),
-            //   ),
-            // ),
             SliverPersistentHeader(
               pinned: true,
               delegate: _FilterHeaderDelegate(
-                minHeight: headerHeight,
-                maxHeight: headerMax,
+                minHeight: 52,
+                maxHeight: 52,
                 child: Container(
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: cs.outlineVariant.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  color: cs.surface,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: cs.primary.withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.tune_rounded,
-                              size: 14,
-                              color: cs.primary,
-                            ),
+                      Expanded(
+                        child: Text(
+                          reportTitle(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSurface,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _filtersExpanded
-                                ? l.statementsFiltersTitle
-                                : l.statementsFiltersActive,
-                            style: t.bodyMedium.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const Spacer(),
-                          FilledButton.tonalIcon(
-                            onPressed: () => setState(
-                                () => _filtersExpanded = !_filtersExpanded),
-                            icon: Icon(
-                              _filtersExpanded
-                                  ? Icons.expand_less_rounded
-                                  : Icons.tune_rounded,
-                              size: 15,
-                            ),
-                            label: Text(_filtersExpanded
-                                ? l.statementsAnalyticsCollapse
-                                : l.statementsAnalyticsExpand),
-                            style: FilledButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      if (_filtersExpanded) ...[
-                        buildSelectors(constraints),
-                        const SizedBox(height: 8),
-                        Tooltip(
-                          message: filterSummary(),
-                          child: buildFilterChips(),
+                      const SizedBox(width: 12),
+                      if (useBottomSheet)
+                        _AnalyticsFilterButton(
+                          activeCount: appliedFilterCount,
+                          onPressed: openFilterSheet,
+                        )
+                      else
+                        _AnalyticsFilterPopover(
+                          activeCount: appliedFilterCount,
+                          panelBuilder: (_) => ListenableBuilder(
+                            listenable: c,
+                            builder: (_, __) => filterPanel(),
+                          ),
                         ),
-                      ] else ...[
-                        Tooltip(
-                          message: filterSummary(),
-                          child: buildFilterChips(),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -1741,7 +1623,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: sectionChildren,
@@ -1753,6 +1635,186 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
       },
     );
   }
+}
+
+class _AnalyticsFilterButton extends StatelessWidget {
+  const _AnalyticsFilterButton({
+    required this.activeCount,
+    required this.onPressed,
+  });
+
+  final int activeCount;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final active = activeCount > 0;
+    return Tooltip(
+      message: l.statementsFiltersTitle,
+      child: SizedBox(
+        height: 34,
+        child: OutlinedButton(
+          onPressed: onPressed,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: active ? cs.primary : cs.onSurfaceVariant,
+            backgroundColor: active ? cs.primary.withValues(alpha: 0.08) : null,
+            side: BorderSide(
+              color: active
+                  ? cs.primary.withValues(alpha: 0.45)
+                  : cs.outlineVariant.withValues(alpha: 0.65),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            visualDensity: VisualDensity.compact,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(9),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.tune_rounded, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                l.statementsFiltersTitle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (active) ...[
+                const SizedBox(width: 6),
+                Container(
+                  constraints: const BoxConstraints(minWidth: 18),
+                  height: 18,
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: cs.primary,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text(
+                    '$activeCount',
+                    style: TextStyle(
+                      color: cs.onPrimary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnalyticsFilterPopover extends StatefulWidget {
+  const _AnalyticsFilterPopover({
+    required this.activeCount,
+    required this.panelBuilder,
+  });
+
+  final int activeCount;
+  final WidgetBuilder panelBuilder;
+
+  @override
+  State<_AnalyticsFilterPopover> createState() =>
+      _AnalyticsFilterPopoverState();
+}
+
+class _AnalyticsFilterPopoverState extends State<_AnalyticsFilterPopover> {
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _entry;
+
+  @override
+  void didUpdateWidget(covariant _AnalyticsFilterPopover oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _entry?.markNeedsBuild();
+  }
+
+  @override
+  void dispose() {
+    _removeEntry(notify: false);
+    super.dispose();
+  }
+
+  void _toggle() => _entry == null ? _open() : _removeEntry();
+
+  void _open() {
+    final overlay = Overlay.of(context);
+    _entry = OverlayEntry(
+      builder: (overlayContext) {
+        final cs = Theme.of(overlayContext).colorScheme;
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _removeEntry,
+                child: const SizedBox.expand(),
+              ),
+            ),
+            CompositedTransformFollower(
+              link: _layerLink,
+              showWhenUnlinked: false,
+              targetAnchor: Alignment.bottomRight,
+              followerAnchor: Alignment.topRight,
+              offset: const Offset(0, 6),
+              child: CallbackShortcuts(
+                bindings: {
+                  const SingleActivator(LogicalKeyboardKey.escape):
+                      _removeEntry,
+                },
+                child: Focus(
+                  autofocus: true,
+                  child: Material(
+                    color: cs.surfaceContainer,
+                    elevation: 4,
+                    shadowColor: Colors.black.withValues(alpha: 0.18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.55),
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: SizedBox(
+                      width: 304,
+                      child: widget.panelBuilder(overlayContext),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    overlay.insert(_entry!);
+    if (mounted) setState(() {});
+  }
+
+  void _removeEntry({bool notify = true}) {
+    final entry = _entry;
+    if (entry == null) return;
+    _entry = null;
+    entry.remove();
+    entry.dispose();
+    if (notify && mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) => CompositedTransformTarget(
+        link: _layerLink,
+        child: _AnalyticsFilterButton(
+          activeCount: widget.activeCount,
+          onPressed: _toggle,
+        ),
+      );
 }
 
 class _FilterHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -1778,10 +1840,12 @@ class _FilterHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return Material(
-      elevation: overlapsContent ? 2 : 0,
-      color: Theme.of(context).colorScheme.surface,
-      child: child,
+    return SizedBox.expand(
+      child: Material(
+        elevation: overlapsContent ? 2 : 0,
+        color: Theme.of(context).colorScheme.surface,
+        child: child,
+      ),
     );
   }
 

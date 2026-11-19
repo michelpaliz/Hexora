@@ -2,6 +2,7 @@ import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 
 String normalizedDeliveryStatus(String? value) {
   switch ((value ?? '').trim().toLowerCase()) {
@@ -47,6 +48,7 @@ class DeliveryStatusBadge extends StatelessWidget {
   const DeliveryStatusBadge({
     super.key,
     required this.status,
+    this.groupId,
     this.channel,
     this.sentAt,
     this.deliveryError,
@@ -56,6 +58,7 @@ class DeliveryStatusBadge extends StatelessWidget {
   });
 
   final String? status;
+  final String? groupId;
   final String? channel;
   final DateTime? sentAt;
   final String? deliveryError;
@@ -65,6 +68,14 @@ class DeliveryStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (groupId != null &&
+        !canManagePremiumFeatureForGroupId(
+          context,
+          groupId!,
+          PremiumFeature.email,
+        )) {
+      return const SizedBox.shrink();
+    }
     final cs = Theme.of(context).colorScheme;
     final normalized = normalizedDeliveryStatus(status);
     final label = normalized == 'not_sent' && notSentLabel != null

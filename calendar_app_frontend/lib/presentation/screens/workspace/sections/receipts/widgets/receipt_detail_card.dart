@@ -12,6 +12,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/d
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 
 class ReceiptDetailCard extends StatefulWidget {
   final Receipt receipt;
@@ -68,6 +69,12 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
   Uint8List? _previewBytes;
   String? _previewError;
   int _detailTabIndex = 0;
+
+  bool _hasEmailAccess() => canManagePremiumFeatureForGroupId(
+        context,
+        widget.receipt.groupId,
+        PremiumFeature.email,
+      );
 
   @override
   void initState() {
@@ -289,7 +296,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
             ],
           ),
 
-        if (isIssued) ...[
+        if (isIssued && _hasEmailAccess()) ...[
           const SizedBox(height: 16),
           _SheetSection(
             icon: Icons.send_outlined,
@@ -689,6 +696,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
                                   ),
                                   if (issued)
                                     DeliveryStatusBadge(
+                                      groupId: widget.receipt.groupId,
                                       status: widget.receipt.deliveryStatus,
                                       channel: widget.receipt.deliveryChannel,
                                       sentAt: widget.receipt.sentAt,
@@ -830,6 +838,7 @@ class _ReceiptDeliveryDetails extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DeliveryStatusBadge(
+          groupId: receipt.groupId,
           status: receipt.deliveryStatus,
           channel: receipt.deliveryChannel,
           sentAt: receipt.sentAt,

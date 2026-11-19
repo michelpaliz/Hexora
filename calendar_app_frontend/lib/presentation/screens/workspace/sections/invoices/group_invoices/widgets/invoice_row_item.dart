@@ -80,6 +80,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
 
   bool _loadingMeta = false;
   bool _downloadingPdf = false;
+  bool _savingInternalNotes = false;
+  String? _internalNotes;
 
   Future<void> _downloadPdf() async {
     if (_downloadingPdf) return;
@@ -117,6 +119,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   @override
   void initState() {
     super.initState();
+    _internalNotes = widget.invoice.internalNotes;
     _seedFromInvoice();
     _maybeFetchMeta();
   }
@@ -125,6 +128,10 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   void didUpdateWidget(covariant InvoiceListItem oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.invoice.id != widget.invoice.id ||
+        oldWidget.invoice.internalNotes != widget.invoice.internalNotes) {
+      _internalNotes = widget.invoice.internalNotes;
+    }
+    if (oldWidget.invoice.id != widget.invoice.id ||
         oldWidget.invoice.lines.length != widget.invoice.lines.length ||
         oldWidget.invoice.blocks.length != widget.invoice.blocks.length ||
         oldWidget.invoice.subtotal != widget.invoice.subtotal ||
@@ -132,6 +139,105 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         oldWidget.invoice.total != widget.invoice.total) {
       _seedFromInvoice();
       _maybeFetchMeta();
+    }
+  }
+
+  Future<void> _editInternalNotes() async {
+    if (_savingInternalNotes) return;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final existing = (_internalNotes ?? '').trim();
+    final controller = TextEditingController(text: existing);
+    final submitted = await showDialog<String?>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Nota interna' : 'Internal note'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: TextField(
+            controller: controller,
+            autofocus: true,
+            minLines: 3,
+            maxLines: 7,
+            maxLength: 1000,
+            decoration: InputDecoration(
+              hintText: isEs
+                  ? 'Visible solo para el equipo de tu negocio'
+                  : 'Visible only to your business team',
+              helperText: isEs
+                  ? 'No se incluye en el PDF ni se comparte con el cliente.'
+                  : 'Not included in the PDF or shared with the client.',
+              helperMaxLines: 2,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ),
+        actions: [
+          if (existing.isNotEmpty)
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(''),
+              child: Text(
+                isEs ? 'Eliminar' : 'Remove',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(isEs ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
+            child: Text(isEs ? 'Guardar' : 'Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (submitted == null || !mounted) return;
+    if (submitted.isEmpty && existing.isNotEmpty) {
+      final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title:
+                  Text(isEs ? 'Eliminar nota interna' : 'Remove internal note'),
+              content: Text(isEs
+                  ? 'La nota se eliminará de esta factura.'
+                  : 'The note will be removed from this invoice.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: Text(isEs ? 'Cancelar' : 'Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(isEs ? 'Eliminar' : 'Remove'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!confirmed || !mounted) return;
+    }
+
+    setState(() => _savingInternalNotes = true);
+    try {
+      final saved = await InvoicesApi().updateInternalNotes(
+        widget.invoice.id,
+        submitted.isEmpty ? null : submitted,
+      );
+      if (!mounted) return;
+      setState(() => _internalNotes = saved);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isEs
+              ? 'No se pudo guardar la nota interna.'
+              : 'Could not save the internal note.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _savingInternalNotes = false);
     }
   }
 
@@ -320,6 +426,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
             tooltip: isEs ? 'Más acciones' : 'More actions',
             onSelected: (value) {
               if (value == 'edit') widget.onEdit?.call();
+              if (value == 'internal_notes') _editInternalNotes();
               if (value == 'download') _downloadPdf();
               if (value == 'issue') widget.onIssue?.call();
               if (value == 'link_invoice') widget.onLinkInvoice?.call();
@@ -332,6 +439,14 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                   icon: Icons.edit_outlined,
                   label: l.edit,
                 ),
+              HexoraPopupMenuActionItem<String>(
+                value: 'internal_notes',
+                enabled: !_savingInternalNotes,
+                icon: Icons.lock_outline_rounded,
+                label: (_internalNotes ?? '').trim().isEmpty
+                    ? (isEs ? 'Añadir nota interna' : 'Add internal note')
+                    : (isEs ? 'Editar nota interna' : 'Edit internal note'),
+              ),
               HexoraPopupMenuActionItem<String>(
                 value: 'download',
                 enabled: !_downloadingPdf,
@@ -501,6 +616,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       _ => cs.onSurfaceVariant,
     };
     final delivery = DeliveryStatusBadge(
+      groupId: widget.invoice.groupId,
       status: widget.invoice.deliveryStatus,
       channel: widget.invoice.deliveryChannel,
       sentAt: widget.invoice.sentAt,
@@ -642,6 +758,13 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
             widget.onEdit,
             icon: Icons.edit_outlined,
           ),
+        CompactDocumentAction(
+          (_internalNotes ?? '').trim().isEmpty
+              ? (isEs ? 'Añadir nota interna' : 'Add internal note')
+              : (isEs ? 'Editar nota interna' : 'Edit internal note'),
+          _savingInternalNotes ? null : _editInternalNotes,
+          icon: Icons.lock_outline_rounded,
+        ),
         CompactDocumentAction(
           isEs ? 'Descargar PDF' : 'Download PDF',
           _downloadingPdf ? null : _downloadPdf,

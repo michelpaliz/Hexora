@@ -140,6 +140,7 @@ class Invoice {
   final ClientBilling? clientSnapshot;
   final List<InvoiceLine> lines;
   final List<InvoiceBlock> blocks;
+  final List<String> conceptSummaries;
   final String? deliveryStatus;
   final DateTime? sentAt;
   final String? sentBy;
@@ -199,6 +200,7 @@ class Invoice {
     this.clientSnapshot,
     this.lines = const [],
     this.blocks = const [],
+    this.conceptSummaries = const [],
     this.deliveryStatus,
     this.sentAt,
     this.sentBy,
@@ -259,6 +261,7 @@ class Invoice {
     ClientBilling? clientSnapshot,
     List<InvoiceLine>? lines,
     List<InvoiceBlock>? blocks,
+    List<String>? conceptSummaries,
     String? deliveryStatus,
     DateTime? sentAt,
     String? sentBy,
@@ -318,6 +321,7 @@ class Invoice {
       clientSnapshot: clientSnapshot ?? this.clientSnapshot,
       lines: lines ?? this.lines,
       blocks: blocks ?? this.blocks,
+      conceptSummaries: conceptSummaries ?? this.conceptSummaries,
       deliveryStatus: deliveryStatus ?? this.deliveryStatus,
       sentAt: sentAt ?? this.sentAt,
       sentBy: sentBy ?? this.sentBy,
@@ -469,35 +473,68 @@ class Invoice {
             .whereType<Map<String, dynamic>>()
             .map(InvoiceLine.fromJson)
             .toList();
+    final conceptsJson = json['concepts'];
+    final parsedConceptSummaries = conceptsJson is List
+        ? conceptsJson
+            .map((concept) {
+              if (concept is Map) {
+                return (concept['description'] ??
+                        concept['title'] ??
+                        concept['concept'])
+                    ?.toString()
+                    .trim();
+              }
+              return concept?.toString().trim();
+            })
+            .whereType<String>()
+            .where((concept) => concept.isNotEmpty)
+            .toList(growable: false)
+        : const <String>[];
     final billableBlocks =
         parsedBlocks.where(isBillableBlock).toList(growable: false);
+    final blockLines = List<InvoiceLine>.generate(
+      billableBlocks.length,
+      (index) {
+        final block = billableBlocks[index];
+        final qty = block.qty ?? 1;
+        final unitPrice = block.unitPrice ?? 0;
+        final taxRate = block.taxRate ?? 0;
+        final lineSubtotal = block.lineSubtotal ?? (qty * unitPrice);
+        final lineTax = block.lineTax ?? (lineSubtotal * (taxRate / 100));
+        final lineTotal = block.lineTotal ?? (lineSubtotal + lineTax);
+        return InvoiceLine(
+          id: null,
+          invoiceId: readId(json['_id'] ?? json['id']),
+          position: index + 1,
+          description: blockDescription(block),
+          quantity: qty,
+          unitPrice: unitPrice,
+          taxRate: taxRate,
+          lineSubtotal: lineSubtotal,
+          lineTax: lineTax,
+          lineTotal: lineTotal,
+        );
+      },
+      growable: false,
+    );
+    final usesConceptFallback = parsedLines.isEmpty && blockLines.isEmpty;
+    final conceptLines = usesConceptFallback
+        ? List<InvoiceLine>.generate(
+            parsedConceptSummaries.length,
+            (index) => InvoiceLine(
+              invoiceId: readId(json['_id'] ?? json['id']),
+              position: index + 1,
+              description: parsedConceptSummaries[index],
+              unitPrice: 0,
+            ),
+            growable: false,
+          )
+        : const <InvoiceLine>[];
     final effectiveLines = parsedLines.isNotEmpty
         ? parsedLines
-        : List<InvoiceLine>.generate(
-            billableBlocks.length,
-            (index) {
-              final block = billableBlocks[index];
-              final qty = block.qty ?? 1;
-              final unitPrice = block.unitPrice ?? 0;
-              final taxRate = block.taxRate ?? 0;
-              final lineSubtotal = block.lineSubtotal ?? (qty * unitPrice);
-              final lineTax = block.lineTax ?? (lineSubtotal * (taxRate / 100));
-              final lineTotal = block.lineTotal ?? (lineSubtotal + lineTax);
-              return InvoiceLine(
-                id: null,
-                invoiceId: readId(json['_id'] ?? json['id']),
-                position: index + 1,
-                description: blockDescription(block),
-                quantity: qty,
-                unitPrice: unitPrice,
-                taxRate: taxRate,
-                lineSubtotal: lineSubtotal,
-                lineTax: lineTax,
-                lineTotal: lineTotal,
-              );
-            },
-            growable: false,
-          );
+        : blockLines.isNotEmpty
+            ? blockLines
+            : conceptLines;
     final historyJson = json['updateHistory'];
     final rawYear = json['yearYY'] ?? json['year'] ?? json['yearShort'];
     int? parsedYear;
@@ -628,6 +665,8 @@ class Invoice {
           : null,
       lines: effectiveLines,
       blocks: parsedBlocks,
+      conceptSummaries:
+          usesConceptFallback ? parsedConceptSummaries : const <String>[],
       deliveryStatus: json['deliveryStatus']?.toString(),
       sentAt: parseDate(json['sentAt']),
       sentBy: json['sentBy']?.toString(),
@@ -703,6 +742,7 @@ class Invoice {
         if (clientSnapshot != null) 'clientSnapshot': clientSnapshot!.toJson(),
         if (lines.isNotEmpty) 'lines': lines.map((l) => l.toJson()).toList(),
         if (blocks.isNotEmpty) 'blocks': blocks.map((b) => b.toJson()).toList(),
+        if (conceptSummaries.isNotEmpty) 'concepts': conceptSummaries,
         if (deliveryStatus != null) 'deliveryStatus': deliveryStatus,
         if (sentAt != null) 'sentAt': sentAt!.toIso8601String(),
         if (sentBy != null) 'sentBy': sentBy,

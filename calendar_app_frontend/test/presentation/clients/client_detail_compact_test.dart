@@ -55,6 +55,7 @@ void main() {
           onEditSelectedClient: () {},
           onCreateInvoice: () {},
           onCreateReceipt: () {},
+          onEditReceipt: (_) {},
           onOpenInvoiceDetail: (_) {},
           invoicePreviewBuilder: (_, __, ___, ____, _____) =>
               const SizedBox.shrink(),

@@ -760,7 +760,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
     // most of the desktop width. The previous 360px minimum made compact
     // dashboards feel cramped, especially beside tables.
     final desktopChatPaneWidth =
-        (MediaQuery.of(context).size.width * 0.29).clamp(440.0, 520.0);
+        (MediaQuery.of(context).size.width * 0.34).clamp(520.0, 620.0);
     final selectedAssistantKey = resolveSelectedAssistantKey(messages);
     final selectedAssistantMessage =
         findMessageByKey(messages, selectedAssistantKey);
@@ -882,6 +882,11 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
           final linkedReply = firstReplyForUser(message);
           final tableReply = tableReplyForUser(message);
           final hasStructuredReply = tableReply != null;
+          final tableExportAction = tableReply == null
+              ? null
+              : getExportActionFromMessage(tableReply);
+          final tableMessageKey =
+              tableReply == null ? null : messageKeyFor(tableReply);
           final isSelected = tableReply != null &&
               messageKeyFor(tableReply) == selectedAssistantKey;
           final conversationKey = messageKeyFor(message);
@@ -1086,6 +1091,59 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                         ),
                                       ],
                                     ),
+                                    if (tableExportAction != null) ...[
+                                      const SizedBox(height: 6),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: OutlinedButton.icon(
+                                          onPressed: exportingMessageKey != null
+                                              ? null
+                                              : () => exportMessageToExcel(
+                                                    tableReply!,
+                                                  ),
+                                          icon: exportingMessageKey ==
+                                                  tableMessageKey
+                                              ? SizedBox(
+                                                  width: 13,
+                                                  height: 13,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: cs.primary,
+                                                  ),
+                                                )
+                                              : const Icon(
+                                                  Icons.download_rounded,
+                                                  size: 15,
+                                                ),
+                                          label: Text(
+                                            isEs
+                                                ? 'Descargar Excel'
+                                                : 'Download Excel',
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: cs.primary,
+                                            side: BorderSide(
+                                              color: cs.primary
+                                                  .withValues(alpha: 0.35),
+                                            ),
+                                            minimumSize: const Size(0, 30),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 9,
+                                              vertical: 5,
+                                            ),
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            tapTargetSize: MaterialTapTargetSize
+                                                .shrinkWrap,
+                                            textStyle: t.bodySmall.copyWith(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -1117,7 +1175,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
       final outputBorder = useNavyResults
           ? HexoraAiOutputTokens.panelBorder.withValues(alpha: 0.72)
           : cs.outlineVariant.withValues(alpha: isDark ? 0.22 : 0.28);
-      if (runtime.interactionMode == InsightsInteractionMode.openQuestions) {
+      if (runtime.interactionMode == InsightsInteractionMode.openQuestions &&
+          selectedAssistantMessage == null) {
         return const InsightsVisitPlannerGuide(embedded: true);
       }
       if (selectedAssistantMessage == null) {
@@ -1412,25 +1471,40 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                   const SizedBox(width: 8),
                   Tooltip(
                     message: isEs ? 'Descargar Excel' : 'Download Excel',
-                    child: IconButton(
+                    child: OutlinedButton.icon(
                       onPressed: exportingMessageKey != null
                           ? null
                           : () =>
                               exportMessageToExcel(selectedAssistantMessage),
-                      icon: Icon(
-                        exportingMessageKey == selectedKey
-                            ? Icons.hourglass_top_rounded
-                            : Icons.download_rounded,
-                        size: 17,
+                      icon: exportingMessageKey == selectedKey
+                          ? SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: outputAccent,
+                              ),
+                            )
+                          : const Icon(Icons.download_rounded, size: 16),
+                      label: Text(
+                        isEs ? 'Descargar Excel' : 'Download Excel',
                       ),
-                      style: IconButton.styleFrom(
+                      style: OutlinedButton.styleFrom(
                         foregroundColor: outputAccent,
                         backgroundColor: outputAccent.withValues(alpha: 0.10),
+                        side: BorderSide(
+                          color: outputAccent.withValues(alpha: 0.28),
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(9),
                         ),
-                        padding: const EdgeInsets.all(7),
-                        minimumSize: const Size(34, 34),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        minimumSize: const Size(0, 34),
+                        visualDensity: VisualDensity.compact,
+                        textStyle: t.bodySmall.copyWith(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -1822,6 +1896,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 );
               }
               final message = messages[index];
+              final exportAction = getExportActionFromMessage(message);
+              final messageKey = messageKeyFor(message);
               return ChatBubble(
                 message: message,
                 markdownBoldSpans: markdownBoldSpans,
@@ -1838,9 +1914,12 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 ),
                 isStructuredTableResponse:
                     !message.isUser && messageHasStructuredTable(message),
-                canExportToExcel: false,
-                isExporting: false,
-                onExportExcel: null,
+                canExportToExcel: exportAction != null,
+                isExporting: exportingMessageKey == messageKey,
+                onExportExcel:
+                    exportAction == null || exportingMessageKey != null
+                        ? null
+                        : () => exportMessageToExcel(message),
                 showInlineMenuActions: false,
               );
             },

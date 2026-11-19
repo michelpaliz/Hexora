@@ -43,6 +43,7 @@ class GroupDashboard extends StatelessWidget {
                       feature: PremiumFeatureRequest.aiChat,
                       child: InsightsChatFab(
                         groupId: group.id,
+                        group: group,
                         heroTag: 'group-dashboard-insights-chat-fab',
                       ),
                     ),

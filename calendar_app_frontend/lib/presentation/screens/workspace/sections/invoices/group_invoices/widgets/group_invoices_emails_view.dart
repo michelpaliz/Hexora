@@ -1,6 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/app/premium/premium_required_handler.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -42,9 +45,16 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
   List<Map<String, dynamic>> _logs = const [];
   String? _resendingLogId;
 
+  bool _canManageEmail() => canManagePremiumFeature(
+        widget.group,
+        context.read<UserDomain?>()?.user?.id,
+        PremiumFeature.email,
+      );
+
   @override
   void initState() {
     super.initState();
+    if (!_canManageEmail()) return;
     _loadStatus();
     _loadLogs();
   }
@@ -52,6 +62,18 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
   @override
   void didUpdateWidget(covariant GroupInvoicesEmailsView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final previouslyAllowed = canManagePremiumFeature(
+      oldWidget.group,
+      context.read<UserDomain?>()?.user?.id,
+      PremiumFeature.email,
+    );
+    final allowed = _canManageEmail();
+    if (!previouslyAllowed && allowed) {
+      _loadStatus();
+      _loadLogs();
+      return;
+    }
+    if (!allowed) return;
     if (oldWidget.selectedInvoice?.id != widget.selectedInvoice?.id) {
       _loadLogs();
     }
@@ -184,6 +206,10 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
   Future<void> _openSendInvoice() async {
     final invoice = widget.selectedInvoice;
     if (invoice == null) return;
+    if (!hasPremiumFeature(widget.group, PremiumFeature.email)) {
+      PremiumRequiredHandler.handle('email', widget.group.id);
+      return;
+    }
     final client = widget.clients.firstWhere(
       (c) => c.id == invoice.clientId,
       orElse: () =>
@@ -210,9 +236,18 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final currentUserId = context.read<UserDomain?>()?.user?.id;
-    final role =
-        currentUserId == null ? null : widget.group.userRoles[currentUserId];
-    final canSend = role == 'owner' || role == 'co-admin';
+    final canSend = canManagePremiumFeature(
+      widget.group,
+      currentUserId,
+      PremiumFeature.email,
+    );
+    if (!canSend) {
+      return PremiumFeatureRequestScreen(
+        feature: PremiumFeatureRequest.email,
+        group: widget.group,
+        embedded: true,
+      );
+    }
     final invoice = widget.selectedInvoice;
 
     final bannerText = _statusLoading

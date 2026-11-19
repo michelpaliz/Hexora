@@ -1,21 +1,28 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_runtime.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_sheet.dart';
+import 'package:provider/provider.dart';
 
 class InsightsChatFab extends StatefulWidget {
   const InsightsChatFab({
     super.key,
     required this.groupId,
+    this.group,
     this.heroTag = 'insights-chat-fab',
   });
 
   final String heroTag;
   final String groupId;
+  final Group? group;
 
   @override
   State<InsightsChatFab> createState() => _InsightsChatFabState();
@@ -37,7 +44,7 @@ class _InsightsChatFabState extends State<InsightsChatFab> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.groupId != widget.groupId) {
       _bindRuntime(widget.groupId);
-      unawaited(_runtime.ensureLoaded(context));
+      if (_canUseAiChat()) unawaited(_runtime.ensureLoaded(context));
     }
   }
 
@@ -52,7 +59,17 @@ class _InsightsChatFabState extends State<InsightsChatFab> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    unawaited(_runtime.ensureLoaded(context));
+    if (_canUseAiChat()) unawaited(_runtime.ensureLoaded(context));
+  }
+
+  bool _canUseAiChat() {
+    final group = widget.group;
+    if (group == null) return true;
+    return canManagePremiumFeature(
+      group,
+      context.read<UserDomain?>()?.user?.id,
+      PremiumFeature.aiChat,
+    );
   }
 
   void _onRuntimeChanged() {
@@ -135,16 +152,23 @@ class _InsightsChatFabState extends State<InsightsChatFab> {
   }
 
   Future<void> _openSheet(BuildContext context) {
+    final allowed = _canUseAiChat();
     return showModalBottomSheet<void>(
       sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => InsightsChatSheet(
-        groupId: widget.groupId,
-        runtime: _runtime,
-      ),
+      builder: (_) => allowed
+          ? InsightsChatSheet(
+              groupId: widget.groupId,
+              runtime: _runtime,
+            )
+          : PremiumFeatureRequestScreen(
+              group: widget.group,
+              feature: PremiumFeatureRequest.aiChat,
+              embedded: true,
+            ),
     );
   }
 }

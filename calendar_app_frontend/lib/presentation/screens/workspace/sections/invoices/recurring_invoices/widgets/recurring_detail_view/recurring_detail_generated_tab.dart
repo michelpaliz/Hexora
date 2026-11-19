@@ -738,6 +738,7 @@ class _RecurringDetailGeneratedTabState
                             dimension: 28,
                             child: Center(
                               child: DeliveryStatusBadge(
+                                groupId: resolved.groupId,
                                 status: resolved.deliveryStatus,
                                 channel: resolved.deliveryChannel,
                                 sentAt: resolved.sentAt,

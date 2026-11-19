@@ -23,6 +23,7 @@ class _StatementsMobileAnalyticsViewState
     with AutomaticKeepAliveClientMixin {
   bool _showAllExpense = false;
   bool _showAllIncome = false;
+  int _merchantTab = 0; // 0 = Gastos (expense), 1 = Ingresos (income)
 
   @override
   bool get wantKeepAlive => true;
@@ -83,7 +84,6 @@ class _StatementsMobileAnalyticsViewState
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-
     if (c.loadingBatches) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -99,66 +99,61 @@ class _StatementsMobileAnalyticsViewState
           child: Text(l.statementsAnalyticsNoSelection, style: t.bodySmall));
     }
 
-    final yearOptions = c.years
-        .map((y) => int.tryParse(y['year']?.toString() ?? ''))
-        .whereType<int>()
-        .toSet()
-        .toList()
-      ..sort();
-
-    // ── Compact filter bar ───────────────────────────────────────────────────
     final filterBar = Container(
       color: cs.surface,
-      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       child: Row(
         children: [
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  // All years chip
-                  _FilterChip(
-                    label: l.statementsAnalyticsAllYears,
-                    selected: c.selectedYear == null,
-                    onTap: () => c.setYear(null),
-                  ),
-                  const SizedBox(width: 6),
-                  // Year chips
-                  for (final y in yearOptions) ...[
-                    _FilterChip(
-                      label: y.toString(),
-                      selected: c.selectedYear == y,
-                      onTap: () => c.setYear(y),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  // Month chips (only if year selected)
-                  if (c.selectedYear != null) ...[
-                    const SizedBox(width: 4),
-                    _FilterChip(
-                      label: l.statementsAnalyticsAllMonths,
-                      selected: c.selectedMonth == null,
-                      onTap: () => c.setMonth(null),
-                    ),
-                    const SizedBox(width: 6),
-                    for (int m = 1; m <= 12; m++) ...[
-                      _FilterChip(
-                        label: m.toString().padLeft(2, '0'),
-                        selected: c.selectedMonth == m,
-                        onTap: () => c.setMonth(m),
-                      ),
-                      if (m < 12) const SizedBox(width: 6),
-                    ],
-                  ],
-                ],
-              ),
+            child: Text(
+              l.statementsAnalyticsTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.tune_rounded, size: 20),
-            tooltip: l.statementsFiltersTitle,
-            onPressed: () => _openFilterSheet(context),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: l.statementsFiltersTitle,
+            child: SizedBox(
+              height: 34,
+              child: OutlinedButton(
+                onPressed: () => _openFilterSheet(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.tune_rounded, size: 16),
+                    const SizedBox(width: 6),
+                    Text(l.statementsFiltersTitle),
+                    if (c.activeFilterCount > 0) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        constraints: const BoxConstraints(minWidth: 18),
+                        height: 18,
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: cs.primary,
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Text(
+                          '${c.activeFilterCount}',
+                          style: TextStyle(
+                            color: cs.onPrimary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -572,48 +567,54 @@ class _StatementsMobileAnalyticsViewState
                             padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                             child: _SectionCard(
                               title: l.statementsAnalyticsTopMerchants,
-                              child: DefaultTabController(
-                                length: 2,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    TabBar(
-                                      labelStyle: t.bodySmall,
-                                      tabs: [
-                                        Tab(
-                                          text: l.statementsSummaryExpense,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: AnalyticsSegmented<int>(
+                                      value: _merchantTab,
+                                      height: 32,
+                                      onChanged: (v) =>
+                                          setState(() => _merchantTab = v),
+                                      segments: [
+                                        AnalyticsSegment(
+                                          value: 0,
+                                          label: l.statementsSummaryExpense,
                                         ),
-                                        Tab(
-                                          text: l.statementsSummaryIncome,
+                                        AnalyticsSegment(
+                                          value: 1,
+                                          label: l.statementsSummaryIncome,
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 8),
-                                    SizedBox(
-                                      height: 320,
-                                      child: TabBarView(
-                                        children: [
-                                          TopMerchantsChart(
-                                            rows: c.topExpense,
-                                            title: l.statementsSummaryExpense,
-                                            expanded: _showAllExpense,
-                                            onToggle: () => setState(() =>
-                                                _showAllExpense =
-                                                    !_showAllExpense),
-                                          ),
-                                          TopMerchantsChart(
-                                            rows: c.topIncome,
-                                            title: l.statementsSummaryIncome,
-                                            expanded: _showAllIncome,
-                                            onToggle: () => setState(() =>
-                                                _showAllIncome =
-                                                    !_showAllIncome),
-                                          ),
-                                        ],
-                                      ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    height: 320,
+                                    child: TopMerchantsChart(
+                                      key: ValueKey(
+                                          'top-merchants-m-$_merchantTab'),
+                                      rows: _merchantTab == 0
+                                          ? c.topExpense
+                                          : c.topIncome,
+                                      title: _merchantTab == 0
+                                          ? l.statementsSummaryExpense
+                                          : l.statementsSummaryIncome,
+                                      isExpense: _merchantTab == 0,
+                                      expanded: _merchantTab == 0
+                                          ? _showAllExpense
+                                          : _showAllIncome,
+                                      onToggle: () => setState(() {
+                                        if (_merchantTab == 0) {
+                                          _showAllExpense = !_showAllExpense;
+                                        } else {
+                                          _showAllIncome = !_showAllIncome;
+                                        }
+                                      }),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -643,32 +644,6 @@ class _StatementsMobileAnalyticsViewState
 }
 
 // ── Helper widgets ─────────────────────────────────────────────────────────────
-
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onTap(),
-      visualDensity: VisualDensity.compact,
-      labelStyle: t.bodySmall.copyWith(fontSize: 11),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      showCheckmark: false,
-    );
-  }
-}
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.title, required this.child});
@@ -838,6 +813,26 @@ class _AnalyticsFilterSheet extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final availableYears = c.years
+        .map((row) => int.tryParse(row['year']?.toString() ?? ''))
+        .whereType<int>()
+        .toSet()
+        .toList();
+    if (c.selectedYear != null) availableYears.add(c.selectedYear!);
+    if (availableYears.isEmpty) {
+      availableYears.addAll(
+        List<int>.generate(6, (index) => DateTime.now().year - index),
+      );
+    }
+    availableYears.sort();
+    final compareOptions = <StatementsAnalyticsCompareMode, String>{
+      StatementsAnalyticsCompareMode.both: l.statementsAnalyticsCompareBoth,
+      StatementsAnalyticsCompareMode.calendarOnly:
+          l.statementsAnalyticsCompareCalendar,
+      StatementsAnalyticsCompareMode.settlementOnly:
+          l.statementsAnalyticsCompareSettlement,
+      StatementsAnalyticsCompareMode.delta: l.statementsAnalyticsCompareDelta,
+    };
 
     final batchName = c.selectedBatchId == 'all' || c.selectedBatchId == null
         ? l.statementsAnalyticsAllBatches
@@ -905,6 +900,60 @@ class _AnalyticsFilterSheet extends StatelessWidget {
               onChanged: (v) => c.selectBatch(v),
             ),
             const SizedBox(height: 16),
+            Text(l.statementsFilterYear,
+                style: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<int?>(
+              initialValue: c.selectedYear,
+              isExpanded: true,
+              style: t.bodyMedium,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text(l.statementsAnalyticsAllYears),
+                ),
+                ...availableYears.map(
+                  (year) => DropdownMenuItem(
+                    value: year,
+                    child: Text(year.toString()),
+                  ),
+                ),
+              ],
+              onChanged: c.setYear,
+            ),
+            const SizedBox(height: 16),
+            Text(l.statementsAnalyticsMonth,
+                style: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<int?>(
+              initialValue: c.selectedMonth,
+              isExpanded: true,
+              style: t.bodyMedium,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text(l.statementsAnalyticsAllMonths),
+                ),
+                ...List<int>.generate(12, (index) => index + 1).map(
+                  (month) => DropdownMenuItem(
+                    value: month,
+                    child: Text(month.toString().padLeft(2, '0')),
+                  ),
+                ),
+              ],
+              onChanged: c.selectedYear == null ? null : c.setMonth,
+            ),
+            const SizedBox(height: 16),
             // Top N
             Text(l.statementsAnalyticsTop,
                 style: t.bodySmall.copyWith(
@@ -953,6 +1002,78 @@ class _AnalyticsFilterSheet extends StatelessWidget {
               ],
               onChanged: (v) {
                 if (v != null) c.setPeriodMode(v);
+              },
+            ),
+            const SizedBox(height: 16),
+            if (c.periodMode ==
+                StatementsAnalyticsPeriodMode.settlementWindow) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: c.settlementStartDay,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: l.statementsAnalyticsSettlementStart,
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: List<int>.generate(31, (index) => index + 1)
+                          .map((day) => DropdownMenuItem(
+                                value: day,
+                                child: Text(day.toString()),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) c.setSettlementStartDay(value);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: c.settlementEndDay,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: l.statementsAnalyticsSettlementEnd,
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: List<int>.generate(31, (index) => index + 1)
+                          .map((day) => DropdownMenuItem(
+                                value: day,
+                                child: Text(day.toString()),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) c.setSettlementEndDay(value);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+            Text(l.statementsAnalyticsCompareMode,
+                style: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<StatementsAnalyticsCompareMode>(
+              initialValue: c.compareMode,
+              isExpanded: true,
+              style: t.bodyMedium,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              items: compareOptions.entries
+                  .map((entry) => DropdownMenuItem(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) c.setCompareMode(value);
               },
             ),
             const SizedBox(height: 16),

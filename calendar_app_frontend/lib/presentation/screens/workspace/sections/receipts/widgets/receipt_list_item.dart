@@ -10,6 +10,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/d
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 
 class ReceiptListItem extends StatefulWidget {
   final Receipt receipt;
@@ -52,6 +53,12 @@ class ReceiptListItem extends StatefulWidget {
 class _ReceiptListItemState extends State<ReceiptListItem> {
   bool _previewing = false;
   bool _detailsExpanded = false;
+
+  bool _hasEmailAccess() => canManagePremiumFeatureForGroupId(
+        context,
+        widget.receipt.groupId,
+        PremiumFeature.email,
+      );
 
   Future<void> _runPreview() async {
     final onPreview = widget.onPreview;
@@ -105,6 +112,7 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
     final deliveryStatus = normalizedDeliveryStatus(
       widget.receipt.deliveryStatus,
     );
+    final emailPremium = _hasEmailAccess();
     showModalBottomSheet<void>(
       sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
@@ -227,6 +235,7 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                   },
                 ),
               if (issued &&
+                  emailPremium &&
                   deliveryStatus != 'sent' &&
                   widget.onMarkSent != null)
                 ListTile(
@@ -239,6 +248,7 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                   },
                 ),
               if (issued &&
+                  emailPremium &&
                   deliveryStatus == 'sent' &&
                   widget.onMarkUnsent != null)
                 ListTile(
@@ -315,8 +325,9 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
     final deliveryStatus = normalizedDeliveryStatus(
       widget.receipt.deliveryStatus,
     );
-    final canMarkSent = issued && deliveryStatus != 'sent';
-    final canMarkUnsent = issued && deliveryStatus == 'sent';
+    final emailPremium = _hasEmailAccess();
+    final canMarkSent = issued && emailPremium && deliveryStatus != 'sent';
+    final canMarkUnsent = issued && emailPremium && deliveryStatus == 'sent';
 
     final iconBg = issued
         ? cs.primary.withValues(alpha: 0.10)
@@ -336,6 +347,7 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
         onTap: widget.onTap,
         badges: [
           DeliveryStatusBadge(
+            groupId: widget.receipt.groupId,
             status: widget.receipt.deliveryStatus,
             channel: widget.receipt.deliveryChannel,
             sentAt: widget.receipt.sentAt,
@@ -373,6 +385,7 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
       ),
       showDeliveryColumn: true,
       delivery: DeliveryStatusBadge(
+        groupId: widget.receipt.groupId,
         status: widget.receipt.deliveryStatus,
         channel: widget.receipt.deliveryChannel,
         sentAt: widget.receipt.sentAt,

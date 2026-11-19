@@ -10,9 +10,17 @@ class AuthenticatedHttpClient {
   static String _preferredLanguage = 'es';
   static Future<_RefreshResult>? _refreshInFlight;
   static Future<void> Function()? _onSessionExpired;
+  static void Function(String feature, String? groupId)?
+      _onPremiumFeatureRequired;
 
   static void setSessionExpiredHandler(Future<void> Function() handler) {
     _onSessionExpired = handler;
+  }
+
+  static void setPremiumFeatureRequiredHandler(
+    void Function(String feature, String? groupId) handler,
+  ) {
+    _onPremiumFeatureRequired = handler;
   }
 
   static void setPreferredLanguage(String languageCode) {
@@ -127,7 +135,13 @@ class AuthenticatedHttpClient {
     var response = await send(
       await authorizedHeaders(includeJsonContentType: false),
     );
-    if (response.statusCode != 401) return response;
+    if (response.statusCode != 401) {
+      _notifyPremiumFeatureRequired(
+        response,
+        requestUri: response.request?.url,
+      );
+      return response;
+    }
 
     final refreshResult = await _refreshAccessToken();
     if (refreshResult == _RefreshResult.invalidCredentials) {
@@ -139,7 +153,14 @@ class AuthenticatedHttpClient {
     response = await send(
       await authorizedHeaders(includeJsonContentType: false),
     );
-    if (response.statusCode == 401) await _notifySessionExpired();
+    if (response.statusCode == 401) {
+      await _notifySessionExpired();
+    } else {
+      _notifyPremiumFeatureRequired(
+        response,
+        requestUri: response.request?.url,
+      );
+    }
     return response;
   }
 
@@ -163,7 +184,10 @@ class AuthenticatedHttpClient {
         body: body,
         encoding: encoding,
       );
-      if (response.statusCode != 401) return response;
+      if (response.statusCode != 401) {
+        _notifyPremiumFeatureRequired(response, requestUri: uri, body: body);
+        return response;
+      }
 
       final refreshResult = await _refreshAccessToken();
       if (refreshResult == _RefreshResult.invalidCredentials) {
@@ -183,6 +207,8 @@ class AuthenticatedHttpClient {
       );
       if (response.statusCode == 401) {
         await _notifySessionExpired();
+      } else {
+        _notifyPremiumFeatureRequired(response, requestUri: uri, body: body);
       }
       return response;
     } finally {
@@ -198,6 +224,51 @@ class AuthenticatedHttpClient {
     try {
       await cb();
     } catch (_) {}
+  }
+
+  static void _notifyPremiumFeatureRequired(
+    http.Response response, {
+    Uri? requestUri,
+    Object? body,
+  }) {
+    if (response.statusCode != 403) return;
+    try {
+      final payload = jsonDecode(response.body);
+      if (payload is! Map ||
+          payload['code']?.toString() != 'PREMIUM_FEATURE_REQUIRED') {
+        return;
+      }
+      final feature = payload['feature']?.toString().trim();
+      if (feature == null || feature.isEmpty) return;
+      final responseGroupId = payload['groupId']?.toString().trim();
+      final groupId = responseGroupId?.isNotEmpty == true
+          ? responseGroupId
+          : _requestGroupId(requestUri, body);
+      _onPremiumFeatureRequired?.call(feature, groupId);
+    } catch (_) {
+      // A normal authorization failure may not contain JSON.
+    }
+  }
+
+  static String? _requestGroupId(Uri? uri, Object? body) {
+    final queryValue = uri?.queryParameters['groupId']?.trim();
+    if (queryValue?.isNotEmpty == true) return queryValue;
+    if (uri != null) {
+      final segments = uri.pathSegments;
+      final groupIndex = segments.indexOf('groups');
+      if (groupIndex >= 0 && groupIndex + 1 < segments.length) {
+        final value = segments[groupIndex + 1].trim();
+        if (value.isNotEmpty) return value;
+      }
+    }
+    try {
+      final payload = body is String ? jsonDecode(body) : body;
+      if (payload is Map) {
+        final value = payload['groupId']?.toString().trim();
+        if (value?.isNotEmpty == true) return value;
+      }
+    } catch (_) {}
+    return null;
   }
 
   static Future<http.Response> _dispatch(

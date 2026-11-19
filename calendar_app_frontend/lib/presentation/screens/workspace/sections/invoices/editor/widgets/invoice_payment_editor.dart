@@ -126,15 +126,88 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
     return num.tryParse(raw);
   }
 
-  /// Remaining balance after the entered partial payment, for display only.
-  num? get _remainingBalance {
-    if (_status != 'partial') return null;
+  Widget _buildPartialPaymentPreview({
+    required bool isEs,
+    required ColorScheme colors,
+  }) {
     final total = widget.invoice.total;
-    final paid = _parseAmount(_amountCtrl.text);
-    if (total == null || paid == null || paid <= 0 || paid >= total) {
-      return null;
+    final enteredTotal = _parseAmount(_amountCtrl.text);
+    if (total == null ||
+        total <= 0 ||
+        enteredTotal == null ||
+        enteredTotal <= 0) {
+      return const SizedBox.shrink();
     }
-    return total - paid;
+    final currentPaid = (widget.invoice.paidAmount ?? 0).clamp(0, total);
+    final resultingPaid = enteredTotal.clamp(0, total);
+    final incoming = (resultingPaid - currentPaid).clamp(0, total);
+    final remaining = (total - resultingPaid).clamp(0, total);
+    final progress = (resultingPaid / total).clamp(0, 1).toDouble();
+    final currency = widget.invoice.currency ?? 'EUR';
+    final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: colors.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        );
+
+    Widget metric(String label, num value, {bool accent = false}) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$label: ', style: textStyle),
+            Text(
+              '${_formatAmount(value)} $currency',
+              style: textStyle?.copyWith(
+                color: accent ? colors.primary : colors.onSurface,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        );
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: 16,
+            runSpacing: 6,
+            children: [
+              metric(isEs ? 'Ya registrado' : 'Already recorded', currentPaid),
+              if (incoming > 0)
+                metric(isEs ? 'Nuevo pago' : 'Incoming payment', incoming,
+                    accent: true),
+              metric(isEs ? 'Pagado después' : 'Paid after', resultingPaid),
+              metric(isEs ? 'Pendiente' : 'Remaining', remaining),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: colors.outlineVariant.withValues(alpha: 0.35),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '${(progress * 100).round()}%',
+              style: textStyle?.copyWith(
+                color: colors.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _pickDate() async {
@@ -397,18 +470,7 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
                   _notifyChanged();
                 },
               ),
-              if (_remainingBalance != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '${isEs ? 'Resto pendiente' : 'Remaining'}: '
-                  '${_formatAmount(_remainingBalance!)} '
-                  '${widget.invoice.currency ?? 'EUR'}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ],
+              _buildPartialPaymentPreview(isEs: isEs, colors: cs),
             ],
             if (_status != 'unpaid') ...[
               const SizedBox(height: 12),

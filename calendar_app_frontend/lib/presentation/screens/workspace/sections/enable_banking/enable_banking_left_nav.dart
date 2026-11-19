@@ -91,6 +91,20 @@ class _CollapsedRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final isSpanish = StatementsAnalyticsCopy.isSpanish(context);
+    final overviewLabel =
+        StatementsAnalyticsCopy.billableOverviewLabel(context);
+    final splitLabel = StatementsAnalyticsCopy.splitTitle(context);
+    final volumeLabel = StatementsAnalyticsCopy.volumeTitle(context);
+    final ticketLabel = StatementsAnalyticsCopy.ticketTitle(context);
+    final trendsLabel = isSpanish ? 'Tendencias' : l.statementsAnalyticsTrends;
+    final linkedLabel = StatementsAnalyticsCopy.linkedTitle(context);
+    final activityLabel = StatementsAnalyticsCopy.activityTitle(context);
+    final topMerchantsLabel = StatementsAnalyticsCopy.topMerchantsMenu(context);
+    final comparisonLabel = StatementsAnalyticsCopy.comparisonMenu(context);
+    final statusLabel = StatementsAnalyticsCopy.statusTitle(context);
+
     Widget item(IconData icon, String tooltip, EnableBankingMenu menu) {
       return SidebarItem(
           icon: icon,
@@ -125,35 +139,35 @@ class _CollapsedRail extends StatelessWidget {
                       EnableBankingMenu.allData),
                   groupGap(),
                   // Analiticas
-                  item(Icons.dashboard_outlined, 'Resumen',
+                  item(Icons.dashboard_outlined, overviewLabel,
                       EnableBankingMenu.analyticsOverview),
                   const SizedBox(height: 3),
-                  item(Icons.pie_chart_outline_rounded, 'Ingresos vs Gastos',
+                  item(Icons.pie_chart_outline_rounded, splitLabel,
                       EnableBankingMenu.analyticsSplit),
                   const SizedBox(height: 3),
-                  item(Icons.stacked_bar_chart_rounded, 'Volumen',
+                  item(Icons.stacked_bar_chart_rounded, volumeLabel,
                       EnableBankingMenu.analyticsVolume),
                   const SizedBox(height: 3),
-                  item(Icons.tune_rounded, 'Ticket medio',
+                  item(Icons.tune_rounded, ticketLabel,
                       EnableBankingMenu.analyticsTicket),
                   const SizedBox(height: 3),
-                  item(Icons.link_outlined, 'Vinculados',
-                      EnableBankingMenu.analyticsLinked),
-                  const SizedBox(height: 3),
-                  item(Icons.calendar_view_week_outlined, 'Actividad',
-                      EnableBankingMenu.analyticsActivity),
-                  const SizedBox(height: 3),
-                  item(Icons.verified_outlined, 'Estado',
-                      EnableBankingMenu.analyticsStatus),
-                  const SizedBox(height: 3),
-                  item(Icons.show_chart_outlined, 'Tendencias',
+                  item(Icons.show_chart_outlined, trendsLabel,
                       EnableBankingMenu.analyticsTrends),
                   const SizedBox(height: 3),
-                  item(Icons.bar_chart_outlined, 'Top comercios',
+                  item(Icons.link_outlined, linkedLabel,
+                      EnableBankingMenu.analyticsLinked),
+                  const SizedBox(height: 3),
+                  item(Icons.calendar_view_week_outlined, activityLabel,
+                      EnableBankingMenu.analyticsActivity),
+                  const SizedBox(height: 3),
+                  item(Icons.bar_chart_outlined, topMerchantsLabel,
                       EnableBankingMenu.analyticsTopMerchants),
                   const SizedBox(height: 3),
-                  item(Icons.compare_arrows_outlined, 'Comparativa',
+                  item(Icons.compare_arrows_outlined, comparisonLabel,
                       EnableBankingMenu.analyticsComparison),
+                  const SizedBox(height: 3),
+                  item(Icons.verified_outlined, statusLabel,
+                      EnableBankingMenu.analyticsStatus),
                 ],
               ),
             ),
@@ -205,7 +219,7 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
     final allDataMenuLabel =
         isSpanish ? 'Movimientos' : l.statementsAllDataTitle;
     final analyticsMenuLabel =
-        isSpanish ? 'Analiticas' : l.statementsAnalyticsTitle;
+        isSpanish ? 'Analíticas' : l.statementsAnalyticsTitle;
     final analyticsSummaryLabel =
         StatementsAnalyticsCopy.billableOverviewLabel(context);
     final analyticsSplitLabel = StatementsAnalyticsCopy.splitTitle(context);
@@ -287,6 +301,9 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                           onTap: () => widget
                               .onSelect(EnableBankingMenu.analyticsOverview),
                         ),
+                        _AnalyticsSectionLabel(
+                          label: isSpanish ? 'RENDIMIENTO' : 'PERFORMANCE',
+                        ),
                         _NavSubItem(
                           icon: Icons.pie_chart_outline_rounded,
                           label: analyticsSplitLabel,
@@ -297,7 +314,8 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                         ),
                         _NavSubItem(
                           icon: Icons.stacked_bar_chart_rounded,
-                          label: analyticsVolumeLabel,
+                          label: isSpanish ? 'Volumen' : 'Volume',
+                          tooltipLabel: analyticsVolumeLabel,
                           selected: widget.selected ==
                               EnableBankingMenu.analyticsVolume,
                           onTap: () => widget
@@ -312,8 +330,20 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                               .onSelect(EnableBankingMenu.analyticsTicket),
                         ),
                         _NavSubItem(
+                          icon: Icons.show_chart_outlined,
+                          label: analyticsTrendsLabel,
+                          selected: widget.selected ==
+                              EnableBankingMenu.analyticsTrends,
+                          onTap: () => widget
+                              .onSelect(EnableBankingMenu.analyticsTrends),
+                        ),
+                        _AnalyticsSectionLabel(
+                          label: isSpanish ? 'MOVIMIENTOS' : 'MOVEMENTS',
+                        ),
+                        _NavSubItem(
                           icon: Icons.link_outlined,
-                          label: analyticsLinkedLabel,
+                          label: isSpanish ? 'Vinculación' : 'Linking',
+                          tooltipLabel: analyticsLinkedLabel,
                           selected: widget.selected ==
                               EnableBankingMenu.analyticsLinked,
                           onTap: () => widget
@@ -328,28 +358,17 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                               .onSelect(EnableBankingMenu.analyticsActivity),
                         ),
                         _NavSubItem(
-                          icon: Icons.verified_outlined,
-                          label: analyticsStatusLabel,
-                          selected: widget.selected ==
-                              EnableBankingMenu.analyticsStatus,
-                          onTap: () => widget
-                              .onSelect(EnableBankingMenu.analyticsStatus),
-                        ),
-                        _NavSubItem(
-                          icon: Icons.show_chart_outlined,
-                          label: analyticsTrendsLabel,
-                          selected: widget.selected ==
-                              EnableBankingMenu.analyticsTrends,
-                          onTap: () => widget
-                              .onSelect(EnableBankingMenu.analyticsTrends),
-                        ),
-                        _NavSubItem(
                           icon: Icons.bar_chart_outlined,
                           label: analyticsTopMerchantsLabel,
                           selected: widget.selected ==
                               EnableBankingMenu.analyticsTopMerchants,
                           onTap: () => widget.onSelect(
                               EnableBankingMenu.analyticsTopMerchants),
+                        ),
+                        _AnalyticsSectionLabel(
+                          label: isSpanish
+                              ? 'ANÁLISIS AVANZADO'
+                              : 'ADVANCED ANALYSIS',
                         ),
                         _NavSubItem(
                           icon: Icons.compare_arrows_outlined,
@@ -358,6 +377,14 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                               EnableBankingMenu.analyticsComparison,
                           onTap: () => widget
                               .onSelect(EnableBankingMenu.analyticsComparison),
+                        ),
+                        _NavSubItem(
+                          icon: Icons.verified_outlined,
+                          label: analyticsStatusLabel,
+                          selected: widget.selected ==
+                              EnableBankingMenu.analyticsStatus,
+                          onTap: () => widget
+                              .onSelect(EnableBankingMenu.analyticsStatus),
                         ),
                       ],
                     ),
@@ -405,12 +432,14 @@ class _NavSubItem extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.tooltipLabel,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final String? tooltipLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -421,6 +450,34 @@ class _NavSubItem extends StatelessWidget {
             label: label,
             isSelected: selected,
             collapsed: false,
+            rowHeight: 36,
+            iconSize: 17,
+            tooltipLabel: tooltipLabel,
             onTap: onTap));
+  }
+}
+
+class _AnalyticsSectionLabel extends StatelessWidget {
+  const _AnalyticsSectionLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = NavigationColors(Theme.of(context).colorScheme);
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 9, 8, 4),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: NavigationTokens.section(context).copyWith(
+          color: colors.sectionForeground,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          letterSpacing: .25,
+        ),
+      ),
+    );
   }
 }
