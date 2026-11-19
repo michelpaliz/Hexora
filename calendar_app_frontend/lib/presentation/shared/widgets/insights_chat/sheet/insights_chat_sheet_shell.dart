@@ -1426,6 +1426,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 );
               }
               final message = messages[index];
+              final exportAction = getExportActionFromMessage(message);
+              final messageKey = messageKeyFor(message);
               return ChatBubble(
                 message: message,
                 markdownBoldSpans: markdownBoldSpans,
@@ -1442,9 +1444,11 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 ),
                 isStructuredTableResponse:
                     !message.isUser && messageHasStructuredTable(message),
-                canExportToExcel: false,
-                isExporting: false,
-                onExportExcel: null,
+                canExportToExcel: exportAction != null,
+                isExporting: exportingMessageKey == messageKey,
+                onExportExcel: exportAction == null || exportingMessageKey != null
+                    ? null
+                    : () => exportMessageToExcel(message),
                 showInlineMenuActions: false,
               );
             },
