@@ -217,5 +217,4 @@ mixin InsightsSendActions on InsightsChatSheetStateBase {
       source: InsightsSendSource.typedInput,
     );
   }
-
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/downloads/download_job.dart';
 import 'package:intl/intl.dart';
+import 'package:hexora/services/shared/content_disposition.dart';
 
 /// Presentation only: stored filenames and download URLs remain unchanged.
 class DownloadJobDisplay {
@@ -41,6 +42,17 @@ class DownloadJobDisplay {
       return '$label · ${DateFormat(pattern, l.localeName).format(date.toLocal())}';
     }
     return label;
+  }
+
+  static String downloadFilename(
+    BuildContext context,
+    DownloadJob job,
+    Map<String, String> headers,
+  ) {
+    return downloadFileNameFromHeaders(
+      headers,
+      fallback: job.effectiveFileName,
+    );
   }
 
   static String status(BuildContext context, DownloadJob job) {

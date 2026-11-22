@@ -25,6 +25,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab_manager.dart';
+import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_enums.dart';
+import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_runtime.dart';
 
 import '../navigation/dashboard_sections.dart';
 
@@ -249,6 +251,29 @@ class GroupDashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> askHexoraFromHome(String rawText) async {
+    final text = rawText.trim();
+    if (text.isEmpty || !canSeeAdmin || group.id.trim().isEmpty) return;
+
+    if (isWide) {
+      selectSection(Sections.chat);
+    } else {
+      activeSection = Sections.chat;
+      _sectionChosenSinceOpen = true;
+      notifyListeners();
+    }
+
+    final runtime = InsightsChatRuntime.instanceFor('panel::${group.id}');
+    runtime.setInteractionMode(InsightsInteractionMode.openQuestions);
+    await runtime.ensureLoaded(context);
+    await runtime.send(
+      context: context,
+      text: text,
+      groupId: group.id,
+      source: InsightsSendSource.typedInput,
+    );
+  }
+
   CalendarDashboardActions? calendarActions;
 
   void setCalendarActions(CalendarDashboardActions? actions) {
@@ -312,7 +337,7 @@ class GroupDashboardState extends ChangeNotifier {
       );
       if (!restored) {
         workspaceTabs.openOrActivateTab(
-          _tabForSection(canSeeAdmin ? Sections.invoices : Sections.calendar),
+          _tabForSection(canSeeAdmin ? Sections.home : Sections.calendar),
         );
       }
     }

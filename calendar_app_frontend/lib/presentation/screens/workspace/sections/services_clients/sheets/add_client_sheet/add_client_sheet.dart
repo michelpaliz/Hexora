@@ -186,8 +186,8 @@ class _AddClientSheetState extends State<AddClientSheet>
     }
     if (!c.formKey.currentState!.validate()) {
       final generalHasError = c.name.text.trim().isEmpty;
-      final billingHasError = AddClientController.billingRequiredKeys
-          .any((key) => !c.isBillingFieldFilled(key));
+      final billingHasError =
+          c.billingRequiredKeys.any((key) => !c.isBillingFieldFilled(key));
       _sectionTab.animateTo(generalHasError ? 0 : (billingHasError ? 2 : 0));
       return;
     }
@@ -403,8 +403,7 @@ class _AddClientSheetState extends State<AddClientSheet>
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final generalHasError = _showValidation && c.name.text.trim().isEmpty;
     final billingHasError = _showValidation &&
-        AddClientController.billingRequiredKeys
-            .any((key) => !c.isBillingFieldFilled(key));
+        c.billingRequiredKeys.any((key) => !c.isBillingFieldFilled(key));
 
     Tab tab({
       required IconData icon,

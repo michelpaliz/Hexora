@@ -32,7 +32,13 @@ class DashboardActions {
       case Sections.home:
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => const DashboardPreviewScreen(),
+            builder: (routeContext) => DashboardPreviewScreen(
+              assistantGroup: state.canSeeAdmin ? state.group : null,
+              onAskHexora: (text) {
+                state.askHexoraFromHome(text);
+                Navigator.of(routeContext).pop();
+              },
+            ),
           ),
         );
         break;

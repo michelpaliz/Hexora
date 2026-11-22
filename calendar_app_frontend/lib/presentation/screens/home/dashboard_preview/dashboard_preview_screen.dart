@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/documents/private_documents_api.dart';
@@ -9,22 +10,22 @@ import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/weather/weather_service.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:provider/provider.dart';
 
 /// A standalone, pixel-faithful preview of a proposed "home dashboard" design
 /// (left sidebar + top bar + content panels), opened from Settings.
 ///
-/// It reads REAL data where the app already exposes it (invoice counts,
-/// client count, recent private documents and upcoming calendar events) and
-/// falls back to representative mock data for a section when its source is
-/// empty or unavailable. The chrome (sidebar/top bar) and the quick-action
-/// tiles are visual only — this screen is a design preview, not wired
-/// navigation.
+/// It reads real data from the selected business for invoice counts, clients,
+/// recent private documents and upcoming calendar events.
 class DashboardPreviewScreen extends StatefulWidget {
   const DashboardPreviewScreen({
     super.key,
     this.embedded = false,
     this.onOpenSection,
+    this.assistantGroup,
+    this.onAskHexora,
   });
 
   /// When true the screen renders only the dashboard content (no Scaffold,
@@ -32,6 +33,8 @@ class DashboardPreviewScreen extends StatefulWidget {
   /// which already provides its own module rail and top bar.
   final bool embedded;
   final ValueChanged<String>? onOpenSection;
+  final Group? assistantGroup;
+  final ValueChanged<String>? onAskHexora;
 
   @override
   State<DashboardPreviewScreen> createState() => _DashboardPreviewScreenState();
@@ -61,7 +64,6 @@ class _DashData {
     required this.activity,
     required this.tasks,
     required this.docs,
-    required this.statsAreMock,
   });
 
   final int facturas;
@@ -71,7 +73,6 @@ class _DashData {
   final List<_ActivityItem> activity;
   final List<_TaskItem> tasks;
   final List<_DocItem> docs;
-  final bool statsAreMock;
 }
 
 class _ActivityItem {
@@ -157,7 +158,6 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
     int facturas = 0, pagadas = 0, pendientes = 0, clientes = 0;
     final activity = <_ActivityItem>[];
     final docs = <_DocItem>[];
-    bool statsLoaded = false;
 
     if (groupId != null && groupId.isNotEmpty) {
       // Invoices
@@ -169,7 +169,6 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
           return ps == 'paid' || ps == 'pagada' || (i.paidAmount ?? 0) > 0;
         }).length;
         pendientes = facturas - pagadas;
-        statsLoaded = facturas > 0;
 
         final recent = [...invoices]..sort((a, b) =>
             (b.issueDate ?? DateTime(0)).compareTo(a.issueDate ?? DateTime(0)));
@@ -191,7 +190,6 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
       try {
         final list = await ClientsApi().list(groupId: groupId);
         clientes = list.length;
-        statsLoaded = statsLoaded || clientes > 0;
       } catch (_) {}
 
       // Documents
@@ -224,88 +222,15 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
       tasks.add(_TaskItem(e.title, e.startDate, taskColors[i % 4]));
     }
 
-    final statsAreMock = !statsLoaded;
     return _DashData(
-      facturas: statsLoaded ? facturas : 410,
-      pagadas: statsLoaded ? pagadas : 286,
-      pendientes: statsLoaded ? pendientes : 124,
-      clientes: statsLoaded ? clientes : 87,
-      activity: activity.isNotEmpty ? activity : _mockActivity(),
-      tasks: tasks.isNotEmpty ? tasks : _mockTasks(),
-      docs: docs.isNotEmpty ? docs : _mockDocs(),
-      statsAreMock: statsAreMock,
+      facturas: facturas,
+      pagadas: pagadas,
+      pendientes: pendientes,
+      clientes: clientes,
+      activity: activity,
+      tasks: tasks,
+      docs: docs,
     );
-  }
-
-  List<_ActivityItem> _mockActivity() {
-    final es = _isEs;
-    final now = DateTime.now();
-    return [
-      _ActivityItem(
-          es ? 'Factura creada' : 'Invoice created',
-          '#410-26 · Residencial Zurich',
-          now,
-          Icons.description_rounded,
-          _Palette.blue),
-      _ActivityItem(
-          es ? 'Pago registrado' : 'Payment recorded',
-          '#408-26 · Playasol II',
-          now,
-          Icons.check_circle_rounded,
-          _Palette.green),
-      _ActivityItem(
-          es ? 'Presupuesto enviado' : 'Quote sent',
-          '#P-120 · Brisas',
-          now.subtract(const Duration(days: 1)),
-          Icons.receipt_long_rounded,
-          _Palette.purple),
-      _ActivityItem(
-          es ? 'Nuevo cliente' : 'New client',
-          'Camos Molla Promociones',
-          now.subtract(const Duration(days: 1)),
-          Icons.person_add_alt_1_rounded,
-          _Palette.amber),
-    ];
-  }
-
-  List<_TaskItem> _mockTasks() {
-    final es = _isEs;
-    final d = DateTime.now();
-    DateTime at(int add) =>
-        DateTime(d.year, d.month, d.day).add(Duration(days: add));
-    return [
-      _TaskItem(
-          es ? 'Mantenimiento piscina – Brisas' : 'Pool maintenance – Brisas',
-          at(1),
-          _Palette.blue),
-      _TaskItem(
-          es ? 'Revisión de riego – La Sella' : 'Irrigation check – La Sella',
-          at(1),
-          _Palette.green),
-      _TaskItem(
-          es
-              ? 'Enviar presupuesto – Cabo del Sol'
-              : 'Send quote – Cabo del Sol',
-          at(2),
-          _Palette.amber),
-      _TaskItem(
-          es ? 'Seguimiento de factura #407-26' : 'Follow up invoice #407-26',
-          at(3),
-          _Palette.purple),
-    ];
-  }
-
-  List<_DocItem> _mockDocs() {
-    final es = _isEs;
-    final now = DateTime.now();
-    return [
-      _DocItem(es ? 'Factura #410-26' : 'Invoice #410-26', 'Residencial Zurich',
-          now),
-      _DocItem(es ? 'Presupuesto #P-120' : 'Quote #P-120', 'Brisas',
-          now.subtract(const Duration(days: 1))),
-      _DocItem(es ? 'Recibo #R025-26' : 'Receipt #R025-26', 'Playasol II',
-          now.subtract(const Duration(days: 1))),
-    ];
   }
 
   @override
@@ -325,6 +250,9 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
               data: data,
               loading: loading,
               onOpenSection: _openSection,
+              assistantGroup:
+                  _canShowAssistant(context) ? widget.assistantGroup : null,
+              onAskHexora: widget.onAskHexora,
             );
           },
         ),
@@ -363,7 +291,12 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
                                         isEs: es,
                                         data: data,
                                         loading: loading,
-                                        onOpenSection: _openSection),
+                                        onOpenSection: _openSection,
+                                        assistantGroup:
+                                            _canShowAssistant(context)
+                                                ? widget.assistantGroup
+                                                : null,
+                                        onAskHexora: widget.onAskHexora),
                                   ),
                                 ],
                               ),
@@ -379,7 +312,11 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
                                 isEs: es,
                                 data: data,
                                 loading: loading,
-                                onOpenSection: _openSection),
+                                onOpenSection: _openSection,
+                                assistantGroup: _canShowAssistant(context)
+                                    ? widget.assistantGroup
+                                    : null,
+                                onAskHexora: widget.onAskHexora),
                           ),
                         ],
                       );
@@ -391,6 +328,16 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  bool _canShowAssistant(BuildContext context) {
+    final group = widget.assistantGroup;
+    if (group == null) return false;
+    return canManagePremiumFeature(
+      group,
+      context.read<UserDomain?>()?.user?.id,
+      PremiumFeature.aiChat,
     );
   }
 }
@@ -758,11 +705,15 @@ class _Content extends StatelessWidget {
       {required this.isEs,
       required this.data,
       required this.loading,
-      this.onOpenSection});
+      this.onOpenSection,
+      this.assistantGroup,
+      this.onAskHexora});
   final bool isEs;
   final _DashData? data;
   final bool loading;
   final ValueChanged<String>? onOpenSection;
+  final Group? assistantGroup;
+  final ValueChanged<String>? onAskHexora;
 
   @override
   Widget build(BuildContext context) {
@@ -775,13 +726,15 @@ class _Content extends StatelessWidget {
         name = user.userName.trim();
       }
     }
-
     return LayoutBuilder(builder: (context, c) {
       final twoCol = c.maxWidth >= 760;
       return ListView(
         padding: EdgeInsets.all(twoCol ? 24 : 16),
         children: [
-          _GreetingHero(isEs: isEs, name: name),
+          if (assistantGroup != null) ...[
+            _AskHexoraCard(isEs: isEs, onSubmit: onAskHexora),
+          ] else
+            _GreetingHero(isEs: isEs, name: name),
           const SizedBox(height: 18),
           _StatRow(
               isEs: isEs,
@@ -838,6 +791,103 @@ class _Content extends StatelessWidget {
         ],
       );
     });
+  }
+}
+
+class _AskHexoraCard extends StatefulWidget {
+  const _AskHexoraCard({required this.isEs, required this.onSubmit});
+
+  final bool isEs;
+  final ValueChanged<String>? onSubmit;
+
+  @override
+  State<_AskHexoraCard> createState() => _AskHexoraCardState();
+}
+
+class _AskHexoraCardState extends State<_AskHexoraCard> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final text = _controller.text.trim();
+    if (text.isEmpty || widget.onSubmit == null) return;
+    _controller.clear();
+    widget.onSubmit!(text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hour = DateTime.now().hour;
+    final heading = widget.isEs
+        ? hour < 12
+            ? '¡Buenos días! ¿En qué trabajamos?'
+            : hour < 19
+                ? '¡Buenas tardes! ¿En qué trabajamos?'
+                : '¡Buenas noches! ¿En qué trabajamos?'
+        : hour < 12
+            ? 'Good morning! What shall we work on?'
+            : hour < 19
+                ? 'Good afternoon! What shall we work on?'
+                : 'Good evening! What shall we work on?';
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            heading,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: colors.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            widget.isEs
+                ? 'Tu espacio de trabajo está listo.'
+                : 'Your business workspace is ready.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _controller,
+            enabled: widget.onSubmit != null,
+            textInputAction: TextInputAction.send,
+            onSubmitted: (_) => _submit(),
+            decoration: InputDecoration(
+              hintText:
+                  widget.isEs ? 'Pregunta a Hexora…' : 'Ask Hexora anything…',
+              prefixIcon: const Icon(Icons.auto_awesome_outlined),
+              suffixIcon: IconButton(
+                tooltip: widget.isEs ? 'Enviar' : 'Send',
+                onPressed: widget.onSubmit == null ? null : _submit,
+                icon: const Icon(Icons.arrow_upward_rounded),
+              ),
+              filled: true,
+              fillColor: colors.surfaceContainerLowest,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: colors.outlineVariant),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

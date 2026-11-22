@@ -85,7 +85,7 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
       _statusError = null;
     });
     try {
-      final data = await _emailApi.getStatus();
+      final data = await _emailApi.getStatus(groupId: widget.group.id);
       final raw = data['configured'] ?? data['isConfigured'] ?? data['ready'];
       final configured = raw is bool
           ? raw

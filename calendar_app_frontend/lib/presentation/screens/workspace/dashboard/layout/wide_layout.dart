@@ -121,6 +121,8 @@ class WideLayout extends StatelessWidget {
       return DashboardPreviewScreen(
         embedded: true,
         onOpenSection: state.openSection,
+        assistantGroup: state.canSeeAdmin ? state.group : null,
+        onAskHexora: (text) => state.askHexoraFromHome(text),
       );
     }
 

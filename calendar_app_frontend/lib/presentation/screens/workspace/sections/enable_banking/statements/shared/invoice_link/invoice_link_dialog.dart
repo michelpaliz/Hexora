@@ -1044,6 +1044,7 @@ class _InvoiceLinkInlineSurfaceState extends State<_InvoiceLinkInlineSurface> {
             const SizedBox(height: 8),
             InvoiceLinkDialog._buildStepContent(
               currentStep,
+              widget.entry,
               stepsBuilder,
               expenseOnly,
               () => setState(() {}),

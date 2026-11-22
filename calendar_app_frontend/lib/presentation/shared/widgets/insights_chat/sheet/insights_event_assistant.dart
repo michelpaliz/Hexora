@@ -96,17 +96,6 @@ mixin InsightsEventAssistant on InsightsChatSheetStateBase {
     return hasEditVerb && hasEventWord;
   }
 
-  bool looksLikeEventEditingRequest(String text) {
-    final normalized = text.trim().toLowerCase();
-    final hasEditVerb = RegExp(
-      r'\b(edit|change|modify|update|move|reschedule|editar|edita|cambiar|cambia|modificar|modifica|actualizar|actualiza|mover|mueve|reprogramar|reprograma)\b',
-    ).hasMatch(normalized);
-    final hasEventWord = RegExp(
-      r'\b(event|visit|appointment|work visit|evento|visita|cita)\b',
-    ).hasMatch(normalized);
-    return hasEditVerb && hasEventWord;
-  }
-
   @override
   Map<String, dynamic>? eventAssistantForMessage(ChatMessage message) =>
       safeMap(message.eventAssistant);
