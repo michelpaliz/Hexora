@@ -10,6 +10,8 @@ import 'package:hexora/services/groups/event/domain/event_domain.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/weather/weather_service.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/overview/widgets/home_banking_charts.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:provider/provider.dart';
 
@@ -35,7 +37,8 @@ class DashboardPreviewScreen extends StatefulWidget {
   /// which already provides its own module rail and top bar.
   final bool embedded;
   final ValueChanged<String>? onOpenSection;
-  final ValueChanged<String>? onAskHexora;
+  final void Function(String text, List<Map<String, dynamic>> selectedCharts)?
+      onAskHexora;
 
   @override
   State<DashboardPreviewScreen> createState() => _DashboardPreviewScreenState();
@@ -106,6 +109,22 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
   final _weatherService = WeatherService();
   late Future<_DashData> _future;
   Future<WeatherBundle>? _weather;
+  final Map<String, Map<String, dynamic>> _selectedCharts = {};
+  String? _selectedChartGroupId;
+
+  void _updateChartSelection(String id, Map<String, dynamic>? chart) {
+    setState(() {
+      if (chart == null) {
+        _selectedCharts.remove(id);
+      } else {
+        _selectedCharts[id] = chart;
+      }
+    });
+  }
+
+  void _askHexora(String text) {
+    widget.onAskHexora?.call(text, _selectedCharts.values.toList());
+  }
 
   bool get _isEs => Localizations.localeOf(context).languageCode == 'es';
 
@@ -315,6 +334,11 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
   @override
   Widget build(BuildContext context) {
     final es = Localizations.localeOf(context).languageCode == 'es';
+    final groupId = context.read<GroupDomain>().currentGroup?.id;
+    if (_selectedChartGroupId != groupId) {
+      _selectedCharts.clear();
+      _selectedChartGroupId = groupId;
+    }
 
     if (widget.embedded) {
       return Container(
@@ -329,7 +353,9 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
               data: data,
               loading: loading,
               onOpenSection: _openSection,
-              onAskHexora: widget.onAskHexora,
+              onAskHexora: widget.onAskHexora == null ? null : _askHexora,
+              selectedCharts: _selectedCharts,
+              onChartSelectionChanged: _updateChartSelection,
             );
           },
         ),
@@ -369,7 +395,12 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
                                         data: data,
                                         loading: loading,
                                         onOpenSection: _openSection,
-                                        onAskHexora: widget.onAskHexora),
+                                        onAskHexora: widget.onAskHexora == null
+                                            ? null
+                                            : _askHexora,
+                                        selectedCharts: _selectedCharts,
+                                        onChartSelectionChanged:
+                                            _updateChartSelection),
                                   ),
                                 ],
                               ),
@@ -386,7 +417,11 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
                                 data: data,
                                 loading: loading,
                                 onOpenSection: _openSection,
-                                onAskHexora: widget.onAskHexora),
+                                onAskHexora: widget.onAskHexora == null
+                                    ? null
+                                    : _askHexora,
+                                selectedCharts: _selectedCharts,
+                                onChartSelectionChanged: _updateChartSelection),
                           ),
                         ],
                       );
@@ -765,6 +800,8 @@ class _Content extends StatelessWidget {
       {required this.isEs,
       required this.data,
       required this.loading,
+      required this.selectedCharts,
+      required this.onChartSelectionChanged,
       this.onOpenSection,
       this.onAskHexora});
   final bool isEs;
@@ -772,10 +809,16 @@ class _Content extends StatelessWidget {
   final bool loading;
   final ValueChanged<String>? onOpenSection;
   final ValueChanged<String>? onAskHexora;
+  final Map<String, Map<String, dynamic>> selectedCharts;
+  final void Function(String id, Map<String, dynamic>? chart)
+      onChartSelectionChanged;
 
   @override
   Widget build(BuildContext context) {
     final user = context.read<AuthService>().currentUser;
+    final group = context.read<GroupDomain>().currentGroup;
+    final showBankingCharts = onAskHexora != null &&
+        canManagePremiumFeature(group, user?.id, PremiumFeature.banking);
     String name = 'Michael';
     if (user != null) {
       if (user.name.trim().isNotEmpty) {
@@ -793,7 +836,11 @@ class _Content extends StatelessWidget {
           _GreetingHero(isEs: isEs, name: name),
           if (onAskHexora != null) ...[
             const SizedBox(height: 12),
-            _AskHexoraBar(isEs: isEs, onSubmit: onAskHexora!),
+            _AskHexoraBar(
+              isEs: isEs,
+              onSubmit: onAskHexora!,
+              selectedChartCount: selectedCharts.length,
+            ),
           ],
           const SizedBox(height: 18),
           _StatRow(
@@ -803,6 +850,16 @@ class _Content extends StatelessWidget {
               onOpenSection: onOpenSection),
           const SizedBox(height: 22),
           _QuickActions(isEs: isEs, onOpenSection: onOpenSection),
+          if (showBankingCharts && group != null) ...[
+            const SizedBox(height: 22),
+            HomeBankingCharts(
+              key: ValueKey('home-banking-charts-${group.id}'),
+              groupId: group.id,
+              onOpenBanking: () => onOpenSection?.call(Sections.enableBanking),
+              selectedChartIds: selectedCharts.keys.toSet(),
+              onSelectionChanged: onChartSelectionChanged,
+            ),
+          ],
           const SizedBox(height: 22),
           if (twoCol)
             IntrinsicHeight(
@@ -855,10 +912,15 @@ class _Content extends StatelessWidget {
 }
 
 class _AskHexoraBar extends StatefulWidget {
-  const _AskHexoraBar({required this.isEs, required this.onSubmit});
+  const _AskHexoraBar({
+    required this.isEs,
+    required this.onSubmit,
+    required this.selectedChartCount,
+  });
 
   final bool isEs;
   final ValueChanged<String> onSubmit;
+  final int selectedChartCount;
 
   @override
   State<_AskHexoraBar> createState() => _AskHexoraBarState();
@@ -1006,6 +1068,31 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
               ],
             ),
             const SizedBox(height: 12),
+            if (widget.selectedChartCount > 0) ...[
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                children: [
+                  Icon(LucideIcons.chartNoAxesCombined,
+                      size: 16, color: cs.primary),
+                  Text(
+                    widget.isEs
+                        ? '${widget.selectedChartCount} gráficos seleccionados para el chat'
+                        : '${widget.selectedChartCount} charts selected for chat',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  TextButton(
+                    onPressed: () => _submit(widget.isEs
+                        ? 'Explica los gráficos seleccionados y los cambios más importantes.'
+                        : 'Explain the selected charts and the most important changes.'),
+                    child: Text(widget.isEs
+                        ? 'Explicar gráficos'
+                        : 'Explain charts'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
             Container(
               constraints: const BoxConstraints(minHeight: 76),
               padding: const EdgeInsets.fromLTRB(12, 9, 8, 8),

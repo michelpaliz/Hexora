@@ -41,8 +41,10 @@ class _StatementsHistoryListState extends State<StatementsHistoryList> {
   String _query = '';
   _StatusFilter _statusFilter = _StatusFilter.all;
   _SortMode _sortMode = _SortMode.original;
+  int _page = 1;
 
   static const _wideBreakpoint = 760.0;
+  static const _pageSize = 25;
 
   StatementsController get _c => widget.controller;
 
@@ -119,6 +121,7 @@ class _StatementsHistoryListState extends State<StatementsHistoryList> {
       _searchCtrl.clear();
       _query = '';
       _statusFilter = _StatusFilter.all;
+      _page = 1;
     });
   }
 
@@ -194,6 +197,11 @@ class _StatementsHistoryListState extends State<StatementsHistoryList> {
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= _wideBreakpoint;
         final visible = _visibleImports();
+        final pageCount =
+            visible.isEmpty ? 1 : (visible.length + _pageSize - 1) ~/ _pageSize;
+        final page = _page.clamp(1, pageCount);
+        final pageStart = (page - 1) * _pageSize;
+        final pageRows = visible.skip(pageStart).take(_pageSize).toList();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -227,20 +235,73 @@ class _StatementsHistoryListState extends State<StatementsHistoryList> {
                 child: ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: visible.length,
+                  itemCount: pageRows.length,
                   separatorBuilder: (_, __) => Divider(
                     height: 1,
                     thickness: 1,
                     color: cs.outlineVariant.withValues(alpha: 0.4),
                   ),
                   itemBuilder: (context, index) =>
-                      _buildRow(context, visible[index], wide),
+                      _buildRow(context, pageRows[index], wide),
                 ),
               ),
+              if (pageCount > 1)
+                _buildPagination(
+                  context,
+                  page: page,
+                  pageCount: pageCount,
+                  firstItem: pageStart + 1,
+                  lastItem: pageStart + pageRows.length,
+                  total: visible.length,
+                ),
             ],
           ],
         );
       },
+    );
+  }
+
+  Widget _buildPagination(
+    BuildContext context, {
+    required int page,
+    required int pageCount,
+    required int firstItem,
+    required int lastItem,
+    required int total,
+  }) {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final t = AppTypography.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        children: [
+          Text(
+            es
+                ? '$firstItem–$lastItem de $total'
+                : '$firstItem–$lastItem of $total',
+            style: t.bodySmall,
+          ),
+          IconButton(
+            tooltip: es ? 'Página anterior' : 'Previous page',
+            onPressed: page > 1 ? () => setState(() => _page = page - 1) : null,
+            icon: const Icon(Icons.chevron_left_rounded),
+          ),
+          Text(
+            es ? 'Página $page de $pageCount' : 'Page $page of $pageCount',
+            style: t.bodySmall,
+          ),
+          IconButton(
+            tooltip: es ? 'Página siguiente' : 'Next page',
+            onPressed: page < pageCount
+                ? () => setState(() => _page = page + 1)
+                : null,
+            icon: const Icon(Icons.chevron_right_rounded),
+          ),
+        ],
+      ),
     );
   }
 
@@ -262,7 +323,10 @@ class _StatementsHistoryListState extends State<StatementsHistoryList> {
           height: 36,
           child: TextField(
             controller: _searchCtrl,
-            onChanged: (v) => setState(() => _query = v),
+            onChanged: (v) => setState(() {
+              _query = v;
+              _page = 1;
+            }),
             style: t.bodySmall,
             decoration: InputDecoration(
               isDense: true,
@@ -278,6 +342,7 @@ class _StatementsHistoryListState extends State<StatementsHistoryList> {
                       onPressed: () => setState(() {
                         _searchCtrl.clear();
                         _query = '';
+                        _page = 1;
                       }),
                       constraints:
                           const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -294,12 +359,18 @@ class _StatementsHistoryListState extends State<StatementsHistoryList> {
         // Status filter
         _FilterChipsBar(
           current: _statusFilter,
-          onChanged: (f) => setState(() => _statusFilter = f),
+          onChanged: (f) => setState(() {
+            _statusFilter = f;
+            _page = 1;
+          }),
         ),
         // Sort
         _SortButton(
           mode: _sortMode,
-          onChanged: (m) => setState(() => _sortMode = m),
+          onChanged: (m) => setState(() {
+            _sortMode = m;
+            _page = 1;
+          }),
         ),
         // Freshness threshold (preserved)
         SizedBox(

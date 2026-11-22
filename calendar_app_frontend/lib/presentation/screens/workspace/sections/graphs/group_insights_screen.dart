@@ -25,8 +25,12 @@ class GroupInsightsScreen extends StatefulWidget {
 
 class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
   bool _loading = true;
+  bool _refreshing = false;
+  bool _hasLoadedOnce = false;
+  bool _catalogsLoaded = false;
   int _loadRevision = 0;
   String? _error;
+  String? _loadedRangeKey;
 
   RangePreset _preset = RangePreset.m3;
   DateTimeRange? _customRange;
@@ -58,11 +62,16 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
   DateTime _endExclusive(DateTime d) =>
       DateTime(d.year, d.month, d.day).add(const Duration(days: 1));
 
+  String _rangeKey(DateTimeRange range) =>
+      '${range.start.year}-${range.start.month}-${range.start.day}:'
+      '${range.end.year}-${range.end.month}-${range.end.day}';
+
   Future<void> _load() async {
     if (!mounted) return;
     final revision = ++_loadRevision;
     setState(() {
-      _loading = true;
+      _loading = !_hasLoadedOnce;
+      _refreshing = _hasLoadedOnce;
       _error = null;
     });
 
@@ -70,6 +79,7 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
       // ðŸ”„ use UserAgendaDomain instead of UserDomain
       final agenda = context.read<UserAgendaDomain>();
       final range = _resolveRange(DateTime.now());
+      final rangeKey = _rangeKey(range);
 
       final endExclusive = _endExclusive(range.end);
 
@@ -82,44 +92,55 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
       );
 
       // 2) Catalogs
-      final clientsApi = ClientsApi();
-      final servicesApi = ServiceApi();
-      final clientsFuture =
-          clientsApi.list(groupId: widget.group.id, active: null);
-      final servicesFuture =
-          servicesApi.list(groupId: widget.group.id, active: null);
+      List<dynamic>? clients;
+      List<dynamic>? services;
+      final Future<List<List<dynamic>>>? catalogsFuture = _catalogsLoaded
+          ? null
+          : Future.wait<List<dynamic>>([
+              ClientsApi().list(groupId: widget.group.id, active: null),
+              ServiceApi().list(groupId: widget.group.id, active: null),
+            ]);
 
-      final results =
-          await Future.wait([eventsFuture, clientsFuture, servicesFuture]);
-
-      final events = results[0] as List<Event>;
-      final clients = results[1] as List<dynamic>;
-      final services = results[2] as List<dynamic>;
+      final events = await eventsFuture;
+      if (catalogsFuture != null) {
+        final catalogs = await catalogsFuture;
+        clients = catalogs[0];
+        services = catalogs[1];
+      }
 
       final onlyThisGroup =
           events.where((e) => e.groupId == widget.group.id).toList();
 
-      final clientNames = <String, String>{
-        for (final c in clients)
-          c.id: (c.name?.trim().isNotEmpty == true ? c.name!.trim() : c.id),
-      };
-      final serviceNames = <String, String>{
-        for (final s in services)
-          s.id: (s.name?.trim().isNotEmpty == true ? s.name!.trim() : s.id),
-      };
+      final clientNames = clients == null
+          ? _clientNames
+          : <String, String>{
+              for (final c in clients)
+                c.id: (c.name?.trim().isNotEmpty == true ? c.name!.trim() : c.id),
+            };
+      final serviceNames = services == null
+          ? _serviceNames
+          : <String, String>{
+              for (final s in services)
+                s.id: (s.name?.trim().isNotEmpty == true ? s.name!.trim() : s.id),
+            };
 
       if (!mounted || revision != _loadRevision) return;
       setState(() {
         _events = onlyThisGroup;
         _clientNames = clientNames;
         _serviceNames = serviceNames;
+        _catalogsLoaded = true;
+        _hasLoadedOnce = true;
+        _loadedRangeKey = rangeKey;
         _loading = false;
+        _refreshing = false;
       });
     } catch (e) {
       if (!mounted || revision != _loadRevision) return;
       setState(() {
         _error = e.toString();
         _loading = false;
+        _refreshing = false;
       });
     }
   }
@@ -226,9 +247,9 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
           ),
         ],
       ),
-      body: _loading
+      body: _loading && !_hasLoadedOnce
           ? const Center(child: CircularProgressIndicator())
-          : _error != null
+          : _error != null && !_hasLoadedOnce
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -261,6 +282,24 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
                               physics: const AlwaysScrollableScrollPhysics(),
                               padding: EdgeInsets.fromLTRB(hPad, 10, hPad, 24),
                               children: [
+                                if (_refreshing)
+                                  const Padding(
+                                    padding: EdgeInsets.only(bottom: 8),
+                                    child: LinearProgressIndicator(minHeight: 2),
+                                  ),
+                                if (_error != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Text(
+                                      l.localeName.startsWith('es')
+                                          ? 'No se pudo actualizar el informe. Mostrando los últimos datos cargados.'
+                                          : 'Could not refresh the report. Showing the last loaded data.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(color: cs.error),
+                                    ),
+                                  ),
                                 Text(l.insightsSubtitle,
                                     style: Theme.of(context)
                                         .textTheme
@@ -289,12 +328,21 @@ class _GroupInsightsScreenState extends State<GroupInsightsScreen> {
                                 SizedBox(height: isMobile ? 12 : 16),
 
                                 // BARS
-                                InsightsBarsCard(
-                                  title: _dimension == Dimension.clients
-                                      ? l.timeByClient
-                                      : l.timeByService,
-                                  minutesByKey: minutesLabeled,
-                                ),
+                                if (_refreshing &&
+                                    _loadedRangeKey != _rangeKey(range))
+                                  const SizedBox(
+                                    height: 220,
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  )
+                                else
+                                  InsightsBarsCard(
+                                    title: _dimension == Dimension.clients
+                                        ? l.timeByClient
+                                        : l.timeByService,
+                                    minutesByKey: minutesLabeled,
+                                  ),
 
                                 const SizedBox(height: 24),
 

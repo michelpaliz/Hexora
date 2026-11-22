@@ -1515,45 +1515,51 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
     }
 
     final sectionChildren = <Widget>[];
-    if (c.loadingSummary) {
+    if (c.loadingSummary && !c.hasLoadedSummary) {
       sectionChildren.add(const AnalyticsSkeleton());
-    } else if (c.summaryError != null) {
-      sectionChildren.add(
-        Text(c.summaryError!, style: t.bodySmall.copyWith(color: cs.error)),
-      );
-    } else if (widget.section == EnableBankingMenu.analyticsOverview) {
-      sectionChildren.add(buildOverview());
-    } else if (widget.section == EnableBankingMenu.analyticsSplit) {
-      sectionChildren.add(buildSplit());
-    } else if (widget.section == EnableBankingMenu.analyticsVolume) {
-      sectionChildren.add(buildVolume());
-    } else if (widget.section == EnableBankingMenu.analyticsTicket) {
-      sectionChildren.add(buildTicket());
-    } else if (widget.section == EnableBankingMenu.analyticsLinked) {
-      sectionChildren.add(buildLinked());
-    } else if (widget.section == EnableBankingMenu.analyticsActivity) {
-      sectionChildren.add(buildActivity());
-    } else if (widget.section == EnableBankingMenu.analyticsStatus) {
-      sectionChildren.add(buildStatus());
-    } else if (widget.section == EnableBankingMenu.analyticsTrends) {
-      sectionChildren.add(buildTrend());
-      if (c.selectedMonth != null) {
+    } else {
+      if (c.loadingSummary) {
+        sectionChildren.add(const LinearProgressIndicator(minHeight: 2));
+      }
+      if (c.summaryError != null) {
         sectionChildren.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Text(
-              l.statementsAnalyticsMonthHint(c.selectedMonth!),
-              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ),
+          Text(c.summaryError!, style: t.bodySmall.copyWith(color: cs.error)),
         );
       }
-    } else if (widget.section == EnableBankingMenu.analyticsTopMerchants) {
-      sectionChildren.add(buildTopMerchants());
-    } else if (widget.section == EnableBankingMenu.analyticsComparison) {
-      sectionChildren.add(buildComparison());
-    } else {
-      sectionChildren.add(buildOverview());
+      if (widget.section == EnableBankingMenu.analyticsOverview) {
+        sectionChildren.add(buildOverview());
+      } else if (widget.section == EnableBankingMenu.analyticsSplit) {
+        sectionChildren.add(buildSplit());
+      } else if (widget.section == EnableBankingMenu.analyticsVolume) {
+        sectionChildren.add(buildVolume());
+      } else if (widget.section == EnableBankingMenu.analyticsTicket) {
+        sectionChildren.add(buildTicket());
+      } else if (widget.section == EnableBankingMenu.analyticsLinked) {
+        sectionChildren.add(buildLinked());
+      } else if (widget.section == EnableBankingMenu.analyticsActivity) {
+        sectionChildren.add(buildActivity());
+      } else if (widget.section == EnableBankingMenu.analyticsStatus) {
+        sectionChildren.add(buildStatus());
+      } else if (widget.section == EnableBankingMenu.analyticsTrends) {
+        sectionChildren.add(buildTrend());
+        if (c.selectedMonth != null) {
+          sectionChildren.add(
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                l.statementsAnalyticsMonthHint(c.selectedMonth!),
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
+          );
+        }
+      } else if (widget.section == EnableBankingMenu.analyticsTopMerchants) {
+        sectionChildren.add(buildTopMerchants());
+      } else if (widget.section == EnableBankingMenu.analyticsComparison) {
+        sectionChildren.add(buildComparison());
+      } else {
+        sectionChildren.add(buildOverview());
+      }
     }
 
     return LayoutBuilder(

@@ -37,6 +37,8 @@ class InsightsChatRuntime extends ChangeNotifier {
   int _generation = 0;
   String _conversationId = _newConversationId();
   bool _resetConversationOnNextSend = false;
+  String? _homeChartsConversationId;
+  List<Map<String, dynamic>> _homeCharts = const [];
   bool _bootstrapped = false;
   int _historyRevision = 0;
   Future<void> _historyWrite = Future<void>.value();
@@ -453,6 +455,8 @@ class InsightsChatRuntime extends ChangeNotifier {
     _generation += 1;
     _conversationId = _newConversationId();
     _resetConversationOnNextSend = true;
+    _homeChartsConversationId = null;
+    _homeCharts = const [];
     _messages.clear();
     _error = null;
     _lastUserMessage = null;
@@ -958,6 +962,7 @@ class InsightsChatRuntime extends ChangeNotifier {
     InsightsSendSource source = InsightsSendSource.typedInput,
     String? conversationIdOverride,
     String? displayTextOverride,
+    List<Map<String, dynamic>>? selectedHomeCharts,
   }) async {
     final trimmed = text.trim();
     final resolvedGroupId = groupId.trim();
@@ -981,6 +986,10 @@ class InsightsChatRuntime extends ChangeNotifier {
     if (activeConversationId != _conversationId) {
       _conversationId = activeConversationId;
     }
+    if (selectedHomeCharts != null) {
+      _homeChartsConversationId = activeConversationId;
+      _homeCharts = selectedHomeCharts.take(3).toList(growable: false);
+    }
     final shouldResetConversation =
         !isFollowUpLike && _resetConversationOnNextSend;
     final semanticText = starterLabel ?? trimmed;
@@ -992,6 +1001,9 @@ class InsightsChatRuntime extends ChangeNotifier {
       'resetConversation': shouldResetConversation,
       'interactionMode': _interactionMode.name,
       'hexoraCapabilities': _hexoraCapabilitiesPayload(isEs),
+      if (_homeChartsConversationId == activeConversationId &&
+          _homeCharts.isNotEmpty)
+        'selectedHomeCharts': _homeCharts,
       if (_interactionMode == InsightsInteractionMode.openQuestions &&
           !shouldResetConversation)
         'history': _messages

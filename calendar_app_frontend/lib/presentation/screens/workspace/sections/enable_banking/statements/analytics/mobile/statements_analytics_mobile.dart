@@ -469,12 +469,33 @@ class _StatementsMobileAnalyticsViewState
         filterBar,
         const Divider(height: 1),
         Expanded(
-          child: c.loadingSummary
+          child: c.loadingSummary && !c.hasLoadedSummary
               ? const Center(child: AnalyticsSkeleton())
-              : c.summaryError != null
+              : c.summaryError != null && !c.hasLoadedSummary
                   ? _retryState(context, c.summaryError!, c.fetchSummary)
                   : CustomScrollView(
                       slivers: [
+                        if (c.loadingSummary)
+                          const SliverToBoxAdapter(
+                            child: LinearProgressIndicator(minHeight: 2),
+                          ),
+                        if (c.summaryError != null)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                              child: Text(
+                                c.summaryError!,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .error,
+                                    ),
+                              ),
+                            ),
+                          ),
                         SliverToBoxAdapter(
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),

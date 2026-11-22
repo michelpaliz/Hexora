@@ -19,20 +19,25 @@ class StatementsAnalyticsController extends ChangeNotifier {
   StatementsAnalyticsController({
     StatementsApi? api,
     String? groupId,
+    this.loadDerivedData = true,
   })  : _api = api ?? StatementsApi(),
         _groupId = groupId;
 
   final StatementsApi _api;
   final String? _groupId;
+  final bool loadDerivedData;
   bool _isDisposed = false;
   int _entriesRequestId = 0;
   int _statusRequestId = 0;
+  String? _loadedEntriesKey;
+  String? _loadedStatusKey;
 
   bool loadingBatches = false;
   String? batchesError;
   List<Map<String, dynamic>> batches = const [];
 
   bool loadingSummary = false;
+  bool hasLoadedSummary = false;
   String? summaryError;
   Map<String, dynamic> summary = const {};
   List<Map<String, dynamic>> settlementYearRows = const [];
@@ -290,7 +295,12 @@ class StatementsAnalyticsController extends ChangeNotifier {
     batchesError = null;
     _notify();
     try {
-      batches = await _api.listImports();
+      final imports = await _api.listImports();
+      batches = _groupId == null
+          ? imports
+          : imports
+              .where((batch) => batch['groupId']?.toString() == _groupId)
+              .toList();
       if (selectedBatchId == null && batches.isNotEmpty) {
         selectedBatchId = 'all';
         await fetchSummary();
@@ -356,7 +366,6 @@ class StatementsAnalyticsController extends ChangeNotifier {
     if (selectedBatchId == null) return;
     loadingSummary = true;
     summaryError = null;
-    _primeDerivedLoading();
     _notify();
     try {
       settlementYearRows = const [];
@@ -382,6 +391,7 @@ class StatementsAnalyticsController extends ChangeNotifier {
           dateTo: dateTo,
         );
       }
+      hasLoadedSummary = true;
       if (periodMode == StatementsAnalyticsPeriodMode.settlementWindow &&
           selectedYear == null) {
         final years = (summary['years'] as List? ?? const [])
@@ -396,17 +406,24 @@ class StatementsAnalyticsController extends ChangeNotifier {
       }
       loadingSummary = false;
       _notify();
-      final entriesRequestId = ++_entriesRequestId;
-      final statusRequestId = ++_statusRequestId;
-      unawaited(_fetchEntries(entriesRequestId));
-      unawaited(_fetchStatus(statusRequestId));
+      if (!loadDerivedData) return;
+      final entriesKey = _entriesCacheKey();
+      if (entriesKey != _loadedEntriesKey) {
+        final entriesRequestId = ++_entriesRequestId;
+        loadingEntries = true;
+        entriesError = null;
+        unawaited(_fetchEntries(entriesRequestId, entriesKey));
+      }
+      final statusKey = selectedBatchId!;
+      if (statusKey != _loadedStatusKey) {
+        final statusRequestId = ++_statusRequestId;
+        loadingStatus = true;
+        statusError = null;
+        unawaited(_fetchStatus(statusRequestId, statusKey));
+      }
+      _notify();
     } catch (e) {
       summaryError = e.toString();
-      loadingEntries = false;
-      loadingStatus = false;
-      entries = const [];
-      statusSnapshot = null;
-      statusError = null;
     } finally {
       loadingSummary = false;
       _notify();
@@ -460,12 +477,9 @@ class StatementsAnalyticsController extends ChangeNotifier {
     }
   }
 
-  Future<void> _fetchEntries(int requestId) async {
+  Future<void> _fetchEntries(int requestId, String cacheKey) async {
     loadingEntries = true;
     entriesError = null;
-    if (requestId == _entriesRequestId) {
-      entries = const [];
-    }
     _notify();
     try {
       final query = _buildEntriesQuery();
@@ -474,10 +488,10 @@ class StatementsAnalyticsController extends ChangeNotifier {
           : await _fetchBatchEntriesByPage(selectedBatchId!, query);
       if (requestId != _entriesRequestId) return;
       entries = fetched;
+      _loadedEntriesKey = cacheKey;
     } catch (e) {
       if (requestId != _entriesRequestId) return;
       entriesError = e.toString();
-      entries = const [];
     } finally {
       if (requestId == _entriesRequestId) {
         loadingEntries = false;
@@ -486,12 +500,9 @@ class StatementsAnalyticsController extends ChangeNotifier {
     }
   }
 
-  Future<void> _fetchStatus(int requestId) async {
+  Future<void> _fetchStatus(int requestId, String cacheKey) async {
     loadingStatus = true;
     statusError = null;
-    if (requestId == _statusRequestId) {
-      statusSnapshot = null;
-    }
     _notify();
     try {
       final snapshot = selectedBatchId == 'all'
@@ -499,6 +510,7 @@ class StatementsAnalyticsController extends ChangeNotifier {
           : await _fetchSingleStatus(selectedBatchId!);
       if (requestId != _statusRequestId) return;
       statusSnapshot = snapshot;
+      _loadedStatusKey = cacheKey;
     } catch (e) {
       if (requestId != _statusRequestId) return;
       statusError = e.toString();
@@ -661,18 +673,26 @@ class StatementsAnalyticsController extends ChangeNotifier {
 
     final topFetch = top < 100 ? 100 : top;
 
-    for (final batch in batches) {
-      final batchId =
-          (batch['batchId'] ?? batch['_id'] ?? batch['id'])?.toString();
-      if (batchId == null || batchId.isEmpty) continue;
-      final res = await _api.analyticsSummary(
-        batchId: batchId,
-        year: useDateRange ? null : selectedYear,
-        month: useDateRange ? null : selectedMonth,
-        top: topFetch,
-        dateFrom: dateFrom,
-        dateTo: dateTo,
-      );
+    final batchIds = batches
+        .map((batch) =>
+            (batch['batchId'] ?? batch['_id'] ?? batch['id'])?.toString())
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    final results = await Future.wait(
+      batchIds.map(
+        (batchId) => _api.analyticsSummary(
+          batchId: batchId,
+          year: useDateRange ? null : selectedYear,
+          month: useDateRange ? null : selectedMonth,
+          top: topFetch,
+          dateFrom: dateFrom,
+          dateTo: dateTo,
+        ),
+      ),
+    );
+
+    for (final res in results) {
       final yearsList = (res['years'] as List? ?? const [])
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
@@ -958,13 +978,14 @@ class StatementsAnalyticsController extends ChangeNotifier {
     return range.end.difference(range.start).inDays + 1;
   }
 
-  void _primeDerivedLoading() {
-    loadingEntries = true;
-    entriesError = null;
-    entries = const [];
-    loadingStatus = true;
-    statusError = null;
-    statusSnapshot = null;
+  String _entriesCacheKey() {
+    final query = _buildEntriesQuery();
+    return [
+      selectedBatchId ?? '',
+      query.year?.toString() ?? '',
+      query.dateFrom == null ? '' : _dateOnly(query.dateFrom!),
+      query.dateTo == null ? '' : _dateOnly(query.dateTo!),
+    ].join('|');
   }
 
   String? _resolveGroupId() {

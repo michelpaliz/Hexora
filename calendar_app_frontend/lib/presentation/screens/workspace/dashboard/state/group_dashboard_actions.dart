@@ -33,8 +33,8 @@ class DashboardActions {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (routeContext) => DashboardPreviewScreen(
-              onAskHexora: (text) {
-                state.askHexoraFromHome(text);
+              onAskHexora: (text, selectedCharts) {
+                state.askHexoraFromHome(text, selectedCharts);
                 Navigator.of(routeContext).pop();
               },
             ),

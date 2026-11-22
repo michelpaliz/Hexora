@@ -252,7 +252,10 @@ class GroupDashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> askHexoraFromHome(String rawText) async {
+  Future<void> askHexoraFromHome(
+    String rawText,
+    List<Map<String, dynamic>> selectedCharts,
+  ) async {
     final text = rawText.trim();
     if (text.isEmpty || !canSeeAdmin || group.id.trim().isEmpty) return;
 
@@ -272,6 +275,7 @@ class GroupDashboardState extends ChangeNotifier {
       text: text,
       groupId: group.id,
       source: InsightsSendSource.typedInput,
+      selectedHomeCharts: selectedCharts,
     );
   }
 
