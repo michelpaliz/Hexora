@@ -196,28 +196,6 @@ class GroupDashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Opens the existing assistant workspace and submits [prompt] into the
-  /// same business-scoped conversation used by the sidebar entry point.
-  void askHexoraFromHome(String prompt) {
-    final text = prompt.trim();
-    if (text.isEmpty || !canSeeAdmin) return;
-    selectSection(Sections.chat);
-    unawaited(_submitHomeAssistantPrompt(text));
-  }
-
-  Future<void> _submitHomeAssistantPrompt(String prompt) async {
-    final runtime = InsightsChatRuntime.instanceFor('panel::${group.id}');
-    await runtime.ensureLoaded(context);
-    if (!context.mounted) return;
-    runtime.setInteractionMode(InsightsInteractionMode.openQuestions);
-    await runtime.send(
-      context: context,
-      text: prompt,
-      groupId: group.id,
-      source: InsightsSendSource.typedInput,
-    );
-  }
-
   void openInvoicesWorkspace({
     required String initialMenu,
     String? initialInvoiceId,

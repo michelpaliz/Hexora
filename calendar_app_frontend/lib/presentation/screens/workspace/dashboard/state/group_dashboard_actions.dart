@@ -33,7 +33,6 @@ class DashboardActions {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (routeContext) => DashboardPreviewScreen(
-              assistantGroup: state.canSeeAdmin ? state.group : null,
               onAskHexora: (text) {
                 state.askHexoraFromHome(text);
                 Navigator.of(routeContext).pop();

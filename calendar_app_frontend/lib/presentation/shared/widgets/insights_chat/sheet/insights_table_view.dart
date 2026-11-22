@@ -38,6 +38,84 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
     return safeMap(effectiveTableForMessage(message)?['summary']);
   }
 
+  /// Keeps structured data readable in the conversation. The complete table
+  /// is still rendered in the workspace panel; the chat only needs a compact
+  /// result attachment that tells the user what is available there.
+  @override
+  Widget buildInsightsTableSummary(
+    BuildContext context, {
+    required ChatMessage message,
+    required ColorScheme cs,
+    required AppTypography t,
+  }) {
+    final isEs =
+        AppLocalizations.of(context)!.localeName.toLowerCase().startsWith('es');
+    final table = effectiveTableForMessage(message);
+    final summary = tableSummaryFromMessage(message);
+    final rows = tableRowsFromMessage(message)
+        .where((row) => row['isSummaryRow'] != true)
+        .length;
+    final rawTotal = table?['totalAvailable'] ?? table?['totalRows'];
+    final total = rawTotal is num ? rawTotal.toInt() : rows;
+    final amount = summary?['amountFormatted']?.toString().trim() ?? '';
+    final label = summary?['label']?.toString().trim();
+    final title = label?.isNotEmpty == true
+        ? label!
+        : (isEs ? 'Resultado disponible' : 'Result available');
+    final countLabel = isEs
+        ? '$total movimientos'
+        : '$total ${total == 1 ? 'movement' : 'movements'}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.table_view_outlined, size: 18, color: cs.primary),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  countLabel,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (amount.isNotEmpty)
+            Text(
+              amount,
+              style: t.bodySmall.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          const SizedBox(width: 8),
+          Icon(Icons.open_in_new_rounded, size: 15, color: cs.primary),
+        ],
+      ),
+    );
+  }
+
   @override
   InsightsDateRange? tableDateFilterFor(ChatMessage message) {
     return tableDateFilters[messageKeyFor(message)];
@@ -375,8 +453,14 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
     required ColorScheme cs,
     required AppTypography t,
   }) {
+    // A structured result can be rendered twice at the same time: once in
+    // the conversation bubble and once in the desktop response workspace.
+    // Scope the controller to the render location as well as the message so
+    // one ScrollController is never attached to two ScrollPositions.
+    final tableControllerKey =
+        '${messageKeyFor(message)}::${identityHashCode(context)}';
     final tableScrollController = tableScrollControllers.putIfAbsent(
-      messageKeyFor(message),
+      tableControllerKey,
       () => ScrollController(),
     );
     final l = AppLocalizations.of(context)!;

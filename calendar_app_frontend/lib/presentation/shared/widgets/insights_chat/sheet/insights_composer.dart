@@ -73,88 +73,92 @@ mixin InsightsComposer on InsightsChatSheetStateBase {
     final sending = runtime.sending;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Focus(
-              onKeyEvent: (node, event) {
-                if (event is KeyDownEvent &&
-                    event.logicalKey == LogicalKeyboardKey.enter &&
-                    !HardwareKeyboard.instance.isShiftPressed) {
-                  if (!sending) submitTypedMessage();
-                  return KeyEventResult.handled;
-                }
-                return KeyEventResult.ignored;
-              },
-              child: TextField(
-                controller: inputCtrl,
-                focusNode: chatComposerFocusNode,
-                enabled: !sending,
-                minLines: 1,
-                maxLines: MediaQuery.viewInsetsOf(context).bottom > 0 ? 2 : 4,
-                textInputAction: TextInputAction.newline,
-                decoration: InputDecoration(
-                  hintText: runtime.interactionMode ==
-                          InsightsInteractionMode.openQuestions
-                      ? isEs
-                          ? 'Pregunta sobre este negocio…'
-                          : 'Ask about this business…'
-                      : isEs
-                          ? 'Escribe un mensaje…'
-                          : 'Write a message…',
-                  hintMaxLines: 1,
-                  filled: true,
-                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.28),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.45),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.45),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: cs.primary, width: 1.4),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 9,
+      child: Focus(
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.enter &&
+              !HardwareKeyboard.instance.isShiftPressed) {
+            if (!sending) submitTypedMessage();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Stack(
+          alignment: Alignment.centerRight,
+          children: [
+            TextField(
+              controller: inputCtrl,
+              focusNode: chatComposerFocusNode,
+              enabled: !sending,
+              minLines: 1,
+              maxLines: MediaQuery.viewInsetsOf(context).bottom > 0 ? 2 : 4,
+              textInputAction: TextInputAction.newline,
+              decoration: InputDecoration(
+                hintText: runtime.interactionMode ==
+                        InsightsInteractionMode.openQuestions
+                    ? isEs
+                        ? 'Pregunta sobre este negocio…'
+                        : 'Ask about this business…'
+                    : isEs
+                        ? 'Escribe un mensaje…'
+                        : 'Write a message…',
+                hintMaxLines: 1,
+                filled: true,
+                fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.28),
+                constraints: const BoxConstraints(minHeight: 52),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: 0.45),
                   ),
                 ),
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurface,
-                  fontSize: 13,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: 0.45),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: cs.primary, width: 1.4),
+                ),
+                contentPadding: const EdgeInsets.fromLTRB(14, 12, 56, 12),
+              ),
+              style: t.bodySmall.copyWith(
+                color: cs.onSurface,
+                fontSize: 13,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 5),
+              child: IconButton.filled(
+                tooltip: isEs ? 'Enviar' : 'Send',
+                onPressed: sending ? null : submitTypedMessage,
+                icon: sending
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: cs.onPrimary,
+                        ),
+                      )
+                    : const Icon(Icons.send_rounded, size: 18),
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(40, 40),
+                  maximumSize: const Size(40, 40),
+                  backgroundColor: cs.primary,
+                  foregroundColor: cs.onPrimary,
+                  disabledBackgroundColor: cs.primary.withValues(alpha: 0.45),
+                  disabledForegroundColor: cs.onPrimary.withValues(alpha: 0.8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(11),
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          FilledButton(
-            onPressed: sending ? null : submitTypedMessage,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(40, 40),
-              padding: const EdgeInsets.symmetric(horizontal: 11),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(11),
-              ),
-            ),
-            child: sending
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: cs.onPrimary,
-                    ),
-                  )
-                : const Icon(Icons.send_rounded, size: 18),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

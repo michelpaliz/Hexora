@@ -124,6 +124,7 @@ void main() {
               builder: (context) => SingleChildScrollView(
                 child: InvoiceLinkConfirmation.build(
                   context,
+                  const <String, dynamic>{},
                   state,
                   false,
                   AppLocalizations.of(context)!,

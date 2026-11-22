@@ -3,7 +3,6 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/downloads/download_job.dart';
 import 'package:hexora/services/shared/content_disposition.dart';
 import 'package:intl/intl.dart';
-import 'package:hexora/services/shared/content_disposition.dart';
 
 /// Presentation only: stored filenames and download URLs remain unchanged.
 class DownloadJobDisplay {
@@ -96,17 +95,6 @@ class DownloadJobDisplay {
     if (job.jobType.endsWith('_excel')) return 'XLSX';
     if (job.jobType.endsWith('_pdf')) return 'PDF';
     return file.contains('.') ? file.split('.').last.toUpperCase() : 'FILE';
-  }
-
-  static String downloadFilename(
-    BuildContext context,
-    DownloadJob job,
-    Map<String, String> headers,
-  ) {
-    return downloadFileNameFromHeaders(
-      headers,
-      fallback: job.effectiveFileName,
-    );
   }
 
   static IconData icon(DownloadJob job) => switch (fileType(job)) {

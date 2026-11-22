@@ -635,6 +635,12 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
     required ColorScheme cs,
     required AppTypography t,
   });
+  Widget buildInsightsTableSummary(
+    BuildContext context, {
+    required ChatMessage message,
+    required ColorScheme cs,
+    required AppTypography t,
+  });
   Widget buildIncomeAmountPromptInput(
     BuildContext context, {
     required ChatMessage promptMessage,

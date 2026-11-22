@@ -1042,11 +1042,20 @@ class InsightsApi {
       action['query_parameters'],
       action['params'],
     ]);
+    // The custom AI headers are useful for native clients, but they trigger a
+    // browser preflight. Older API deployments do not include them in
+    // Access-Control-Allow-Headers, so guided questions fail before reaching
+    // the endpoint. Keep the conversation id in the JSON/query payload on web
+    // and only send the custom headers where CORS is not involved.
     final headers = {
       ...await _authJsonHeaders(),
-      'X-Hexora-Ai-Action': '1',
-      if (conversationId != null) 'X-Hexora-Ai-Conversation': conversationId,
+      if (!kIsWeb) 'X-Hexora-Ai-Action': '1',
+      if (!kIsWeb && conversationId != null)
+        'X-Hexora-Ai-Conversation': conversationId,
     };
+    final browserConversation = kIsWeb && conversationId != null
+        ? {'conversationId': conversationId}
+        : const <String, dynamic>{};
     late final http.Response response;
 
     switch (method) {
@@ -1055,7 +1064,7 @@ class InsightsApi {
           queryParameters: <String, String>{
             ...uri.queryParameters,
             ...queryMapFrom(queryMap),
-            ...queryMapFrom(bodyMap),
+            ...queryMapFrom({...bodyMap, ...browserConversation}),
           },
         );
         await _logRequest(
@@ -1084,7 +1093,7 @@ class InsightsApi {
         }
         break;
       case 'POST':
-        final body = jsonEncode(bodyMap);
+        final body = jsonEncode({...bodyMap, ...browserConversation});
         await _logRequest(
           tag: 'json-action:post',
           method: 'POST',

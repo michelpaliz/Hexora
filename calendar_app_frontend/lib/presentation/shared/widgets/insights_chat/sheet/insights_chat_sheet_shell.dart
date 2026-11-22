@@ -842,15 +842,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
     final selectedAssistantKey = resolveSelectedAssistantKey(messages);
     final selectedAssistantMessage =
         findMessageByKey(messages, selectedAssistantKey);
-    final latestAssistantMessage = latestAssistantMessageFrom(messages);
     final latestIncomeAmountPromptMessage =
         latestIncomeAmountPromptMessageFrom(messages);
-    final latestAssistantMenuMessage =
-        latestIncomeAmountPromptMessage == null &&
-                latestAssistantMessage != null &&
-                messageHasMenu(latestAssistantMessage)
-            ? latestAssistantMessage
-            : null;
     final showComposer = latestIncomeAmountPromptMessage == null;
     final showEmptyComposer = messages.isEmpty && !sending && showComposer;
     final desktopUserMessages =
@@ -1317,7 +1310,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
             sending: sending,
             buildMenuActions: buildMenuActions,
             buildEventPreview: buildEventPreviewBubble,
-            buildStructuredTable: (context, message) => buildInsightsTableView(
+            buildStructuredTable: (context, message) =>
+                buildInsightsTableSummary(
               context,
               message: message,
               cs: Theme.of(context).colorScheme,
@@ -1733,33 +1727,6 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
             ),
           ),
         ],
-        if (latestAssistantMenuMessage != null) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-            child: buildMenuActions(
-              context,
-              message: latestAssistantMenuMessage,
-              cs: cs,
-              t: t,
-              isEs: isEs,
-            ),
-          ),
-        ],
-        if (latestAssistantMenuMessage != null) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-            child: Text(
-              isEs
-                  ? 'Selecciona una opcion para continuar.'
-                  : 'Select an option to continue.',
-              style: t.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
       ],
     );
 
@@ -2056,7 +2023,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 buildMenuActions: buildMenuActions,
                 buildEventPreview: buildEventPreviewBubble,
                 buildStructuredTable: (context, message) =>
-                    buildInsightsTableView(
+                    buildInsightsTableSummary(
                   context,
                   message: message,
                   cs: Theme.of(context).colorScheme,
@@ -2448,40 +2415,6 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                                 t: t,
                                                 isEs: isEs,
                                               ),
-                                            if (latestAssistantMenuMessage !=
-                                                null) ...[
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.fromLTRB(
-                                                        12, 4, 12, 0),
-                                                child: buildMenuActions(
-                                                  context,
-                                                  message:
-                                                      latestAssistantMenuMessage,
-                                                  cs: cs,
-                                                  t: t,
-                                                  isEs: isEs,
-                                                ),
-                                              ),
-                                            ],
-                                            if (latestAssistantMenuMessage !=
-                                                null) ...[
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.fromLTRB(
-                                                        12, 4, 12, 0),
-                                                child: Text(
-                                                  isEs
-                                                      ? 'Selecciona una opcion para continuar.'
-                                                      : 'Select an option to continue.',
-                                                  style: t.bodySmall.copyWith(
-                                                    color: cs.onSurfaceVariant,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
                                             if (error != null) ...[
                                               Padding(
                                                 padding:
