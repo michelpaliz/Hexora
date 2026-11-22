@@ -28,6 +28,49 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
         builder: (_) => const InsightsVisitPlannerGuide(),
       );
 
+  Widget _workspaceEmptyState({
+    required bool isEs,
+    required Color foreground,
+    required Color muted,
+    required Color accent,
+  }) {
+    final typography = AppTypography.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.dashboard_outlined,
+              size: 32,
+              color: accent.withValues(alpha: 0.72),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isEs ? 'Espacio de trabajo' : 'Workspace',
+              style: typography.bodyLarge.copyWith(
+                fontWeight: FontWeight.w800,
+                color: foreground,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isEs
+                  ? 'Los resultados, documentos y herramientas que abras aparecerán aquí.'
+                  : 'Results, documents, and tools you open will appear here.',
+              textAlign: TextAlign.center,
+              style: typography.bodySmall.copyWith(
+                color: muted,
+                height: 1.45,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final base = Theme.of(context);
@@ -663,6 +706,9 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
           ),
         );
 
+    final isDesktopEmbedded =
+        widget.embedded && MediaQuery.of(context).size.width >= 1180;
+
     Widget buildInteractionModeTabs() => Padding(
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
           child: LayoutBuilder(
@@ -746,6 +792,45 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
               return Row(
                 children: [
                   Expanded(child: tabs),
+                  if (isDesktopEmbedded)
+                    PopupMenuButton<int>(
+                      tooltip: isEs
+                          ? 'Distribución del espacio'
+                          : 'Workspace layout',
+                      onSelected: (mode) => setState(() {
+                        desktopWorkspaceLayoutMode = mode;
+                        desktopChatPaneRatio = switch (mode) {
+                          0 => 0.68,
+                          2 => 0.25,
+                          _ => 0.38,
+                        };
+                        desktopChatPaneCollapsed = false;
+                      }),
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 0,
+                          child: Text(isEs ? 'Enfoque en chat' : 'Chat focus'),
+                        ),
+                        PopupMenuItem(
+                          value: 1,
+                          child: Text(
+                              isEs ? 'Vista equilibrada' : 'Balanced split'),
+                        ),
+                        PopupMenuItem(
+                          value: 2,
+                          child: Text(
+                              isEs ? 'Enfoque en espacio' : 'Workspace focus'),
+                        ),
+                      ],
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(
+                          Icons.view_sidebar_outlined,
+                          size: 18,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
                   const SizedBox(width: 8),
                   buildOptionsButton(),
                 ],
@@ -754,13 +839,6 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
           ),
         );
 
-    final isDesktopEmbedded =
-        widget.embedded && MediaQuery.of(context).size.width >= 1180;
-    // Keep the conversation column readable while giving structured results
-    // most of the desktop width. The previous 360px minimum made compact
-    // dashboards feel cramped, especially beside tables.
-    final desktopChatPaneWidth =
-        (MediaQuery.of(context).size.width * 0.34).clamp(520.0, 620.0);
     final selectedAssistantKey = resolveSelectedAssistantKey(messages);
     final selectedAssistantMessage =
         findMessageByKey(messages, selectedAssistantKey);
@@ -1274,42 +1352,19 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
           : cs.outlineVariant.withValues(alpha: isDark ? 0.22 : 0.28);
       if (runtime.interactionMode == InsightsInteractionMode.openQuestions &&
           selectedAssistantMessage == null) {
-        return const InsightsVisitPlannerGuide(embedded: true);
+        return _workspaceEmptyState(
+          isEs: isEs,
+          foreground: outputForeground,
+          muted: outputMuted,
+          accent: outputAccent,
+        );
       }
       if (selectedAssistantMessage == null) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 34,
-                  color: outputAccent.withValues(alpha: 0.8),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  isEs ? 'Selecciona una respuesta' : 'Select a response',
-                  style: t.bodyLarge.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: outputForeground,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isEs
-                      ? 'A la izquierda veras la conversacion. Selecciona una respuesta del asistente para verla aqui con mas detalle.'
-                      : 'Use the left panel for the conversation. Select an assistant response to inspect it here in more detail.',
-                  textAlign: TextAlign.center,
-                  style: t.bodySmall.copyWith(
-                    color: outputMuted,
-                    height: 1.45,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        return _workspaceEmptyState(
+          isEs: isEs,
+          foreground: outputForeground,
+          muted: outputMuted,
+          accent: outputAccent,
         );
       }
 
@@ -1489,9 +1544,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                 ? (isEs
                                     ? 'Revisión de ingresos vinculados'
                                     : 'Linked income review')
-                                : (isEs
-                                    ? 'Respuesta seleccionada'
-                                    : 'Selected response'),
+                                : selectedActionLabel,
                             style: t.bodySmall.copyWith(
                               fontWeight: FontWeight.w800,
                               fontSize: 13,
@@ -2062,452 +2115,530 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
               child: Column(
                 children: [
                   Expanded(
-                    child: Row(
-                      children: [
-                        AnimatedContainer(
-                          key: const ValueKey('insights-desktop-chat-pane'),
-                          duration: const Duration(milliseconds: 180),
-                          curve: Curves.easeOutCubic,
-                          width: desktopChatPaneCollapsed
-                              ? NavigationTokens.railWidth
-                              : desktopChatPaneWidth.toDouble(),
-                          child: SidebarEdgeShell(
-                            collapsed: desktopChatPaneCollapsed,
-                            onToggle: () => setState(() =>
-                                desktopChatPaneCollapsed =
-                                    !desktopChatPaneCollapsed),
-                            backgroundColor: AppColors.dashboardTopBar,
-                            expandTooltip: isEs ? 'Mostrar chat' : 'Show chat',
-                            collapseTooltip:
-                                isEs ? 'Compactar chat' : 'Compact chat',
-                            child: desktopChatPaneCollapsed
-                                ? Container(
-                                    decoration: BoxDecoration(
-                                      color: navy
-                                          ? AppColors.dashboardTopBar
-                                          : cs.surface.withValues(
-                                              alpha: isDark ? 0.20 : 0.35,
+                    child: LayoutBuilder(
+                      builder: (context, layoutConstraints) {
+                        final availableWidth = layoutConstraints.maxWidth;
+                        final maxChatWidth =
+                            (availableWidth - 400).clamp(300.0, availableWidth);
+                        final chatWidth = desktopChatPaneCollapsed
+                            ? NavigationTokens.railWidth
+                            : (availableWidth * desktopChatPaneRatio)
+                                .clamp(300.0, maxChatWidth);
+                        return Row(
+                          children: [
+                            AnimatedContainer(
+                              key: const ValueKey('insights-desktop-chat-pane'),
+                              duration: const Duration(milliseconds: 180),
+                              curve: Curves.easeOutCubic,
+                              width: chatWidth,
+                              child: SidebarEdgeShell(
+                                collapsed: desktopChatPaneCollapsed,
+                                onToggle: () => setState(() =>
+                                    desktopChatPaneCollapsed =
+                                        !desktopChatPaneCollapsed),
+                                backgroundColor: AppColors.dashboardTopBar,
+                                expandTooltip:
+                                    isEs ? 'Mostrar chat' : 'Show chat',
+                                collapseTooltip:
+                                    isEs ? 'Compactar chat' : 'Compact chat',
+                                child: desktopChatPaneCollapsed
+                                    ? Container(
+                                        decoration: BoxDecoration(
+                                          color: navy
+                                              ? AppColors.dashboardTopBar
+                                              : cs.surface.withValues(
+                                                  alpha: isDark ? 0.20 : 0.35,
+                                                ),
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: cs.outlineVariant.withValues(
+                                              alpha: isDark ? 0.18 : 0.22,
                                             ),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: cs.outlineVariant.withValues(
-                                          alpha: isDark ? 0.18 : 0.22,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                            8,
-                                            8,
-                                            8,
-                                            6,
-                                          ),
-                                          child: Column(
-                                            children: [
-                                              buildOptionsButton(),
-                                            ],
                                           ),
                                         ),
-                                        Expanded(
-                                          child: Center(
-                                            child: RotatedBox(
-                                              quarterTurns: 3,
-                                              child: Text(
-                                                isEs ? 'Chat' : 'Chat',
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: t.bodySmall.copyWith(
-                                                  color: cs.onSurfaceVariant,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w800,
-                                                  letterSpacing: 0,
+                                        child: Column(
+                                          children: [
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                8,
+                                                8,
+                                                8,
+                                                6,
+                                              ),
+                                              child: Column(
+                                                children: [
+                                                  buildOptionsButton(),
+                                                ],
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: Center(
+                                                child: RotatedBox(
+                                                  quarterTurns: 3,
+                                                  child: Text(
+                                                    isEs ? 'Chat' : 'Chat',
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: t.bodySmall.copyWith(
+                                                      color:
+                                                          cs.onSurfaceVariant,
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      letterSpacing: 0,
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
                                             ),
+                                          ],
+                                        ),
+                                      )
+                                    : Container(
+                                        decoration: BoxDecoration(
+                                          color: navy
+                                              ? AppColors.dashboardTopBar
+                                              : cs.surface.withValues(
+                                                  alpha: isDark ? 0.20 : 0.35),
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: cs.outlineVariant.withValues(
+                                              alpha: isDark ? 0.18 : 0.22,
+                                            ),
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  )
-                                : Container(
-                                    decoration: BoxDecoration(
-                                      color: navy
-                                          ? AppColors.dashboardTopBar
-                                          : cs.surface.withValues(
-                                              alpha: isDark ? 0.20 : 0.35),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: cs.outlineVariant.withValues(
-                                          alpha: isDark ? 0.18 : 0.22,
-                                        ),
-                                      ),
-                                    ),
-                                    clipBehavior: Clip.antiAlias,
-                                    child: Column(
-                                      children: [
-                                        if (legacyToolbarEnabled())
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                                12, 8, 12, 6),
-                                            child: SingleChildScrollView(
-                                              scrollDirection: Axis.horizontal,
-                                              child: Row(
-                                                children: [
-                                                  buildVisitPlannerGuideButton(),
-                                                  const SizedBox(width: 6),
-                                                  buildContextInfoButton(),
-                                                  const SizedBox(width: 6),
-                                                  buildStartOverButton(),
-                                                  const SizedBox(width: 6),
-                                                  buildActionHistoryButton(),
-                                                  const SizedBox(width: 6),
-                                                  if (dateRangeLabel !=
-                                                      null) ...[
-                                                    ConstrainedBox(
-                                                      constraints:
-                                                          const BoxConstraints(
-                                                        maxWidth: 190,
+                                        clipBehavior: Clip.antiAlias,
+                                        child: Column(
+                                          children: [
+                                            if (legacyToolbarEnabled())
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.fromLTRB(
+                                                        12, 8, 12, 6),
+                                                child: SingleChildScrollView(
+                                                  scrollDirection:
+                                                      Axis.horizontal,
+                                                  child: Row(
+                                                    children: [
+                                                      buildVisitPlannerGuideButton(),
+                                                      const SizedBox(width: 6),
+                                                      buildContextInfoButton(),
+                                                      const SizedBox(width: 6),
+                                                      buildStartOverButton(),
+                                                      const SizedBox(width: 6),
+                                                      buildActionHistoryButton(),
+                                                      const SizedBox(width: 6),
+                                                      if (dateRangeLabel !=
+                                                          null) ...[
+                                                        ConstrainedBox(
+                                                          constraints:
+                                                              const BoxConstraints(
+                                                            maxWidth: 190,
+                                                          ),
+                                                          child:
+                                                              buildDateRangeChip(),
+                                                        ),
+                                                        const SizedBox(
+                                                            width: 6),
+                                                      ],
+                                                      PopupMenuButton<int>(
+                                                        tooltip: l
+                                                            .insightsChatDaysTooltip,
+                                                        onSelected:
+                                                            runtime.setDays,
+                                                        itemBuilder:
+                                                            (context) => const [
+                                                          NavigationPopupMenuItem(
+                                                              value: 30,
+                                                              child:
+                                                                  Text('30d')),
+                                                          NavigationPopupMenuItem(
+                                                              value: 60,
+                                                              child:
+                                                                  Text('60d')),
+                                                          NavigationPopupMenuItem(
+                                                              value: 90,
+                                                              child:
+                                                                  Text('90d')),
+                                                          NavigationPopupMenuItem(
+                                                              value: 120,
+                                                              child:
+                                                                  Text('120d')),
+                                                          NavigationPopupMenuItem(
+                                                              value: 180,
+                                                              child:
+                                                                  Text('180d')),
+                                                        ],
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                            horizontal: 10,
+                                                            vertical: 5,
+                                                          ),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: navy
+                                                                ? cs.surfaceContainerLow
+                                                                : canvas,
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        20),
+                                                            border: Border.all(
+                                                              color: cs
+                                                                  .outlineVariant
+                                                                  .withValues(
+                                                                      alpha:
+                                                                          0.6),
+                                                            ),
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            children: [
+                                                              Icon(
+                                                                Icons
+                                                                    .calendar_today_rounded,
+                                                                size: 11,
+                                                                color: cs
+                                                                    .onSurfaceVariant,
+                                                              ),
+                                                              const SizedBox(
+                                                                  width: 5),
+                                                              Text(
+                                                                '${l.insightsChatDaysPrefix}: ${days}d',
+                                                                style: t
+                                                                    .bodySmall
+                                                                    .copyWith(
+                                                                  color: cs
+                                                                      .onSurface,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                  fontSize: 11,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
                                                       ),
-                                                      child:
-                                                          buildDateRangeChip(),
-                                                    ),
-                                                    const SizedBox(width: 6),
-                                                  ],
-                                                  PopupMenuButton<int>(
-                                                    tooltip: l
-                                                        .insightsChatDaysTooltip,
-                                                    onSelected: runtime.setDays,
-                                                    itemBuilder: (context) =>
-                                                        const [
-                                                      NavigationPopupMenuItem(
-                                                          value: 30,
-                                                          child: Text('30d')),
-                                                      NavigationPopupMenuItem(
-                                                          value: 60,
-                                                          child: Text('60d')),
-                                                      NavigationPopupMenuItem(
-                                                          value: 90,
-                                                          child: Text('90d')),
-                                                      NavigationPopupMenuItem(
-                                                          value: 120,
-                                                          child: Text('120d')),
-                                                      NavigationPopupMenuItem(
-                                                          value: 180,
-                                                          child: Text('180d')),
-                                                    ],
-                                                    child: Container(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 5,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: navy
-                                                            ? cs.surfaceContainerLow
-                                                            : canvas,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(20),
-                                                        border: Border.all(
+                                                      const SizedBox(width: 6),
+                                                      ChoiceChip(
+                                                        avatar: Icon(
+                                                          Icons
+                                                              .auto_fix_high_rounded,
+                                                          size: 13,
+                                                          color: mode ==
+                                                                  InsightsResponseMode
+                                                                      .auto
+                                                              ? cs.onPrimaryContainer
+                                                              : cs.onSurfaceVariant,
+                                                        ),
+                                                        label: Text(l
+                                                            .insightsChatModeAuto),
+                                                        selected: mode ==
+                                                            InsightsResponseMode
+                                                                .auto,
+                                                        selectedColor:
+                                                            cs.primaryContainer,
+                                                        backgroundColor: cs
+                                                            .surfaceContainerHighest
+                                                            .withValues(
+                                                                alpha: isDark
+                                                                    ? 0.34
+                                                                    : 0.52),
+                                                        visualDensity:
+                                                            VisualDensity
+                                                                .compact,
+                                                        labelStyle: t.bodySmall
+                                                            .copyWith(
+                                                          fontSize: 11,
+                                                          color: mode ==
+                                                                  InsightsResponseMode
+                                                                      .auto
+                                                              ? cs.onPrimaryContainer
+                                                              : cs.onSurfaceVariant,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                        ),
+                                                        side: BorderSide(
                                                           color: cs
                                                               .outlineVariant
                                                               .withValues(
                                                                   alpha: 0.6),
                                                         ),
+                                                        onSelected: sending
+                                                            ? null
+                                                            : (_) =>
+                                                                runtime.setMode(
+                                                                    InsightsResponseMode
+                                                                        .auto),
                                                       ),
-                                                      child: Row(
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        children: [
-                                                          Icon(
-                                                            Icons
-                                                                .calendar_today_rounded,
-                                                            size: 11,
-                                                            color: cs
-                                                                .onSurfaceVariant,
-                                                          ),
-                                                          const SizedBox(
-                                                              width: 5),
-                                                          Text(
-                                                            '${l.insightsChatDaysPrefix}: ${days}d',
-                                                            style: t.bodySmall
-                                                                .copyWith(
-                                                              color:
-                                                                  cs.onSurface,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w700,
-                                                              fontSize: 11,
-                                                            ),
-                                                          ),
-                                                        ],
+                                                      const SizedBox(width: 6),
+                                                      ChoiceChip(
+                                                        avatar: Icon(
+                                                          Icons.stream_rounded,
+                                                          size: 13,
+                                                          color: mode ==
+                                                                  InsightsResponseMode
+                                                                      .stream
+                                                              ? cs.onPrimaryContainer
+                                                              : cs.onSurfaceVariant,
+                                                        ),
+                                                        label: Text(l
+                                                            .insightsChatModeStream),
+                                                        selected: mode ==
+                                                            InsightsResponseMode
+                                                                .stream,
+                                                        selectedColor:
+                                                            cs.primaryContainer,
+                                                        backgroundColor: cs
+                                                            .surfaceContainerHighest
+                                                            .withValues(
+                                                                alpha: isDark
+                                                                    ? 0.34
+                                                                    : 0.52),
+                                                        visualDensity:
+                                                            VisualDensity
+                                                                .compact,
+                                                        labelStyle: t.bodySmall
+                                                            .copyWith(
+                                                          fontSize: 11,
+                                                          color: mode ==
+                                                                  InsightsResponseMode
+                                                                      .stream
+                                                              ? cs.onPrimaryContainer
+                                                              : cs.onSurfaceVariant,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                        ),
+                                                        side: BorderSide(
+                                                          color: cs
+                                                              .outlineVariant
+                                                              .withValues(
+                                                                  alpha: 0.6),
+                                                        ),
+                                                        onSelected: sending
+                                                            ? null
+                                                            : (_) => runtime.setMode(
+                                                                InsightsResponseMode
+                                                                    .stream),
                                                       ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  ChoiceChip(
-                                                    avatar: Icon(
-                                                      Icons
-                                                          .auto_fix_high_rounded,
-                                                      size: 13,
-                                                      color: mode ==
-                                                              InsightsResponseMode
-                                                                  .auto
-                                                          ? cs.onPrimaryContainer
-                                                          : cs.onSurfaceVariant,
-                                                    ),
-                                                    label: Text(
-                                                        l.insightsChatModeAuto),
-                                                    selected: mode ==
-                                                        InsightsResponseMode
-                                                            .auto,
-                                                    selectedColor:
-                                                        cs.primaryContainer,
-                                                    backgroundColor: cs
-                                                        .surfaceContainerHighest
-                                                        .withValues(
-                                                            alpha: isDark
-                                                                ? 0.34
-                                                                : 0.52),
-                                                    visualDensity:
-                                                        VisualDensity.compact,
-                                                    labelStyle:
-                                                        t.bodySmall.copyWith(
-                                                      fontSize: 11,
-                                                      color: mode ==
-                                                              InsightsResponseMode
-                                                                  .auto
-                                                          ? cs.onPrimaryContainer
-                                                          : cs.onSurfaceVariant,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                    ),
-                                                    side: BorderSide(
-                                                      color: cs.outlineVariant
-                                                          .withValues(
-                                                              alpha: 0.6),
-                                                    ),
-                                                    onSelected: sending
-                                                        ? null
-                                                        : (_) => runtime.setMode(
-                                                            InsightsResponseMode
-                                                                .auto),
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  ChoiceChip(
-                                                    avatar: Icon(
-                                                      Icons.stream_rounded,
-                                                      size: 13,
-                                                      color: mode ==
-                                                              InsightsResponseMode
-                                                                  .stream
-                                                          ? cs.onPrimaryContainer
-                                                          : cs.onSurfaceVariant,
-                                                    ),
-                                                    label: Text(l
-                                                        .insightsChatModeStream),
-                                                    selected: mode ==
-                                                        InsightsResponseMode
-                                                            .stream,
-                                                    selectedColor:
-                                                        cs.primaryContainer,
-                                                    backgroundColor: cs
-                                                        .surfaceContainerHighest
-                                                        .withValues(
-                                                            alpha: isDark
-                                                                ? 0.34
-                                                                : 0.52),
-                                                    visualDensity:
-                                                        VisualDensity.compact,
-                                                    labelStyle:
-                                                        t.bodySmall.copyWith(
-                                                      fontSize: 11,
-                                                      color: mode ==
-                                                              InsightsResponseMode
-                                                                  .stream
-                                                          ? cs.onPrimaryContainer
-                                                          : cs.onSurfaceVariant,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                    ),
-                                                    side: BorderSide(
-                                                      color: cs.outlineVariant
-                                                          .withValues(
-                                                              alpha: 0.6),
-                                                    ),
-                                                    onSelected: sending
-                                                        ? null
-                                                        : (_) => runtime.setMode(
-                                                            InsightsResponseMode
-                                                                .stream),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        buildInteractionModeTabs(),
-                                        Expanded(
-                                            child:
-                                                buildConversationMessageList()),
-                                        if (latestIncomeAmountPromptMessage !=
-                                            null)
-                                          buildIncomeAmountPromptInput(
-                                            context,
-                                            promptMessage:
-                                                latestIncomeAmountPromptMessage,
-                                            cs: cs,
-                                            t: t,
-                                            isEs: isEs,
-                                          ),
-                                        if (latestAssistantMenuMessage !=
-                                            null) ...[
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                                12, 4, 12, 0),
-                                            child: buildMenuActions(
-                                              context,
-                                              message:
-                                                  latestAssistantMenuMessage,
-                                              cs: cs,
-                                              t: t,
-                                              isEs: isEs,
-                                            ),
-                                          ),
-                                        ],
-                                        if (latestAssistantMenuMessage !=
-                                            null) ...[
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                                12, 4, 12, 0),
-                                            child: Text(
-                                              isEs
-                                                  ? 'Selecciona una opcion para continuar.'
-                                                  : 'Select an option to continue.',
-                                              style: t.bodySmall.copyWith(
-                                                color: cs.onSurfaceVariant,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                        if (error != null) ...[
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                                12, 4, 12, 0),
-                                            child: Text(
-                                              error,
-                                              style: t.bodySmall.copyWith(
-                                                color: cs.error,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                        if (showTimeoutActions) ...[
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                                12, 4, 12, 0),
-                                            child: Wrap(
-                                              spacing: 6,
-                                              runSpacing: 6,
-                                              children: [
-                                                OutlinedButton.icon(
-                                                  onPressed: retryLast,
-                                                  icon: const Icon(
-                                                      Icons.refresh_rounded,
-                                                      size: 14),
-                                                  label: Text(
-                                                    retryText,
-                                                    style: t.bodySmall
-                                                        .copyWith(fontSize: 12),
-                                                  ),
-                                                  style:
-                                                      OutlinedButton.styleFrom(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 6),
-                                                    minimumSize: Size.zero,
-                                                    tapTargetSize:
-                                                        MaterialTapTargetSize
-                                                            .shrinkWrap,
+                                                    ],
                                                   ),
                                                 ),
-                                                FilledButton.tonalIcon(
-                                                  onPressed: quickSummary,
-                                                  icon: const Icon(
-                                                      Icons.summarize_outlined,
-                                                      size: 14),
-                                                  label: Text(
-                                                    quickSummaryText,
-                                                    style: t.bodySmall
-                                                        .copyWith(fontSize: 12),
-                                                  ),
-                                                  style: FilledButton.styleFrom(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 6),
-                                                    minimumSize: Size.zero,
-                                                    tapTargetSize:
-                                                        MaterialTapTargetSize
-                                                            .shrinkWrap,
+                                              ),
+                                            buildInteractionModeTabs(),
+                                            Expanded(
+                                                child:
+                                                    buildConversationMessageList()),
+                                            if (latestIncomeAmountPromptMessage !=
+                                                null)
+                                              buildIncomeAmountPromptInput(
+                                                context,
+                                                promptMessage:
+                                                    latestIncomeAmountPromptMessage,
+                                                cs: cs,
+                                                t: t,
+                                                isEs: isEs,
+                                              ),
+                                            if (latestAssistantMenuMessage !=
+                                                null) ...[
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.fromLTRB(
+                                                        12, 4, 12, 0),
+                                                child: buildMenuActions(
+                                                  context,
+                                                  message:
+                                                      latestAssistantMenuMessage,
+                                                  cs: cs,
+                                                  t: t,
+                                                  isEs: isEs,
+                                                ),
+                                              ),
+                                            ],
+                                            if (latestAssistantMenuMessage !=
+                                                null) ...[
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.fromLTRB(
+                                                        12, 4, 12, 0),
+                                                child: Text(
+                                                  isEs
+                                                      ? 'Selecciona una opcion para continuar.'
+                                                      : 'Select an option to continue.',
+                                                  style: t.bodySmall.copyWith(
+                                                    color: cs.onSurfaceVariant,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                        if (showComposer && !showEmptyComposer)
-                                          buildChatComposer(
-                                            context,
-                                            cs: cs,
-                                            t: t,
-                                            isEs: isEs,
-                                          ),
-                                        const SizedBox(height: 12),
-                                      ],
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          flex: 9,
-                          child: Column(
-                            children: [
-                              if (workspaceChrome?.active == true)
-                                Theme(
-                                  data: resultsTheme,
-                                  child: Builder(
-                                    builder: (tabContext) => workspaceChrome!
-                                        .tabBarBuilder(tabContext),
-                                  ),
-                                ),
-                              Expanded(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: resultsTheme.colorScheme.surface,
-                                    borderRadius: BorderRadius.circular(
-                                      HexoraAiOutputTokens.surfaceRadius,
-                                    ),
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: Theme(
-                                    data: resultsTheme,
-                                    child: Builder(
-                                      builder: buildDesktopResponsePanel,
+                                              ),
+                                            ],
+                                            if (error != null) ...[
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.fromLTRB(
+                                                        12, 4, 12, 0),
+                                                child: Text(
+                                                  error,
+                                                  style: t.bodySmall.copyWith(
+                                                    color: cs.error,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                            if (showTimeoutActions) ...[
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.fromLTRB(
+                                                        12, 4, 12, 0),
+                                                child: Wrap(
+                                                  spacing: 6,
+                                                  runSpacing: 6,
+                                                  children: [
+                                                    OutlinedButton.icon(
+                                                      onPressed: retryLast,
+                                                      icon: const Icon(
+                                                          Icons.refresh_rounded,
+                                                          size: 14),
+                                                      label: Text(
+                                                        retryText,
+                                                        style: t.bodySmall
+                                                            .copyWith(
+                                                                fontSize: 12),
+                                                      ),
+                                                      style: OutlinedButton
+                                                          .styleFrom(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 12,
+                                                                vertical: 6),
+                                                        minimumSize: Size.zero,
+                                                        tapTargetSize:
+                                                            MaterialTapTargetSize
+                                                                .shrinkWrap,
+                                                      ),
+                                                    ),
+                                                    FilledButton.tonalIcon(
+                                                      onPressed: quickSummary,
+                                                      icon: const Icon(
+                                                          Icons
+                                                              .summarize_outlined,
+                                                          size: 14),
+                                                      label: Text(
+                                                        quickSummaryText,
+                                                        style: t.bodySmall
+                                                            .copyWith(
+                                                                fontSize: 12),
+                                                      ),
+                                                      style: FilledButton
+                                                          .styleFrom(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 12,
+                                                                vertical: 6),
+                                                        minimumSize: Size.zero,
+                                                        tapTargetSize:
+                                                            MaterialTapTargetSize
+                                                                .shrinkWrap,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                            if (showComposer &&
+                                                !showEmptyComposer)
+                                              buildChatComposer(
+                                                context,
+                                                cs: cs,
+                                                t: t,
+                                                isEs: isEs,
+                                              ),
+                                            const SizedBox(height: 12),
+                                          ],
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            if (desktopChatPaneCollapsed)
+                              const SizedBox(width: 10)
+                            else
+                              MouseRegion(
+                                cursor: SystemMouseCursors.resizeColumn,
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onHorizontalDragUpdate: (details) {
+                                    setState(() {
+                                      desktopChatPaneRatio = ((chatWidth +
+                                                      details.delta.dx)
+                                                  .clamp(300.0, maxChatWidth) /
+                                              availableWidth)
+                                          .clamp(0.25, 0.68);
+                                      desktopWorkspaceLayoutMode = 1;
+                                    });
+                                  },
+                                  child: SizedBox(
+                                    width: 10,
+                                    child: Center(
+                                      child: Container(
+                                        width: 1,
+                                        height: double.infinity,
+                                        color: cs.outlineVariant.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            Expanded(
+                              flex: 9,
+                              child: Column(
+                                children: [
+                                  if (workspaceChrome?.active == true)
+                                    Theme(
+                                      data: resultsTheme,
+                                      child: Builder(
+                                        builder: (tabContext) =>
+                                            workspaceChrome!
+                                                .tabBarBuilder(tabContext),
+                                      ),
+                                    ),
+                                  Expanded(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: resultsTheme.colorScheme.surface,
+                                        borderRadius: BorderRadius.circular(
+                                          HexoraAiOutputTokens.surfaceRadius,
+                                        ),
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: Theme(
+                                        data: resultsTheme,
+                                        child: Builder(
+                                          builder: buildDesktopResponsePanel,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ],

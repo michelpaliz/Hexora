@@ -907,7 +907,8 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
           created ? loc.workerCreated : loc.workerUpdated,
         )));
         setState(() {
-          _selectedWorker = savedWorker;
+          _selectedWorker =
+              savedWorker.status == WorkerStatus.archived ? null : savedWorker;
           _showPartners = isPartnerWorker(savedWorker, widget.group);
           _showWorkerForm = false;
           _showInlineTimeEntry = false;

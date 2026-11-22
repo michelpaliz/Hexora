@@ -511,6 +511,32 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
     final reviewWarning =
         isDark ? const Color(0xFFFFB45B) : const Color(0xFF9A5B00);
 
+    double columnWidth(Map<String, dynamic> column) {
+      final key = (column['key']?.toString() ?? '').toLowerCase();
+      final label = (column['label']?.toString() ?? '').toLowerCase();
+      final descriptor = '$key $label';
+      if (key.startsWith('__') || descriptor.contains('action')) return 64;
+      if (columnIsNumeric(column)) return 148;
+      if (descriptor.contains('date') || descriptor.contains('fecha')) {
+        return 128;
+      }
+      if (descriptor.contains('description') ||
+          descriptor.contains('concept') ||
+          descriptor.contains('client') ||
+          descriptor.contains('cliente')) {
+        return 240;
+      }
+      if (descriptor.contains('status') || descriptor.contains('estado')) {
+        return 146;
+      }
+      return 164;
+    }
+
+    final minimumTableWidth = 24 +
+        displayedColumns.fold<double>(
+            0, (sum, column) => sum + columnWidth(column)) +
+        (displayedColumns.length - 1).clamp(0, 100).toDouble() * 18;
+
     final headerStyle = t.bodySmall.copyWith(
       color: isDark
           ? cs.onSurfaceVariant
@@ -905,9 +931,10 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
                       primary: false,
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
-                          minWidth: tableConstraints.maxWidth > 760
-                              ? tableConstraints.maxWidth
-                              : 760,
+                          minWidth:
+                              minimumTableWidth > tableConstraints.maxWidth
+                                  ? minimumTableWidth
+                                  : tableConstraints.maxWidth,
                         ),
                         child: DataTable(
                           headingRowHeight: HexoraAiOutputTokens.headerHeight,
@@ -938,7 +965,14 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
                             for (final column in displayedColumns)
                               DataColumn(
                                 numeric: columnIsNumeric(column),
-                                label: Text(column['label']?.toString() ?? ''),
+                                label: SizedBox(
+                                  width: columnWidth(column),
+                                  child: Text(
+                                    column['label']?.toString() ?? '',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                               ),
                           ],
                           rows: [

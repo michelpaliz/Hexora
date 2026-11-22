@@ -237,6 +237,56 @@ class _WorkerEditorFormState extends State<_WorkerEditorForm> {
     }
   }
 
+  Future<void> _removeWorker() async {
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final name = (widget.worker.displayName ?? '').trim();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isSpanish ? 'Eliminar trabajador' : 'Remove worker'),
+        content: Text(
+          isSpanish
+              ? '¿Quieres eliminar a ${name.isEmpty ? 'este trabajador' : name} de la lista activa? Sus horas y visitas anteriores se conservarán.'
+              : 'Remove ${name.isEmpty ? 'this worker' : name} from the active list? Previous hours and visits will be preserved.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(isSpanish ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(isSpanish ? 'Eliminar' : 'Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _saving = true);
+    try {
+      final token = await widget.getToken();
+      final saved = await widget.repo.updateWorker(
+        widget.group.id,
+        widget.worker.id,
+        widget.worker.copyWith(status: WorkerStatus.archived),
+        token,
+      );
+      if (!mounted) return;
+      widget.onSaved(false, saved);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$error')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -365,16 +415,31 @@ class _WorkerEditorFormState extends State<_WorkerEditorForm> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: HexoraButton(
-                      icon: Icons.save_outlined,
-                      label:
-                          widget.isCreate ? l.createWorkerCta : l.saveChanges,
-                      size: HexoraButtonSize.compact,
-                      loading: _saving,
-                      onPressed: _saving ? null : _save,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (!widget.isCreate &&
+                          widget.worker.status == WorkerStatus.active) ...[
+                        HexoraButton(
+                          icon: Icons.person_remove_outlined,
+                          label: isSpanish
+                              ? 'Eliminar trabajador'
+                              : 'Remove worker',
+                          variant: HexoraButtonVariant.danger,
+                          size: HexoraButtonSize.compact,
+                          onPressed: _saving ? null : _removeWorker,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      HexoraButton(
+                        icon: Icons.save_outlined,
+                        label:
+                            widget.isCreate ? l.createWorkerCta : l.saveChanges,
+                        size: HexoraButtonSize.compact,
+                        loading: _saving,
+                        onPressed: _saving ? null : _save,
+                      ),
+                    ],
                   ),
                 ],
               ),

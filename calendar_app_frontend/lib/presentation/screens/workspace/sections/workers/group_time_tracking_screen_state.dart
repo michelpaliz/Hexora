@@ -288,7 +288,10 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
     setState(() {
       _workers = [
         for (final worker in _workers)
-          if (worker.id == updatedWorker.id) updatedWorker else worker,
+          if (worker.id != updatedWorker.id)
+            worker
+          else if (updatedWorker.status == WorkerStatus.active)
+            updatedWorker,
       ];
     });
   }

@@ -79,7 +79,8 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Descartar cambios'),
-        content: const Text('Tienes cambios sin guardar. ¿Quieres descartarlos?'),
+        content:
+            const Text('Tienes cambios sin guardar. ¿Quieres descartarlos?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -129,7 +130,58 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
       Navigator.of(context).pop(savedWorker);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('$error')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _removeWorker() async {
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final name = (widget.worker.displayName ?? '').trim();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isSpanish ? 'Eliminar trabajador' : 'Remove worker'),
+        content: Text(
+          isSpanish
+              ? '¿Quieres eliminar a ${name.isEmpty ? 'este trabajador' : name} de la lista activa? Sus horas y visitas anteriores se conservarán.'
+              : 'Remove ${name.isEmpty ? 'this worker' : name} from the active list? Previous hours and visits will be preserved.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(isSpanish ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(isSpanish ? 'Eliminar' : 'Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _saving = true);
+    try {
+      final token = await widget.getToken();
+      final savedWorker = await widget.repo.updateWorker(
+        widget.group.id,
+        widget.worker.id,
+        widget.worker.copyWith(status: WorkerStatus.archived),
+        token,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(savedWorker);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$error')),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -172,7 +224,8 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
               alignment: Alignment.centerLeft,
               child: Text(
                 l.editWorker,
-                style: typography.titleLarge.copyWith(fontWeight: FontWeight.w800),
+                style:
+                    typography.titleLarge.copyWith(fontWeight: FontWeight.w800),
               ),
             ),
           ),
@@ -182,98 +235,134 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
               key: _formKey,
               child: SingleChildScrollView(
                 controller: widget.scrollController,
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  TextFormField(
-                    controller: _nameCtrl,
-                    decoration: _decoration(l.workerNameLabel),
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _rateCtrl,
-                    decoration: _decoration(l.hourlyRateLabel),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) return null;
-                      final amount = double.tryParse(value.replaceAll(',', '.'));
-                      return amount == null || amount < 0 ? l.invalidRate : null;
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  Row(children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        isExpanded: true,
-                        initialValue: _currency,
-                        decoration: _decoration(l.currencyLabel),
-                        items: workerCurrencyOptions
-                            .map((currency) => DropdownMenuItem(
-                                value: currency, child: Text(currency)))
-                            .toList(),
-                        onChanged: (value) =>
-                            setState(() => _currency = value ?? defaultWorkerCurrency),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextFormField(
+                        controller: _nameCtrl,
+                        decoration: _decoration(l.workerNameLabel),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: DropdownButtonFormField<WorkerStatus>(
-                        isExpanded: true,
-                        initialValue: _status,
-                        decoration: _decoration(l.statusLabel),
-                        items: [
-                          DropdownMenuItem(
-                              value: WorkerStatus.active,
-                              child: Text(l.statusActive)),
-                          DropdownMenuItem(
-                              value: WorkerStatus.archived,
-                              child: Text(l.statusInactive)),
-                        ],
-                        onChanged: (value) => setState(
-                            () => _status = value ?? WorkerStatus.active),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _rateCtrl,
+                        decoration: _decoration(l.hourlyRateLabel),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty)
+                            return null;
+                          final amount =
+                              double.tryParse(value.replaceAll(',', '.'));
+                          return amount == null || amount < 0
+                              ? l.invalidRate
+                              : null;
+                        },
                       ),
-                    ),
-                  ]),
-                  if (widget.worker.userId != null && widget.worker.account == null) ...[
-                    const SizedBox(height: 10),
-                    DropdownButtonFormField<String>(
-                      initialValue: _operationalRole,
-                      decoration: _decoration('Rol de trabajador'),
-                      items: const [
-                        DropdownMenuItem(value: 'worker', child: Text('Trabajador')),
-                        DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
+                      const SizedBox(height: 10),
+                      Row(children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            isExpanded: true,
+                            initialValue: _currency,
+                            decoration: _decoration(l.currencyLabel),
+                            items: workerCurrencyOptions
+                                .map((currency) => DropdownMenuItem(
+                                    value: currency, child: Text(currency)))
+                                .toList(),
+                            onChanged: (value) => setState(() =>
+                                _currency = value ?? defaultWorkerCurrency),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: DropdownButtonFormField<WorkerStatus>(
+                            isExpanded: true,
+                            initialValue: _status,
+                            decoration: _decoration(l.statusLabel),
+                            items: [
+                              DropdownMenuItem(
+                                  value: WorkerStatus.active,
+                                  child: Text(l.statusActive)),
+                              DropdownMenuItem(
+                                  value: WorkerStatus.archived,
+                                  child: Text(l.statusInactive)),
+                            ],
+                            onChanged: (value) => setState(
+                                () => _status = value ?? WorkerStatus.active),
+                          ),
+                        ),
+                      ]),
+                      if (widget.worker.userId != null &&
+                          widget.worker.account == null) ...[
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<String>(
+                          initialValue: _operationalRole,
+                          decoration: _decoration('Rol de trabajador'),
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'worker', child: Text('Trabajador')),
+                            DropdownMenuItem(
+                                value: 'supervisor', child: Text('Supervisor')),
+                          ],
+                          onChanged: (value) => setState(
+                              () => _operationalRole = value ?? 'worker'),
+                        ),
                       ],
-                      onChanged: (value) =>
-                          setState(() => _operationalRole = value ?? 'worker'),
-                    ),
-                  ],
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _roleTagCtrl,
-                    decoration: _decoration(l.roleLabel),
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _notesCtrl,
-                    decoration: _decoration(l.notesLabel),
-                    minLines: 2,
-                    maxLines: 3,
-                  ),
-                ]),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _roleTagCtrl,
+                        decoration: _decoration(l.roleLabel),
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _notesCtrl,
+                        decoration: _decoration(l.notesLabel),
+                        minLines: 2,
+                        maxLines: 3,
+                      ),
+                    ]),
               ),
             ),
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(16, 8, 16, 12 + bottomInset),
-            child: SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: FilledButton.icon(
-                onPressed: _saving ? null : _save,
-                icon: const Icon(Icons.save_outlined, size: 18),
-                label: Text(l.saveChanges),
-              ),
+            child: Row(
+              children: [
+                if (widget.worker.status == WorkerStatus.active) ...[
+                  Expanded(
+                    child: SizedBox(
+                      height: 46,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                        onPressed: _saving ? null : _removeWorker,
+                        icon:
+                            const Icon(Icons.person_remove_outlined, size: 18),
+                        label: Text(
+                          Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Eliminar trabajador'
+                              : 'Remove worker',
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: SizedBox(
+                    height: 46,
+                    child: FilledButton.icon(
+                      onPressed: _saving ? null : _save,
+                      icon: const Icon(Icons.save_outlined, size: 18),
+                      label: Text(l.saveChanges),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ]),
