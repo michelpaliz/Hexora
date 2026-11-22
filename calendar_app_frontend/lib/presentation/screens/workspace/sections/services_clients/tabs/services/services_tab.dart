@@ -10,6 +10,7 @@ import 'service_list_item.dart';
 
 class ServicesTab extends StatefulWidget {
   final List<Service> items;
+  final String? selectedServiceId;
   final bool loading;
   final String? error;
   final Future<void> Function() onRefresh;
@@ -21,6 +22,7 @@ class ServicesTab extends StatefulWidget {
   const ServicesTab({
     super.key,
     required this.items,
+    this.selectedServiceId,
     required this.loading,
     required this.error,
     required this.onRefresh,
@@ -119,6 +121,7 @@ class _ServicesTabState extends State<ServicesTab> {
               final s = items[i];
               return ServiceListItem(
                 service: s,
+                selected: s.id == widget.selectedServiceId,
                 onTap: onEdit == null ? null : () => onEdit(s),
                 onDelete: onDelete == null ? null : () => onDelete(s),
                 nameStyle: typo.bodyMedium.copyWith(

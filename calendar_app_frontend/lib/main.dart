@@ -67,7 +67,10 @@ class _AppShell extends StatelessWidget {
         return MaterialApp(
           navigatorKey: SessionExpiryHandler.navigatorKey,
           locale: localeProvider.locale,
-          theme: AppTheme.light,
+          theme: AppTheme.forPlatform(
+            Brightness.light,
+            lightVariant: themeModeProvider.lightVariant,
+          ),
           darkTheme: AppTheme.dark,
           themeMode: themeModeProvider.mode,
           builder: (context, child) {

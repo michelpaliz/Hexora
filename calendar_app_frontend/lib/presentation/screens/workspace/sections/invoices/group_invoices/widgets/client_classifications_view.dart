@@ -42,6 +42,7 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
   List<String> _entities = [], _properties = [];
   late List<GroupClient> _clients;
   bool _loading = true, _busy = false, _entity = true, _ascending = true;
+  bool _categorySearchOpen = false;
   String? _error, _category, _location, _property;
   bool? _active;
   String _categoryQuery = '', _query = '';
@@ -431,61 +432,40 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
         clearLabel: tr('Limpiar búsqueda', 'Clear search'),
         onChanged: onChanged,
       );
-  Widget stat(IconData icon, String number, String title,
-      {VoidCallback? onTap, Color? color}) {
-    final cs = Theme.of(context).colorScheme;
-    final tone = color ?? cs.primary;
-    return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: panel,
-              child: Row(children: [
-                CircleAvatar(
-                    backgroundColor: tone.withValues(alpha: .1),
-                    child: Icon(icon, color: tone, size: 21)),
-                const SizedBox(width: 12),
-                Expanded(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Text(number,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium!
-                              .copyWith(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: tone)),
-                      Text(title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium!
-                              .copyWith(
-                                  fontSize: 12, color: cs.onSurfaceVariant)),
-                    ])),
-                if (onTap != null)
-                  Icon(Icons.chevron_right, size: 18, color: tone),
-              ])),
-        ));
-  }
-
   Widget sidebar() => Container(
       decoration: panel,
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(tr('Clasificaciones', 'Classifications'),
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium!
-                .copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 12),
-        search(tr('Buscar clasificación…', 'Search classifications…'),
-            (v) => setState(() => _categoryQuery = norm(v))),
-        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(
+              child: Text(tr('Categorías', 'Categories'),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium!
+                      .copyWith(fontSize: 15, fontWeight: FontWeight.w700))),
+          Text('${_clients.length}',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(width: 4),
+          IconButton(
+              tooltip: tr('Buscar categorías', 'Search categories'),
+              onPressed: () => setState(() {
+                    _categorySearchOpen = !_categorySearchOpen;
+                    if (!_categorySearchOpen) _categoryQuery = '';
+                  }),
+              icon: Icon(_categorySearchOpen
+                  ? Icons.close_rounded
+                  : Icons.search_rounded),
+              constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+              padding: EdgeInsets.zero),
+        ]),
+        if (_categorySearchOpen) ...[
+          const SizedBox(height: 8),
+          search(tr('Buscar categorías…', 'Search categories…'),
+              (v) => setState(() => _categoryQuery = norm(v))),
+        ],
+        const SizedBox(height: 6),
         Expanded(
             child: ListView(children: [
           for (final entity in [true, false]) ...[
@@ -494,8 +474,8 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
                     entity
-                        ? tr('TIPO DE ENTIDAD', 'ENTITY TYPE')
-                        : tr('TIPO DE PROPIEDAD', 'PROPERTY TYPE'),
+                        ? tr('POR TIPO DE CLIENTE', 'BY CLIENT TYPE')
+                        : tr('POR PROPIEDAD', 'BY PROPERTY'),
                     style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -596,8 +576,8 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                         children: [
                           Text(
                               _category == null
-                                  ? tr('Selecciona una clasificación',
-                                      'Select a classification')
+                                  ? tr('Selecciona una categoría',
+                                      'Select a category')
                                   : label(_category),
                               style: Theme.of(context)
                                   .textTheme
@@ -607,7 +587,7 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                                       fontWeight: FontWeight.w700)),
                           const SizedBox(height: 4),
                           Text(
-                              '${assigned.length} ${tr('clientes', 'clients')} · ${_entity ? tr('Tipo de entidad', 'Entity type') : tr('Tipo de propiedad', 'Property type')}',
+                              '${assigned.length} ${tr('clientes', 'clients')} · ${_entity ? tr('Tipo de cliente', 'Client type') : tr('Tipo de propiedad', 'Property type')}',
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium!
@@ -627,68 +607,131 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                   ])),
           const Divider(height: 1),
           Padding(
-              padding: const EdgeInsets.all(12),
-              child: LayoutBuilder(builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                return Wrap(spacing: 8, runSpacing: 8, children: [
-                  SizedBox(
-                      width: width < 700 ? width : (width - 24) * .36,
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+              child: LayoutBuilder(builder: (context, _) {
+                final filterCount = (_location != null ? 1 : 0) +
+                    (_active != null ? 1 : 0) +
+                    (_property != null ? 1 : 0);
+                final filterMenu = MenuAnchor(
+                  menuChildren: [
+                    SizedBox(
+                      width: 330,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                          dropdown<String>(
+                              _location,
+                              tr('Todas las ubicaciones', 'All locations'),
+                              [
+                                DropdownMenuItem(
+                                    value: null,
+                                    child: Text(tr('Todas las ubicaciones',
+                                        'All locations'))),
+                                for (final loc in locations)
+                                  DropdownMenuItem(
+                                      value: loc,
+                                      child: Text(loc,
+                                          overflow: TextOverflow.ellipsis)),
+                              ],
+                              (v) => filter(() => _location = v)),
+                          const SizedBox(height: 8),
+                          dropdown<bool>(
+                              _active,
+                              tr('Todos los estados', 'All statuses'),
+                              [
+                                DropdownMenuItem(
+                                    value: null,
+                                    child: Text(tr(
+                                        'Todos los estados', 'All statuses'))),
+                                DropdownMenuItem(
+                                    value: true,
+                                    child: Text(tr('Activo', 'Active'))),
+                                DropdownMenuItem(
+                                    value: false,
+                                    child: Text(tr('Inactivo', 'Inactive'))),
+                              ],
+                              (v) => filter(() => _active = v)),
+                          const SizedBox(height: 8),
+                          dropdown<String>(
+                              _property,
+                              tr('Tipo de propiedad', 'Property type'),
+                              [
+                                DropdownMenuItem(
+                                    value: null,
+                                    child: Text(tr('Todas las propiedades',
+                                        'All properties'))),
+                                for (final prop in options(false))
+                                  DropdownMenuItem(
+                                      value: prop,
+                                      child: Text(label(prop),
+                                          overflow: TextOverflow.ellipsis)),
+                              ],
+                              (v) => filter(() => _property = v)),
+                        ]),
+                      ),
+                    ),
+                  ],
+                  builder: (context, controller, _) => OutlinedButton.icon(
+                    onPressed: () => controller.isOpen
+                        ? controller.close()
+                        : controller.open(),
+                    icon: Icon(filterCount > 0
+                        ? Icons.filter_alt_rounded
+                        : Icons.tune_rounded),
+                    label: Text(filterCount > 0
+                        ? '${tr('Filtros', 'Filters')} ($filterCount)'
+                        : tr('Filtros', 'Filters')),
+                  ),
+                );
+                return Row(children: [
+                  Expanded(
                       child: search(tr('Buscar clientes…', 'Search clients…'),
                           (v) => filter(() => _query = norm(v)))),
-                  SizedBox(
-                      width: width < 700 ? (width - 8) / 2 : (width - 24) * .24,
-                      child: dropdown<String>(
-                          _location,
-                          tr('Todas las ubicaciones', 'All locations'),
-                          [
-                            DropdownMenuItem(
-                                value: null,
-                                child: Text(tr(
-                                    'Todas las ubicaciones', 'All locations'))),
-                            for (final loc in locations)
-                              DropdownMenuItem(
-                                  value: loc,
-                                  child: Text(loc,
-                                      overflow: TextOverflow.ellipsis)),
-                          ],
-                          (v) => filter(() => _location = v))),
-                  SizedBox(
-                      width: width < 700 ? (width - 8) / 2 : (width - 24) * .20,
-                      child: dropdown<bool>(
-                          _active,
-                          tr('Todos los estados', 'All statuses'),
-                          [
-                            DropdownMenuItem(
-                                value: null,
-                                child: Text(
-                                    tr('Todos los estados', 'All statuses'))),
-                            DropdownMenuItem(
-                                value: true,
-                                child: Text(tr('Activo', 'Active'))),
-                            DropdownMenuItem(
-                                value: false,
-                                child: Text(tr('Inactivo', 'Inactive'))),
-                          ],
-                          (v) => filter(() => _active = v))),
-                  SizedBox(
-                      width: width < 700 ? width : (width - 24) * .20,
-                      child: dropdown<String>(
-                          _property,
-                          tr('Tipo de propiedad', 'Property type'),
-                          [
-                            DropdownMenuItem(
-                                value: null,
-                                child: Text(tr('Todas las propiedades',
-                                    'All properties'))),
-                            for (final prop in options(false))
-                              DropdownMenuItem(
-                                  value: prop,
-                                  child: Text(label(prop),
-                                      overflow: TextOverflow.ellipsis)),
-                          ],
-                          (v) => filter(() => _property = v))),
+                  const SizedBox(width: 8),
+                  filterMenu,
+                  const SizedBox(width: 8),
+                  Text('${rows.length} ${tr('clientes', 'clients')}',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w600)),
                 ]);
               })),
+          if (_location != null || _active != null || _property != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+              child: Wrap(spacing: 6, runSpacing: 4, children: [
+                if (_location != null)
+                  InputChip(
+                    label: Text('${tr('Ubicación', 'Location')}: $_location'),
+                    onDeleted: () => filter(() => _location = null),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                if (_active != null)
+                  InputChip(
+                    label: Text(_active!
+                        ? tr('Estado: Activo', 'Status: Active')
+                        : tr('Estado: Inactivo', 'Status: Inactive')),
+                    onDeleted: () => filter(() => _active = null),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                if (_property != null)
+                  InputChip(
+                    label: Text(
+                        '${tr('Propiedad', 'Property')}: ${label(_property)}'),
+                    onDeleted: () => filter(() => _property = null),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                TextButton(
+                  onPressed: () => filter(() {
+                    _location = null;
+                    _active = null;
+                    _property = null;
+                  }),
+                  child: Text(tr('Limpiar filtros', 'Clear filters')),
+                ),
+              ]),
+            ),
           Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Wrap(
@@ -1022,47 +1065,50 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
         TextButton(onPressed: _load, child: Text(tr('Reintentar', 'Retry'))),
       ]));
     }
-    final unclassified =
-        _clients.where((c) => norm(c.entityType).isEmpty).length;
-    final duplicateCount = duplicates.length;
     return LayoutBuilder(builder: (context, constraints) {
       final wide = constraints.maxWidth >= 1000;
-      final cards = [
-        stat(Icons.person_outline, '${_clients.length}',
-            tr('Clientes totales', 'Total clients')),
-        stat(Icons.business_outlined, '${options(true).length}',
-            tr('Tipos de entidad', 'Entity types')),
-        stat(Icons.home_outlined, '${options(false).length}',
-            tr('Tipos de propiedad', 'Property types')),
-        stat(Icons.warning_amber, '$unclassified',
-            tr('Sin clasificar', 'Unclassified'),
-            color: Colors.orange.shade800,
-            onTap: _busy ? null : () => choose('', true)),
-        stat(Icons.auto_awesome_outlined, '$duplicateCount',
-            tr('Posibles duplicados', 'Possible duplicates'),
-            onTap: duplicateCount == 0 || _busy ? null : _reviewDuplicates),
-      ];
       final body =
           Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (widget.showCreateAction)
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.icon(
+        Row(children: [
+          Expanded(
+              child: Text(
+                  '${tr('Organizar clientes', 'Organize clients')} · ${_clients.length}',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontSize: 16, fontWeight: FontWeight.w700))),
+          if (widget.showCreateAction)
+            FilledButton.icon(
               onPressed: _busy ? null : _manage,
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(tr('Nueva clasificación', 'New classification')),
+              icon: const Icon(Icons.tune_rounded, size: 17),
+              label: Text(tr('Gestionar categorías', 'Manage categories')),
+            ),
+        ]),
+        const SizedBox(height: 8),
+        if (duplicates.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Material(
+              color: Theme.of(context).colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(10),
+              child: ListTile(
+                dense: true,
+                leading: Icon(Icons.warning_amber_rounded,
+                    color: Theme.of(context).colorScheme.onErrorContainer),
+                title: Text(
+                  tr('${duplicates.length} posibles duplicados',
+                      '${duplicates.length} possible duplicates'),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                      fontWeight: FontWeight.w600),
+                ),
+                trailing: TextButton(
+                  onPressed: _busy ? null : _reviewDuplicates,
+                  child: Text(tr('Revisar', 'Review')),
+                ),
+              ),
             ),
           ),
-        if (widget.showCreateAction) const SizedBox(height: 14),
-        Wrap(spacing: 10, runSpacing: 10, children: [
-          for (final card in cards)
-            SizedBox(
-                width: wide
-                    ? (constraints.maxWidth - 60) / 5
-                    : (constraints.maxWidth - 30) / 2,
-                child: card)
-        ]),
-        const SizedBox(height: 14),
         if (wide)
           Expanded(
               child: Row(

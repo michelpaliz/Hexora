@@ -44,6 +44,7 @@ class DocumentWizardRail extends StatelessWidget {
     this.footer,
     this.allowCollapse = true,
     this.title,
+    this.backgroundColor,
   });
 
   final List<DocumentWizardStep> steps;
@@ -62,6 +63,7 @@ class DocumentWizardRail extends StatelessWidget {
   final Widget? footer;
   final bool allowCollapse;
   final String? title;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -199,7 +201,7 @@ class DocumentWizardRail extends StatelessWidget {
           Key(useInvoiceLegacyKeys ? 'invoice-wizard-rail' : '$keyPrefix-rail'),
       duration: const Duration(milliseconds: 180),
       width: collapsed ? 52 : expandedWidth,
-      color: colors.surface,
+      color: backgroundColor ?? colors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -256,7 +258,8 @@ class DocumentWizardRail extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: section.id == selectedSectionId
                             ? colors.primary.withValues(alpha: .07)
-                            : null,
+                            : colors.surfaceContainerHighest
+                                .withValues(alpha: .22),
                         border: Border(
                           left: BorderSide(
                             width: 2,

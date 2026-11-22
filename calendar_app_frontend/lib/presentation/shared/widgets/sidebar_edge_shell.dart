@@ -4,6 +4,7 @@ import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/presentation/shared/widgets/secondary_sidebar_header.dart';
 import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/themes/theme_variant.dart';
 
 abstract final class SidebarEdgeGeometry {
   /// The painted circle is intentionally smaller than its interaction target.
@@ -132,6 +133,16 @@ class SidebarEdgeShell extends StatelessWidget {
     double globalExpansion,
   ) {
     return LayoutBuilder(builder: (context, constraints) {
+      final theme = Theme.of(context);
+      final neutralLight =
+          theme.extension<HexoraThemeVariant>()?.neutralLight == true;
+      // Module sidebars historically defaulted to the navy dashboard surface.
+      // In the neutral light variant, make that default follow the primary
+      // sidebar surface while preserving explicitly supplied colors.
+      final shellBackground =
+          neutralLight && backgroundColor == AppColors.dashboardTopBar
+              ? theme.colorScheme.surface
+              : backgroundColor;
       final height = constraints.hasBoundedHeight
           ? constraints.maxHeight
           : MediaQuery.sizeOf(context).height;
@@ -171,7 +182,7 @@ class SidebarEdgeShell extends StatelessWidget {
                   centerY: centerY,
                   depth: notchDepth,
                 ),
-                child: ColoredBox(color: backgroundColor),
+                child: ColoredBox(color: shellBackground),
               ),
             ),
             // Content fills the space above an intrinsically sized footer, so a
@@ -294,11 +305,13 @@ class _HexoraGlobalNavigationRestoreHeader extends StatelessWidget {
     final tooltip = es ? spanishTooltip : englishTooltip;
     final displayLabel =
         label?.trim().isNotEmpty == true ? label!.trim() : 'Hexora';
-    const foreground = HexoraGlobalNavColors.foreground;
+    final foreground = HexoraGlobalNavColors.foregroundFor(context);
     return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: HexoraGlobalNavColors.background,
-        image: _brandedBackground,
+      decoration: BoxDecoration(
+        color: HexoraGlobalNavColors.backgroundFor(context),
+        image: Theme.of(context).brightness == Brightness.dark
+            ? _brandedBackground
+            : null,
       ),
       child: Material(
         type: MaterialType.transparency,

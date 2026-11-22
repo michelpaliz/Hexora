@@ -96,7 +96,6 @@ class _InvoiceFlowTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final contextChips = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -118,7 +117,9 @@ class _InvoiceFlowTopBar extends StatelessWidget {
       key: const Key('invoice-flow-top-bar'),
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      color: cs.surface,
+      // Keep the client context part of the light-blue editor canvas rather
+      // than introducing a second full-width white surface above the form.
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Row(
         children: [
           if (showBack) backButton,

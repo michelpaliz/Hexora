@@ -4,12 +4,15 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/recurrin
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/utils/recurrence_time_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/utils/recurring_invoices_helpers.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/recurring_series_list_view/recurring_series_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/recurring_series_list_view/recurring_series_filters.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/recurring_series_list_view/recurring_series_generated_panel.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/recurring_series_list_view/recurring_series_drawer.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
+import 'package:hexora/models/invoice/invoice.dart';
+import 'package:provider/provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/recurring_series_list_view/recurring_series_list_header.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
 
 class RecurringSeriesListView extends StatefulWidget {
   final List<Map<String, dynamic>> series;
@@ -67,8 +70,11 @@ class RecurringSeriesListView extends StatefulWidget {
 class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
   final TextEditingController _searchCtrl = TextEditingController();
   bool _showInactiveClients = false;
-  bool _sortByClientName = true;
+  // The default order answers the most useful operational question first:
+  // which recurrence is scheduled next.
+  bool _sortByClientName = false;
   String? _frequencyFilter;
+  String? _conceptFilter;
   String? _selectedSeriesId;
 
   @override
@@ -85,6 +91,57 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
       return (rawClientId[r'$oid'] ?? '').toString();
     }
     return rawClientId?.toString();
+  }
+
+  /// Client name for a series: embedded name first, then the loaded client
+  /// list by id. Returns null (never "-") when it cannot be resolved.
+  String? _resolveClientName(
+    Map<String, dynamic> series,
+    Map<String, String> clientNamesById,
+  ) {
+    final clientId = _seriesClientId(series);
+    for (final candidate in [
+      series['clientName'],
+      series['client'] is Map ? series['client']['name'] : null,
+      clientId == null ? null : clientNamesById[clientId],
+      series['billing'] is Map ? series['billing']['name'] : null,
+    ]) {
+      final value = candidate?.toString().trim() ?? '';
+      if (value.isNotEmpty && value != '-') return value;
+    }
+    return null;
+  }
+
+  /// Opens a generated document in the workspace (its own tab, using the
+  /// existing invoice/receipt preview). Only on wide layouts, where tabs keep
+  /// this list's filters, scroll and selection alive; elsewhere returns null
+  /// and the drawer falls back to its inline preview.
+  ValueChanged<Invoice>? _workspacePreview(BuildContext context) {
+    GroupDashboardState? state;
+    try {
+      state = Provider.of<GroupDashboardState>(context, listen: false);
+    } catch (_) {
+      return null;
+    }
+    if (!state.isWide) return null;
+    final dashboard = state;
+    return (invoice) {
+      if (invoice.id.trim().isEmpty) return;
+      final number = invoice.invoiceNumber.trim();
+      if (widget.receiptsMode) {
+        dashboard.openInvoicesWorkspace(
+          initialMenu: 'receipts',
+          initialReceiptId: invoice.id,
+          tabTitle: number.isEmpty ? null : 'Recibo $number',
+        );
+      } else {
+        dashboard.openInvoicesWorkspace(
+          initialMenu: 'invoices_issued',
+          initialInvoiceId: invoice.id,
+          tabTitle: number.isEmpty ? null : 'Factura $number',
+        );
+      }
+    };
   }
 
   bool _matchesSearch(
@@ -112,6 +169,9 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
       asText(series['interval']),
       asText(series['billDay']),
       asText(series['timezone']),
+      asText(series['concept']),
+      asText(series['description']),
+      asText(series['serviceDescription']),
       schedule,
     ].join(' ').toLowerCase();
     return haystack.contains(q);
@@ -227,6 +287,7 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
             : 0) +
         (widget.dueSoonOnly ? 1 : 0) +
         (_frequencyFilter != null && _frequencyFilter!.isNotEmpty ? 1 : 0) +
+        (_conceptFilter != null && _conceptFilter!.isNotEmpty ? 1 : 0) +
         (_showInactiveClients ? 1 : 0);
     final clientNamesById = {
       for (final c in widget.clients) c.id: c.name,
@@ -260,6 +321,14 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
       ..sort((a, b) => recurringFrequencyDropdownOrder
           .indexOf(a)
           .compareTo(recurringFrequencyDropdownOrder.indexOf(b)));
+    final conceptOptions = widget.series
+        .map((s) => (s['name'] ?? s['concept'] ?? s['description'] ?? '')
+            .toString()
+            .trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     final visibleSeries = widget.series.where((s) {
       if (!_showInactiveClients) {
         final clientId = _seriesClientId(s);
@@ -274,6 +343,14 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
           _seriesFrequency(s) != _frequencyFilter) {
         return false;
       }
+      if (_conceptFilter != null &&
+          _conceptFilter!.isNotEmpty &&
+          !(s['name'] ?? s['concept'] ?? s['description'] ?? '')
+              .toString()
+              .toLowerCase()
+              .contains(_conceptFilter!.toLowerCase())) {
+        return false;
+      }
       return _matchesSearch(s, clientNamesById, l);
     }).toList()
       ..sort(
@@ -281,12 +358,14 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
             ? _compareSeriesByClientName(a, b, clientNamesById)
             : _compareSeriesByNextCreation(a, b, clientNamesById),
       );
-    final selectedSeries = visibleSeries.isEmpty
+    // Do not select the first row implicitly. The default view is a browsable
+    // table; details only appear after the user explicitly selects a row.
+    final selectedSeries = _selectedSeriesId == null
         ? null
-        : visibleSeries.firstWhere(
-            (s) => seriesId(s) == _selectedSeriesId,
-            orElse: () => visibleSeries.first,
-          );
+        : visibleSeries.cast<Map<String, dynamic>?>().firstWhere(
+              (s) => s != null && seriesId(s) == _selectedSeriesId,
+              orElse: () => null,
+            );
     final selectedSeriesId =
         selectedSeries == null ? null : seriesId(selectedSeries);
 
@@ -304,21 +383,102 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
               separatorBuilder: (_, __) => const SizedBox(height: 2),
               itemBuilder: (_, i) {
                 final item = visibleSeries[i];
-                return RecurringSeriesCard(
-                  series: item,
-                  clientNamesById: clientNamesById,
-                  selected: seriesId(item) == selectedSeriesId,
-                  onSelect: (series) => setState(
-                    () => _selectedSeriesId = seriesId(series),
+                final clientName =
+                    _resolveClientName(item, clientNamesById) ?? '-';
+                final concept = (item['name'] ??
+                        item['concept'] ??
+                        item['description'] ??
+                        '-')
+                    .toString();
+                final next = _nextCreationDate(item);
+                final dateLabel = next == null
+                    ? '-'
+                    : DateFormat.yMMMd(l.localeName).format(next);
+                final status = (item['status'] ?? 'active').toString();
+                final statusLabel = status == 'paused'
+                    ? (l.localeName.startsWith('es') ? 'Pausada' : 'Paused')
+                    : status == 'cancelled'
+                        ? (l.localeName.startsWith('es')
+                            ? 'Cancelada'
+                            : 'Cancelled')
+                        : l.recurringInvoicesStatusActive;
+                final selected = seriesId(item) == selectedSeriesId;
+                final bg =
+                    selected ? cs.surface : cs.surface.withValues(alpha: 0.001);
+                return InkWell(
+                  onTap: () =>
+                      setState(() => _selectedSeriesId = seriesId(item)),
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: bg,
+                      border: Border(
+                        bottom: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: .35)),
+                        left: BorderSide(
+                          color: selected ? cs.primary : Colors.transparent,
+                          width: 3,
+                        ),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(children: [
+                      Expanded(
+                          flex: 3,
+                          child: Text(clientName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.bodySmall
+                                  .copyWith(fontWeight: FontWeight.w700))),
+                      Expanded(
+                          flex: 3,
+                          child: Text(concept,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.bodySmall)),
+                      Expanded(
+                          flex: 2,
+                          child: Text(
+                              recurringFrequencyLabel(
+                                  l, _seriesFrequency(item)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.bodySmall)),
+                      Expanded(
+                          flex: 2,
+                          child: Text(dateLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.bodySmall)),
+                      SizedBox(
+                          width: 100,
+                          child: Text(seriesTotal(context, item),
+                              textAlign: TextAlign.right,
+                              style: t.bodySmall
+                                  .copyWith(fontWeight: FontWeight.w700))),
+                      SizedBox(
+                          width: 100,
+                          child: Align(
+                              alignment: Alignment.centerRight,
+                              child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                      color: status == 'active'
+                                          ? cs.primaryContainer
+                                          : cs.surfaceContainerHighest,
+                                      borderRadius: BorderRadius.circular(12)),
+                                  child: Text(statusLabel,
+                                      style: t.caption.copyWith(
+                                          color: status == 'active'
+                                              ? cs.onPrimaryContainer
+                                              : cs.onSurfaceVariant,
+                                          fontWeight: FontWeight.w700))))),
+                      const SizedBox(width: 8),
+                      Icon(Icons.chevron_right_rounded,
+                          size: 18, color: cs.onSurfaceVariant),
+                    ]),
                   ),
-                  onOpen: widget.onOpenSeries,
-                  onEdit: widget.onOpenSeries,
-                  onPreview: widget.onPreviewSeries,
-                  onPause: widget.onPauseSeries,
-                  onResume: widget.onResumeSeries,
-                  onCancel: widget.onCancelSeries,
-                  canManage: widget.canManage,
-                  showActiveStatus: widget.statusFilter != 'active',
                 );
               },
             );
@@ -357,6 +517,7 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
         widget.onDueSoon(false);
         setState(() {
           _frequencyFilter = null;
+          _conceptFilter = null;
           _showInactiveClients = false;
         });
       },
@@ -368,11 +529,100 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
       totalCount: widget.totalSeriesCount ?? widget.series.length,
     );
 
-    Widget buildListPane() => Column(
+    Widget buildTablePane() => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             filters,
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
+            Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              color: cs.surfaceContainerHighest.withValues(alpha: .55),
+              child: Row(children: [
+                Expanded(
+                    flex: 3,
+                    child: _RecurringHeaderCell(
+                        label: l.clientLabel,
+                        active: widget.clientFilter != null,
+                        options: clientOptionLabels,
+                        selected: selectedClientLabel,
+                        onSelected: (value) =>
+                            widget.onClientFilter(clientLabelToId[value]),
+                        onClear: () => widget.onClientFilter(null))),
+                Expanded(
+                    flex: 3,
+                    child: _RecurringHeaderCell(
+                        label: l.localeName.startsWith('es')
+                            ? 'Concepto'
+                            : 'Concept',
+                        active: _conceptFilter != null,
+                        options: conceptOptions,
+                        selected: _conceptFilter,
+                        onSelected: (value) =>
+                            setState(() => _conceptFilter = value),
+                        onClear: () => setState(() => _conceptFilter = null))),
+                Expanded(
+                    flex: 2,
+                    child: _RecurringHeaderCell(
+                        label: l.localeName.startsWith('es')
+                            ? 'Frecuencia'
+                            : 'Frequency',
+                        active: _frequencyFilter != null,
+                        options: frequencyOptions
+                            .map((value) => recurringFrequencyLabel(l, value))
+                            .toList(),
+                        selected: _frequencyFilter == null
+                            ? null
+                            : recurringFrequencyLabel(l, _frequencyFilter!),
+                        onSelected: (value) => setState(() => _frequencyFilter =
+                            frequencyOptions.firstWhere((option) =>
+                                recurringFrequencyLabel(l, option) == value)),
+                        onClear: () =>
+                            setState(() => _frequencyFilter = null))),
+                Expanded(
+                    flex: 2,
+                    child: _RecurringHeaderCell(
+                        label: l.localeName.startsWith('es')
+                            ? 'Próxima emisión'
+                            : 'Next issue',
+                        active: widget.dueSoonOnly,
+                        options: [
+                          l.localeName.startsWith('es')
+                              ? 'Próximos 7 días'
+                              : 'Next 7 days'
+                        ],
+                        selected: widget.dueSoonOnly
+                            ? (l.localeName.startsWith('es')
+                                ? 'Próximos 7 días'
+                                : 'Next 7 days')
+                            : null,
+                        onSelected: (_) => widget.onDueSoon(true),
+                        onClear: () => widget.onDueSoon(false))),
+                SizedBox(
+                    width: 100,
+                    child: Text(
+                        l.localeName.startsWith('es') ? 'Importe' : 'Amount',
+                        textAlign: TextAlign.right,
+                        style:
+                            t.caption.copyWith(fontWeight: FontWeight.w700))),
+                SizedBox(
+                    width: 100,
+                    child: _RecurringHeaderCell(
+                        label:
+                            l.localeName.startsWith('es') ? 'Estado' : 'Status',
+                        active: widget.statusFilter != 'all',
+                        options: statusKeys
+                            .map((key) => statusLabels[key] ?? key)
+                            .toList(),
+                        selected: statusLabels[widget.statusFilter],
+                        onSelected: (value) => widget
+                            .onStatusFilter(statusLabelToKey[value] ?? 'all'),
+                        onClear: () => widget.onStatusFilter('all'),
+                        alignEnd: true)),
+                const SizedBox(width: 26),
+              ]),
+            ),
+            const SizedBox(height: 2),
             Expanded(child: buildList()),
           ],
         );
@@ -395,42 +645,120 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
             const SizedBox(height: 8),
           ],
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final showPanel = widget.api != null &&
-                    selectedSeries != null &&
-                    constraints.maxWidth >= 1080;
-                if (!showPanel) return buildListPane();
-                return Row(
-                  children: [
-                    Expanded(flex: 5, child: buildListPane()),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: VerticalDivider(
-                        width: 1,
-                        thickness: 1,
-                        color: cs.outlineVariant.withValues(alpha: 0.45),
+            child: LayoutBuilder(builder: (context, constraints) {
+              final drawerWidth = constraints.maxWidth < 720
+                  ? constraints.maxWidth
+                  : constraints.maxWidth.clamp(420.0, 480.0);
+              return Stack(children: [
+                buildTablePane(),
+                if (selectedSeries != null)
+                  Positioned.fill(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: SizedBox(
+                        width: drawerWidth,
+                        child: RecurringSeriesDrawer(
+                          key: ValueKey('recurring-drawer-$selectedSeriesId'),
+                          series: selectedSeries,
+                          clientName: _resolveClientName(
+                              selectedSeries, clientNamesById),
+                          client: widget.clients
+                              .where((client) =>
+                                  client.id == _seriesClientId(selectedSeries))
+                              .firstOrNull,
+                          frequencyLabel: recurringFrequencyLabel(
+                              l, _seriesFrequency(selectedSeries)),
+                          nextIssueDate: _nextCreationDate(selectedSeries),
+                          canManage: widget.canManage,
+                          onClose: () =>
+                              setState(() => _selectedSeriesId = null),
+                          onEdit: () => widget.onOpenSeries(selectedSeries),
+                          onPreviewUpcoming: () =>
+                              widget.onPreviewSeries(selectedSeries),
+                          onPause: widget.onPauseSeries == null
+                              ? null
+                              : () => widget.onPauseSeries!(selectedSeries),
+                          onResume: widget.onResumeSeries == null
+                              ? null
+                              : () => widget.onResumeSeries!(selectedSeries),
+                          onCancel: widget.onCancelSeries == null
+                              ? null
+                              : () => widget.onCancelSeries!(selectedSeries),
+                          api: widget.api,
+                          receiptsMode: widget.receiptsMode,
+                          onPreviewInvoice: _workspacePreview(context),
+                        ),
                       ),
                     ),
-                    Expanded(
-                      flex: 4,
-                      child: RecurringSeriesGeneratedPanel(
-                        key: ValueKey('generated-$selectedSeriesId'),
-                        api: widget.api!,
-                        series: selectedSeries,
-                        client: widget.clients
-                            .where((client) =>
-                                client.id == _seriesClientId(selectedSeries))
-                            .firstOrNull,
-                        receiptsMode: widget.receiptsMode,
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
+                  ),
+              ]);
+            }),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RecurringHeaderCell extends StatelessWidget {
+  const _RecurringHeaderCell({
+    required this.label,
+    required this.active,
+    required this.options,
+    required this.selected,
+    required this.onSelected,
+    required this.onClear,
+    this.alignEnd = false,
+  });
+
+  final String label;
+  final bool active;
+  final List<String> options;
+  final String? selected;
+  final ValueChanged<String> onSelected;
+  final VoidCallback onClear;
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    return PopupMenuButton<String>(
+      tooltip: 'Filter $label',
+      padding: EdgeInsets.zero,
+      onSelected: (value) {
+        if (value != '__clear__') onSelected(value);
+      },
+      itemBuilder: (context) => [
+        if (active)
+          PopupMenuItem<String>(
+            value: '__clear__',
+            onTap: onClear,
+            child: const Text('Clear filter'),
+          ),
+        ...options.map((option) => PopupMenuItem<String>(
+              value: option,
+              child: Text(option, maxLines: 1, overflow: TextOverflow.ellipsis),
+            )),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          mainAxisAlignment:
+              alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: [
+            Flexible(
+              child: Text(label,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.caption.copyWith(
+                      color: active ? cs.primary : cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700)),
+            ),
+            const SizedBox(width: 3),
+            Icon(Icons.filter_list_rounded,
+                size: 13, color: active ? cs.primary : cs.onSurfaceVariant),
+          ],
+        ),
       ),
     );
   }

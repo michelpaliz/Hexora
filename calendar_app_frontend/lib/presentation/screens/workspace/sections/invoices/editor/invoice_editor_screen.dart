@@ -191,6 +191,10 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
 
   void _handleTabChange() {
     _c.setCurrentStepIndex(_tabController.index);
+    final shouldExpandLineMethods = _tabController.index == 2;
+    if (_lineMethodsExpanded != shouldExpandLineMethods && mounted) {
+      setState(() => _lineMethodsExpanded = shouldExpandLineMethods);
+    }
     if (kIsWeb && _tabController.index != 3) {
       _c.releasePreviewSurface();
     }
@@ -204,8 +208,11 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
 
   void _goToStep(int index) {
     final next = index.clamp(0, 3);
-    if (next == 2 && !_lineMethodsExpanded) {
-      setState(() => _lineMethodsExpanded = true);
+    // Line-entry methods belong to the lines step and are visible only while
+    // that parent step is active. Preserve the selected method, but collapse
+    // the nested navigation when moving to another step.
+    if (_lineMethodsExpanded != (next == 2)) {
+      setState(() => _lineMethodsExpanded = next == 2);
     }
     _c.setCurrentStepIndex(next);
     _tabController.animateTo(

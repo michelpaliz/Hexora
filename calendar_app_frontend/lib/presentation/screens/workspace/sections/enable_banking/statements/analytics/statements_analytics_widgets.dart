@@ -13,10 +13,12 @@ class AnalyticsTrendChart extends StatelessWidget {
     super.key,
     required this.rows,
     required this.labelBuilder,
+    this.compact = false,
   });
 
   final List<Map<String, dynamic>> rows;
   final String Function(Map<String, dynamic> row) labelBuilder;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -42,17 +44,32 @@ class AnalyticsTrendChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            height: 320,
+            height: compact ? 280 : 320,
             child: SfCartesianChart(
+              plotAreaBorderWidth: compact ? 0 : 1,
               legend: const Legend(
                   isVisible: true, position: LegendPosition.bottom),
               primaryXAxis: CategoryAxis(
+                majorGridLines: MajorGridLines(width: compact ? 0 : 1),
                 labelRotation: hasMonths ? 45 : 0,
                 labelIntersectAction: hasMonths
                     ? AxisLabelIntersectAction.rotate45
                     : AxisLabelIntersectAction.hide,
               ),
-              primaryYAxis: const NumericAxis(),
+              primaryYAxis: NumericAxis(
+                numberFormat: compact
+                    ? NumberFormat.compactCurrency(
+                        locale: l.localeName, symbol: '€', decimalDigits: 0)
+                    : null,
+                axisLine: AxisLine(width: compact ? 0 : 1),
+                majorTickLines: MajorTickLines(size: compact ? 0 : 5),
+                majorGridLines: MajorGridLines(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outlineVariant
+                      .withValues(alpha: 0.5),
+                ),
+              ),
               tooltipBehavior: TooltipBehavior(
                 enable: true,
                 builder: (data, point, series, pointIndex, seriesIndex) {
@@ -72,18 +89,27 @@ class AnalyticsTrendChart extends StatelessWidget {
               ),
               series: <CartesianSeries<_TrendPoint, String>>[
                 ColumnSeries<_TrendPoint, String>(
+                  color: compact ? const Color(0xFF2563EB) : null,
+                  width: compact ? 0.55 : 0.7,
+                  borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(compact ? 4 : 0)),
                   name: l.statementsSummaryIncome,
                   dataSource: points,
                   xValueMapper: (p, _) => p.label,
                   yValueMapper: (p, _) => p.income,
                 ),
                 ColumnSeries<_TrendPoint, String>(
+                  color: compact ? const Color(0xFF8B5CF6) : null,
+                  width: compact ? 0.55 : 0.7,
+                  borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(compact ? 4 : 0)),
                   name: l.statementsSummaryExpense,
                   dataSource: points,
                   xValueMapper: (p, _) => p.label,
                   yValueMapper: (p, _) => p.expense,
                 ),
                 LineSeries<_TrendPoint, String>(
+                  color: compact ? const Color(0xFF0D9488) : null,
                   name: l.statementsSummaryNet,
                   dataSource: points,
                   xValueMapper: (p, _) => p.label,
@@ -93,7 +119,7 @@ class AnalyticsTrendChart extends StatelessWidget {
               ],
             ),
           ),
-          if (!hasMonths) ...[
+          if (!hasMonths && !compact) ...[
             const SizedBox(height: 12),
             Wrap(
               spacing: 12,
@@ -111,9 +137,11 @@ class AnalyticsVolumeChart extends StatelessWidget {
   const AnalyticsVolumeChart({
     super.key,
     required this.points,
+    this.compact = false,
   });
 
   final List<StatementsAnalyticsVolumePoint> points;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -124,15 +152,29 @@ class AnalyticsVolumeChart extends StatelessWidget {
     }
     final daily = points.first.daily;
     return SizedBox(
-      height: 300,
+      height: compact ? 280 : 300,
       child: SfCartesianChart(
+        plotAreaBorderWidth: compact ? 0 : 1,
         primaryXAxis: CategoryAxis(
+          majorGridLines: MajorGridLines(width: compact ? 0 : 1),
           labelRotation: daily ? 55 : 0,
           labelIntersectAction: daily
               ? AxisLabelIntersectAction.rotate45
               : AxisLabelIntersectAction.hide,
         ),
-        primaryYAxis: const NumericAxis(),
+        primaryYAxis: NumericAxis(
+          numberFormat: compact
+              ? NumberFormat.compact(
+                  locale: Localizations.localeOf(context).toString())
+              : null,
+          axisLine: AxisLine(width: compact ? 0 : 1),
+          majorTickLines: MajorTickLines(size: compact ? 0 : 5),
+          majorGridLines: MajorGridLines(
+              color: Theme.of(context)
+                  .colorScheme
+                  .outlineVariant
+                  .withValues(alpha: 0.5)),
+        ),
         tooltipBehavior: TooltipBehavior(
           enable: true,
           builder: (data, point, series, pointIndex, seriesIndex) {
@@ -156,6 +198,11 @@ class AnalyticsVolumeChart extends StatelessWidget {
             )
           else
             ColumnSeries<StatementsAnalyticsVolumePoint, String>(
+              color: compact ? Theme.of(context).colorScheme.primary : null,
+              width: compact ? 0.45 : 0.7,
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(compact ? 4 : 0)),
+              dataLabelSettings: DataLabelSettings(isVisible: compact),
               dataSource: points,
               xValueMapper: (point, _) => point.label,
               yValueMapper: (point, _) => point.count,

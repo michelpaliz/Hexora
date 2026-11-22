@@ -335,6 +335,31 @@ class _RecurringReceiptsScreenState extends State<RecurringReceiptsScreen> {
   Future<void> _cancelSeries(Map<String, dynamic> series) async {
     final id = (series['id'] ?? series['_id'] ?? '').toString();
     if (id.isEmpty) return;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEs ? 'Cancelar recurrencia' : 'Cancel recurrence'),
+        content: Text(isEs
+            ? 'Los recibos ya emitidos no cambiarán. Solo se detendrán las futuras emisiones.'
+            : 'Already issued receipts will not change. Only future scheduled receipts will stop.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(isEs ? 'Volver' : 'Back'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(isEs ? 'Cancelar recurrencia' : 'Cancel recurrence'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     try {
       await _api.cancel(id);
       await _refreshSeries();

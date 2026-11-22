@@ -1,5 +1,8 @@
 part of '../invoice_editor_screen.dart';
 
+// Retained for compatibility with embedded invoice flows that may still
+// provide this legacy header from downstream integrations.
+// ignore: unused_element
 class _InvoiceEditorHeaderSection extends StatelessWidget {
   const _InvoiceEditorHeaderSection({
     required this.state,

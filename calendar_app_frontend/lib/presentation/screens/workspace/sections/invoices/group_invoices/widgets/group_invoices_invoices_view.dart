@@ -173,6 +173,7 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                       padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
                       child: HexoraSectionTabs(
                         compact: true,
+                        segmented: true,
                         tabs: [
                           Tab(
                             text: l.groupInvoicesTabDrafts(

@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
@@ -110,7 +112,7 @@ class _AddClientSheetState extends State<AddClientSheet>
       groupId: widget.groupId,
       client: widget.client,
     );
-    _sectionTab = TabController(length: 3, vsync: this)
+    _sectionTab = TabController(length: 4, vsync: this)
       ..addListener(_handleSectionTabChanged);
     _loadClassificationOptions();
   }
@@ -188,7 +190,7 @@ class _AddClientSheetState extends State<AddClientSheet>
       final generalHasError = c.name.text.trim().isEmpty;
       final billingHasError =
           c.billingRequiredKeys.any((key) => !c.isBillingFieldFilled(key));
-      _sectionTab.animateTo(generalHasError ? 0 : (billingHasError ? 2 : 0));
+      _sectionTab.animateTo(generalHasError ? 0 : (billingHasError ? 3 : 0));
       return;
     }
     final locationChanged = c.serviceLocationChanged;
@@ -287,10 +289,14 @@ class _AddClientSheetState extends State<AddClientSheet>
 
   Future<void> _useCurrentServiceLocation() async {
     if (_locatingServiceAddress) return;
+    final es = Localizations.localeOf(context).languageCode == 'es';
     setState(() => _locatingServiceAddress = true);
     try {
+      // The device location is only requested here, on explicit user action.
       if (!await Geolocator.isLocationServiceEnabled()) {
-        throw Exception('Activa la ubicación del dispositivo para continuar.');
+        throw Exception(es
+            ? 'Activa la ubicación del dispositivo para continuar.'
+            : 'Turn on device location to continue.');
       }
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -298,7 +304,9 @@ class _AddClientSheetState extends State<AddClientSheet>
       }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        throw Exception('No se ha concedido permiso de ubicación.');
+        throw Exception(es
+            ? 'No se ha concedido permiso de ubicación.'
+            : 'Location permission was not granted.');
       }
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -306,11 +314,40 @@ class _AddClientSheetState extends State<AddClientSheet>
           timeLimit: Duration(seconds: 20),
         ),
       );
+      final lat = position.latitude.toStringAsFixed(6);
+      final lng = position.longitude.toStringAsFixed(6);
+      final address =
+          await _reverseGeocode(position.latitude, position.longitude);
       if (!mounted) return;
+
+      final currentLat = c.serviceLatitude.text.trim();
+      final currentLng = c.serviceLongitude.text.trim();
+      final currentAddress = c.serviceLocationLabel.text.trim();
+      final hasCoordinates = currentLat.isNotEmpty || currentLng.isNotEmpty;
+      final coordsDiffer = currentLat != lat || currentLng != lng;
+      final addressDiffers = address != null && address != currentAddress;
+
+      var replaceAddress = currentAddress.isEmpty && address != null;
+      if ((hasCoordinates && coordsDiffer) ||
+          (currentAddress.isNotEmpty && addressDiffers)) {
+        final choice = await _confirmReplaceLocation(
+          es: es,
+          newCoordinates: '$lat, $lng',
+          currentCoordinates:
+              hasCoordinates ? '$currentLat, $currentLng' : null,
+          newAddress: address,
+          currentAddress: currentAddress.isEmpty ? null : currentAddress,
+        );
+        if (choice == null || !mounted) return;
+        replaceAddress = replaceAddress || choice;
+      }
+
       setState(() {
-        c.serviceLatitude.text = position.latitude.toStringAsFixed(6);
-        c.serviceLongitude.text = position.longitude.toStringAsFixed(6);
-        c.serviceLocationExpanded = true;
+        c.serviceLatitude.text = lat;
+        c.serviceLongitude.text = lng;
+        if (replaceAddress && address != null) {
+          c.serviceLocationLabel.text = address;
+        }
       });
     } catch (error) {
       if (!mounted) return;
@@ -321,6 +358,113 @@ class _AddClientSheetState extends State<AddClientSheet>
     } finally {
       if (mounted) setState(() => _locatingServiceAddress = false);
     }
+  }
+
+  /// Best-effort street address for a position. Reverse geocoding is skipped
+  /// on web, where the plugin is unreliable.
+  Future<String?> _reverseGeocode(double lat, double lng) async {
+    if (kIsWeb) return null;
+    try {
+      final marks = await placemarkFromCoordinates(lat, lng)
+          .timeout(const Duration(seconds: 8));
+      if (marks.isEmpty) return null;
+      final m = marks.first;
+      final street = [m.street, m.subThoroughfare]
+          .whereType<String>()
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toSet()
+          .join(' ');
+      final parts = [
+        street,
+        [m.postalCode, m.locality]
+            .whereType<String>()
+            .where((e) => e.trim().isNotEmpty)
+            .join(' '),
+        m.subAdministrativeArea ?? m.administrativeArea,
+      ].whereType<String>().map((e) => e.trim()).where((e) => e.isNotEmpty);
+      final result = parts.toSet().join(', ');
+      return result.isEmpty ? null : result;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Returns null when cancelled; otherwise whether the address should also
+  /// be replaced (coordinates are always replaced on confirm).
+  Future<bool?> _confirmReplaceLocation({
+    required bool es,
+    required String newCoordinates,
+    required String? currentCoordinates,
+    required String? newAddress,
+    required String? currentAddress,
+  }) {
+    final canReplaceAddress = newAddress != null &&
+        currentAddress != null &&
+        newAddress != currentAddress;
+    var alsoAddress = false;
+    return showHexoraDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final text = Theme.of(dialogContext).textTheme;
+          Widget line(String label, String value) => Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text.rich(TextSpan(children: [
+                  TextSpan(
+                      text: '$label: ',
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  TextSpan(text: value),
+                ])),
+              );
+          return AlertDialog(
+            title: Text(es
+                ? '¿Usar tu ubicación actual?'
+                : 'Use your current location?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  es
+                      ? 'Este cliente ya tiene una ubicación guardada. Se reemplazarán las coordenadas.'
+                      : 'This client already has a saved location. Its coordinates will be replaced.',
+                  style: text.bodyMedium,
+                ),
+                if (currentCoordinates != null)
+                  line(es ? 'Actuales' : 'Current', currentCoordinates),
+                line(es ? 'Nuevas' : 'New', newCoordinates),
+                if (canReplaceAddress) ...[
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: alsoAddress,
+                    onChanged: (v) =>
+                        setDialogState(() => alsoAddress = v ?? false),
+                    title: Text(es
+                        ? 'Reemplazar también la dirección'
+                        : 'Also replace the address'),
+                    subtitle: Text(newAddress),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(es ? 'Cancelar' : 'Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(alsoAddress),
+                child: Text(es ? 'Reemplazar' : 'Replace'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   Future<GroupClient?> _findExistingClient(String name) async {
@@ -404,6 +548,8 @@ class _AddClientSheetState extends State<AddClientSheet>
     final generalHasError = _showValidation && c.name.text.trim().isEmpty;
     final billingHasError = _showValidation &&
         c.billingRequiredKeys.any((key) => !c.isBillingFieldFilled(key));
+    final locationHasError =
+        _showValidation && c.serviceLocationValidationError() != null;
 
     Tab tab({
       required IconData icon,
@@ -436,11 +582,17 @@ class _AddClientSheetState extends State<AddClientSheet>
     return HexoraSectionTabs(
       controller: _sectionTab,
       compact: true,
+      segmented: true,
       tabs: [
         tab(
           icon: Icons.person_outline,
-          label: isSpanish ? 'Información general' : 'General information',
+          label: 'General',
           hasError: generalHasError,
+        ),
+        tab(
+          icon: Icons.location_on_outlined,
+          label: isSpanish ? 'Ubicación' : 'Location',
+          hasError: locationHasError,
         ),
         tab(
           icon: Icons.badge_outlined,
@@ -501,6 +653,22 @@ class _AddClientSheetState extends State<AddClientSheet>
       );
     }
 
+    Widget sectionCard(Widget child) => Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context)
+                  .colorScheme
+                  .outlineVariant
+                  .withValues(alpha: .42),
+            ),
+          ),
+          child: child,
+        );
+
     final form = Padding(
       padding: EdgeInsets.fromLTRB(16, 4, 16, widget.fullScreen ? 12 : pad),
       child: Form(
@@ -519,37 +687,51 @@ class _AddClientSheetState extends State<AddClientSheet>
               const SizedBox(height: 10),
               tabChild(
                 0,
-                Column(
+                sectionCard(Column(
                   children: [
                     _contactSection(ClientContactSection.general),
-                    if (c.isEdit) ...[
-                      const SizedBox(height: 10),
-                      ServiceLocationSection(
-                        controller: c,
-                        locating: _locatingServiceAddress,
-                        onUseCurrentLocation: _useCurrentServiceLocation,
-                        onChanged: () => setState(() {}),
-                      ),
-                    ],
-                    const SizedBox(height: 6),
+                    Divider(
+                      height: 24,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outlineVariant
+                          .withValues(alpha: .45),
+                    ),
+                    // Whether the client is active in Hexora. Unrelated to
+                    // the geofence, which is toggled in the Ubicación tab.
                     ActiveSwitch(
                       value: c.active,
                       onChanged: (v) => setState(() => c.active = v),
                     ),
                   ],
-                ),
+                )),
               ),
               tabChild(
                 1,
-                _contactSection(ClientContactSection.classification),
+                sectionCard(
+                  ServiceLocationSection(
+                    controller: c,
+                    enabled: c.isEdit,
+                    locating: _locatingServiceAddress,
+                    onUseCurrentLocation: _useCurrentServiceLocation,
+                    onChanged: () => setState(() {}),
+                  ),
+                ),
               ),
               tabChild(
                 2,
-                BillingSection(
-                  c: c,
-                  showValidation: _showValidation,
-                  onFieldChanged: () => setState(() {}),
-                  onFieldBlur: (key) => setState(() => c.markTouched(key)),
+                sectionCard(
+                    _contactSection(ClientContactSection.classification)),
+              ),
+              tabChild(
+                3,
+                sectionCard(
+                  BillingSection(
+                    c: c,
+                    showValidation: _showValidation,
+                    onFieldChanged: () => setState(() {}),
+                    onFieldBlur: (key) => setState(() => c.markTouched(key)),
+                  ),
                 ),
               ),
               const SizedBox(height: 6),

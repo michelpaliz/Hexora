@@ -81,7 +81,9 @@ class RecurringScheduleForm extends StatelessWidget {
       borderRadius: BorderRadius.circular(9),
       borderSide: BorderSide.none,
     );
-    final fieldFill = cs.surfaceContainerHighest.withValues(alpha: .28);
+    // Very pale blue so editable controls read differently from the white card.
+    final fieldFill =
+        Color.alphaBlend(cs.primary.withValues(alpha: .045), cs.surface);
     final inputTextStyle =
         t.bodySmall.copyWith(color: cs.onSurface, fontSize: 13);
     final labelStyle = t.bodySmall.copyWith(
@@ -334,44 +336,53 @@ class RecurringScheduleForm extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  SegmentedButton<String>(
-                    segments: [
-                      ButtonSegment<String>(
-                        value: 'execution_day',
-                        label: Text(isEs ? 'Misma fecha' : 'Same date'),
-                        icon: const Icon(Icons.calendar_today_outlined),
+              // Scrolls sideways instead of overflowing on narrow cards.
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    SegmentedButton<String>(
+                      segments: [
+                        ButtonSegment<String>(
+                          value: 'execution_day',
+                          label: Text(isEs ? 'Misma fecha' : 'Same date'),
+                          icon: const Icon(Icons.calendar_today_outlined),
+                        ),
+                        ButtonSegment<String>(
+                          value: 'fixed_day',
+                          label: Text(isEs ? 'Día fijo' : 'Fixed day'),
+                          icon: const Icon(Icons.event_available_outlined),
+                        ),
+                        ButtonSegment<String>(
+                          value: 'offset_days',
+                          label: Text(isEs ? 'Desfase' : 'Offset'),
+                          icon: const Icon(Icons.timeline_outlined),
+                        ),
+                      ],
+                      selected: {invoiceDateMode},
+                      showSelectedIcon: false,
+                      onSelectionChanged: (selection) {
+                        if (selection.isNotEmpty) {
+                          onInvoiceDateModeChanged(selection.first);
+                        }
+                      },
+                      style: SegmentedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        backgroundColor: fieldFill,
+                        foregroundColor: cs.onSurfaceVariant,
+                        selectedBackgroundColor:
+                            cs.primary.withValues(alpha: .14),
+                        selectedForegroundColor: cs.primary,
+                        textStyle: t.bodySmall.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        side: BorderSide.none,
                       ),
-                      ButtonSegment<String>(
-                        value: 'fixed_day',
-                        label: Text(isEs ? 'Día fijo' : 'Fixed day'),
-                        icon: const Icon(Icons.event_available_outlined),
-                      ),
-                      ButtonSegment<String>(
-                        value: 'offset_days',
-                        label: Text(isEs ? 'Desfase' : 'Offset'),
-                        icon: const Icon(Icons.timeline_outlined),
-                      ),
-                    ],
-                    selected: {invoiceDateMode},
-                    showSelectedIcon: false,
-                    onSelectionChanged: (selection) {
-                      if (selection.isNotEmpty) {
-                        onInvoiceDateModeChanged(selection.first);
-                      }
-                    },
-                    style: SegmentedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      textStyle: t.bodySmall.copyWith(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      side: BorderSide.none,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(height: 8),
               AnimatedBuilder(

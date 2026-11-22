@@ -5,6 +5,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 
 class ServiceListItem extends StatefulWidget {
   final Service service;
+  final bool selected;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
 
@@ -14,6 +15,7 @@ class ServiceListItem extends StatefulWidget {
   const ServiceListItem({
     super.key,
     required this.service,
+    this.selected = false,
     this.onTap,
     this.onDelete,
     required this.nameStyle,
@@ -45,8 +47,15 @@ class _ServiceListItemState extends State<ServiceListItem> {
       return Card(
         margin: EdgeInsets.zero,
         elevation: 0,
-        color: cs.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: widget.selected ? cs.surface : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: widget.selected
+                ? cs.primary.withValues(alpha: .18)
+                : Colors.transparent,
+          ),
+        ),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: widget.onTap,
@@ -118,17 +127,19 @@ class _ServiceListItemState extends State<ServiceListItem> {
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
           color: isLight
-              ? Colors.white
+              ? (widget.selected ? cs.surface : Colors.transparent)
               : _hovered
                   ? cs.surfaceContainerHighest.withValues(alpha: 0.18)
                   : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _hovered
-                ? cs.outlineVariant.withValues(alpha: 0.45)
-                : cs.outlineVariant.withValues(alpha: 0.25),
+            color: widget.selected
+                ? cs.primary.withValues(alpha: .18)
+                : _hovered
+                    ? cs.outlineVariant.withValues(alpha: 0.45)
+                    : cs.outlineVariant.withValues(alpha: 0.25),
           ),
-          boxShadow: isLight
+          boxShadow: isLight && (widget.selected || _hovered)
               ? [
                   BoxShadow(
                     color:

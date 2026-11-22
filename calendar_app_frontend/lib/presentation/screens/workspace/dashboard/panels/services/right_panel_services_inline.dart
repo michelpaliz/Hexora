@@ -562,6 +562,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                   ),
                   ServicesTab(
                     items: _services,
+                    selectedServiceId: _editingService?.id,
                     loading: _loadingServices,
                     error: _errServices,
                     onRefresh: _loadServices,
@@ -772,6 +773,8 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
           child: FolderPanel(
             title: '${l.tabServices} · ${l.tabClients}',
             showTab: false,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            showBorder: false,
             contentTopPadding: 8,
             child: LayoutBuilder(
               builder: (context, splitConstraints) {
@@ -816,7 +819,16 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                       width: editorWidth,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: ColoredBox(color: cs.surface, child: right),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).scaffoldBackgroundColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: cs.outlineVariant.withValues(alpha: .28),
+                            ),
+                          ),
+                          child: right,
+                        ),
                       ),
                     ),
                   ],

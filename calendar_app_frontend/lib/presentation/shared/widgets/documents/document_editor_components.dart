@@ -27,6 +27,7 @@ class HexoraDocumentStepper extends StatelessWidget {
     this.itemKeyBuilder,
     this.compactConnectors = false,
     this.vertical = false,
+    this.afterStepBuilder,
   });
 
   final List<HexoraDocumentStep> steps;
@@ -35,6 +36,7 @@ class HexoraDocumentStepper extends StatelessWidget {
   final Key Function(int index, HexoraDocumentStep step)? itemKeyBuilder;
   final bool compactConnectors;
   final bool vertical;
+  final Widget? Function(int index)? afterStepBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +72,7 @@ class HexoraDocumentStepper extends StatelessWidget {
               constraints: const BoxConstraints(minHeight: 36),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
-                color: active ? color.withValues(alpha: .10) : null,
+                color: active ? cs.surface : null,
                 borderRadius: BorderRadius.circular(9),
                 border: Border.all(
                   color: active
@@ -158,12 +160,18 @@ class HexoraDocumentStepper extends StatelessWidget {
           ),
         );
 
+    List<Widget> extrasAfterStep(int index) {
+      final extra = afterStepBuilder?.call(index);
+      return extra == null ? const <Widget>[] : <Widget>[extra];
+    }
+
     if (vertical) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (var index = 0; index < steps.length; index++) ...[
             stepItem(index),
+            ...extrasAfterStep(index),
             if (index < steps.length - 1)
               Align(
                 alignment: AlignmentDirectional.centerStart,

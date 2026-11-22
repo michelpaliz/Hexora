@@ -50,13 +50,14 @@ class _ImportDetailsDialog extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final es = Localizations.localeOf(context).languageCode == 'es';
 
-    final id = (batch['batchId'] ?? batch['_id'] ?? batch['id'])?.toString() ??
-        '';
+    final id =
+        (batch['batchId'] ?? batch['_id'] ?? batch['id'])?.toString() ?? '';
     final filename =
         (batch['originalName'] ?? batch['filename'])?.toString() ?? '';
     final fileLabel =
         filename.isNotEmpty ? filename : l.statementsBatchFallback;
-    final uploadedAt = batch['uploadedAt'] ?? batch['createdAt'] ?? batch['date'];
+    final uploadedAt =
+        batch['uploadedAt'] ?? batch['createdAt'] ?? batch['date'];
     final count = batch['entryCount'] ?? batch['entries'] ?? batch['count'];
     final skipped = batch['skippedDuplicates'] ?? batch['skipped'];
     final checksum = batch['checksum']?.toString();
@@ -66,9 +67,8 @@ class _ImportDetailsDialog extends StatelessWidget {
     final dateLabel = uploadedAt == null
         ? '—'
         : StatementsFormatters.formatDateTime(context, uploadedAt);
-    final countLabel = count == null
-        ? '—'
-        : StatementsFormatters.formatCount(context, count);
+    final countLabel =
+        count == null ? '—' : StatementsFormatters.formatCount(context, count);
     final skippedLabel = skipped == null
         ? '—'
         : StatementsFormatters.formatCount(context, skipped);
@@ -138,8 +138,8 @@ class _ImportDetailsDialog extends StatelessWidget {
                     ),
                     Text(
                       es
-                          ? 'Pueden ser duplicados u omisiones esperadas.'
-                          : 'May be duplicates or expected exclusions.',
+                          ? 'El backend no proporciona una clasificación detallada.'
+                          : 'The backend does not provide a detailed classification.',
                       style: t.caption.copyWith(
                         color: cs.onSurfaceVariant,
                         fontSize: 11,

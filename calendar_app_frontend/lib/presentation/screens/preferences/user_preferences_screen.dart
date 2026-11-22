@@ -274,6 +274,8 @@ class _PreferenceChoice extends StatelessWidget {
   }
 }
 
+enum _AppearanceChoice { automatic, light, lightBlue, dark }
+
 class _AppearancePreference extends StatelessWidget {
   const _AppearancePreference();
 
@@ -281,14 +283,42 @@ class _AppearancePreference extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final provider = context.watch<ThemeModeProvider>();
-    return _CompactSegmentedControl<ThemeMode>(
-      selected: provider.mode,
+    final selected = switch (provider.mode) {
+      ThemeMode.system => _AppearanceChoice.automatic,
+      ThemeMode.dark => _AppearanceChoice.dark,
+      ThemeMode.light => provider.lightVariant == LightThemeVariant.blue
+          ? _AppearanceChoice.lightBlue
+          : _AppearanceChoice.light,
+    };
+    return _CompactSegmentedControl<_AppearanceChoice>(
+      selected: selected,
       options: [
-        (value: ThemeMode.system, label: l.preferencesAutomatic),
-        (value: ThemeMode.light, label: l.preferencesThemeLight),
-        (value: ThemeMode.dark, label: l.preferencesThemeDark),
+        (value: _AppearanceChoice.automatic, label: l.preferencesAutomatic),
+        (value: _AppearanceChoice.light, label: l.preferencesThemeLight),
+        (
+          value: _AppearanceChoice.lightBlue,
+          label: Localizations.localeOf(context).languageCode == 'es'
+              ? 'Claro azul'
+              : 'Blue light',
+        ),
+        (value: _AppearanceChoice.dark, label: l.preferencesThemeDark),
       ],
-      onSelected: provider.isLoaded ? provider.setMode : null,
+      onSelected: provider.isLoaded
+          ? (choice) async {
+              switch (choice) {
+                case _AppearanceChoice.automatic:
+                  await provider.setMode(ThemeMode.system);
+                case _AppearanceChoice.light:
+                  await provider.setLightVariant(LightThemeVariant.neutral);
+                  await provider.setMode(ThemeMode.light);
+                case _AppearanceChoice.lightBlue:
+                  await provider.setLightVariant(LightThemeVariant.blue);
+                  await provider.setMode(ThemeMode.light);
+                case _AppearanceChoice.dark:
+                  await provider.setMode(ThemeMode.dark);
+              }
+            }
+          : null,
     );
   }
 }

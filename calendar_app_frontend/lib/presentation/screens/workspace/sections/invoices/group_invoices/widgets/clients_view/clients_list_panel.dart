@@ -1135,6 +1135,8 @@ class _ClientRow extends StatelessWidget {
       separatorWidth: 0,
       margin: EdgeInsets.zero,
       borderRadius: selected ? 8 : 0,
+      selectedBackgroundColor: selected ? cs.surface : null,
+      selectedBorderColor: selected ? cs.primary.withValues(alpha: 0.18) : null,
       child: Row(children: [
         CircleAvatar(
           radius: 12,

@@ -72,6 +72,9 @@ class ClientListItem extends StatelessWidget {
       final badges = Wrap(spacing: 4, runSpacing: 4, children: warnings);
       return HexoraListRow(
         selected: selected,
+        selectedBackgroundColor: selected ? cs.surface : null,
+        selectedBorderColor:
+            selected ? cs.primary.withValues(alpha: 0.18) : null,
         onTap: onTap,
         minHeight: HexoraTableTokens.compactRowMinHeight,
         verticalPadding: HexoraDimensions.space,

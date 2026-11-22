@@ -8,6 +8,7 @@ import 'package:hexora/presentation/shared/widgets/panels/hexora_side_panel.dart
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/components/hexora_ai_output_tokens.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
+import 'package:hexora/theme/themes/theme_variant.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/services/insights/insights_api.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -74,8 +75,12 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
   @override
   Widget build(BuildContext context) {
     final base = Theme.of(context);
-    final navy =
-        kIsWeb && widget.embedded && MediaQuery.sizeOf(context).width >= 1180;
+    final neutralLight =
+        base.extension<HexoraThemeVariant>()?.neutralLight == true;
+    final navy = kIsWeb &&
+        widget.embedded &&
+        MediaQuery.sizeOf(context).width >= 1180 &&
+        !neutralLight;
     if (!navy) return _buildShell(context, base, navy: false);
     final navigation = navigationTheme(base);
     final chatTheme = navigation.copyWith(

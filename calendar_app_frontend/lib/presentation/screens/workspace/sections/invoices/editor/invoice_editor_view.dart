@@ -65,7 +65,7 @@ class _InvoiceEditorView extends StatelessWidget {
         }
 
         final content = Scaffold(
-          backgroundColor: cs.surface,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           appBar: kIsWeb
               ? null
               : InvoiceEditorAppBar(
@@ -99,12 +99,6 @@ class _InvoiceEditorView extends StatelessWidget {
               final rawSubtotal = state._c.rawSubtotal;
               final discountAmount = state._c.effectiveDiscountAmount;
               final taxAfterDiscount = state._c.taxAfterDiscount;
-
-              final headerBar = _InvoiceEditorHeaderSection(
-                state: state,
-                l: l,
-                selectedClientName: selectedClientName,
-              );
 
               final linesSection = InvoiceContentSection(
                 useBlocks: state._c.useBlocks,
@@ -953,8 +947,6 @@ class _InvoiceEditorView extends StatelessWidget {
                   padding: const EdgeInsets.all(5),
                   child: Column(
                     children: [
-                      headerBar,
-                      const SizedBox(height: 6),
                       Expanded(
                         child: LayoutBuilder(
                           builder: (context, wizardConstraints) {
@@ -1083,6 +1075,8 @@ class _InvoiceEditorView extends StatelessWidget {
                                     onToggleGroup: state._toggleLineMethods,
                                     onToggleCollapsed: state._toggleWizardRail,
                                     expandedWidth: 200,
+                                    backgroundColor: Theme.of(context)
+                                        .scaffoldBackgroundColor,
                                   )
                                 else
                                   _InvoiceReceiptStyleWizardRail(
@@ -1095,6 +1089,9 @@ class _InvoiceEditorView extends StatelessWidget {
                                             : 'Edit invoice'),
                                     steps: wizardSteps,
                                     currentStep: currentEditorStep,
+                                    selectedClientName:
+                                        hasClient ? selectedClientName : '',
+                                    onClientTapped: () => state._goToStep(0),
                                     selectedSectionId: state._lineInputMode,
                                     sectionsExpanded:
                                         state._lineMethodsExpanded,
@@ -1337,22 +1334,32 @@ class _InvoiceEditorView extends StatelessWidget {
               clientInfoCard,
               const SizedBox(height: 10),
               Expanded(
-                child: _InvoiceClientStatsBox(
-                  issuedTotal: state._c.clientIssuedTotal,
-                  issuedCount: state._c.clientIssuedCount,
-                  loading: state._c.loadingClientStats,
-                  currentInvoices: state._c.clientCurrentInvoices,
-                  pastInvoices: state._c.clientPastInvoices,
-                  onPreview: (invoice) async {
-                    final bytes = await state._c.fetchHistoricalPdf(invoice.id);
-                    final fileName = invoice.isDraft
-                        ? 'invoice-draft-${invoice.id}.pdf'
-                        : 'invoice-${invoice.invoiceNumber}.pdf';
-                    await pdf_launcher.launchPdfPreview(
-                      bytes,
-                      fileName: fileName,
-                    );
-                  },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: .45),
+                    ),
+                  ),
+                  child: _InvoiceClientStatsBox(
+                    issuedTotal: state._c.clientIssuedTotal,
+                    issuedCount: state._c.clientIssuedCount,
+                    loading: state._c.loadingClientStats,
+                    currentInvoices: state._c.clientCurrentInvoices,
+                    pastInvoices: state._c.clientPastInvoices,
+                    onPreview: (invoice) async {
+                      final bytes =
+                          await state._c.fetchHistoricalPdf(invoice.id);
+                      final fileName = invoice.isDraft
+                          ? 'invoice-draft-${invoice.id}.pdf'
+                          : 'invoice-${invoice.invoiceNumber}.pdf';
+                      await pdf_launcher.launchPdfPreview(
+                        bytes,
+                        fileName: fileName,
+                      );
+                    },
+                  ),
                 ),
               ),
             ],
@@ -1452,19 +1459,28 @@ class _InvoiceEditorView extends StatelessWidget {
 
       selectedDetails = Padding(
         padding: const EdgeInsets.fromLTRB(4, 0, 0, 0),
-        child: _InvoiceClientStatsBox(
-          issuedTotal: state._c.clientIssuedTotal,
-          issuedCount: state._c.clientIssuedCount,
-          loading: state._c.loadingClientStats,
-          currentInvoices: state._c.clientCurrentInvoices,
-          pastInvoices: state._c.clientPastInvoices,
-          onPreview: (invoice) async {
-            final bytes = await state._c.fetchHistoricalPdf(invoice.id);
-            final fileName = invoice.isDraft
-                ? 'invoice-draft-${invoice.id}.pdf'
-                : 'invoice-${invoice.invoiceNumber}.pdf';
-            await pdf_launcher.launchPdfPreview(bytes, fileName: fileName);
-          },
+        child: Container(
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: .45),
+            ),
+          ),
+          child: _InvoiceClientStatsBox(
+            issuedTotal: state._c.clientIssuedTotal,
+            issuedCount: state._c.clientIssuedCount,
+            loading: state._c.loadingClientStats,
+            currentInvoices: state._c.clientCurrentInvoices,
+            pastInvoices: state._c.clientPastInvoices,
+            onPreview: (invoice) async {
+              final bytes = await state._c.fetchHistoricalPdf(invoice.id);
+              final fileName = invoice.isDraft
+                  ? 'invoice-draft-${invoice.id}.pdf'
+                  : 'invoice-${invoice.invoiceNumber}.pdf';
+              await pdf_launcher.launchPdfPreview(bytes, fileName: fileName);
+            },
+          ),
         ),
       );
     }
@@ -1740,6 +1756,8 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
     required this.title,
     required this.steps,
     required this.currentStep,
+    required this.selectedClientName,
+    required this.onClientTapped,
     required this.selectedSectionId,
     required this.sectionsExpanded,
     required this.onStepSelected,
@@ -1751,6 +1769,8 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
   final String title;
   final List<DocumentWizardStep> steps;
   final int currentStep;
+  final String selectedClientName;
+  final VoidCallback onClientTapped;
   final String? selectedSectionId;
   final bool sectionsExpanded;
   final ValueChanged<int> onStepSelected;
@@ -1780,13 +1800,36 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.titleSmall?.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w800,
+                    child: Tooltip(
+                      message: selectedClientName,
+                      child: InkWell(
+                        onTap: onClientTapped,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: textTheme.titleSmall?.copyWith(
+                                    color: cs.onSurface,
+                                    fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 2),
+                            Text(
+                              selectedClientName.trim().isEmpty
+                                  ? (isEs
+                                      ? 'Sin cliente seleccionado'
+                                      : 'No client selected')
+                                  : selectedClientName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.bodySmall?.copyWith(
+                                color: cs.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1819,86 +1862,66 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
               vertical: true,
               itemKeyBuilder: (index, _) =>
                   ValueKey('invoice-flow-step-$index'),
-            ),
-            if (sections.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: onToggleSections,
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  child: Row(
+              afterStepBuilder: (index) {
+                if (index != 2 || currentStep != 2 || sections.isEmpty) {
+                  return null;
+                }
+                return Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 14, top: 2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: Text(
-                          isEs ? 'Método de líneas' : 'Line method',
-                          style: textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        sectionsExpanded
-                            ? Icons.expand_less_rounded
-                            : Icons.expand_more_rounded,
-                        size: 17,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (sectionsExpanded)
-                for (final section in sections)
-                  InkWell(
-                    key: ValueKey('invoice-line-mode-${section.id}'),
-                    onTap: () => onSectionSelected(section.id),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      margin: const EdgeInsetsDirectional.only(
-                        start: 14,
-                        top: 2,
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: section.id == selectedSectionId
-                            ? cs.primary.withValues(alpha: .09)
-                            : null,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            section.icon,
-                            size: 15,
-                            color: section.id == selectedSectionId
-                                ? cs.primary
-                                : cs.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 7),
-                          Expanded(
-                            child: Text(
-                              section.label,
-                              style: textTheme.bodySmall?.copyWith(
-                                color: section.id == selectedSectionId
-                                    ? cs.primary
-                                    : cs.onSurfaceVariant,
-                                fontWeight: section.id == selectedSectionId
-                                    ? FontWeight.w800
-                                    : FontWeight.w600,
-                              ),
+                      for (final section in sections)
+                        InkWell(
+                          key: ValueKey('invoice-line-mode-${section.id}'),
+                          onTap: () => onSectionSelected(section.id),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: section.id == selectedSectionId
+                                  ? cs.primary.withValues(alpha: .09)
+                                  : cs.surfaceContainerHighest
+                                      .withValues(alpha: .22),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  section.icon,
+                                  size: 15,
+                                  color: section.id == selectedSectionId
+                                      ? cs.primary
+                                      : cs.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 7),
+                                Expanded(
+                                  child: Text(
+                                    section.label,
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: section.id == selectedSectionId
+                                          ? cs.primary
+                                          : cs.onSurfaceVariant,
+                                      fontWeight:
+                                          section.id == selectedSectionId
+                                              ? FontWeight.w800
+                                              : FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
+                    ],
                   ),
-            ],
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -1974,11 +1997,12 @@ class _InvoiceClientStatsBoxState extends State<_InvoiceClientStatsBox>
             ),
             indicatorSize: TabBarIndicatorSize.tab,
             indicator: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(999),
+              color: cs.primary.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: cs.primary.withValues(alpha: .28)),
             ),
             indicatorPadding: const EdgeInsets.symmetric(vertical: 3),
-            labelColor: cs.onPrimaryContainer,
+            labelColor: cs.primary,
             unselectedLabelColor: cs.onSurfaceVariant,
             labelStyle:
                 t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 11),

@@ -143,47 +143,13 @@ class _SourceHistoryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final s = context.watch<StatementsController>();
-    final cs = Theme.of(context).colorScheme;
-    Widget thresholdButton(int value) {
-      final selected = s.statusThreshold == value;
-      return OutlinedButton(
-        onPressed: () => s.setStatusThreshold(value),
-        style: OutlinedButton.styleFrom(
-          visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          minimumSize: const Size(0, 30),
-          backgroundColor: selected ? cs.primaryContainer : null,
-        ),
-        child: Text('$value'),
-      );
-    }
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
       child: FolderSectionCard(
         label: l.statementsHistoryTabTitle,
         showTitle: false,
         leftTabOffset: 0,
-        actions: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              thresholdButton(3),
-              const SizedBox(width: 4),
-              thresholdButton(5),
-              const SizedBox(width: 4),
-              thresholdButton(7),
-            ],
-          ),
-          IconButton(
-            tooltip: l.refreshAction,
-            onPressed: s.loadingImports ? null : s.listImports,
-            icon: const Icon(Icons.refresh, size: 18),
-            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-            padding: EdgeInsets.zero,
-          ),
-        ],
+        actions: const [],
         child: const Padding(
           padding: EdgeInsets.only(top: 12),
           child: StatementsHistoryTab(),
@@ -471,7 +437,7 @@ class _EnableBankingViewState extends State<_EnableBankingView>
   Widget build(BuildContext context) {
     final currentUserId = context.read<UserDomain?>()?.user?.id;
     final canUseBanking = canManagePremiumFeature(
-      widget.group, currentUserId, PremiumFeature.banking);
+        widget.group, currentUserId, PremiumFeature.banking);
     if (!canUseBanking) {
       return PremiumFeatureRequestScreen(
         feature: PremiumFeatureRequest.banking,

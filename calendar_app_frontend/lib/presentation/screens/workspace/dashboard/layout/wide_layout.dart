@@ -410,36 +410,34 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
                 _item(destination),
         ];
 
-    return CollapsibleSidebar(
+    final sidebar = CollapsibleSidebar(
       title: es ? 'Módulos' : 'Modules',
       headerIcon: Icons.apps_rounded,
       menuExpandedWidth: 176,
       collapsedToggleInRail: true,
       collapsed: _collapsed,
       onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
-      topContent: Row(
+      topContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: _MenuSearchField(
-              controller: _searchController,
-              isSpanish: es,
-              onChanged: (_) => setState(() {}),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Tooltip(
-            message: es ? 'Contraer módulos' : 'Collapse modules',
-            child: IconButton(
+          SizedBox(
+            width: double.infinity,
+            height: 32,
+            child: OutlinedButton.icon(
               onPressed: () => setState(() => _collapsed = true),
-              icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
-              iconSize: 16,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints.tightFor(width: 34, height: 36),
-              style: IconButton.styleFrom(
-                backgroundColor: NavigationColors(Theme.of(context).colorScheme)
-                    .compactControlSurface,
+              icon: const Icon(Icons.keyboard_double_arrow_left_rounded,
+                  size: 16),
+              label: Text(es ? 'Compactar' : 'Compact'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(32),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
                 foregroundColor:
                     NavigationColors(Theme.of(context).colorScheme).foreground,
+                backgroundColor: NavigationColors(Theme.of(context).colorScheme)
+                    .compactControlSurface
+                    .withValues(alpha: 0.55),
                 side: BorderSide(
                   color: NavigationColors(Theme.of(context).colorScheme)
                       .compactControlBorder,
@@ -447,10 +445,20 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
                 overlayColor: NavigationColors(Theme.of(context).colorScheme)
                     .compactControlHover,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                textStyle: NavigationTokens.label(context).copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
+          ),
+          const SizedBox(height: 6),
+          _MenuSearchField(
+            controller: _searchController,
+            isSpanish: es,
+            onChanged: (_) => setState(() {}),
           ),
         ],
       ),
@@ -487,6 +495,7 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
       expandTooltip: es ? 'Expandir módulos' : 'Expand modules',
       collapseTooltip: es ? 'Contraer módulos' : 'Collapse modules',
     );
+    return sidebar;
   }
 }
 

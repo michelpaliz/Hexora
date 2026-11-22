@@ -95,6 +95,8 @@ class GroupInvoicesSideMenu extends StatelessWidget {
         .toLowerCase()
         .startsWith('es');
     final customersLabel = isEs ? 'Clientes' : 'Customers';
+    final organizeClientsLabel =
+        isEs ? 'Organizar clientes' : 'Organize clients';
     final incomeAnalysisLabel =
         isEs ? 'Análisis de ingresos' : 'Income analysis';
     final recurringLabel = isEs ? 'Recurrentes' : 'Recurring';
@@ -120,7 +122,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
             ),
             CollapsedNavigationDestination(
               icon: Icons.category_outlined,
-              label: l.clientClassificationTitle,
+              label: organizeClientsLabel,
               selected: selectedMenu == 'client_classifications',
               onTap: () => onMenuChanged('client_classifications'),
             ),
@@ -149,6 +151,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
             CollapsedNavigationDestination(
               icon: Icons.add_rounded,
               label: l.createInvoiceCta,
+              selected: selectedMenu == 'invoice_editor',
               onTap: onCreateInvoice,
             ),
             CollapsedNavigationDestination(
@@ -290,7 +293,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                           ),
                           GroupInvoicesSubMenuItem(
                             icon: Icons.category_outlined,
-                            label: l.clientClassificationTitle,
+                            label: organizeClientsLabel,
                             selected: selectedMenu == 'client_classifications',
                             indent: childIndent,
                             onPressed: () =>
@@ -357,7 +360,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                           GroupInvoicesSubMenuItem(
                             icon: Icons.add_rounded,
                             label: l.createInvoiceCta,
-                            selected: false,
+                            selected: selectedMenu == 'invoice_editor',
                             primaryAction: true,
                             indent: childIndent,
                             onPressed: onCreateInvoice,
@@ -460,7 +463,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                             ),
                             GroupInvoicesSubMenuItem(
                               icon: Icons.category_outlined,
-                              label: l.clientClassificationTitle,
+                              label: organizeClientsLabel,
                               selected:
                                   selectedMenu == 'client_classifications',
                               onPressed: () =>

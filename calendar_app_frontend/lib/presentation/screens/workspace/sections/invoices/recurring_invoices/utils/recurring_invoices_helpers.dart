@@ -73,21 +73,20 @@ String recurringIssueDatePolicySummary(
   return isEs ? 'Misma fecha de ejecucion' : 'Issue date = execution day';
 }
 
+/// Raw total of a recurring series, from whichever field the API provided.
+num? seriesTotalAmount(Map<String, dynamic> series) {
+  final totals = series['totals'];
+  if (totals is Map && totals['total'] is num) return totals['total'] as num;
+  if (series['grandTotal'] is num) return series['grandTotal'] as num;
+  if (series['total'] is num) return series['total'] as num;
+  return null;
+}
+
 String seriesTotal(BuildContext context, Map<String, dynamic> series) {
   final l = AppLocalizations.of(context)!;
   final currency = (series['currency'] ?? 'EUR').toString();
   final format = NumberFormat.currency(locale: l.localeName, symbol: currency);
-  final totals = series['totals'];
-  num? total;
-  if (totals is Map && totals['total'] is num) {
-    total = totals['total'] as num;
-  } else if (series['grandTotal'] is num) {
-    total = series['grandTotal'] as num;
-  } else if (series['total'] is num) {
-    total = series['total'] as num;
-  }
-  if (total == null) return format.format(0);
-  return format.format(total);
+  return format.format(seriesTotalAmount(series) ?? 0);
 }
 
 List<LineDraft> buildLineDrafts(

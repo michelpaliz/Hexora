@@ -189,15 +189,18 @@ class WorkspaceMainContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final chrome = WorkspaceTabChromeScope.maybeOf(context);
     if (chrome == null) return child;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (chrome.active)
-          chrome.tabBarBuilder(context)
-        else
-          const SizedBox.shrink(),
-        Expanded(child: child),
-      ],
+    return ColoredBox(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (chrome.active)
+            chrome.tabBarBuilder(context)
+          else
+            const SizedBox.shrink(),
+          Expanded(child: child),
+        ],
+      ),
     );
   }
 }

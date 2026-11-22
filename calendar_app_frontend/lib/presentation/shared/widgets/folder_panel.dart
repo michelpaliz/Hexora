@@ -24,6 +24,7 @@ class FolderPanel extends StatelessWidget {
   final double actionsSpacing;
   final bool showToolbarDivider;
   final bool showBorder;
+  final Color? backgroundColor;
 
   const FolderPanel({
     super.key,
@@ -38,6 +39,7 @@ class FolderPanel extends StatelessWidget {
     this.actionsSpacing = 6,
     this.showToolbarDivider = true,
     this.showBorder = true,
+    this.backgroundColor,
   });
 
   static const double _contentGap = 8;
@@ -75,7 +77,7 @@ class FolderPanel extends StatelessWidget {
           child: Container(
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: cs.surface,
+              color: backgroundColor ?? cs.surface,
               borderRadius: BorderRadius.circular(12),
               border: showBorder ? Border.all(color: border) : null,
             ),
@@ -163,17 +165,22 @@ class _ContextToolbar extends StatelessWidget {
           if (actions.isNotEmpty) ...[
             if (tabContent != null) const SizedBox(width: 8),
             Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const ClampingScrollPhysics(),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (var index = 0; index < actions.length; index++) ...[
-                      if (index > 0) SizedBox(width: actionsSpacing),
-                      actions[index],
+              child: Align(
+                alignment: tabContent == null
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const ClampingScrollPhysics(),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var index = 0; index < actions.length; index++) ...[
+                        if (index > 0) SizedBox(width: actionsSpacing),
+                        actions[index],
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),

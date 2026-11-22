@@ -102,7 +102,8 @@ class _GroupInvoicesView extends StatelessWidget {
               'recurring' => isEs ? 'Recurrentes' : 'Recurring',
               'recurring_receipts' =>
                 isEs ? 'Recibos recurrentes' : 'Recurring receipts',
-              'client_classifications' => l.clientClassificationTitle,
+              'client_classifications' =>
+                isEs ? 'Organizar clientes' : 'Organize clients',
               _ => l.invoicesTitle(state.widget.group.name),
             };
       final showInvoiceActions = activeMenu == 'invoices' ||
@@ -160,8 +161,8 @@ class _GroupInvoicesView extends StatelessWidget {
                     icon: const Icon(Icons.add_rounded, size: 18),
                     label: Text(
                         Localizations.localeOf(context).languageCode == 'es'
-                            ? 'Nueva clasificación'
-                            : 'New classification'),
+                            ? 'Gestionar categorías'
+                            : 'Manage categories'),
                     style: FilledButton.styleFrom(
                       minimumSize: const Size(0, 30),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -304,6 +305,8 @@ class _GroupInvoicesView extends StatelessWidget {
                             activeMenu != 'operations')
                         ? FolderPanel(
                             title: folderTitle,
+                            backgroundColor:
+                                Theme.of(context).scaffoldBackgroundColor,
                             showTab: activeMenu != 'clients',
                             tabContent: showInvoiceActions ||
                                     documentToolbarTabs == null
@@ -319,7 +322,8 @@ class _GroupInvoicesView extends StatelessWidget {
                             actionsSpacing: 6,
                             showToolbarDivider: !showInvoiceActions &&
                                 activeMenu != 'recurring' &&
-                                activeMenu != 'recurring_receipts',
+                                activeMenu != 'recurring_receipts' &&
+                                activeMenu != 'client_classifications',
                             contentTopPadding: activeMenu == 'clients'
                                 ? 0
                                 : showInvoiceActions

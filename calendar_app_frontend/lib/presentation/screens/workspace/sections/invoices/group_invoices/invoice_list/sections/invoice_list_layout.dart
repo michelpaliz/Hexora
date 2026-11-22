@@ -12,7 +12,6 @@ extension _InvoiceListLayout on _InvoicesTabListState {
     final searchQuery = _searchText.trim().toLowerCase();
     final invoiceQuery = _invoiceNumberQuery.trim();
     final hasColumnFilters = _duplicateFilter != 'all' ||
-        searchQuery.isNotEmpty ||
         invoiceQuery.isNotEmpty ||
         _selectedClientNames.isNotEmpty ||
         _selectedLifecycleStatuses.isNotEmpty ||
@@ -61,7 +60,10 @@ extension _InvoiceListLayout on _InvoicesTabListState {
           clientName,
           inv.billingName ?? '',
           inv.clientName ?? '',
+          inv.conceptSummaries.join(' '),
+          ...inv.lines.map((line) => line.description),
           inv.totalFormatted ?? '',
+          inv.notes ?? '',
           amount,
           amount.replaceAll('.', ','),
         ].join(' ').toLowerCase();
@@ -135,7 +137,10 @@ extension _InvoiceListLayout on _InvoicesTabListState {
     // [sourceInvoices] is the complete module dataset, so whenever any filter
     // is active (including the date range) the footer sums the same visible
     // invoices as the rows instead of falling back to the server page totals.
-    final usesLocalSummary = _unpaidOnly || _unlinkedOnly || hasColumnFilters;
+    final usesLocalSummary = _unpaidOnly ||
+        _unlinkedOnly ||
+        hasColumnFilters ||
+        searchQuery.isNotEmpty;
     final summaryTotals = usesLocalSummary
         ? _summaryFromInvoices(visible, outstandingOnly: _unpaidOnly)
         : _summaryTotals;
@@ -394,9 +399,17 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   style: t.bodySmall.copyWith(fontSize: 12.5),
                   decoration: InputDecoration(
                     hintText: isSpanish
-                        ? 'Buscar facturas, clientes o importes...'
-                        : 'Search invoices, clients or amounts...',
+                        ? 'Buscar factura, cliente o concepto...'
+                        : 'Search invoice, client or concept...',
                     prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                    suffixIcon: _searchText.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip:
+                                isSpanish ? 'Limpiar búsqueda' : 'Clear search',
+                            onPressed: () => _setGlobalSearchDebounced(''),
+                            icon: const Icon(Icons.close_rounded, size: 17),
+                          ),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   ),
@@ -565,6 +578,29 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                 onRetry:
                     _unpaidOnly ? _loadUnpaidInvoices : _loadUnlinkedInvoices,
               ),
+            ),
+          ],
+          if (hasColumnFilters || searchQuery.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            _InvoiceActiveFiltersBar(
+              searchActive: searchQuery.isNotEmpty,
+              columnFilterActive: hasColumnFilters,
+              clientNames: _selectedClientNames,
+              lifecycleStatuses: _selectedLifecycleStatuses,
+              paymentStatuses: _selectedPaymentStatuses,
+              dateActive: hasFilter,
+              amountActive:
+                  _baseRange.active || _vatRange.active || _totalRange.active,
+              onClearClient: () =>
+                  _clearFilterFor(CompactDocumentColumn.client),
+              onClearLifecycle: () =>
+                  _clearFilterFor(CompactDocumentColumn.status),
+              onClearPayment: () =>
+                  _clearFilterFor(CompactDocumentColumn.payment),
+              onClearDate: () => _clearFilterFor(CompactDocumentColumn.date),
+              onClearAmount: () => _clearFilterFor(CompactDocumentColumn.total),
+              onClearColumnFilters: _clearOnlyColumnFilters,
+              onClearAll: _clearColumnFilters,
             ),
           ],
           const SizedBox(height: 6),
@@ -741,4 +777,125 @@ extension _InvoiceListLayout on _InvoicesTabListState {
       ),
     );
   }
+}
+
+class _InvoiceActiveFiltersBar extends StatelessWidget {
+  const _InvoiceActiveFiltersBar({
+    required this.searchActive,
+    required this.columnFilterActive,
+    required this.clientNames,
+    required this.lifecycleStatuses,
+    required this.paymentStatuses,
+    required this.dateActive,
+    required this.amountActive,
+    required this.onClearClient,
+    required this.onClearLifecycle,
+    required this.onClearPayment,
+    required this.onClearDate,
+    required this.onClearAmount,
+    required this.onClearColumnFilters,
+    required this.onClearAll,
+  });
+
+  final bool searchActive;
+  final bool columnFilterActive;
+  final Set<String> clientNames;
+  final Set<String> lifecycleStatuses;
+  final Set<String> paymentStatuses;
+  final bool dateActive;
+  final bool amountActive;
+  final VoidCallback onClearClient;
+  final VoidCallback onClearLifecycle;
+  final VoidCallback onClearPayment;
+  final VoidCallback onClearDate;
+  final VoidCallback onClearAmount;
+  final VoidCallback onClearColumnFilters;
+  final VoidCallback onClearAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final chips = <Widget>[];
+    for (final client in clientNames) {
+      chips.add(_chip(
+          'Cliente: ${client.isEmpty ? '-' : client}', cs, onClearClient));
+    }
+    for (final status in lifecycleStatuses) {
+      chips.add(
+          _chip('Estado: ${_statusLabel(status, isEs)}', cs, onClearLifecycle));
+    }
+    for (final status in paymentStatuses) {
+      chips.add(
+          _chip('Pago: ${_paymentLabel(status, isEs)}', cs, onClearPayment));
+    }
+    if (dateActive) {
+      chips.add(_chip(isEs ? 'Fecha' : 'Date', cs, onClearDate));
+    }
+    if (amountActive) {
+      chips.add(_chip(isEs ? 'Importe' : 'Amount', cs, onClearAmount));
+    }
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        if (searchActive)
+          Text(
+            isEs ? 'Búsqueda activa' : 'Search active',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ...chips,
+        if (columnFilterActive)
+          TextButton(
+            onPressed: onClearColumnFilters,
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+            ),
+            child: Text(isEs ? 'Limpiar filtros' : 'Clear filters'),
+          ),
+        if (searchActive && columnFilterActive)
+          TextButton(
+            onPressed: onClearAll,
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+            ),
+            child: Text(isEs ? 'Limpiar todo' : 'Clear all'),
+          ),
+      ],
+    );
+  }
+
+  Widget _chip(String label, ColorScheme cs, VoidCallback onDeleted) =>
+      InputChip(
+        label: Text(label),
+        onDeleted: onDeleted,
+        deleteIcon: const Icon(Icons.close_rounded, size: 14),
+        visualDensity: VisualDensity.compact,
+        labelStyle: TextStyle(color: cs.onSurfaceVariant, fontSize: 11),
+        backgroundColor: cs.primaryContainer.withValues(alpha: .5),
+        side: BorderSide(color: cs.primary.withValues(alpha: .22)),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+      );
+
+  String _statusLabel(String value, bool isEs) => switch (value) {
+        'draft' => isEs ? 'Borrador' : 'Draft',
+        'cancelled' => isEs ? 'Anulada' : 'Cancelled',
+        'rectified' => isEs ? 'Rectificativa' : 'Rectified',
+        _ => isEs ? 'Emitida' : 'Issued',
+      };
+
+  String _paymentLabel(String value, bool isEs) => switch (value) {
+        'paid' => isEs ? 'Pagada' : 'Paid',
+        'partial' => isEs ? 'Parcial' : 'Partial',
+        'unpaid' => isEs ? 'No pagada' : 'Unpaid',
+        'overdue' => isEs ? 'Vencida' : 'Overdue',
+        _ => isEs ? 'Sin información' : 'Unknown',
+      };
 }

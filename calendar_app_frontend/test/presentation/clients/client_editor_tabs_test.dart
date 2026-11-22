@@ -49,11 +49,13 @@ void main() {
     )));
     await tester.pumpAndSettle();
 
-    expect(find.text('Información general'), findsOneWidget);
+    expect(find.text('General'), findsOneWidget);
+    expect(find.text('Ubicación'), findsOneWidget);
     expect(find.text('Clasificación'), findsOneWidget);
     expect(find.text('Facturación'), findsOneWidget);
     for (final label in const [
-      'Información general',
+      'General',
+      'Ubicación',
       'Clasificación',
       'Facturación',
     ]) {
@@ -93,12 +95,50 @@ void main() {
     expect(find.text('Com. de Prop. Cliente inicial'), findsOneWidget);
     expect(find.text('Residencial Norte'), findsNWidgets(2));
 
-    await tester.tap(find.text('Información general'));
+    await tester.tap(find.text('General'));
     await tester.pumpAndSettle();
 
     final restoredNameField =
         tester.widget<TextFormField>(find.byType(TextFormField).first);
     expect(restoredNameField.controller?.text, 'Nombre sin guardar');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('location has its own tab; Activo stays in General',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(900, 760);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(_app(AddClientSheet(
+      groupId: 'group-1',
+      api: ClientsApi(),
+      client: GroupClient(id: 'client-1', name: 'Cabo del Sol'),
+      closeOnSave: false,
+      onCancel: () {},
+    )));
+    await tester.pumpAndSettle();
+
+    final activeLabel =
+        AppLocalizations.of(tester.element(find.byType(AddClientSheet)))!
+            .active;
+    expect(find.text(activeLabel), findsOneWidget);
+    expect(find.text('Dirección del servicio'), findsNothing);
+
+    await tester.tap(find.text('Ubicación'));
+    await tester.pumpAndSettle();
+    expect(find.text('Dirección del servicio'), findsOneWidget);
+    expect(find.text('Coordenadas'), findsOneWidget);
+    expect(find.text('Geocerca'), findsOneWidget);
+    expect(find.text('Ubicación actual'), findsOneWidget);
+    expect(find.text(activeLabel), findsNothing);
+    // Geofence settings start collapsed for a client without a geofence.
+    expect(find.text('Radio de geocerca'), findsNothing);
+
+    await tester.tap(find.text('Geocerca'));
+    await tester.pumpAndSettle();
+    expect(find.text('Radio de geocerca'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

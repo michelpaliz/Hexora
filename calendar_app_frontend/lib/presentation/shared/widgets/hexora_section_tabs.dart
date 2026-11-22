@@ -19,11 +19,16 @@ class HexoraSectionTabs extends StatelessWidget {
     this.controller,
     required this.tabs,
     this.compact = false,
+    this.segmented = false,
     this.onTap,
   });
   final TabController? controller;
   final List<Tab> tabs;
   final bool compact;
+
+  /// Uses a filled selected state for compact controls such as document tabs.
+  /// Content-navigation tabs keep the traditional underline by default.
+  final bool segmented;
   final ValueChanged<int>? onTap;
 
   @override
@@ -47,8 +52,17 @@ class HexoraSectionTabs extends StatelessWidget {
           tabAlignment: TabAlignment.start,
           dividerColor: Colors.transparent,
           indicatorSize: TabBarIndicatorSize.tab,
-          indicator: UnderlineTabIndicator(
-              borderSide: BorderSide(color: cs.primary, width: 2)),
+          indicator: segmented
+              ? BoxDecoration(
+                  color: cs.primary.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: cs.primary.withValues(alpha: .28)),
+                )
+              : UnderlineTabIndicator(
+                  borderSide: BorderSide(color: cs.primary, width: 2)),
+          indicatorPadding: segmented
+              ? const EdgeInsets.symmetric(vertical: 2)
+              : EdgeInsets.zero,
           labelColor: cs.primary,
           unselectedLabelColor: cs.onSurfaceVariant,
           labelStyle: theme.textTheme.bodyMedium?.copyWith(

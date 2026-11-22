@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'navigation_tokens.dart';
+import 'theme_variant.dart';
 export 'navigation_tokens.dart';
 
 /// Only Material navigation/menu components are changed; form and body themes
@@ -93,36 +94,60 @@ ThemeData applyNavigationComponentTheme(ThemeData base, {bool touch = false}) {
 }
 
 /// Shared colors for the workspace's navy navigation panels.
-ThemeData navigationTheme(ThemeData base) =>
-    applyNavigationComponentTheme(base.copyWith(
-      textTheme: base.textTheme.apply(
-        bodyColor: AppColors.navigationForeground,
-        displayColor: AppColors.navigationForeground,
+ThemeData navigationTheme(ThemeData base) {
+  final neutralLight =
+      base.extension<HexoraThemeVariant>()?.neutralLight == true;
+  if (neutralLight) {
+    final colors = base.colorScheme;
+    return applyNavigationComponentTheme(base.copyWith(
+      colorScheme: colors.copyWith(
+        brightness: Brightness.light,
+        surface: colors.surface,
+        surfaceContainerLowest: colors.surfaceContainerLowest,
+        surfaceContainerLow: colors.surfaceContainerLow,
+        surfaceContainer: colors.surfaceContainer,
+        surfaceContainerHigh: colors.surfaceContainerHigh,
+        surfaceContainerHighest: colors.surfaceContainerHighest,
+        onSurface: colors.onSurface,
+        onSurfaceVariant: colors.onSurfaceVariant,
+        outline: colors.outline,
+        outlineVariant: colors.outlineVariant,
       ),
-      iconTheme: const IconThemeData(color: AppColors.navigationForeground),
       extensions: [
-        ...base.extensions.values.where((value) => value is! AppTypography),
-        AppTypography.dark(),
+        ...base.extensions.values,
       ],
-      colorScheme: base.colorScheme.copyWith(
-        brightness: Brightness.dark,
-        primary: AppDarkColors.primary,
-        primaryContainer: AppDarkColors.surfaceHover,
-        onPrimaryContainer: AppDarkColors.textPrimary,
-        secondaryContainer: AppDarkColors.surfaceHover,
-        onSecondaryContainer: AppDarkColors.textPrimary,
-        surface: AppDarkColors.sidebar,
-        surfaceContainerLowest: AppDarkColors.sidebar,
-        surfaceContainerLow: AppDarkColors.surface,
-        surfaceContainer: AppDarkColors.surface,
-        surfaceContainerHigh: AppDarkColors.surfaceHover,
-        onSurface: AppDarkColors.textPrimary,
-        onSurfaceVariant: AppDarkColors.textSecondary,
-        surfaceContainerHighest: AppDarkColors.surfaceHover,
-        outline: AppDarkColors.border,
-        outlineVariant: AppDarkColors.border,
-      ),
     ));
+  }
+  return applyNavigationComponentTheme(base.copyWith(
+    textTheme: base.textTheme.apply(
+      bodyColor: AppColors.navigationForeground,
+      displayColor: AppColors.navigationForeground,
+    ),
+    iconTheme: const IconThemeData(color: AppColors.navigationForeground),
+    extensions: [
+      ...base.extensions.values.where((value) => value is! AppTypography),
+      AppTypography.dark(),
+    ],
+    colorScheme: base.colorScheme.copyWith(
+      brightness: Brightness.dark,
+      primary: AppDarkColors.primary,
+      primaryContainer: AppDarkColors.surfaceHover,
+      onPrimaryContainer: AppDarkColors.textPrimary,
+      secondaryContainer: AppDarkColors.surfaceHover,
+      onSecondaryContainer: AppDarkColors.textPrimary,
+      surface: AppDarkColors.sidebar,
+      surfaceContainerLowest: AppDarkColors.sidebar,
+      surfaceContainerLow: AppDarkColors.surface,
+      surfaceContainer: AppDarkColors.surface,
+      surfaceContainerHigh: AppDarkColors.surfaceHover,
+      onSurface: AppDarkColors.textPrimary,
+      onSurfaceVariant: AppDarkColors.textSecondary,
+      surfaceContainerHighest: AppDarkColors.surfaceHover,
+      outline: AppDarkColors.border,
+      outlineVariant: AppDarkColors.border,
+    ),
+  ));
+}
 
 class NavigationSurface extends StatelessWidget {
   const NavigationSurface({super.key, required this.builder});
@@ -130,11 +155,16 @@ class NavigationSurface extends StatelessWidget {
   final WidgetBuilder builder;
 
   @override
-  Widget build(BuildContext context) => Theme(
-        data: navigationTheme(Theme.of(context)),
-        child: ColoredBox(
-          color: AppDarkColors.sidebar,
-          child: Builder(builder: builder),
-        ),
-      );
+  Widget build(BuildContext context) {
+    final base = Theme.of(context);
+    final neutralLight =
+        base.extension<HexoraThemeVariant>()?.neutralLight == true;
+    return Theme(
+      data: navigationTheme(base),
+      child: ColoredBox(
+        color: neutralLight ? base.colorScheme.surface : AppDarkColors.sidebar,
+        child: Builder(builder: builder),
+      ),
+    );
+  }
 }

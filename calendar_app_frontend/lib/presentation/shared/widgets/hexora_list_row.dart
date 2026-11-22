@@ -14,7 +14,9 @@ class HexoraListRow extends StatefulWidget {
       this.separatorWidth = HexoraTableTokens.separatorWidth,
       this.margin = EdgeInsets.zero,
       this.borderRadius = 0,
-      this.outlined = false});
+      this.outlined = false,
+      this.selectedBackgroundColor,
+      this.selectedBorderColor});
   final double separatorWidth;
   final double minHeight;
   final double verticalPadding;
@@ -24,6 +26,12 @@ class HexoraListRow extends StatefulWidget {
   final EdgeInsetsGeometry margin;
   final double borderRadius;
   final bool outlined;
+
+  /// Optional selected surface override for master-detail lists.
+  final Color? selectedBackgroundColor;
+
+  /// Optional border shown around the selected row.
+  final Color? selectedBorderColor;
 
   @override
   State<HexoraListRow> createState() => _HexoraListRowState();
@@ -49,15 +57,19 @@ class _HexoraListRowState extends State<HexoraListRow> {
           margin: widget.margin,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(widget.borderRadius),
-            border: widget.outlined
+            border: widget.outlined ||
+                    (widget.selected && widget.selectedBorderColor != null)
                 ? Border.all(
-                    color: cs.outlineVariant.withValues(alpha: .32),
+                    color: widget.selected && widget.selectedBorderColor != null
+                        ? widget.selectedBorderColor!
+                        : cs.outlineVariant.withValues(alpha: .32),
                   )
                 : null,
           ),
           child: Material(
             color: widget.selected
-                ? cs.primary.withValues(alpha: .07)
+                ? (widget.selectedBackgroundColor ??
+                    cs.primary.withValues(alpha: .07))
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(widget.borderRadius),
             clipBehavior: widget.borderRadius > 0 ? Clip.antiAlias : Clip.none,

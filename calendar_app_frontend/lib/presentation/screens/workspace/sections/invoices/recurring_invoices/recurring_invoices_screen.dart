@@ -332,6 +332,31 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
   Future<void> _cancelSeries(Map<String, dynamic> series) async {
     final id = (series['id'] ?? series['_id'] ?? '').toString();
     if (id.isEmpty) return;
+    final l = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l.localeName.startsWith('es')
+            ? 'Cancelar recurrencia'
+            : 'Cancel recurrence'),
+        content: Text(l.localeName.startsWith('es')
+            ? 'Las facturas ya emitidas no cambiarán. Solo se detendrán las futuras emisiones.'
+            : 'Already issued invoices will not change. Only future scheduled invoices will stop.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l.localeName.startsWith('es')
+                ? 'Cancelar recurrencia'
+                : 'Cancel recurrence'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     try {
       await _api.cancel(id);
       await _refreshSeries();

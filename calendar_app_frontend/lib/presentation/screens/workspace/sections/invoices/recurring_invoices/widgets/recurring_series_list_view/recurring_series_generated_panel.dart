@@ -19,12 +19,18 @@ class RecurringSeriesGeneratedPanel extends StatefulWidget {
     required this.series,
     this.client,
     this.receiptsMode = false,
+    this.dense = false,
+    this.onPreviewInvoice,
   });
 
   final RecurringInvoicesApi api;
   final Map<String, dynamic> series;
   final GroupClient? client;
   final bool receiptsMode;
+  final bool dense;
+
+  /// Opens a generated document in the workspace preview instead of inline.
+  final ValueChanged<Invoice>? onPreviewInvoice;
 
   @override
   State<RecurringSeriesGeneratedPanel> createState() =>
@@ -132,9 +138,13 @@ class _RecurringSeriesGeneratedPanelState
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final generatedTitle = widget.receiptsMode
-        ? (isEs ? 'PDFs de recibos' : 'Receipt PDFs')
-        : (isEs ? 'PDFs generados' : 'Generated PDFs');
+    final generatedTitle = widget.dense
+        ? (widget.receiptsMode
+            ? (isEs ? 'Recibos generados' : 'Generated receipts')
+            : (isEs ? 'Facturas generadas' : 'Generated invoices'))
+        : widget.receiptsMode
+            ? (isEs ? 'PDFs de recibos' : 'Receipt PDFs')
+            : (isEs ? 'PDFs generados' : 'Generated PDFs');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -151,6 +161,8 @@ class _RecurringSeriesGeneratedPanelState
             onLoadInvoicePreviewBytes: _loadInvoicePreviewBytes,
             receiptsMode: widget.receiptsMode,
             toolbarTitle: generatedTitle,
+            dense: widget.dense,
+            onPreviewInvoice: widget.onPreviewInvoice,
           ),
         ),
       ],

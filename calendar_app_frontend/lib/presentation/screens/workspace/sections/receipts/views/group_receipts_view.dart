@@ -63,7 +63,8 @@ class _MonthDivider extends StatelessWidget {
   final bool first;
 
   @override
-  Widget build(BuildContext context) => HexoraMonthSeparator(label: label);
+  Widget build(BuildContext context) =>
+      HexoraMonthSeparator(label: label, flat: true);
 }
 
 enum _ReceiptSortColumn { number, client, status, delivery, date, base, total }
@@ -949,6 +950,7 @@ class GroupReceiptsView extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
                     child: HexoraSectionTabs(
+                      segmented: true,
                       tabs: [
                         Tab(
                           child: Row(

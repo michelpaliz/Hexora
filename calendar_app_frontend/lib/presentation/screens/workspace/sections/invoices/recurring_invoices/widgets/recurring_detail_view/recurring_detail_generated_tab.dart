@@ -39,6 +39,14 @@ class RecurringDetailGeneratedTab extends StatefulWidget {
   final bool receiptsMode;
   final String? toolbarTitle;
 
+  /// Compact layout for narrow containers such as the recurrence drawer:
+  /// single "Title (n)" header, two-line rows, small controls.
+  final bool dense;
+
+  /// When set, opening an invoice delegates to this callback (e.g. the
+  /// workspace document preview) instead of rendering the PDF inline.
+  final ValueChanged<Invoice>? onPreviewInvoice;
+
   const RecurringDetailGeneratedTab({
     super.key,
     required this.loading,
@@ -53,6 +61,8 @@ class RecurringDetailGeneratedTab extends StatefulWidget {
     required this.onLoadInvoicePreviewBytes,
     this.receiptsMode = false,
     this.toolbarTitle,
+    this.dense = false,
+    this.onPreviewInvoice,
   });
 
   @override
@@ -132,6 +142,12 @@ class _RecurringDetailGeneratedTabState
   }
 
   Future<void> _openPreview(Invoice invoice) async {
+    final external = widget.onPreviewInvoice;
+    if (external != null) {
+      setState(() => _selectedInvoiceId = invoice.id);
+      external(_detailById[invoice.id] ?? invoice);
+      return;
+    }
     setState(() {
       _selectedInvoiceId = invoice.id;
       _showPreview = true;
@@ -367,49 +383,45 @@ class _RecurringDetailGeneratedTabState
       ),
     );
 
-    final header = SizedBox(
-      height: 38,
+    final count = widget.count ?? widget.invoices.length;
+    final denseHeader = SizedBox(
+      height: 34,
       child: Row(
         children: [
-          if ((widget.toolbarTitle ?? '').trim().isNotEmpty) ...[
-            Flexible(
-              child: Text(
-                widget.toolbarTitle!.trim(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: t.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurface,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-          ],
-          Text(
-            listHeaderLabel,
-            style: t.bodySmall.copyWith(
-              fontWeight: FontWeight.w800,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: cs.primaryContainer.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(999),
-            ),
+          Expanded(
             child: Text(
-              '${widget.count ?? widget.invoices.length}',
-              style: t.bodySmall.copyWith(
-                color: cs.onPrimaryContainer,
-                fontWeight: FontWeight.w700,
+              '${(widget.toolbarTitle ?? listHeaderLabel).trim()} ($count)',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.bodyMedium.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
               ),
             ),
           ),
-          const Spacer(),
-          sortMenu,
-          const SizedBox(width: 6),
+          MenuAnchor(
+            menuChildren: [
+              for (final value in _GeneratedNumberSort.values)
+                MenuItemButton(
+                  onPressed: () => setState(() => _numberSort = value),
+                  leadingIcon: _numberSort == value
+                      ? Icon(Icons.check_rounded, size: 16, color: cs.primary)
+                      : const SizedBox(width: 16),
+                  child: Text(sortLabels[value]!),
+                ),
+            ],
+            builder: (context, controller, _) => HexoraButton(
+              key: const ValueKey('generated-invoices-sort'),
+              onPressed: () =>
+                  controller.isOpen ? controller.close() : controller.open(),
+              icon: Icons.sort_rounded,
+              label: sortLabels[_numberSort],
+              trailingIcon: Icons.keyboard_arrow_down_rounded,
+              variant: HexoraButtonVariant.ghost,
+              size: HexoraButtonSize.compact,
+            ),
+          ),
           HexoraButton.iconOnly(
             key: const ValueKey('generated-invoices-refresh'),
             onPressed: widget.loading ? null : widget.onReload,
@@ -421,13 +433,78 @@ class _RecurringDetailGeneratedTabState
                 : (isEs
                     ? 'Actualizar facturas generadas'
                     : 'Refresh generated invoices'),
-            variant: HexoraButtonVariant.secondary,
-            size: HexoraButtonSize.large,
+            variant: HexoraButtonVariant.ghost,
+            size: HexoraButtonSize.compact,
             loading: widget.loading,
           ),
         ],
       ),
     );
+
+    final header = widget.dense
+        ? denseHeader
+        : SizedBox(
+            height: 38,
+            child: Row(
+              children: [
+                if ((widget.toolbarTitle ?? '').trim().isNotEmpty) ...[
+                  Flexible(
+                    child: Text(
+                      widget.toolbarTitle!.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Text(
+                  listHeaderLabel,
+                  style: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${widget.count ?? widget.invoices.length}',
+                    style: t.bodySmall.copyWith(
+                      color: cs.onPrimaryContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                sortMenu,
+                const SizedBox(width: 6),
+                HexoraButton.iconOnly(
+                  key: const ValueKey('generated-invoices-refresh'),
+                  onPressed: widget.loading ? null : widget.onReload,
+                  icon: Icons.refresh_rounded,
+                  tooltip: widget.receiptsMode
+                      ? (isEs
+                          ? 'Actualizar recibos generados'
+                          : 'Refresh generated receipts')
+                      : (isEs
+                          ? 'Actualizar facturas generadas'
+                          : 'Refresh generated invoices'),
+                  variant: HexoraButtonVariant.secondary,
+                  size: HexoraButtonSize.large,
+                  loading: widget.loading,
+                ),
+              ],
+            ),
+          );
 
     if (!widget.hasRequested || widget.loading) {
       return Column(
@@ -626,35 +703,180 @@ class _RecurringDetailGeneratedTabState
                   }
                 }
 
+                final menuButton = SizedBox.square(
+                  dimension: 32,
+                  child: PopupMenuButton<String>(
+                    key: ValueKey('generated-invoice-menu-${inv.id}'),
+                    tooltip:
+                        MaterialLocalizations.of(context).moreButtonTooltip,
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.more_vert, size: 18),
+                    onSelected: handleMenuAction,
+                    itemBuilder: (_) => [
+                      NavigationPopupMenuItem<String>(
+                        value: 'preview',
+                        child: Row(children: [
+                          const Icon(Icons.visibility_outlined, size: 16),
+                          const SizedBox(width: 8),
+                          Text(isEs ? 'Mostrar PDF' : 'Show PDF'),
+                        ]),
+                      ),
+                      NavigationPopupMenuItem<String>(
+                        value: 'download',
+                        child: Row(children: [
+                          const Icon(Icons.download_outlined, size: 16),
+                          const SizedBox(width: 8),
+                          Text(l.invoicePdfDownloadCta),
+                        ]),
+                      ),
+                      if (widget.onOpenInvoice != null)
+                        NavigationPopupMenuItem<String>(
+                          value: 'details',
+                          child: Row(children: [
+                            const Icon(Icons.open_in_new_rounded, size: 16),
+                            const SizedBox(width: 8),
+                            Text(isEs ? 'Ver detalles' : 'View details'),
+                          ]),
+                        ),
+                    ],
+                  ),
+                );
+
+                // Normal: transparent · hover: faint blue · selected: surface
+                // with a thin blue left indicator (no full outline).
+                final rowDecoration = BoxDecoration(
+                  color: selected ? cs.surface : Colors.transparent,
+                  border: Border(
+                    left: BorderSide(
+                      color: selected ? cs.primary : Colors.transparent,
+                      width: 3,
+                    ),
+                    bottom: BorderSide(
+                      color: cs.outlineVariant.withValues(
+                        alpha: HexoraTableTokens.separatorOpacity,
+                      ),
+                    ),
+                  ),
+                );
+
+                if (widget.dense) {
+                  final status = statusLabel(resolved.status);
+                  return InkWell(
+                    key: ValueKey('generated-invoice-row-${inv.id}'),
+                    onTap: selectInvoice,
+                    hoverColor: cs.primary.withValues(alpha: 0.05),
+                    child: Container(
+                      decoration: rowDecoration,
+                      padding: const EdgeInsets.fromLTRB(10, 8, 2, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(children: [
+                                  Expanded(
+                                    child: Text(
+                                      resolved.displayNumber(
+                                          draftLabel: l.statusDraft),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: t.bodyMedium.copyWith(
+                                        color: cs.onSurface,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    money.format(amounts.total),
+                                    key: ValueKey(
+                                        'generated-invoice-total-${inv.id}'),
+                                    style: t.bodySmall.copyWith(
+                                      color: cs.onSurface,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      fontFeatures:
+                                          HexoraTypography.numericFeatures,
+                                    ),
+                                  ),
+                                ]),
+                                const SizedBox(height: 3),
+                                Row(children: [
+                                  Expanded(
+                                    child: Text(
+                                      dateLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: t.bodySmall.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  if (!widget.receiptsMode) ...[
+                                    DeliveryStatusBadge(
+                                      key: ValueKey(
+                                          'generated-invoice-delivery-${inv.id}'),
+                                      groupId: resolved.groupId,
+                                      status: resolved.deliveryStatus,
+                                      channel: resolved.deliveryChannel,
+                                      sentAt: resolved.sentAt,
+                                      deliveryError: resolved.deliveryError,
+                                      compact: true,
+                                      feminine: true,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Tooltip(
+                                      key: ValueKey(
+                                          'generated-invoice-link-${inv.id}'),
+                                      message: linkedLabel,
+                                      child: Icon(
+                                        isLinked
+                                            ? Icons.link_rounded
+                                            : Icons.link_off_rounded,
+                                        size: 14,
+                                        color: isLinked
+                                            ? cs.primary
+                                            : cs.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 110),
+                                    child: HexoraStatusBadge.document(
+                                      context,
+                                      key: ValueKey(
+                                          'generated-invoice-status-${inv.id}'),
+                                      status: _documentStatus(resolved.status),
+                                      label: status,
+                                    ),
+                                  ),
+                                ]),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          menuButton,
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
                 return InkWell(
                   key: ValueKey('generated-invoice-row-${inv.id}'),
                   onTap: selectInvoice,
-                  borderRadius: BorderRadius.circular(HexoraDimensions.radius),
+                  hoverColor: cs.primary.withValues(alpha: 0.05),
                   child: Container(
                     constraints: const BoxConstraints(
                       minHeight: 56,
                       maxHeight: 60,
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? cs.primaryContainer.withValues(alpha: 0.28)
-                          : Colors.transparent,
-                      borderRadius: selected
-                          ? BorderRadius.circular(HexoraDimensions.radius)
-                          : BorderRadius.zero,
-                      border: selected
-                          ? Border.all(
-                              color: cs.primary.withValues(alpha: 0.65),
-                            )
-                          : Border(
-                              bottom: BorderSide(
-                                color: cs.outlineVariant.withValues(
-                                  alpha: HexoraTableTokens.separatorOpacity,
-                                ),
-                              ),
-                            ),
-                    ),
+                    decoration: rowDecoration,
                     child: Row(
                       children: [
                         SizedBox.square(
@@ -767,47 +989,7 @@ class _RecurringDetailGeneratedTabState
                             ),
                           ),
                         ],
-                        SizedBox.square(
-                          dimension: 32,
-                          child: PopupMenuButton<String>(
-                            key: ValueKey('generated-invoice-menu-${inv.id}'),
-                            tooltip: MaterialLocalizations.of(context)
-                                .moreButtonTooltip,
-                            padding: EdgeInsets.zero,
-                            icon: const Icon(Icons.more_vert, size: 18),
-                            onSelected: handleMenuAction,
-                            itemBuilder: (_) => [
-                              NavigationPopupMenuItem<String>(
-                                value: 'preview',
-                                child: Row(children: [
-                                  const Icon(Icons.visibility_outlined,
-                                      size: 16),
-                                  const SizedBox(width: 8),
-                                  Text(isEs ? 'Mostrar PDF' : 'Show PDF'),
-                                ]),
-                              ),
-                              NavigationPopupMenuItem<String>(
-                                value: 'download',
-                                child: Row(children: [
-                                  const Icon(Icons.download_outlined, size: 16),
-                                  const SizedBox(width: 8),
-                                  Text(l.invoicePdfDownloadCta),
-                                ]),
-                              ),
-                              if (widget.onOpenInvoice != null)
-                                NavigationPopupMenuItem<String>(
-                                  value: 'details',
-                                  child: Row(children: [
-                                    const Icon(Icons.open_in_new_rounded,
-                                        size: 16),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                        isEs ? 'Ver detalles' : 'View details'),
-                                  ]),
-                                ),
-                            ],
-                          ),
-                        ),
+                        menuButton,
                       ],
                     ),
                   ),
@@ -818,7 +1000,8 @@ class _RecurringDetailGeneratedTabState
                 key: const PageStorageKey<String>(
                     'recurring-generated-invoice-history'),
                 itemCount: visibleInvoices.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 2),
+                separatorBuilder: (_, __) =>
+                    SizedBox(height: widget.dense ? 0 : 2),
                 itemBuilder: (_, i) => buildInvoiceCard(visibleInvoices[i]),
               );
 

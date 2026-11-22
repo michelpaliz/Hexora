@@ -689,6 +689,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
       _invoiceNumberQuery = '';
       _selectedClientNames = {};
       _selectedLifecycleStatuses = {};
+      _selectedDeliveryStatuses = {};
       _selectedPaymentStatuses = {};
       _baseRange = const _InvoiceAmountRange();
       _vatRange = const _InvoiceAmountRange();
@@ -697,6 +698,30 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
       _fromDate = null;
       _toDate = null;
       _quickRange = DateQuickRange.none;
+    });
+    _notifyDateFilterChanged();
+    _refreshFilteredData();
+  }
+
+  /// Clears column filters while intentionally preserving the global search.
+  /// This keeps the two filtering layers independent and lets users refine a
+  /// search without having to type it again.
+  void _clearOnlyColumnFilters() {
+    _invoiceSearchDebounce?.cancel();
+    setState(() {
+      _invoiceNumberQuery = '';
+      _selectedClientNames = {};
+      _selectedLifecycleStatuses = {};
+      _selectedDeliveryStatuses = {};
+      _selectedPaymentStatuses = {};
+      _baseRange = const _InvoiceAmountRange();
+      _vatRange = const _InvoiceAmountRange();
+      _totalRange = const _InvoiceAmountRange();
+      _mismatchOnly = false;
+      _fromDate = null;
+      _toDate = null;
+      _quickRange = DateQuickRange.none;
+      _duplicateFilter = 'all';
     });
     _notifyDateFilterChanged();
     _refreshFilteredData();

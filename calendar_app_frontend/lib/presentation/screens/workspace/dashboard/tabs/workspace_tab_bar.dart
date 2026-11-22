@@ -134,8 +134,9 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
         final tabSurface = lightTheme
             ? AppColors.inputBackground
             : HexoraGlobalNavColors.background;
+        final navBackground = HexoraGlobalNavColors.backgroundFor(context);
         return Material(
-          color: HexoraGlobalNavColors.background,
+          color: navBackground,
           child: ClipRRect(
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(12),

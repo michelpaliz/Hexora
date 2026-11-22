@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
-import 'package:flutter/gestures.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/models/invoice/invoice_block.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/models/manual_editor_capabilities.dart';
@@ -117,29 +116,19 @@ class InvoiceContentSection extends StatefulWidget {
 class _InvoiceContentSectionState extends State<InvoiceContentSection> {
   int? _selectedIndex;
   String _contentMode = 'manual';
-  final ScrollController _toolSectionsScrollController = ScrollController();
 
   ManualEditorCapabilities? _capabilities;
   bool _loadingCapabilities = false;
-  final Map<String, bool> _toolSectionExpanded = {
-    'billable': true,
-    'discount': false,
-    'content': true,
-    'structure': true,
-    'other': false,
-  };
+
+  /// Whether the inline discount strip is shown. Null = not toggled yet, in
+  /// which case it opens automatically when a discount is already applied.
+  bool? _discountOpen;
 
   @override
   void initState() {
     super.initState();
     _syncSelectionWithBlocks();
     _fetchCapabilities();
-  }
-
-  @override
-  void dispose() {
-    _toolSectionsScrollController.dispose();
-    super.dispose();
   }
 
   Future<void> _fetchCapabilities() async {
@@ -178,8 +167,6 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
     }
   }
 
-  bool _isToolSectionExpanded(String id) => _toolSectionExpanded[id] ?? true;
-
   String get _activeContentMode => widget.contentMode ?? _contentMode;
 
   void _selectContentMode(String mode) {
@@ -187,12 +174,6 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
       setState(() => _contentMode = mode);
     }
     widget.onContentModeChanged?.call(mode);
-  }
-
-  void _toggleToolSection(String id) {
-    setState(() {
-      _toolSectionExpanded[id] = !(_toolSectionExpanded[id] ?? true);
-    });
   }
 
   Future<void> _saveDraftFromManualLines() async {
@@ -300,9 +281,14 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
         return a.sortOrder.compareTo(b.sortOrder);
       });
 
+    // Primary toolbar actions: billable lines (Ítem, Trabajo…) and checklist.
+    // Content (Nota) also sits in the toolbar; structural and any other types
+    // go into the "Estructura" dropdown.
     String toolSectionId(ManualEditorBlockTypeCapability cap) {
-      if (cap.billable || cap.id == InvoiceBlockType.checklist) {
-        return 'billable';
+      if (cap.billable ||
+          cap.id == InvoiceBlockType.checklist ||
+          cap.id == InvoiceBlockType.worker) {
+        return 'primary';
       }
       switch (cap.id) {
         case InvoiceBlockType.note:
@@ -316,39 +302,8 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
       return 'other';
     }
 
-    String toolSectionLabel(String id) {
-      final isEs = currentLang.startsWith('es');
-      switch (id) {
-        case 'billable':
-          return isEs ? 'Facturable' : 'Billable';
-        case 'discount':
-          return isEs ? 'Descuento' : 'Discount';
-        case 'content':
-          return isEs ? 'Contenido' : 'Content';
-        case 'structure':
-          return isEs ? 'Estructura' : 'Structure';
-        default:
-          return isEs ? 'Otros' : 'Other';
-      }
-    }
-
-    IconData toolSectionIcon(String id) {
-      switch (id) {
-        case 'billable':
-          return Icons.euro_rounded;
-        case 'discount':
-          return Icons.percent_rounded;
-        case 'content':
-          return Icons.notes_rounded;
-        case 'structure':
-          return Icons.account_tree_outlined;
-        default:
-          return Icons.widgets_outlined;
-      }
-    }
-
     final groupedBlockTypes = <String, List<ManualEditorBlockTypeCapability>>{
-      'billable': [],
+      'primary': [],
       'content': [],
       'structure': [],
       'other': [],
@@ -401,314 +356,277 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
       setState(() {});
     }
 
-    // ── "Add block" popup ─────────────────────────────────────────────────────
-    Widget blockTypeTile(ManualEditorBlockTypeCapability cap) {
-      final recommended = cap.recommended;
-      final billable = cap.billable;
-      final billableLabel =
-          currentLang.startsWith('es') ? 'Facturable' : 'Billable';
-      final description = cap.description.resolve(currentLang).trim();
-      final label = cap.label.resolve(currentLang, fallback: cap.id);
-      final tooltip = cap.tooltip.resolve(currentLang).trim();
-      final example = cap.example.resolve(currentLang).trim();
-
-      Future<void> showDetails() {
-        return showHexoraDialog<void>(
-          context: context,
-          builder: (dialogContext) {
-            return AlertDialog(
-              title: Text(label),
-              content: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (description.isNotEmpty) ...[
-                      Text(
-                        description,
-                        style:
-                            t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    if (tooltip.isNotEmpty) ...[
-                      Text(
-                        currentLang.startsWith('es') ? 'Informacion' : 'Info',
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        tooltip,
-                        style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    if (example.isNotEmpty) ...[
-                      Text(
-                        currentLang.startsWith('es') ? 'Ejemplo' : 'Example',
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest
-                              .withValues(alpha: 0.45),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          example,
-                          style: t.bodySmall.copyWith(
-                            color: cs.primary,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child:
-                      Text(MaterialLocalizations.of(context).closeButtonLabel),
-                ),
-                FilledButton.icon(
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop();
-                    insertBlock(cap.id);
-                  },
-                  icon: const Icon(Icons.add, size: 16),
-                  label: Text(l.invoiceAddBlock),
-                ),
-              ],
-            );
-          },
-        );
+    // ── Manual-actions toolbar ────────────────────────────────────────────────
+    IconData blockTypeIcon(String id) {
+      switch (id) {
+        case InvoiceBlockType.item:
+          return LucideIcons.listPlus;
+        case InvoiceBlockType.worker:
+          return LucideIcons.hardHat;
+        case InvoiceBlockType.checklist:
+          return LucideIcons.listChecks;
+        case InvoiceBlockType.note:
+          return LucideIcons.stickyNote;
+        case InvoiceBlockType.section:
+          return LucideIcons.heading1;
+        case InvoiceBlockType.subsection:
+          return LucideIcons.heading2;
+        case InvoiceBlockType.divider:
+          return LucideIcons.separatorHorizontal;
+        case InvoiceBlockType.date:
+          return LucideIcons.calendar;
       }
+      return LucideIcons.box;
+    }
 
-      final hasInfo =
-          description.isNotEmpty || tooltip.isNotEmpty || example.isNotEmpty;
+    String blockTypeLabel(ManualEditorBlockTypeCapability cap) =>
+        cap.label.resolve(currentLang, fallback: cap.id);
 
-      // Two-zone row: left = tap to add, right = ⓘ info
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: recommended
-                  ? cs.primary.withValues(alpha: 0.4)
-                  : cs.outlineVariant.withValues(alpha: 0.5),
-            ),
-            color: recommended
-                ? cs.primaryContainer.withValues(alpha: 0.12)
-                : Colors.transparent,
+    /// Hover help replacing the old per-tile ⓘ dialog: description, extra
+    /// info and example from the server capabilities.
+    String blockTypeTooltip(ManualEditorBlockTypeCapability cap) {
+      final isEs = currentLang.startsWith('es');
+      final parts = <String>[
+        blockTypeLabel(cap),
+        cap.description.resolve(currentLang).trim(),
+        cap.tooltip.resolve(currentLang).trim(),
+      ];
+      final example = cap.example.resolve(currentLang).trim();
+      if (example.isNotEmpty && example != '—') {
+        parts.add('${isEs ? 'Ejemplo' : 'Example'}: $example');
+      }
+      if (cap.recommended) parts.add(l.invoiceAddBlockRecommended);
+      return parts.where((p) => p.isNotEmpty).toSet().join('\n');
+    }
+
+    // Neutral by default, light-blue tint + blue text on hover/focus,
+    // stronger tint when pressed or toggled on. No saturated fills.
+    ButtonStyle toolbarButtonStyle({bool active = false}) => ButtonStyle(
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) {
+              return cs.onSurface.withValues(alpha: 0.38);
+            }
+            if (active ||
+                states.contains(WidgetState.hovered) ||
+                states.contains(WidgetState.focused) ||
+                states.contains(WidgetState.pressed)) {
+              return cs.primary;
+            }
+            return cs.onSurface.withValues(alpha: 0.8);
+          }),
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) return null;
+            if (states.contains(WidgetState.pressed)) {
+              return cs.primary.withValues(alpha: 0.16);
+            }
+            if (active) return cs.primary.withValues(alpha: 0.12);
+            if (states.contains(WidgetState.hovered) ||
+                states.contains(WidgetState.focused)) {
+              return cs.primary.withValues(alpha: 0.08);
+            }
+            return Colors.transparent;
+          }),
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 10),
           ),
-          child: SizedBox(
-            height: 40,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ── Add zone ──────────────────────────────────────────
-                Expanded(
-                  child: InkWell(
-                    onTap: () => insertBlock(cap.id),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              label,
-                              style: t.bodySmall
-                                  .copyWith(fontWeight: FontWeight.w800),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (recommended)
-                            Tooltip(
-                              message: l.invoiceAddBlockRecommended,
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 4),
-                                child: Icon(
-                                  Icons.star_outline_rounded,
-                                  size: 12,
-                                  color: cs.primary,
-                                ),
-                              ),
-                            ),
-                          if (billable)
-                            Tooltip(
-                              message: billableLabel,
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 4),
-                                child: Icon(
-                                  Icons.euro_outlined,
-                                  size: 12,
-                                  color: cs.tertiary,
-                                ),
-                              ),
-                            ),
-                          const SizedBox(width: 4),
-                          Icon(Icons.add, size: 13, color: cs.primary),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // ── Info zone ─────────────────────────────────────────
-                if (hasInfo) ...[
-                  VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    color: cs.outlineVariant.withValues(alpha: 0.35),
-                  ),
-                  InkWell(
-                    onTap: showDetails,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Icon(
-                        Icons.info_outline,
-                        size: 14,
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.65),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          minimumSize: const WidgetStatePropertyAll(Size(0, 34)),
+          fixedSize: const WidgetStatePropertyAll(Size.fromHeight(34)),
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          textStyle: WidgetStatePropertyAll(
+            t.bodySmall.copyWith(fontSize: 12.5, fontWeight: FontWeight.w600),
+          ),
+          iconSize: const WidgetStatePropertyAll(16),
+        );
+
+    Widget toolbarAction({
+      required Key key,
+      required IconData icon,
+      required String label,
+      required String tooltip,
+      required VoidCallback? onPressed,
+      bool active = false,
+      Widget? trailing,
+    }) {
+      return Tooltip(
+        message: tooltip,
+        waitDuration: const Duration(milliseconds: 400),
+        child: TextButton(
+          key: key,
+          onPressed: onPressed,
+          style: toolbarButtonStyle(active: active),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16),
+              const SizedBox(width: 6),
+              Text(label),
+              if (trailing != null) ...[const SizedBox(width: 4), trailing],
+            ],
           ),
         ),
       );
     }
 
-    Widget toolSection(String id, List<ManualEditorBlockTypeCapability> caps) {
-      if (caps.isEmpty) return const SizedBox.shrink();
-      final expanded = _isToolSectionExpanded(id);
+    Widget toolbarDivider() => Container(
+          width: 1,
+          height: 20,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          color: cs.outlineVariant.withValues(alpha: 0.5),
+        );
 
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.32),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            InkWell(
-              onTap: () => _toggleToolSection(id),
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      toolSectionIcon(id),
-                      size: 14,
-                      color: cs.onSurfaceVariant,
+    final hasDiscount =
+        widget.controller != null || widget.discountConfig != null;
+    final discountAmount = widget.controller?.effectiveDiscountAmount ??
+        widget.discountConfig?.effectiveDiscountAmount ??
+        0;
+    final discountOpen = hasDiscount && (_discountOpen ?? discountAmount > 0);
+    final moneyFmt = NumberFormat.simpleCurrency(name: '');
+
+    Widget manualToolbar() {
+      final isEs = currentLang.startsWith('es');
+      final primaryTypes = groupedBlockTypes['primary']!;
+      final contentTypes = groupedBlockTypes['content']!;
+      final structureTypes = groupedBlockTypes['structure']!;
+      final otherTypes = groupedBlockTypes['other']!;
+      final fallbackType = availableBlockTypes.isEmpty
+          ? ManualEditorCapabilities.fallback()
+              .enabledBlockTypes(lang: currentLang)
+              .first
+          : null;
+
+      Widget insertAction(ManualEditorBlockTypeCapability cap) => toolbarAction(
+            key: ValueKey('invoice-toolbar-add-${cap.id}'),
+            icon: blockTypeIcon(cap.id),
+            label: blockTypeLabel(cap),
+            tooltip: blockTypeTooltip(cap),
+            onPressed: () => insertBlock(cap.id),
+          );
+
+      final menuTypes = [...structureTypes, ...otherTypes];
+      final structureMenu = menuTypes.isEmpty
+          ? null
+          : MenuAnchor(
+              alignmentOffset: const Offset(0, 4),
+              style: MenuStyle(
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(vertical: 4),
+                ),
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.5),
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        toolSectionLabel(id),
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: cs.onSurface,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    AnimatedRotation(
-                      turns: expanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 160),
-                      child: Icon(
-                        Icons.expand_more,
-                        size: 16,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-            if (expanded) ...[
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: cs.outlineVariant.withValues(alpha: 0.22),
+              menuChildren: [
+                for (final cap in menuTypes)
+                  Tooltip(
+                    message: blockTypeTooltip(cap),
+                    waitDuration: const Duration(milliseconds: 600),
+                    child: MenuItemButton(
+                      key: ValueKey('invoice-toolbar-add-${cap.id}'),
+                      leadingIcon: Icon(blockTypeIcon(cap.id), size: 16),
+                      onPressed: () => insertBlock(cap.id),
+                      child: Text(blockTypeLabel(cap)),
+                    ),
+                  ),
+              ],
+              builder: (context, menu, _) => toolbarAction(
+                key: const ValueKey('invoice-toolbar-structure'),
+                icon: LucideIcons.layoutList,
+                label: isEs ? 'Estructura' : 'Structure',
+                tooltip: isEs
+                    ? 'Insertar sección, subsección o divisor'
+                    : 'Insert section, subsection or divider',
+                active: menu.isOpen,
+                onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+                trailing: const Icon(LucideIcons.chevronDown, size: 14),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
-                child: Column(
+            );
+
+      final actions = <Widget>[
+        for (final cap in primaryTypes) insertAction(cap),
+        if (fallbackType != null) insertAction(fallbackType),
+        if (hasDiscount)
+          toolbarAction(
+            key: const ValueKey('invoice-toolbar-discount'),
+            icon: LucideIcons.percent,
+            label: discountAmount > 0
+                ? '${isEs ? 'Descuento' : 'Discount'} '
+                    '-${moneyFmt.format(discountAmount)}'
+                : (isEs ? 'Descuento' : 'Discount'),
+            tooltip: isEs
+                ? 'Descuento sobre la base antes de impuestos'
+                : 'Discount on the pre-tax base',
+            active: discountOpen,
+            onPressed: () => setState(() => _discountOpen = !discountOpen),
+          ),
+        for (final cap in contentTypes) insertAction(cap),
+        if (structureMenu != null) ...[toolbarDivider(), structureMenu],
+      ];
+
+      return Container(
+        key: const ValueKey('invoice-manual-toolbar'),
+        height: 46,
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              // Scrolls sideways on narrow screens instead of wrapping into
+              // extra rows or squeezing the buttons.
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Row(
                   children: [
-                    for (int i = 0; i < caps.length; i++) ...[
-                      blockTypeTile(caps[i]),
-                      if (i != caps.length - 1) const SizedBox(height: 6),
+                    for (int i = 0; i < actions.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 2),
+                      actions[i],
                     ],
                   ],
                 ),
               ),
-            ],
+            ),
+            if (_loadingCapabilities)
+              const Padding(
+                padding: EdgeInsets.only(right: 12),
+                child: SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
           ],
         ),
       );
     }
 
-    Widget discountSection() {
+    /// Inline discount controls shown under the toolbar when "Descuento" is
+    /// toggled on. Stays inside the invoice Form so validation keeps working.
+    Widget discountStrip() {
       final controller = widget.controller;
       final config = widget.discountConfig;
-      if (controller == null && config == null) return const SizedBox.shrink();
-
-      final expanded = _isToolSectionExpanded('discount');
       final readOnly = controller?.discountReadOnly ?? config!.readOnly;
       final usePercent = controller?.useDiscountPercent ?? config!.usePercent;
       final discountAmountCtrl =
           controller?.discountAmountCtrl ?? config!.amountCtrl;
       final discountPercentCtrl =
           controller?.discountPercentCtrl ?? config!.percentCtrl;
-      final effectiveDiscountAmount = controller?.effectiveDiscountAmount ??
-          config!.effectiveDiscountAmount;
       final discountTotal = controller?.total ?? config!.total;
-      final moneyFmt = NumberFormat.simpleCurrency(name: '');
       final isSpanish = currentLang.startsWith('es');
-
-      Future<void> showDiscountInfo() {
-        return showHexoraDialog<void>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: Text(isSpanish ? 'Descuento' : 'Discount'),
-            content: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Text(
-                isSpanish
-                    ? 'Usa EUR para restar un importe fijo o % para calcular el descuento sobre la base antes de impuestos.'
-                    : 'Use Amount for a fixed deduction or % to calculate the discount from the pre-tax base.',
-                style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text(MaterialLocalizations.of(context).closeButtonLabel),
-              ),
-            ],
-          ),
-        );
-      }
+      final setPercentMode =
+          controller?.setDiscountModePercent ?? config!.onModePercentChanged;
 
       String? validateDiscount(String? raw) {
         final text = (raw ?? '').trim();
@@ -716,227 +634,134 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
         final parsed = num.tryParse(text.replaceAll(',', '.'));
         if (parsed == null) {
           return usePercent
-              ? (currentLang.startsWith('es')
-                  ? 'Porcentaje invalido'
-                  : 'Invalid percent')
-              : (currentLang.startsWith('es')
-                  ? 'Importe invalido'
-                  : 'Invalid amount');
+              ? (isSpanish ? 'Porcentaje invalido' : 'Invalid percent')
+              : (isSpanish ? 'Importe invalido' : 'Invalid amount');
         }
-        if (parsed < 0) {
-          return currentLang.startsWith('es')
-              ? 'Debe ser >= 0'
-              : 'Must be >= 0';
-        }
+        if (parsed < 0) return isSpanish ? 'Debe ser >= 0' : 'Must be >= 0';
         if (usePercent && parsed > 100) return '0 - 100';
         return null;
       }
 
-      Widget modeButton({
-        required String label,
-        required bool selected,
-        required VoidCallback onTap,
-      }) {
-        return Expanded(
-          child: InkWell(
-            onTap: readOnly ? null : onTap,
-            borderRadius: BorderRadius.circular(8),
+      Widget modeButton(String label, bool selected, bool percent) => InkWell(
+            onTap: readOnly ? null : () => setPercentMode(percent),
+            borderRadius: BorderRadius.circular(7),
             child: Container(
-              height: 28,
+              height: 30,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: selected
-                    ? cs.primaryContainer.withValues(alpha: 0.75)
+                    ? cs.primary.withValues(alpha: 0.12)
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(7),
               ),
               child: Text(
                 label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: t.bodySmall.copyWith(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
                   color: selected ? cs.primary : cs.onSurfaceVariant,
                 ),
               ),
             ),
-          ),
-        );
-      }
+          );
 
       return Container(
+        key: const ValueKey('invoice-discount-strip'),
+        margin: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
         decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.32),
-          ),
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            InkWell(
-              onTap: () => _toggleToolSection('discount'),
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      toolSectionIcon('discount'),
-                      size: 14,
-                      color: cs.onSurfaceVariant,
+            Tooltip(
+              message: isSpanish
+                  ? 'Usa EUR para restar un importe fijo o % para calcular el descuento sobre la base antes de impuestos.'
+                  : 'Use Amount for a fixed deduction or % to calculate the discount from the pre-tax base.',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.percent, size: 15, color: cs.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    isSpanish ? 'Descuento' : 'Discount',
+                    style: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        toolSectionLabel('discount'),
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: cs.onSurface,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (effectiveDiscountAmount > 0) ...[
-                      const SizedBox(width: 4),
-                      Text(
-                        '-${moneyFmt.format(effectiveDiscountAmount)}',
-                        style: t.bodySmall.copyWith(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          color: cs.primary,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(width: 2),
-                    IconButton(
-                      tooltip: isSpanish ? 'Informacion' : 'Information',
-                      onPressed: showDiscountInfo,
-                      icon: Icon(
-                        Icons.info_outline,
-                        size: 14,
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.78),
-                      ),
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(
-                        width: 24,
-                        height: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    AnimatedRotation(
-                      turns: expanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 160),
-                      child: Icon(
-                        Icons.expand_more,
-                        size: 16,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(LucideIcons.info, size: 13, color: cs.onSurfaceVariant),
+                ],
               ),
             ),
-            if (expanded) ...[
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: cs.outlineVariant.withValues(alpha: 0.22),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: cs.outlineVariant.withValues(alpha: 0.28),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          modeButton(
-                            label:
-                                currentLang.startsWith('es') ? 'EUR' : 'Amount',
-                            selected: !usePercent,
-                            onTap: () => (controller?.setDiscountModePercent ??
-                                config!.onModePercentChanged)(false),
-                          ),
-                          modeButton(
-                            label: '%',
-                            selected: usePercent,
-                            onTap: () => (controller?.setDiscountModePercent ??
-                                config!.onModePercentChanged)(true),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller:
-                          usePercent ? discountPercentCtrl : discountAmountCtrl,
-                      enabled: !readOnly,
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      validator: validateDiscount,
-                      decoration: InputDecoration(
-                        labelText: usePercent
-                            ? (currentLang.startsWith('es')
-                                ? 'Porcentaje'
-                                : 'Percent')
-                            : (currentLang.startsWith('es')
-                                ? 'Importe'
-                                : 'Amount'),
-                        suffixText: usePercent ? '%' : 'EUR',
-                        isDense: true,
-                        border: const OutlineInputBorder(),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 9,
-                        ),
-                      ),
-                      onChanged: usePercent
-                          ? (controller?.setDiscountPercentText ??
-                              config!.onPercentChanged)
-                          : (controller?.setDiscountAmountText ??
-                              config!.onAmountChanged),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            currentLang.startsWith('es') ? 'Total' : 'Total',
-                            style: t.bodySmall.copyWith(
-                              fontSize: 11,
-                              color: cs.onSurfaceVariant,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          moneyFmt.format(discountTotal),
-                          style: t.bodySmall.copyWith(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            color: cs.onSurface,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.4),
                 ),
               ),
-            ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  modeButton(isSpanish ? 'EUR' : 'Amount', !usePercent, false),
+                  modeButton('%', usePercent, true),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: 150,
+              child: TextFormField(
+                key: const ValueKey('invoice-discount-field'),
+                controller:
+                    usePercent ? discountPercentCtrl : discountAmountCtrl,
+                enabled: !readOnly,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                validator: validateDiscount,
+                decoration: InputDecoration(
+                  labelText: usePercent
+                      ? (isSpanish ? 'Porcentaje' : 'Percent')
+                      : (isSpanish ? 'Importe' : 'Amount'),
+                  suffixText: usePercent ? '%' : 'EUR',
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 9,
+                  ),
+                ),
+                onChanged: usePercent
+                    ? (controller?.setDiscountPercentText ??
+                        config!.onPercentChanged)
+                    : (controller?.setDiscountAmountText ??
+                        config!.onAmountChanged),
+              ),
+            ),
+            Text.rich(
+              TextSpan(children: [
+                TextSpan(
+                  text: 'Total  ',
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                ),
+                TextSpan(
+                  text: moneyFmt.format(discountTotal),
+                  style: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ]),
+            ),
           ],
         ),
       );
@@ -1090,149 +915,37 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
         ],
       );
 
-      final actionsPanel = Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Text(
-            //   l.invoiceAddBlock,
-            //   style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-            // ),
-            // const SizedBox(height: 8),
-            // Text(
-            //   currentLang.startsWith('es')
-            //       ? 'Inserta bloques facturables o estructurales sin ocupar todo el ancho.'
-            //       : 'Insert billable or structural blocks without using the full width.',
-            //   style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-            // ),
-            // const SizedBox(height: 16),
-            if (_loadingCapabilities)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              )
-            else ...[
-              for (final sectionId in const [
-                'billable',
-              ]) ...[
-                if ((groupedBlockTypes[sectionId] ?? const []).isNotEmpty) ...[
-                  toolSection(sectionId, groupedBlockTypes[sectionId]!),
-                  const SizedBox(height: 8),
-                ],
-              ],
-              discountSection(),
-              const SizedBox(height: 8),
-              for (final sectionId in const [
-                'content',
-                'structure',
-                'other',
-              ]) ...[
-                if ((groupedBlockTypes[sectionId] ?? const []).isNotEmpty) ...[
-                  toolSection(sectionId, groupedBlockTypes[sectionId]!),
-                  const SizedBox(height: 8),
-                ],
-              ],
-              if (availableBlockTypes.isEmpty)
-                blockTypeTile(
-                  ManualEditorCapabilities.fallback()
-                      .enabledBlockTypes(
-                        lang: currentLang,
-                      )
-                      .first,
-                ),
-            ],
-          ],
-        ),
+      // Toolbar stays pinned above the lines; only the lines area scrolls, so
+      // the actions are always reachable without a nested palette scroller.
+      final header = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          manualToolbar(),
+          if (discountOpen) discountStrip(),
+          const SizedBox(height: 8),
+        ],
       );
 
       return LayoutBuilder(
         builder: (context, constraints) {
-          if (constraints.maxWidth < 980) {
-            return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  actionsPanel,
-                  const SizedBox(height: 10),
-                  blocksPanel,
-                ],
-              ),
+          if (!constraints.hasBoundedHeight) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [header, blocksPanel],
             );
           }
-
-          final viewportHeight = constraints.hasBoundedHeight
-              ? constraints.maxHeight
-              : MediaQuery.sizeOf(context).height;
-
-          return SizedBox(
-            height: viewportHeight,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minWidth: 176,
-                    maxWidth: 196,
-                  ),
-                  child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context).copyWith(
-                      dragDevices: const {
-                        PointerDeviceKind.mouse,
-                        PointerDeviceKind.touch,
-                        PointerDeviceKind.stylus,
-                        PointerDeviceKind.trackpad,
-                      },
-                    ),
-                    child: ScrollbarTheme(
-                      data: ScrollbarThemeData(
-                        thumbColor: WidgetStatePropertyAll(
-                          cs.primary.withValues(alpha: 0.72),
-                        ),
-                        trackColor: WidgetStatePropertyAll(
-                          cs.surfaceContainerHighest.withValues(alpha: 0.55),
-                        ),
-                        trackBorderColor: WidgetStatePropertyAll(
-                          cs.outlineVariant.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Scrollbar(
-                        controller: _toolSectionsScrollController,
-                        thumbVisibility: true,
-                        trackVisibility: true,
-                        interactive: true,
-                        thickness: 8,
-                        radius: const Radius.circular(4),
-                        child: SingleChildScrollView(
-                          controller: _toolSectionsScrollController,
-                          primary: false,
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.only(right: 14),
-                          child: Align(
-                            alignment: Alignment.topLeft,
-                            child: actionsPanel,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              header,
+              Expanded(
+                child: SingleChildScrollView(
+                  key: const PageStorageKey('invoice-manual-lines-scroll'),
+                  child: blocksPanel,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 9,
-                  child: SingleChildScrollView(
-                    child: blocksPanel,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       );

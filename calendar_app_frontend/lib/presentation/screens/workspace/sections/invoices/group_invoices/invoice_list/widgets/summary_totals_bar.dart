@@ -51,8 +51,8 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
               embedded: true,
             ),
             searchHint: isEs
-                ? 'Buscar facturas, clientes o importes...'
-                : 'Search invoices, clients or amounts...',
+                ? 'Buscar factura, cliente o concepto...'
+                : 'Search invoice, client or concept...',
             searchValue: searchQuery,
             onSearchChanged: onSearchChanged,
             actions: InvoiceToolbarOptionsMenu(
@@ -214,7 +214,7 @@ class _InvoiceFinancialSummaryBarState
             height: 50,
             padding: const EdgeInsetsDirectional.only(start: 12, end: 5),
             decoration: BoxDecoration(
-              color: cs.surfaceContainerLow.withValues(alpha: 0.82),
+              color: cs.surface,
               border: Border(
                 top: BorderSide(
                   color: cs.outlineVariant.withValues(alpha: 0.5),

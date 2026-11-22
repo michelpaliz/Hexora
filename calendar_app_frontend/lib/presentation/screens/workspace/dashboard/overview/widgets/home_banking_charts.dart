@@ -6,6 +6,7 @@ import 'package:hexora/presentation/screens/workspace/sections/enable_banking/st
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_formatters.dart';
 import 'package:hexora/services/statements/statements_api.dart';
 import 'package:provider/provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class HomeBankingCharts extends StatelessWidget {
   const HomeBankingCharts({
@@ -19,7 +20,8 @@ class HomeBankingCharts extends StatelessWidget {
   final String groupId;
   final VoidCallback onOpenBanking;
   final Set<String> selectedChartIds;
-  final void Function(String id, Map<String, dynamic>? chart) onSelectionChanged;
+  final void Function(String id, Map<String, dynamic>? chart)
+      onSelectionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +52,8 @@ class _HomeBankingChartsContent extends StatelessWidget {
   final String groupId;
   final VoidCallback onOpenBanking;
   final Set<String> selectedChartIds;
-  final void Function(String id, Map<String, dynamic>? chart) onSelectionChanged;
+  final void Function(String id, Map<String, dynamic>? chart)
+      onSelectionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -64,9 +67,12 @@ class _HomeBankingChartsContent extends StatelessWidget {
       required String title,
       required Widget chart,
       required Map<String, dynamic> snapshot,
-    }) => Card(
+    }) =>
+        Card(
           margin: EdgeInsets.zero,
-          color: colors.surfaceContainerLow,
+          color: colors.surface,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
@@ -93,7 +99,13 @@ class _HomeBankingChartsContent extends StatelessWidget {
                       ),
                     ),
                     FilterChip(
-                      label: Text(isSpanish ? 'Usar en chat' : 'Use in chat'),
+                      avatar: selectedChartIds.contains(id)
+                          ? null
+                          : Icon(LucideIcons.sparkles,
+                              size: 14, color: colors.primary),
+                      label: Text(selectedChartIds.contains(id)
+                          ? (isSpanish ? 'Seleccionado' : 'Selected')
+                          : (isSpanish ? 'Usar en chat' : 'Use in chat')),
                       selected: selectedChartIds.contains(id),
                       onSelected: (selected) => onSelectionChanged(
                         id,
@@ -166,13 +178,16 @@ class _HomeBankingChartsContent extends StatelessWidget {
       final trendSnapshot = {
         ...scope,
         'id': 'bank_yearly_trend',
-        'rows': yearlyRows.take(20).map((row) => {
-              'year': row['year'],
-              'income': row['income'],
-              'expense': row['expense'],
-              'net': row['net'],
-              'count': row['count'],
-            }).toList(),
+        'rows': yearlyRows
+            .take(20)
+            .map((row) => {
+                  'year': row['year'],
+                  'income': row['income'],
+                  'expense': row['expense'],
+                  'net': row['net'],
+                  'count': row['count'],
+                })
+            .toList(),
       };
       final splitSnapshot = {
         ...scope,
@@ -187,13 +202,17 @@ class _HomeBankingChartsContent extends StatelessWidget {
       final volumeSnapshot = {
         ...scope,
         'id': 'bank_transaction_volume',
-        'rows': controller.volumePoints.take(20).map((point) => {
-              'label': point.label,
-              'count': point.count,
-              'absoluteMovement': point.absoluteMovement,
-            }).toList(),
+        'rows': controller.volumePoints
+            .take(20)
+            .map((point) => {
+                  'label': point.label,
+                  'count': point.count,
+                  'absoluteMovement': point.absoluteMovement,
+                })
+            .toList(),
       };
       final trendChart = AnalyticsTrendChart(
+        compact: true,
         rows: yearlyRows,
         labelBuilder: (row) => row['year']?.toString() ?? '-',
       );
@@ -202,7 +221,7 @@ class _HomeBankingChartsContent extends StatelessWidget {
           AnalyticsDonutSlice(
             label: localizations.statementsSummaryIncome,
             value: totals.income,
-            color: const Color(0xFF2E7D32),
+            color: const Color(0xFF2563EB),
             legendValue:
                 StatementsFormatters.formatCurrency(context, totals.income),
             tooltipValue:
@@ -211,7 +230,7 @@ class _HomeBankingChartsContent extends StatelessWidget {
           AnalyticsDonutSlice(
             label: localizations.statementsSummaryExpense,
             value: totals.expense,
-            color: const Color(0xFFC62828),
+            color: const Color(0xFF8B5CF6),
             legendValue:
                 StatementsFormatters.formatCurrency(context, totals.expense),
             tooltipValue:
@@ -221,11 +240,87 @@ class _HomeBankingChartsContent extends StatelessWidget {
         centerLabel: localizations.statementsSummaryNet,
         centerValue: StatementsFormatters.formatCurrency(context, totals.net),
       );
-      final volumeChart = AnalyticsVolumeChart(points: controller.volumePoints);
+      final volumeChart =
+          AnalyticsVolumeChart(points: controller.volumePoints, compact: true);
+
+      Widget metric(String label, String value, Color accent) => Container(
+            constraints: const BoxConstraints(minWidth: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: colors.onSurfaceVariant)),
+                const SizedBox(height: 6),
+                Text(value,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(color: accent, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          );
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            yearlyRows.isEmpty
+                ? (isSpanish
+                    ? 'Todos los datos importados'
+                    : 'All imported data')
+                : '${isSpanish ? 'Años con datos' : 'Years with data'}: ${yearlyRows.map((row) => row['year']).join(' · ')}',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: colors.onSurfaceVariant),
+          ),
+          const SizedBox(height: 10),
+          LayoutBuilder(builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 800
+                ? 4
+                : constraints.maxWidth >= 400
+                    ? 2
+                    : 1;
+            final width = (constraints.maxWidth - (columns - 1) * 12) / columns;
+            return Wrap(spacing: 12, runSpacing: 12, children: [
+              SizedBox(
+                  width: width,
+                  child: metric(
+                      localizations.statementsSummaryIncome,
+                      StatementsFormatters.formatCurrency(
+                          context, totals.income),
+                      const Color(0xFF2563EB))),
+              SizedBox(
+                  width: width,
+                  child: metric(
+                      localizations.statementsSummaryExpense,
+                      StatementsFormatters.formatCurrency(
+                          context, totals.expense),
+                      const Color(0xFF8B5CF6))),
+              SizedBox(
+                  width: width,
+                  child: metric(
+                      localizations.statementsSummaryNet,
+                      StatementsFormatters.formatCurrency(context, totals.net),
+                      totals.net < 0 ? colors.error : const Color(0xFF0D9488))),
+              SizedBox(
+                  width: width,
+                  child: metric(
+                      isSpanish ? 'Movimientos' : 'Transactions',
+                      StatementsFormatters.formatCount(context, totals.count),
+                      colors.onSurface)),
+            ]);
+          }),
+          const SizedBox(height: 12),
           if (controller.loadingSummary)
             const Padding(
               padding: EdgeInsets.only(bottom: 8),
@@ -247,9 +342,8 @@ class _HomeBankingChartsContent extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 900;
-              final cardWidth = wide
-                  ? (constraints.maxWidth - 12) / 2
-                  : constraints.maxWidth;
+              final cardWidth =
+                  wide ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth;
               return Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -258,7 +352,7 @@ class _HomeBankingChartsContent extends StatelessWidget {
                     width: wide ? constraints.maxWidth : cardWidth,
                     child: chartCard(
                       id: 'bank_yearly_trend',
-                      title: localizations.statementsAnalyticsTrends,
+                      title: isSpanish ? 'Evolución anual' : 'Yearly trends',
                       chart: trendChart,
                       snapshot: trendSnapshot,
                     ),

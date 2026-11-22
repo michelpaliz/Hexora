@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
+import 'package:hexora/theme/themes/theme_variant.dart';
 
 /// Colors for the dark global navigation bar. Every interactive element in the
 /// bar resolves its idle / hover / focus / active look from here so states
@@ -11,10 +12,21 @@ abstract final class HexoraGlobalNavColors {
   static const foreground = AppColors.navigationForeground;
   static const active = AppColors.primary;
 
-  static Color backgroundFor(BuildContext context) => AppColors.dashboardTopBar;
+  static Color backgroundFor(BuildContext context) {
+    final theme = Theme.of(context);
+    final neutralLight =
+        theme.extension<HexoraThemeVariant>()?.neutralLight == true;
+    return neutralLight ? theme.colorScheme.surface : AppColors.dashboardTopBar;
+  }
 
-  static Color foregroundFor(BuildContext context) =>
-      AppColors.navigationForeground;
+  static Color foregroundFor(BuildContext context) {
+    final theme = Theme.of(context);
+    final neutralLight =
+        theme.extension<HexoraThemeVariant>()?.neutralLight == true;
+    return neutralLight
+        ? theme.colorScheme.onSurface
+        : AppColors.navigationForeground;
+  }
 
   static Color fill({
     required bool selected,

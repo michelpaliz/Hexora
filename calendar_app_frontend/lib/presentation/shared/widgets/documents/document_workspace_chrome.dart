@@ -67,6 +67,16 @@ class _HexoraDocumentToolbarState extends State<HexoraDocumentToolbar> {
           decoration: InputDecoration(
             hintText: widget.searchHint,
             prefixIcon: const Icon(Icons.search_rounded, size: 18),
+            suffixIcon: widget.searchValue.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: () {
+                      _controller.clear();
+                      widget.onSearchChanged('');
+                    },
+                    icon: const Icon(Icons.close_rounded, size: 16),
+                  ),
             prefixIconConstraints: const BoxConstraints(minWidth: 36),
             isDense: true,
             filled: true,
@@ -163,8 +173,11 @@ class _HexoraDocumentToolbarState extends State<HexoraDocumentToolbar> {
           alignment: AlignmentDirectional.topStart,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: cs.surfaceContainerLow.withValues(alpha: .62),
+              color: cs.surface,
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: .45),
+              ),
             ),
             child: Padding(
               padding: const EdgeInsets.all(3),
@@ -208,11 +221,14 @@ class HexoraDocumentStatusTabs extends StatelessWidget {
           height: 36,
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
-            color: Theme.of(context)
-                .colorScheme
-                .surfaceContainerHighest
-                .withValues(alpha: .32),
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(9),
+            border: Border.all(
+              color: Theme.of(context)
+                  .colorScheme
+                  .outlineVariant
+                  .withValues(alpha: .45),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -259,9 +275,12 @@ class _DocumentStatusTabButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
             color: selected
-                ? cs.primaryContainer.withValues(alpha: 0.58)
+                ? cs.primary.withValues(alpha: 0.12)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(7),
+            border: selected
+                ? Border.all(color: cs.primary.withValues(alpha: .28))
+                : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -286,8 +305,8 @@ class _DocumentStatusTabButton extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                 decoration: BoxDecoration(
                   color: selected
-                      ? cs.primary.withValues(alpha: 0.1)
-                      : cs.surface.withValues(alpha: .7),
+                      ? cs.primary.withValues(alpha: 0.14)
+                      : cs.surfaceContainerHighest.withValues(alpha: .75),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(

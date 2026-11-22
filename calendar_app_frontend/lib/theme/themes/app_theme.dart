@@ -5,16 +5,28 @@ import 'mobile_theme.dart';
 import 'navigation_theme.dart';
 import 'package:hexora/theme/themes/dark_theme.dart';
 import 'package:hexora/theme/themes/light_theme.dart';
+import 'package:hexora/theme/themes/neutral_light_theme.dart';
+import 'package:hexora/theme/theme_provider.dart';
 
 class AppTheme {
   static ThemeData get light => forPlatform(Brightness.light);
+  static ThemeData get blueLight => forPlatform(
+        Brightness.light,
+        lightVariant: LightThemeVariant.blue,
+      );
   static ThemeData get dark => forPlatform(Brightness.dark);
 
   static final ThemeData _desktopLight =
+      applyNavigationComponentTheme(neutralLightTheme);
+  static final ThemeData _desktopBlueLight =
       applyNavigationComponentTheme(lightTheme);
   static final ThemeData _desktopDark =
       applyNavigationComponentTheme(darkTheme);
-  static final ThemeData _mobileLight =
+  static final ThemeData _mobileLight = applyNavigationComponentTheme(
+    MobileTheme.build(neutralLightTheme),
+    touch: true,
+  );
+  static final ThemeData _mobileBlueLight =
       applyNavigationComponentTheme(MobileTheme.build(lightTheme), touch: true);
   static final ThemeData _mobileDark =
       applyNavigationComponentTheme(MobileTheme.build(darkTheme), touch: true);
@@ -23,12 +35,16 @@ class AppTheme {
     Brightness brightness, {
     TargetPlatform? platform,
     bool isWeb = kIsWeb,
+    LightThemeVariant lightVariant = LightThemeVariant.neutral,
   }) {
     final target = platform ?? defaultTargetPlatform;
     final mobile = !isWeb &&
         (target == TargetPlatform.android || target == TargetPlatform.iOS);
     if (brightness == Brightness.dark) {
       return mobile ? _mobileDark : _desktopDark;
+    }
+    if (lightVariant == LightThemeVariant.blue) {
+      return mobile ? _mobileBlueLight : _desktopBlueLight;
     }
     return mobile ? _mobileLight : _desktopLight;
   }

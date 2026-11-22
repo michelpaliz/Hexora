@@ -603,7 +603,7 @@ class CompactDocumentFinancialFooter extends StatelessWidget {
           height: 50,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: cs.surfaceContainerLow.withValues(alpha: 0.82),
+            color: cs.surface,
             border: Border(
               top: BorderSide(
                 color: cs.outlineVariant.withValues(alpha: 0.5),
@@ -822,6 +822,9 @@ class CompactDocumentRow extends StatelessWidget {
     return Column(mainAxisSize: MainAxisSize.min, children: [
       HexoraListRow(
           selected: selected,
+          selectedBackgroundColor: selected ? cs.surface : null,
+          selectedBorderColor:
+              selected ? cs.outlineVariant.withValues(alpha: .55) : null,
           onTap: onTap,
           minHeight: useCompactSplitLayout ? 56 : 52,
           verticalPadding: 2,

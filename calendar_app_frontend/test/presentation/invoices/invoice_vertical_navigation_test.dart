@@ -138,6 +138,14 @@ void main() {
     await pumpEditor(tester, size: const Size(900, 800));
 
     expect(find.byKey(const ValueKey('invoice-wizard-rail')), findsOneWidget);
+    final rail = tester.widget<AnimatedContainer>(
+      find.byKey(const ValueKey('invoice-wizard-rail')),
+    );
+    expect(
+      (rail.decoration as BoxDecoration).color,
+      Theme.of(tester.element(find.byType(InvoiceEditorScreen)))
+          .scaffoldBackgroundColor,
+    );
     expect(
       find.byKey(const ValueKey('invoice-line-mode-photo')),
       findsNothing,

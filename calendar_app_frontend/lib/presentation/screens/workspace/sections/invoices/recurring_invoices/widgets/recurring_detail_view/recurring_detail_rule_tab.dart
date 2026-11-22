@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/recurring_detail_view/recurring_detail_section_card.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/utils/recurrence_time_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/recurring_schedule_form.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -90,8 +90,6 @@ class RecurringDetailRuleTab extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final beforeLabel = isEs ? 'Antes' : 'Before';
-    final nowLabel = isEs ? 'Ahora' : 'Now';
 
     DateTime? parseMaybeDate(dynamic raw) {
       if (raw is DateTime) return raw;
@@ -107,322 +105,284 @@ class RecurringDetailRuleTab extends StatelessWidget {
       return recurringFrequencyLabel(l, value);
     }
 
-    String currentEndValue() {
-      if (endType == 'never') return l.recurringInvoicesEndNever;
-      if (endType == 'date' && endDate != null) {
-        return DateFormat.yMMMd(l.localeName).format(endDate!);
-      }
-      if (endType == 'count' && countCtrl.text.trim().isNotEmpty) {
-        return countCtrl.text.trim();
-      }
-      return l.recurringInvoicesEndNever;
+    // ── Normalised before/after values ───────────────────────────────────────
+    // Compare canonical values, never display labels, so equivalent values
+    // ("Europe/Madrid" vs "Madrid", a stored start date + timeOfDay vs the
+    // loaded start) are not reported as changes.
+    final dateFmt = DateFormat('d MMM y', l.localeName);
+    final dateTimeFmt = DateFormat('d MMM y · HH:mm', l.localeName);
+
+    // Original start as wall-clock time, rebuilt the same way the editor
+    // loads it: stored date + timeOfDay (when present).
+    DateTime? originalStartWall() {
+      final parsed = parseMaybeDate(originalField('startDate'));
+      if (parsed == null) return null;
+      final tod = parseTimeOfDay(originalField('timeOfDay'));
+      return DateTime(parsed.year, parsed.month, parsed.day,
+          tod?.hour ?? parsed.hour, tod?.minute ?? parsed.minute);
     }
 
-    String originalEndValue() {
-      final originalEndDate = parseMaybeDate(originalField('endDate'));
-      final originalCount = originalField('count');
-      if (originalEndDate != null) {
-        return DateFormat.yMMMd(l.localeName).format(originalEndDate);
-      }
-      if (originalCount != null && originalCount.toString().trim().isNotEmpty) {
-        return originalCount.toString().trim();
-      }
-      return l.recurringInvoicesEndNever;
-    }
+    final nowStartWall = DateTime(startDate.year, startDate.month,
+        startDate.day, startDate.hour, startDate.minute);
+    final beforeStart = originalStartWall();
 
-    Widget compareRow({
-      required String label,
-      required String before,
-      required String now,
-    }) {
-      final changed = before.trim() != now.trim();
+    String normalizedTimezone(String? raw) =>
+        timezoneLabelFrom(raw).trim().toLowerCase();
+    final originalTimezoneRaw = (originalField('timezone') ?? '').toString();
+
+    int? asInt(dynamic raw) => int.tryParse((raw ?? '').toString().trim());
+
+    String dayKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
+    final originalExceptionDays = <String>{
+      if (originalField('exceptions') is List)
+        for (final e in originalField('exceptions') as List)
+          if (parseMaybeDate(e) != null) dayKey(parseMaybeDate(e)!),
+    };
+    final nowExceptionDays = {for (final e in exceptions) dayKey(e)};
+
+    // End condition as (type, value) for comparison.
+    final originalEndDate = parseMaybeDate(originalField('endDate'));
+    final originalCount = asInt(originalField('count'));
+    final originalEndKey = originalEndDate != null
+        ? 'date:${dayKey(originalEndDate)}'
+        : originalCount != null
+            ? 'count:$originalCount'
+            : 'never';
+    final nowCount = asInt(countCtrl.text);
+    final nowEndKey = endType == 'date' && endDate != null
+        ? 'date:${dayKey(endDate!)}'
+        : endType == 'count' && nowCount != null
+            ? 'count:$nowCount'
+            : 'never';
+
+    final normFreq = normalizeFrequencyFromApi(freq);
+    final originalFreq = normalizeFrequencyFromApi((originalField('freq') ??
+            originalField('frequency') ??
+            recurringFreqMonthly)
+        .toString());
+    final usesMonthDay = normFreq == recurringFreqMonthly ||
+        normFreq == recurringFreqBimensual ||
+        normFreq == recurringFreqTrimestral;
+    final originalBillDay = asInt(originalField('billDay'));
+
+    String exceptionsLabel(int count) =>
+        count == 0 ? l.recurringInvoicesNoExceptions : '$count';
+
+    final changes = <_RuleChange>[
+      if (originalFreq != normFreq)
+        _RuleChange(l.recurringInvoicesFrequencyLabel, freqLabel(originalFreq),
+            freqLabel(normFreq)),
+      if ((asInt(originalField('interval')) ?? 1) !=
+          (asInt(intervalCtrl.text) ?? 1))
+        _RuleChange(
+          l.recurringInvoicesIntervalLabel,
+          '${asInt(originalField('interval')) ?? 1}',
+          '${asInt(intervalCtrl.text) ?? 1}',
+        ),
+      if (beforeStart == null || beforeStart != nowStartWall)
+        if (beforeStart != null && dayKey(beforeStart) == dayKey(nowStartWall))
+          _RuleChange(
+            isEs ? 'Hora de inicio' : 'Start time',
+            DateFormat.Hm(l.localeName).format(beforeStart),
+            DateFormat.Hm(l.localeName).format(nowStartWall),
+          )
+        else
+          _RuleChange(
+            l.recurringInvoicesStartLabel,
+            beforeStart == null ? '-' : dateTimeFmt.format(beforeStart),
+            dateTimeFmt.format(nowStartWall),
+          ),
+      if (originalEndKey != nowEndKey)
+        _RuleChange(
+          l.recurringInvoicesEndLabel,
+          originalEndDate != null
+              ? dateFmt.format(originalEndDate)
+              : originalCount?.toString() ?? l.recurringInvoicesEndNever,
+          endType == 'date' && endDate != null
+              ? dateFmt.format(endDate!)
+              : endType == 'count' && nowCount != null
+                  ? '$nowCount'
+                  : l.recurringInvoicesEndNever,
+        ),
+      if (usesMonthDay && originalBillDay != asInt(billDayCtrl.text))
+        _RuleChange(
+          isEs ? 'Día de ejecución' : 'Execution day',
+          originalBillDay?.toString() ?? '-',
+          asInt(billDayCtrl.text)?.toString() ?? '-',
+        ),
+      if (normFreq == recurringFreqWeekly &&
+          originalBillDay != asInt(weekDayCtrl.text))
+        _RuleChange(
+          l.recurringInvoicesWeekDayLabel,
+          originalBillDay?.toString() ?? '-',
+          asInt(weekDayCtrl.text)?.toString() ?? '-',
+        ),
+      if (normalizedTimezone(originalTimezoneRaw.isEmpty
+              ? timezoneLabel
+              : originalTimezoneRaw) !=
+          normalizedTimezone(timezoneLabel))
+        _RuleChange(
+          l.recurringInvoicesTimezoneLabel,
+          timezoneLabelFrom(originalTimezoneRaw),
+          timezoneLabel,
+        ),
+      if (showInvoiceDatePolicy &&
+          originalIssueDatePolicySummary.trim() !=
+              issueDatePolicySummary.trim())
+        _RuleChange(
+          isEs ? 'Fecha de factura' : 'Invoice date',
+          originalIssueDatePolicySummary,
+          issueDatePolicySummary,
+        ),
+      if (originalExceptionDays.length != nowExceptionDays.length ||
+          !originalExceptionDays.containsAll(nowExceptionDays))
+        _RuleChange(
+          l.recurringInvoicesExceptionsLabel,
+          exceptionsLabel(originalExceptionDays.length),
+          exceptionsLabel(nowExceptionDays.length),
+        ),
+    ];
+
+    Widget changeRow(_RuleChange change) {
       return Container(
-        padding: const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
-          color: changed ? cs.primary.withValues(alpha: .055) : null,
           border: Border(
-            bottom: BorderSide(
-              color: cs.outlineVariant.withValues(alpha: .22),
-            ),
+            top: BorderSide(color: cs.outlineVariant.withValues(alpha: .35)),
           ),
         ),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 4,
-              child: Text(
-                label,
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 5,
-              child: Text(
-                before,
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.82),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 5,
-              child: Text(
-                now,
-                style: t.bodySmall.copyWith(
-                  color: changed ? cs.primary : cs.onSurface,
-                  fontWeight: changed ? FontWeight.w900 : FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    Widget pill({
-      required String label,
-      required IconData icon,
-      bool accent = false,
-    }) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: accent
-              ? cs.primary.withValues(alpha: 0.10)
-              : cs.surfaceContainerHighest.withValues(alpha: .38),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: accent ? cs.primary : cs.onSurface),
-            const SizedBox(width: 6),
             Text(
-              label,
+              change.label,
               style: t.bodySmall.copyWith(
-                color: accent ? cs.primary : cs.onSurface,
-                fontWeight: FontWeight.w800,
+                fontSize: 12,
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
-        ),
-      );
-    }
-
-    Widget sectionHeader({
-      required IconData icon,
-      required String title,
-      required String subtitle,
-    }) {
-      return Row(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: cs.primary.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: cs.primary, size: 19),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 3),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 2,
               children: [
                 Text(
-                  title,
-                  style: t.bodyLarge.copyWith(
-                    color: cs.onSurface,
-                    fontWeight: FontWeight.w900,
+                  change.before,
+                  style: t.bodySmall.copyWith(
+                    fontSize: 13,
+                    color: cs.onSurfaceVariant,
+                    decoration: TextDecoration.lineThrough,
+                    decorationColor: cs.onSurfaceVariant.withValues(alpha: .6),
                   ),
                 ),
-                const SizedBox(height: 2),
+                Icon(Icons.arrow_forward_rounded,
+                    size: 14, color: cs.onSurfaceVariant),
                 Text(
-                  subtitle,
+                  change.now,
                   style: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: cs.primary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       );
     }
 
-    Widget detailsCard() {
-      final originalFreq = normalizeFrequencyFromApi((originalField('freq') ??
-                  originalField('frequency') ??
-                  recurringFreqMonthly)
-              .toString())
-          .toString();
-      final originalInterval = (originalField('interval') ?? 1).toString();
-      final originalStartDate = parseMaybeDate(originalField('startDate'));
-      final originalStartLabel = originalStartDate == null
-          ? '-'
-          : DateFormat.yMMMd(l.localeName).add_Hm().format(originalStartDate);
-      final nowStartLabel =
-          DateFormat.yMMMd(l.localeName).add_Hm().format(startDate);
-      final originalBillDay =
-          (originalField('billDay') ?? '').toString().trim();
-      final originalTimezone =
-          (originalField('timezone') ?? timezoneLabel).toString().trim();
-      final originalExceptions = originalField('exceptions');
-      final originalExceptionsLabel =
-          (originalExceptions is List && originalExceptions.isNotEmpty)
-              ? '${originalExceptions.length}'
-              : l.recurringInvoicesNoExceptions;
-      final nowExceptionsLabel = exceptions.isEmpty
-          ? l.recurringInvoicesNoExceptions
-          : '${exceptions.length}';
+    Widget whiteCard({required Key key, required Widget child}) => Container(
+          key: key,
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: .5)),
+          ),
+          child: child,
+        );
 
-      return RecurringDetailSectionCard(
-        padding: const EdgeInsets.all(12),
+    Widget summaryCard() {
+      final count = changes.length;
+      return whiteCard(
+        key: const ValueKey('rule-change-summary'),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            sectionHeader(
-              icon: Icons.compare_arrows_rounded,
-              title: isEs ? 'Resumen de cambios' : 'Change summary',
-              subtitle: isEs
-                  ? 'Comprueba la regla antes de guardarla.'
-                  : 'Review the rule before saving it.',
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                pill(
-                  label: clientName.trim().isEmpty ? '-' : clientName.trim(),
-                  icon: Icons.person_outline_rounded,
-                  accent: true,
-                ),
-                pill(
-                  label: timezoneLabel,
-                  icon: Icons.public_rounded,
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
             Row(
               children: [
-                const Spacer(flex: 4),
                 Expanded(
-                  flex: 5,
                   child: Text(
-                    beforeLabel,
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w800,
+                    isEs ? 'Resumen de cambios' : 'Change summary',
+                    style: t.bodyMedium.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurface,
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 5,
-                  child: Text(
-                    nowLabel,
-                    style: t.bodySmall.copyWith(
-                      color: cs.primary,
-                      fontWeight: FontWeight.w900,
+                if (count > 0)
+                  Container(
+                    key: const ValueKey('rule-change-count'),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: cs.primary.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      isEs
+                          ? '$count ${count == 1 ? 'cambio' : 'cambios'}'
+                          : '$count ${count == 1 ? 'change' : 'changes'}',
+                      style: t.bodySmall.copyWith(
+                        fontSize: 11.5,
+                        color: cs.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
-            const SizedBox(height: 4),
-            compareRow(
-              label: l.recurringInvoicesFrequencyLabel,
-              before: freqLabel(originalFreq),
-              now: freqLabel(freq),
-            ),
-            compareRow(
-              label: l.recurringInvoicesIntervalLabel,
-              before: originalInterval,
-              now: intervalCtrl.text.trim().isEmpty
-                  ? '1'
-                  : intervalCtrl.text.trim(),
-            ),
-            compareRow(
-              label: l.recurringInvoicesStartLabel,
-              before: originalStartLabel,
-              now: nowStartLabel,
-            ),
-            compareRow(
-              label: l.recurringInvoicesEndLabel,
-              before: originalEndValue(),
-              now: currentEndValue(),
-            ),
-            if (normalizeFrequencyFromApi(freq) == recurringFreqMonthly ||
-                normalizeFrequencyFromApi(freq) == recurringFreqBimensual ||
-                normalizeFrequencyFromApi(freq) == recurringFreqTrimestral)
-              compareRow(
-                label:
-                    isEs ? 'Dia de ejecucion (1-31)' : 'Execution day (1-31)',
-                before: originalBillDay.isEmpty ? '-' : originalBillDay,
-                now: billDayCtrl.text.trim().isEmpty
-                    ? '-'
-                    : billDayCtrl.text.trim(),
+            if (clientName.trim().isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                clientName.trim(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall.copyWith(
+                  fontSize: 12,
+                  color: cs.onSurfaceVariant,
+                ),
               ),
-            if (normalizeFrequencyFromApi(freq) == recurringFreqWeekly)
-              compareRow(
-                label: l.recurringInvoicesWeekDayLabel,
-                before: originalBillDay.isEmpty ? '-' : originalBillDay,
-                now: weekDayCtrl.text.trim().isEmpty
-                    ? '-'
-                    : weekDayCtrl.text.trim(),
-              ),
-            compareRow(
-              label: l.recurringInvoicesTimezoneLabel,
-              before: originalTimezone,
-              now: timezoneLabel,
-            ),
-            if (showInvoiceDatePolicy)
-              compareRow(
-                label: isEs
-                    ? 'Fecha de emision de factura'
-                    : 'Invoice issue date policy',
-                before: originalIssueDatePolicySummary,
-                now: issueDatePolicySummary,
-              ),
-            compareRow(
-              label: l.recurringInvoicesExceptionsLabel,
-              before: originalExceptionsLabel,
-              now: nowExceptionsLabel,
-            ),
+            ],
+            const SizedBox(height: 10),
+            if (count == 0)
+              Row(
+                key: const ValueKey('rule-no-changes'),
+                children: [
+                  Icon(Icons.check_circle_outline_rounded,
+                      size: 16, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isEs ? 'No hay cambios pendientes' : 'No pending changes',
+                      style: t.bodySmall.copyWith(
+                        fontSize: 13,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              for (final change in changes) changeRow(change),
           ],
         ),
       );
     }
-
-    final saveButton = canManage
-        ? Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(132, 40),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: saving ? null : onSave,
-              child: Text(
-                saving
-                    ? l.recurringInvoicesSavingRule
-                    : l.recurringInvoicesSaveRuleCta,
-              ),
-            ),
-          )
-        : const SizedBox.shrink();
 
     final form = RecurringScheduleForm(
       freq: freq,
@@ -458,17 +418,28 @@ class RecurringDetailRuleTab extends StatelessWidget {
     );
 
     Widget formCard() {
-      return RecurringDetailSectionCard(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+      return whiteCard(
+        key: const ValueKey('rule-schedule-card'),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            sectionHeader(
-              icon: Icons.event_repeat_rounded,
-              title: isEs ? 'Programacion de la regla' : 'Rule schedule',
-              subtitle: isEs
-                  ? 'Define cuando se crean las proximas facturas.'
-                  : 'Control when upcoming invoices are created.',
+            Text(
+              isEs ? 'Programación de la regla' : 'Rule schedule',
+              style: t.bodyMedium.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              isEs
+                  ? 'Define cuándo se generan las facturas.'
+                  : 'Control when invoices are generated.',
+              style: t.bodySmall.copyWith(
+                fontSize: 12,
+                color: cs.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 12),
             form,
@@ -477,52 +448,98 @@ class RecurringDetailRuleTab extends StatelessWidget {
       );
     }
 
-    return SingleChildScrollView(
+    // Compact sticky action bar: stays reachable however long the form gets.
+    final actionBar = !canManage
+        ? null
+        : Container(
+            key: const ValueKey('rule-action-bar'),
+            padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+            decoration: BoxDecoration(
+              color: cs.surface,
+              border: Border(
+                top: BorderSide(color: cs.outlineVariant.withValues(alpha: .5)),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    changes.isEmpty
+                        ? (isEs ? 'Sin cambios' : 'No changes')
+                        : isEs
+                            ? '${changes.length} ${changes.length == 1 ? 'cambio pendiente' : 'cambios pendientes'}'
+                            : '${changes.length} pending ${changes.length == 1 ? 'change' : 'changes'}',
+                    style: t.bodySmall.copyWith(
+                      fontSize: 12.5,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                FilledButton(
+                  key: const ValueKey('rule-save'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(132, 38),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: saving ? null : onSave,
+                  child: Text(
+                    saving
+                        ? l.recurringInvoicesSavingRule
+                        : l.recurringInvoicesSaveRuleCta,
+                  ),
+                ),
+              ],
+            ),
+          );
+
+    // Light-blue canvas; the two white cards end where their content ends.
+    return ColoredBox(
+      key: const ValueKey('rule-canvas'),
+      color: cs.surfaceContainerLow,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 10),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 980;
-              if (!wide) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    formCard(),
-                    const SizedBox(height: 18),
-                    detailsCard(),
-                    if (canManage) ...[
-                      const SizedBox(height: 16),
-                      saveButton,
-                    ],
-                  ],
-                );
-              }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 5, child: formCard()),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 3,
-                    child: Column(
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth >= 980;
+                  if (!wide) {
+                    return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        detailsCard(),
-                        if (canManage) ...[
-                          const SizedBox(height: 16),
-                          saveButton,
-                        ],
+                        formCard(),
+                        const SizedBox(height: 14),
+                        summaryCard(),
                       ],
-                    ),
-                  ),
-                ],
-              );
-            },
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 5, child: formCard()),
+                      const SizedBox(width: 14),
+                      Expanded(flex: 3, child: summaryCard()),
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
+          if (actionBar != null) actionBar,
         ],
       ),
     );
   }
+}
+
+class _RuleChange {
+  const _RuleChange(this.label, this.before, this.now);
+  final String label;
+  final String before;
+  final String now;
 }
