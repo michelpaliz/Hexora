@@ -24,6 +24,120 @@ import 'insights_chat_sheet_base.dart';
 import 'insights_visit_planner_guide.dart';
 
 mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
+  Future<void> showSavedChatHistory() async {
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    var conversations = await runtime.loadConversationHistory();
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.7,
+            child: Column(
+              children: [
+                ListTile(
+                  title: Text(isEs ? 'Historial del chat' : 'Chat history'),
+                  trailing: IconButton(
+                    tooltip: isEs ? 'Nuevo chat' : 'New chat',
+                    icon: const Icon(Icons.add_comment_outlined),
+                    onPressed: () async {
+                      await runtime.startNewConversation();
+                      if (context.mounted) Navigator.pop(context);
+                    },
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: conversations.isEmpty
+                      ? Center(
+                          child: Text(isEs
+                              ? 'Todavía no hay conversaciones guardadas.'
+                              : 'No saved conversations yet.'),
+                        )
+                      : ListView.builder(
+                          itemCount: conversations.length,
+                          itemBuilder: (context, index) {
+                            final item = conversations[index];
+                            final id = item['conversationId']?.toString() ?? '';
+                            final title = (item['title'] ?? item['preview'])
+                                ?.toString().trim();
+                            final updatedAt = DateTime.tryParse(
+                              item['updatedAt']?.toString() ?? '',
+                            );
+                            return ListTile(
+                              leading: const Icon(Icons.chat_bubble_outline),
+                              title: Text(
+                                title?.isNotEmpty == true
+                                    ? title!
+                                    : (isEs ? 'Nueva conversación' : 'New conversation'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: updatedAt == null
+                                  ? null
+                                  : Text(MaterialLocalizations.of(context)
+                                      .formatShortDate(updatedAt.toLocal())),
+                              onTap: id.isEmpty
+                                  ? null
+                                  : () async {
+                                      final opened = await runtime
+                                          .openSavedConversation(id);
+                                      if (opened && context.mounted) {
+                                        Navigator.pop(context);
+                                      }
+                                    },
+                              trailing: IconButton(
+                                tooltip: isEs ? 'Eliminar chat' : 'Delete chat',
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: id.isEmpty
+                                    ? null
+                                    : () async {
+                                        final confirm =
+                                            await showHexoraDialog<bool>(
+                                          context: context,
+                                          builder: (dialogContext) =>
+                                              AlertDialog(
+                                            title: Text(isEs
+                                                ? '¿Eliminar conversación?'
+                                                : 'Delete conversation?'),
+                                            content: Text(isEs
+                                                ? 'Esta conversación guardada se eliminará.'
+                                                : 'This saved conversation will be deleted.'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(dialogContext, false),
+                                                child: Text(isEs ? 'Cancelar' : 'Cancel'),
+                                              ),
+                                              FilledButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(dialogContext, true),
+                                                child: Text(isEs ? 'Eliminar' : 'Delete'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirm != true) return;
+                                        await runtime.deleteSavedConversation(id);
+                                        conversations = await runtime
+                                            .loadConversationHistory();
+                                        setSheetState(() {});
+                                      },
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> showVisitPlannerGuide() => showDialog<void>(
         context: context,
         builder: (_) => const InsightsVisitPlannerGuide(),
@@ -835,8 +949,20 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                           color: cs.onSurfaceVariant,
                         ),
                       ),
-                    ),
+                  ),
                   const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: isEs ? 'Historial del chat' : 'Chat history',
+                    onPressed: showSavedChatHistory,
+                    icon: const Icon(Icons.history_rounded, size: 19),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  IconButton(
+                    tooltip: isEs ? 'Nuevo chat' : 'New chat',
+                    onPressed: sending ? null : runtime.startNewConversation,
+                    icon: const Icon(Icons.add_comment_outlined, size: 18),
+                    visualDensity: VisualDensity.compact,
+                  ),
                   buildOptionsButton(),
                 ],
               );

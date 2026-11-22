@@ -231,6 +231,82 @@ class InsightsChatRuntime extends ChangeNotifier {
 
   String get _remoteScopeKey => '$scopeKey::${_interactionMode.name}';
 
+  Future<List<Map<String, dynamic>>> loadConversationHistory() async {
+    final groupId = _historyGroupId;
+    if (groupId == null || groupId.isEmpty) return const [];
+    try {
+      return await _api.listConversationHistory(
+        groupId: groupId,
+        scopeKey: _remoteScopeKey,
+      );
+    } catch (error) {
+      debugPrint('[insights_history] remote list unavailable: $error');
+      return const [];
+    }
+  }
+
+  Future<bool> openSavedConversation(String conversationId) async {
+    final groupId = _historyGroupId;
+    if (groupId == null || groupId.isEmpty) return false;
+    try {
+      final remote = await _api.loadSavedConversation(
+        groupId: groupId,
+        scopeKey: _remoteScopeKey,
+        conversationId: conversationId,
+      );
+      _conversationId = conversationId;
+      _messages = (remote['messages'] as List? ?? const [])
+          .map(ChatMessage.fromJson)
+          .whereType<ChatMessage>()
+          .toList();
+      _messagesByInteractionMode[_interactionMode] = _messages;
+      _conversationIdsByInteractionMode[_interactionMode] = conversationId;
+      _resetConversationOnNextSend = false;
+      _resetByInteractionMode[_interactionMode] = false;
+      _error = null;
+      _lastUserMessage = null;
+      _lastTimeoutMessage = null;
+      _generation += 1;
+      notifyListeners();
+      await _persistHistory();
+      return true;
+    } catch (error) {
+      debugPrint('[insights_history] remote conversation load failed: $error');
+      return false;
+    }
+  }
+
+  Future<void> startNewConversation() async {
+    await _remoteSave;
+    _conversationId = _newConversationId();
+    _messages = <ChatMessage>[];
+    _messagesByInteractionMode[_interactionMode] = _messages;
+    _conversationIdsByInteractionMode[_interactionMode] = _conversationId;
+    _resetConversationOnNextSend = true;
+    _resetByInteractionMode[_interactionMode] = true;
+    _homeChartsConversationId = null;
+    _homeCharts = const [];
+    _error = null;
+    _lastUserMessage = null;
+    _lastTimeoutMessage = null;
+    _generation += 1;
+    notifyListeners();
+    await _persistHistory();
+  }
+
+  Future<void> deleteSavedConversation(String conversationId) async {
+    final groupId = _historyGroupId;
+    if (groupId == null || groupId.isEmpty) return;
+    await _api.deleteSavedConversation(
+      groupId: groupId,
+      scopeKey: _remoteScopeKey,
+      conversationId: conversationId,
+    );
+    if (_conversationId == conversationId) {
+      await startNewConversation();
+    }
+  }
+
   Future<void> ensureLoaded(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
     final nextHistoryKey = _resolveHistoryKey(context);
@@ -321,10 +397,24 @@ class InsightsChatRuntime extends ChangeNotifier {
     final loadedRevision = _historyRevision;
     if (groupId != null && groupId.isNotEmpty) {
       try {
-        final remote = await _api.loadConversation(
+        final history = await _api.listConversationHistory(
           groupId: groupId,
           scopeKey: _remoteScopeKey,
         );
+        final active = history.where((item) =>
+            item['conversationId']?.toString() == _conversationId).toList();
+        final candidates = active.isNotEmpty ? active : history;
+        final latest = candidates.isEmpty ? null : candidates.first;
+        final remote = latest == null
+            ? await _api.loadConversation(
+                groupId: groupId,
+                scopeKey: _remoteScopeKey,
+              )
+            : await _api.loadSavedConversation(
+                groupId: groupId,
+                scopeKey: _remoteScopeKey,
+                conversationId: latest['conversationId'].toString(),
+              );
         if (_loadedSessionVersion == InsightsHistoryStore.sessionVersion &&
             _historyRevision == loadedRevision &&
             _historyKey == nextHistoryKey) {
@@ -389,11 +479,11 @@ class InsightsChatRuntime extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       if (sessionVersion != InsightsHistoryStore.sessionVersion) return;
       await prefs.setString(historyKey, jsonEncode(payload));
-      if (groupId != null && groupId.isNotEmpty) {
+      if (groupId != null && groupId.isNotEmpty && trimmed.isNotEmpty) {
         _remoteSave = _remoteSave.then((_) async {
           if (sessionVersion != InsightsHistoryStore.sessionVersion) return;
           try {
-            await _api.saveConversation(
+            await _api.saveConversationHistory(
               groupId: groupId,
               scopeKey: _remoteScopeKey,
               conversationId: payload['conversationId'] as String,
@@ -452,7 +542,9 @@ class InsightsChatRuntime extends ChangeNotifier {
   }
 
   Future<void> clearChat(BuildContext context) async {
+    await _remoteSave;
     _generation += 1;
+    final previousConversationId = _conversationId;
     _conversationId = _newConversationId();
     _resetConversationOnNextSend = true;
     _homeChartsConversationId = null;
@@ -467,6 +559,24 @@ class InsightsChatRuntime extends ChangeNotifier {
     );
     notifyListeners();
     await _persistHistory();
+    final groupId = _historyGroupId;
+    if (groupId != null && groupId.isNotEmpty) {
+      try {
+        await _api.deleteSavedConversation(
+          groupId: groupId,
+          scopeKey: _remoteScopeKey,
+          conversationId: previousConversationId,
+        );
+        await _api.saveConversation(
+          groupId: groupId,
+          scopeKey: _remoteScopeKey,
+          conversationId: _conversationId,
+          messages: const [],
+        );
+      } catch (error) {
+        debugPrint('[insights_history] remote clear unavailable: $error');
+      }
+    }
   }
 
   Future<void> replaceMessage(

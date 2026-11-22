@@ -211,6 +211,73 @@ class InsightsApi {
     _decode<Map<String, dynamic>>(response, _toMap);
   }
 
+  Future<List<Map<String, dynamic>>> listConversationHistory({
+    required String groupId,
+    required String scopeKey,
+  }) async {
+    final response = await AuthenticatedHttpClient.get(
+      _u('/conversations').replace(queryParameters: {
+        'groupId': groupId,
+        'scopeKey': scopeKey,
+      }),
+      headers: await _authHeaders(),
+      client: _client,
+    );
+    final raw = _decode<Map<String, dynamic>>(response, _toMap)['conversations'];
+    return raw is List
+        ? raw.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+        : const [];
+  }
+
+  Future<Map<String, dynamic>> loadSavedConversation({
+    required String groupId,
+    required String scopeKey,
+    required String conversationId,
+  }) async {
+    final response = await AuthenticatedHttpClient.get(
+      _u('/conversations/${Uri.encodeComponent(conversationId)}').replace(
+        queryParameters: {'groupId': groupId, 'scopeKey': scopeKey},
+      ),
+      headers: await _authHeaders(),
+      client: _client,
+    );
+    return _decode<Map<String, dynamic>>(response, _toMap);
+  }
+
+  Future<void> saveConversationHistory({
+    required String groupId,
+    required String scopeKey,
+    required String conversationId,
+    required List<Map<String, dynamic>> messages,
+  }) async {
+    final response = await AuthenticatedHttpClient.put(
+      _u('/conversations/${Uri.encodeComponent(conversationId)}'),
+      headers: await _authJsonHeaders(),
+      body: jsonEncode({
+        'groupId': groupId,
+        'scopeKey': scopeKey,
+        'messages': messages,
+      }),
+      client: _client,
+    );
+    _decode<Map<String, dynamic>>(response, _toMap);
+  }
+
+  Future<void> deleteSavedConversation({
+    required String groupId,
+    required String scopeKey,
+    required String conversationId,
+  }) async {
+    final response = await AuthenticatedHttpClient.delete(
+      _u('/conversations/${Uri.encodeComponent(conversationId)}').replace(
+        queryParameters: {'groupId': groupId, 'scopeKey': scopeKey},
+      ),
+      headers: await _authHeaders(),
+      client: _client,
+    );
+    _decode<Map<String, dynamic>>(response, _toMap);
+  }
+
   Future<List<Map<String, dynamic>>> loadActionHistory(String groupId) async {
     final response = await AuthenticatedHttpClient.get(
       _u('/chat/actions').replace(queryParameters: {'groupId': groupId}),
