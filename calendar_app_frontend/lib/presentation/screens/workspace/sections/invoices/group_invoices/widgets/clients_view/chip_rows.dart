@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -62,8 +63,7 @@ class FilterChipRow extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.close_rounded,
-                          size: 10, color: cs.error),
+                      Icon(LucideIcons.x, size: 10, color: cs.error),
                       const SizedBox(width: 3),
                       Text(
                         l.clientFiltersClear,

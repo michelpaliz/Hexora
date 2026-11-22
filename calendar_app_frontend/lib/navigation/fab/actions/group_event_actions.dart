@@ -4,7 +4,7 @@ import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
-import 'package:iconsax/iconsax.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 Future<void> pickGroupAndAddEvent(BuildContext context) async {
@@ -38,7 +38,7 @@ Future<void> pickGroupAndAddEvent(BuildContext context) async {
 
   if (!context.mounted) return;
   final selected = await showModalBottomSheet<Group>(
-      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
+    sheetAnimationStyle: HexoraMotion.sheetStyle(context),
     context: context,
     showDragHandle: true,
     builder: (ctx) => SafeArea(
@@ -50,7 +50,7 @@ Future<void> pickGroupAndAddEvent(BuildContext context) async {
           final g = groups[i];
           return ListTile(
             title: Text(g.name),
-            leading: const Icon(Iconsax.profile_2user),
+            leading: const Icon(LucideIcons.users),
             onTap: () => Navigator.pop(ctx, g),
           );
         },

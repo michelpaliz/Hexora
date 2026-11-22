@@ -46,6 +46,8 @@ class SearchFiltersHeader extends StatefulWidget {
       this.filtersInMenu = false,
       this.filterMenuWidth = 360,
       this.filterBeforeSearch = false,
+      this.showSearch = true,
+      this.alwaysShowFilters = false,
       this.toolbarContent,
       this.searchFieldKey,
       this.filterButtonKey,
@@ -68,6 +70,8 @@ class SearchFiltersHeader extends StatefulWidget {
   final bool filtersInMenu;
   final double filterMenuWidth;
   final bool filterBeforeSearch;
+  final bool showSearch;
+  final bool alwaysShowFilters;
   final Widget? toolbarContent;
   final Key? searchFieldKey;
   final Key? filterButtonKey;
@@ -227,69 +231,72 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
               );
             }
 
-            final filterControl = hasFilters && widget.filtersInMenu
-                ? MenuAnchor(
-                    alignmentOffset: const Offset(0, 6),
-                    style: MenuStyle(
-                      padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-                      backgroundColor: WidgetStatePropertyAll(cs.surface),
-                      surfaceTintColor:
-                          const WidgetStatePropertyAll(Colors.transparent),
-                      shape: WidgetStatePropertyAll(
-                        RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                    menuChildren: [
-                      SizedBox(
-                        key: const ValueKey('client-filter-popover'),
-                        width: math.min(
-                          widget.filterMenuWidth,
-                          math.max(0, constraints.maxWidth - 16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              widget.filtersContent!,
-                              if (widget.hasActiveFilters &&
-                                  widget.onClearFilters != null) ...[
-                                const SizedBox(height: 4),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: HexoraButton(
-                                    key: widget.clearFiltersKey,
-                                    onPressed: widget.onClearFilters,
-                                    label: widget.clearFiltersLabel ??
-                                        l.clientFiltersClear,
-                                    variant: HexoraButtonVariant.ghost,
-                                    size: HexoraButtonSize.compact,
-                                  ),
-                                ),
-                              ],
-                            ],
+            final filterControl = widget.alwaysShowFilters
+                ? null
+                : hasFilters && widget.filtersInMenu
+                    ? MenuAnchor(
+                        alignmentOffset: const Offset(0, 6),
+                        style: MenuStyle(
+                          padding:
+                              const WidgetStatePropertyAll(EdgeInsets.zero),
+                          backgroundColor: WidgetStatePropertyAll(cs.surface),
+                          surfaceTintColor:
+                              const WidgetStatePropertyAll(Colors.transparent),
+                          shape: WidgetStatePropertyAll(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                    builder: (context, controller, child) =>
-                        filterButton(controller.open),
-                  )
-                : hasFilters
-                    ? filterButton(
-                        () => setState(() => _expanded = !_expanded),
-                        expanded: _expanded,
+                        menuChildren: [
+                          SizedBox(
+                            key: const ValueKey('client-filter-popover'),
+                            width: math.min(
+                              widget.filterMenuWidth,
+                              math.max(0, constraints.maxWidth - 16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  widget.filtersContent!,
+                                  if (widget.hasActiveFilters &&
+                                      widget.onClearFilters != null) ...[
+                                    const SizedBox(height: 4),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: HexoraButton(
+                                        key: widget.clearFiltersKey,
+                                        onPressed: widget.onClearFilters,
+                                        label: widget.clearFiltersLabel ??
+                                            l.clientFiltersClear,
+                                        variant: HexoraButtonVariant.ghost,
+                                        size: HexoraButtonSize.compact,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                        builder: (context, controller, child) =>
+                            filterButton(controller.open),
                       )
-                    : null;
+                    : hasFilters
+                        ? filterButton(
+                            () => setState(() => _expanded = !_expanded),
+                            expanded: _expanded,
+                          )
+                        : null;
 
             final primaryControls = <Widget>[
               if (widget.filterBeforeSearch && filterControl != null) ...[
                 filterControl,
                 const SizedBox(width: 8),
               ],
-              searchSlot,
+              if (widget.showSearch) searchSlot,
               if (!widget.filterBeforeSearch && filterControl != null) ...[
                 const SizedBox(width: 8),
                 filterControl,
@@ -364,7 +371,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
             AnimatedSize(
                 duration: HexoraMotion.duration(context, HexoraMotion.standard),
                 alignment: Alignment.topCenter,
-                child: _expanded
+                child: (widget.alwaysShowFilters || _expanded)
                     ? Padding(
                         padding: const EdgeInsets.only(top: 8, bottom: 4),
                         child: widget.filtersContent!)

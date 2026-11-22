@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/models/calendar/events/event.dart';
-import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/documents/private_documents_api.dart';
@@ -10,21 +11,22 @@ import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/weather/weather_service.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
-import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
-import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:provider/provider.dart';
 
 /// A standalone, pixel-faithful preview of a proposed "home dashboard" design
 /// (left sidebar + top bar + content panels), opened from Settings.
 ///
-/// It reads real data from the selected business for invoice counts, clients,
-/// recent private documents and upcoming calendar events.
+/// It reads REAL data where the app already exposes it (invoice counts,
+/// client count, recent private documents and upcoming calendar events) and
+/// falls back to representative mock data for a section when its source is
+/// empty or unavailable. The chrome (sidebar/top bar) and the quick-action
+/// tiles are visual only — this screen is a design preview, not wired
+/// navigation.
 class DashboardPreviewScreen extends StatefulWidget {
   const DashboardPreviewScreen({
     super.key,
     this.embedded = false,
     this.onOpenSection,
-    this.assistantGroup,
     this.onAskHexora,
   });
 
@@ -33,7 +35,6 @@ class DashboardPreviewScreen extends StatefulWidget {
   /// which already provides its own module rail and top bar.
   final bool embedded;
   final ValueChanged<String>? onOpenSection;
-  final Group? assistantGroup;
   final ValueChanged<String>? onAskHexora;
 
   @override
@@ -64,6 +65,7 @@ class _DashData {
     required this.activity,
     required this.tasks,
     required this.docs,
+    required this.statsAreMock,
   });
 
   final int facturas;
@@ -73,6 +75,7 @@ class _DashData {
   final List<_ActivityItem> activity;
   final List<_TaskItem> tasks;
   final List<_DocItem> docs;
+  final bool statsAreMock;
 }
 
 class _ActivityItem {
@@ -158,6 +161,7 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
     int facturas = 0, pagadas = 0, pendientes = 0, clientes = 0;
     final activity = <_ActivityItem>[];
     final docs = <_DocItem>[];
+    bool statsLoaded = false;
 
     if (groupId != null && groupId.isNotEmpty) {
       // Invoices
@@ -169,6 +173,7 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
           return ps == 'paid' || ps == 'pagada' || (i.paidAmount ?? 0) > 0;
         }).length;
         pendientes = facturas - pagadas;
+        statsLoaded = facturas > 0;
 
         final recent = [...invoices]..sort((a, b) =>
             (b.issueDate ?? DateTime(0)).compareTo(a.issueDate ?? DateTime(0)));
@@ -190,6 +195,7 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
       try {
         final list = await ClientsApi().list(groupId: groupId);
         clientes = list.length;
+        statsLoaded = statsLoaded || clientes > 0;
       } catch (_) {}
 
       // Documents
@@ -222,15 +228,88 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
       tasks.add(_TaskItem(e.title, e.startDate, taskColors[i % 4]));
     }
 
+    final statsAreMock = !statsLoaded;
     return _DashData(
-      facturas: facturas,
-      pagadas: pagadas,
-      pendientes: pendientes,
-      clientes: clientes,
-      activity: activity,
-      tasks: tasks,
-      docs: docs,
+      facturas: statsLoaded ? facturas : 410,
+      pagadas: statsLoaded ? pagadas : 286,
+      pendientes: statsLoaded ? pendientes : 124,
+      clientes: statsLoaded ? clientes : 87,
+      activity: activity.isNotEmpty ? activity : _mockActivity(),
+      tasks: tasks.isNotEmpty ? tasks : _mockTasks(),
+      docs: docs.isNotEmpty ? docs : _mockDocs(),
+      statsAreMock: statsAreMock,
     );
+  }
+
+  List<_ActivityItem> _mockActivity() {
+    final es = _isEs;
+    final now = DateTime.now();
+    return [
+      _ActivityItem(
+          es ? 'Factura creada' : 'Invoice created',
+          '#410-26 · Residencial Zurich',
+          now,
+          Icons.description_rounded,
+          _Palette.blue),
+      _ActivityItem(
+          es ? 'Pago registrado' : 'Payment recorded',
+          '#408-26 · Playasol II',
+          now,
+          Icons.check_circle_rounded,
+          _Palette.green),
+      _ActivityItem(
+          es ? 'Presupuesto enviado' : 'Quote sent',
+          '#P-120 · Brisas',
+          now.subtract(const Duration(days: 1)),
+          Icons.receipt_long_rounded,
+          _Palette.purple),
+      _ActivityItem(
+          es ? 'Nuevo cliente' : 'New client',
+          'Camos Molla Promociones',
+          now.subtract(const Duration(days: 1)),
+          Icons.person_add_alt_1_rounded,
+          _Palette.amber),
+    ];
+  }
+
+  List<_TaskItem> _mockTasks() {
+    final es = _isEs;
+    final d = DateTime.now();
+    DateTime at(int add) =>
+        DateTime(d.year, d.month, d.day).add(Duration(days: add));
+    return [
+      _TaskItem(
+          es ? 'Mantenimiento piscina – Brisas' : 'Pool maintenance – Brisas',
+          at(1),
+          _Palette.blue),
+      _TaskItem(
+          es ? 'Revisión de riego – La Sella' : 'Irrigation check – La Sella',
+          at(1),
+          _Palette.green),
+      _TaskItem(
+          es
+              ? 'Enviar presupuesto – Cabo del Sol'
+              : 'Send quote – Cabo del Sol',
+          at(2),
+          _Palette.amber),
+      _TaskItem(
+          es ? 'Seguimiento de factura #407-26' : 'Follow up invoice #407-26',
+          at(3),
+          _Palette.purple),
+    ];
+  }
+
+  List<_DocItem> _mockDocs() {
+    final es = _isEs;
+    final now = DateTime.now();
+    return [
+      _DocItem(es ? 'Factura #410-26' : 'Invoice #410-26', 'Residencial Zurich',
+          now),
+      _DocItem(es ? 'Presupuesto #P-120' : 'Quote #P-120', 'Brisas',
+          now.subtract(const Duration(days: 1))),
+      _DocItem(es ? 'Recibo #R025-26' : 'Receipt #R025-26', 'Playasol II',
+          now.subtract(const Duration(days: 1))),
+    ];
   }
 
   @override
@@ -250,8 +329,6 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
               data: data,
               loading: loading,
               onOpenSection: _openSection,
-              assistantGroup:
-                  _canShowAssistant(context) ? widget.assistantGroup : null,
               onAskHexora: widget.onAskHexora,
             );
           },
@@ -292,10 +369,6 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
                                         data: data,
                                         loading: loading,
                                         onOpenSection: _openSection,
-                                        assistantGroup:
-                                            _canShowAssistant(context)
-                                                ? widget.assistantGroup
-                                                : null,
                                         onAskHexora: widget.onAskHexora),
                                   ),
                                 ],
@@ -313,9 +386,6 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
                                 data: data,
                                 loading: loading,
                                 onOpenSection: _openSection,
-                                assistantGroup: _canShowAssistant(context)
-                                    ? widget.assistantGroup
-                                    : null,
                                 onAskHexora: widget.onAskHexora),
                           ),
                         ],
@@ -328,16 +398,6 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  bool _canShowAssistant(BuildContext context) {
-    final group = widget.assistantGroup;
-    if (group == null) return false;
-    return canManagePremiumFeature(
-      group,
-      context.read<UserDomain?>()?.user?.id,
-      PremiumFeature.aiChat,
     );
   }
 }
@@ -706,13 +766,11 @@ class _Content extends StatelessWidget {
       required this.data,
       required this.loading,
       this.onOpenSection,
-      this.assistantGroup,
       this.onAskHexora});
   final bool isEs;
   final _DashData? data;
   final bool loading;
   final ValueChanged<String>? onOpenSection;
-  final Group? assistantGroup;
   final ValueChanged<String>? onAskHexora;
 
   @override
@@ -726,15 +784,17 @@ class _Content extends StatelessWidget {
         name = user.userName.trim();
       }
     }
+
     return LayoutBuilder(builder: (context, c) {
       final twoCol = c.maxWidth >= 760;
       return ListView(
         padding: EdgeInsets.all(twoCol ? 24 : 16),
         children: [
-          if (assistantGroup != null) ...[
-            _AskHexoraCard(isEs: isEs, onSubmit: onAskHexora),
-          ] else
-            _GreetingHero(isEs: isEs, name: name),
+          _GreetingHero(isEs: isEs, name: name),
+          if (onAskHexora != null) ...[
+            const SizedBox(height: 12),
+            _AskHexoraBar(isEs: isEs, onSubmit: onAskHexora!),
+          ],
           const SizedBox(height: 18),
           _StatRow(
               isEs: isEs,
@@ -794,98 +854,260 @@ class _Content extends StatelessWidget {
   }
 }
 
-class _AskHexoraCard extends StatefulWidget {
-  const _AskHexoraCard({required this.isEs, required this.onSubmit});
+class _AskHexoraBar extends StatefulWidget {
+  const _AskHexoraBar({required this.isEs, required this.onSubmit});
 
   final bool isEs;
-  final ValueChanged<String>? onSubmit;
+  final ValueChanged<String> onSubmit;
 
   @override
-  State<_AskHexoraCard> createState() => _AskHexoraCardState();
+  State<_AskHexoraBar> createState() => _AskHexoraBarState();
 }
 
-class _AskHexoraCardState extends State<_AskHexoraCard> {
+class _AskHexoraBarState extends State<_AskHexoraBar> {
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+  bool _submitting = false;
+
+  bool get _canSubmit => !_submitting && _controller.text.trim().isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _submit([String? suggestedPrompt]) {
+    if (_submitting) return;
+    final prompt = (suggestedPrompt ?? _controller.text).trim();
+    if (prompt.isEmpty) {
+      _focusNode.requestFocus();
+      return;
+    }
+    setState(() => _submitting = true);
+    _controller.clear();
+    widget.onSubmit(prompt);
+    Future<void>.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) setState(() => _submitting = false);
+    });
+  }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
-  }
-
-  void _submit() {
-    final text = _controller.text.trim();
-    if (text.isEmpty || widget.onSubmit == null) return;
-    _controller.clear();
-    widget.onSubmit!(text);
   }
 
   @override
   Widget build(BuildContext context) {
-    final hour = DateTime.now().hour;
-    final heading = widget.isEs
-        ? hour < 12
-            ? '¡Buenos días! ¿En qué trabajamos?'
-            : hour < 19
-                ? '¡Buenas tardes! ¿En qué trabajamos?'
-                : '¡Buenas noches! ¿En qué trabajamos?'
-        : hour < 12
-            ? 'Good morning! What shall we work on?'
-            : hour < 19
-                ? 'Good afternoon! What shall we work on?'
-                : 'Good evening! What shall we work on?';
-    final colors = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.outlineVariant),
+    final cs = Theme.of(context).colorScheme;
+    final suggestions = <({String label, String prompt, IconData icon})>[
+      (
+        label: widget.isEs ? 'Facturas pendientes' : 'Pending invoices',
+        prompt: widget.isEs
+            ? 'Muéstrame las facturas pendientes'
+            : 'Show me pending invoices',
+        icon: LucideIcons.receiptText,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            heading,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: colors.onSurface,
-                  fontWeight: FontWeight.w700,
-                ),
+      (
+        label:
+            widget.isEs ? 'Movimientos sin vincular' : 'Unlinked transactions',
+        prompt: widget.isEs
+            ? 'Muéstrame los movimientos sin vincular'
+            : 'Show me unlinked transactions',
+        icon: LucideIcons.unlink,
+      ),
+      (
+        label: widget.isEs ? 'Crear una visita' : 'Create a visit',
+        prompt: widget.isEs
+            ? 'Ayúdame a crear una visita'
+            : 'Help me create a visit',
+        icon: LucideIcons.calendarPlus,
+      ),
+      (
+        label: widget.isEs ? 'Resumen financiero' : 'Financial summary',
+        prompt: widget.isEs
+            ? 'Muéstrame un resumen financiero'
+            : 'Show me a financial summary',
+        icon: LucideIcons.chartNoAxesCombined,
+      ),
+    ];
+
+    return Material(
+      color: cs.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: .72),
           ),
-          const SizedBox(height: 4),
-          Text(
-            widget.isEs
-                ? 'Tu espacio de trabajo está listo.'
-                : 'Your business workspace is ready.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.onSurfaceVariant,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer.withValues(alpha: .72),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    LucideIcons.sparkles,
+                    size: 19,
+                    color: cs.primary,
+                  ),
                 ),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _controller,
-            enabled: widget.onSubmit != null,
-            textInputAction: TextInputAction.send,
-            onSubmitted: (_) => _submit(),
-            decoration: InputDecoration(
-              hintText:
-                  widget.isEs ? 'Pregunta a Hexora…' : 'Ask Hexora anything…',
-              prefixIcon: const Icon(Icons.auto_awesome_outlined),
-              suffixIcon: IconButton(
-                tooltip: widget.isEs ? 'Enviar' : 'Send',
-                onPressed: widget.onSubmit == null ? null : _submit,
-                icon: const Icon(Icons.arrow_upward_rounded),
-              ),
-              filled: true,
-              fillColor: colors.surfaceContainerLowest,
-              border: OutlineInputBorder(
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.isEs
+                            ? '¿En qué puedo ayudarte hoy?'
+                            : 'How can I help you today?',
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: cs.onSurface,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -.15,
+                                ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.isEs
+                            ? 'Consulta tus datos o pide ayuda para gestionar tu negocio.'
+                            : 'Explore your data or ask for help managing your business.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  widget.isEs ? 'Asistente de Hexora' : 'Hexora Assistant',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              constraints: const BoxConstraints(minHeight: 76),
+              padding: const EdgeInsets.fromLTRB(12, 9, 8, 8),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.outlineVariant),
+                border: Border.all(
+                  color: _focusNode.hasFocus ? cs.primary : cs.outlineVariant,
+                ),
+              ),
+              child: Column(
+                children: [
+                  CallbackShortcuts(
+                    bindings: <ShortcutActivator, VoidCallback>{
+                      const SingleActivator(LogicalKeyboardKey.enter): _submit,
+                    },
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      minLines: 1,
+                      maxLines: 3,
+                      onChanged: (_) => setState(() {}),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
+                      decoration: InputDecoration.collapsed(
+                        hintText: widget.isEs
+                            ? 'Pregunta lo que necesites sobre tu negocio...'
+                            : 'Ask anything about your business...',
+                        hintStyle:
+                            Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: AlignmentDirectional.bottomEnd,
+                    child: IconButton.filled(
+                      tooltip:
+                          widget.isEs ? 'Preguntar a Hexora' : 'Ask Hexora',
+                      onPressed: _canSubmit ? _submit : null,
+                      icon: _submitting
+                          ? SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: cs.onPrimary,
+                              ),
+                            )
+                          : const Icon(LucideIcons.arrowUp, size: 18),
+                      style: IconButton.styleFrom(
+                        backgroundColor: cs.primary,
+                        foregroundColor: cs.onPrimary,
+                        disabledBackgroundColor: cs.surfaceContainerHighest,
+                        disabledForegroundColor: cs.onSurfaceVariant,
+                        minimumSize: const Size.square(34),
+                        fixedSize: const Size.square(34),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 7,
+              children: [
+                for (final suggestion in suggestions)
+                  ActionChip(
+                    avatar: Icon(
+                      suggestion.icon,
+                      size: 14,
+                      color: cs.primary,
+                    ),
+                    label: Text(suggestion.label),
+                    onPressed:
+                        _submitting ? null : () => _submit(suggestion.prompt),
+                    backgroundColor: cs.surfaceContainerLow,
+                    side: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: .72),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    labelStyle:
+                        Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

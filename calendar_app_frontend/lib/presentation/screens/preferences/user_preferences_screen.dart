@@ -71,29 +71,26 @@ class UserPreferencesView extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
 
     final content = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionTitle(
+        _PreferencesGroup(
           icon: Icons.navigation_outlined,
           label: l.preferencesNavigation,
-        ),
-        const SizedBox(height: 8),
-        const _NavigationPreference(),
-        const _SectionDivider(),
-        _SectionTitle(
-          icon: Icons.palette_outlined,
-          label: l.preferencesAppearance,
+          child: const _NavigationPreference(),
         ),
         const SizedBox(height: 12),
-        const _AppearancePreference(),
+        _PreferencesGroup(
+          icon: Icons.palette_outlined,
+          label: l.preferencesAppearance,
+          child: const _AppearancePreference(),
+        ),
         if (showLanguage) ...[
-          const _SectionDivider(),
-          _SectionTitle(
+          const SizedBox(height: 12),
+          _PreferencesGroup(
             icon: Icons.language_rounded,
             label: l.preferencesLanguage,
+            child: const _LanguagePreference(),
           ),
-          const SizedBox(height: 12),
-          const _LanguagePreference(),
         ],
       ],
     );
@@ -138,20 +135,37 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _SectionDivider extends StatelessWidget {
-  const _SectionDivider();
+class _PreferencesGroup extends StatelessWidget {
+  const _PreferencesGroup({
+    required this.icon,
+    required this.label,
+    required this.child,
+  });
+
+  final IconData icon;
+  final String label;
+  final Widget child;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 22),
-        child: Divider(
-          height: 1,
-          color: Theme.of(context)
-              .colorScheme
-              .outlineVariant
-              .withValues(alpha: 0.45),
-        ),
-      );
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionTitle(icon: icon, label: label),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
+  }
 }
 
 class _NavigationPreference extends StatelessWidget {

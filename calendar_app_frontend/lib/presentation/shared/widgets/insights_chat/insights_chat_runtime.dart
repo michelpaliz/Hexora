@@ -154,6 +154,34 @@ class InsightsChatRuntime extends ChangeNotifier {
     return <String, dynamic>{'days': _days};
   }
 
+  /// Product context supplied with every request so Insights understands it
+  /// is operating inside Hexora instead of treating the user as platform-
+  /// agnostic. This describes available navigation, not permission to mutate
+  /// data; actions still require the existing UI confirmations and roles.
+  Map<String, dynamic> _hexoraCapabilitiesPayload(bool isEs) {
+    return <String, dynamic>{
+      'product': 'Hexora',
+      'locale': isEs ? 'es' : 'en',
+      'modules': const [
+        'Inicio',
+        'Asistente IA',
+        'Ingresos',
+        'Facturas por cliente',
+        'Gastos',
+        'Banco',
+        'Calendario',
+        'Clientes',
+        'Trabajadores',
+        'Notas rápidas',
+        'Chat',
+        'Documentos',
+      ],
+      'navigationGuidance': isEs
+          ? 'Para crear una factura, indica que el usuario puede abrir Ingresos. Para visitas usa Calendario. Para clientes usa Clientes. No afirmes que puedes crear o modificar datos sin confirmación explícita y sin una acción existente de Hexora.'
+          : 'For invoices, explain that the user can open Income. For visits use Calendar. For clients use Clients. Do not claim you can create or modify data without explicit confirmation and an existing Hexora action.',
+    };
+  }
+
   InsightsExcelExportAction _withScope(
     InsightsExcelExportAction action,
   ) {
@@ -963,6 +991,7 @@ class InsightsChatRuntime extends ChangeNotifier {
       'conversationId': activeConversationId,
       'resetConversation': shouldResetConversation,
       'interactionMode': _interactionMode.name,
+      'hexoraCapabilities': _hexoraCapabilitiesPayload(isEs),
       if (_interactionMode == InsightsInteractionMode.openQuestions &&
           !shouldResetConversation)
         'history': _messages

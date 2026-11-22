@@ -29,8 +29,7 @@ class NarrowLayout extends StatelessWidget {
         child = DashboardPreviewScreen(
           embedded: true,
           onOpenSection: state.openSection,
-          assistantGroup: state.canSeeAdmin ? state.group : null,
-          onAskHexora: (text) => state.askHexoraFromHome(text),
+          onAskHexora: state.canSeeAdmin ? state.askHexoraFromHome : null,
         );
         break;
       case Sections.agenda:

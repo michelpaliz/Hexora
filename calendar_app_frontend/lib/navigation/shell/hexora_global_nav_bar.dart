@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
@@ -253,8 +254,8 @@ class HexoraGlobalNavBar extends StatelessWidget {
                 const SizedBox(width: 4),
                 HexoraNavIconButton(
                   icon: notificationCount > 0
-                      ? Icons.notifications_active_outlined
-                      : Icons.notifications_none_rounded,
+                      ? LucideIcons.bellRing
+                      : LucideIcons.bell,
                   tooltip: notificationCount > 0
                       ? (es
                           ? 'Notificaciones ($notificationCount sin leer)'
@@ -281,7 +282,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
               if (onBack != null) ...[
                 const SizedBox(width: 6),
                 HexoraNavIconButton(
-                  icon: Icons.arrow_back_rounded,
+                  icon: LucideIcons.arrowLeft,
                   tooltip: backTooltip ?? (es ? 'Volver' : 'Back'),
                   onPressed: onBack,
                 ),
@@ -344,9 +345,7 @@ class _Brand extends StatelessWidget {
             if (onTap != null) ...[
               const SizedBox(width: 3),
               Icon(
-                collapsed
-                    ? Icons.keyboard_arrow_down_rounded
-                    : Icons.keyboard_arrow_up_rounded,
+                collapsed ? LucideIcons.chevronDown : LucideIcons.chevronUp,
                 size: 16,
                 color: HexoraGlobalNavColors.foregroundFor(context)
                     .withValues(alpha: 0.72),
@@ -462,7 +461,7 @@ class _MoreMenu extends StatelessWidget {
           MenuItemButton(
             leadingIcon: Icon(d.icon, size: NavigationTokens.iconSize),
             trailingIcon: d.id == activeId
-                ? Icon(Icons.check_rounded,
+                ? Icon(LucideIcons.check,
                     size: NavigationTokens.iconSize, color: cs.primary)
                 : null,
             onPressed: () => onSelected(d.id),
@@ -484,7 +483,7 @@ class _MoreMenu extends StatelessWidget {
         builder: (context, fg) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(active?.icon ?? Icons.apps_rounded, size: 19, color: fg),
+            Icon(active?.icon ?? LucideIcons.layoutGrid, size: 19, color: fg),
             if (hasLabel) ...[
               const SizedBox(width: 6),
               Text(
@@ -493,7 +492,7 @@ class _MoreMenu extends StatelessWidget {
                     .copyWith(color: fg, fontWeight: FontWeight.w700),
               ),
               const SizedBox(width: 2),
-              Icon(Icons.expand_more_rounded, size: 16, color: fg),
+              Icon(LucideIcons.chevronDown, size: 16, color: fg),
             ],
           ],
         ),
@@ -589,7 +588,7 @@ class _ScrollableNavStripState extends State<_ScrollableNavStrip> {
       children: [
         if (_hasOverflow)
           _scrollButton(
-            icon: Icons.chevron_left_rounded,
+            icon: LucideIcons.chevronLeft,
             tooltip: widget.isSpanish
                 ? 'Ver módulos anteriores'
                 : 'View previous modules',
@@ -608,7 +607,7 @@ class _ScrollableNavStripState extends State<_ScrollableNavStrip> {
         ),
         if (_hasOverflow)
           _scrollButton(
-            icon: Icons.chevron_right_rounded,
+            icon: LucideIcons.chevronRight,
             tooltip: widget.isSpanish ? 'Ver más módulos' : 'View more modules',
             enabled: _canScrollRight,
             onPressed: () => _scrollBy(260),

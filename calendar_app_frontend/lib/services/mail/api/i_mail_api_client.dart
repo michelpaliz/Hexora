@@ -7,6 +7,7 @@ abstract class IMailApiClient {
   Future<MailPage<MailMessage>> getMessages({
     required String folder,
     required String token,
+    String? groupId,
     int limit = 25,
     String? cursor,
   });
@@ -14,10 +15,12 @@ abstract class IMailApiClient {
   Future<MailMessage> getMessage({
     required String id,
     required String token,
+    String? groupId,
   });
 
   Future<MailPage<MailMessage>> searchMessages({
     required String token,
+    String? groupId,
     String? query,
     String? folder,
     bool? unread,
@@ -30,6 +33,7 @@ abstract class IMailApiClient {
   Future<MailPage<MailThread>> getThreads({
     required String folder,
     required String token,
+    String? groupId,
     int limit = 25,
     String? cursor,
     String? query,
@@ -38,36 +42,43 @@ abstract class IMailApiClient {
   Future<MailThreadDetail> getThread({
     required String threadKey,
     required String token,
+    String? groupId,
   });
 
   Future<void> markRead({
     required String id,
     required String token,
+    String? groupId,
   });
 
   Future<void> markUnread({
     required String id,
     required String token,
+    String? groupId,
   });
 
   Future<void> archive({
     required String id,
     required String token,
+    String? groupId,
   });
 
   Future<void> trash({
     required String id,
     required String token,
+    String? groupId,
   });
 
   Future<void> spam({
     required String id,
     required String token,
+    String? groupId,
   });
 
   Future<http.Response> downloadAttachment({
     required String attachmentId,
     required String token,
+    String? groupId,
   });
 
   Future<void> sendMessage({

@@ -2,6 +2,7 @@ import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/presentation/shared/widgets/client_property_image.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
@@ -215,7 +216,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.people_outline, size: 36, color: cs.primary),
+                    Icon(LucideIcons.users, size: 36, color: cs.primary),
                     const SizedBox(height: 10),
                     Text(
                       widget.clients.isEmpty
@@ -241,7 +242,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                         FilledButton.icon(
                           key: const Key('client-detail-add-client'),
                           onPressed: widget.onAddClient,
-                          icon: const Icon(Icons.person_add_alt_1),
+                          icon: const Icon(LucideIcons.userPlus),
                           label: Text(l.addClient),
                         ),
                       ],
@@ -307,7 +308,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                       IconButton(
                           onPressed: widget.onEditSelectedClient,
                           tooltip: l.editClient,
-                          icon: const Icon(Icons.edit_outlined, size: 17),
+                          icon: const Icon(LucideIcons.pencil, size: 17),
                           visualDensity: VisualDensity.compact,
                           constraints: const BoxConstraints.tightFor(
                             width: 32,
@@ -352,7 +353,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                           list: _InvoiceList(
                             emptyTitle: l.noInvoicesYet,
                             emptySubtitle: l.noInvoicesYetSubtitle,
-                            icon: Icons.receipt_long_outlined,
+                            icon: LucideIcons.receiptText,
                             invoices: widget.issuedInvoices,
                             clients: widget.clients,
                             fallbackClient: widget.selectedClient!,
@@ -615,7 +616,7 @@ class _ClientInvoiceToolbar extends StatelessWidget {
                           dimension: 13,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.folder_zip_outlined, size: 14),
+                      : const Icon(LucideIcons.folderArchive, size: 14),
                   label: Text('ZIP (${filtered.length})', style: t.bodySmall),
                 ),
               ),
@@ -688,22 +689,22 @@ class _ClientTabs extends StatelessWidget {
       compact: true,
       tabs: [
         tab(
-          icon: Icons.receipt_long_outlined,
+          icon: LucideIcons.receiptText,
           label: l.invoicesListTitle,
           count: invoicesCount,
         ),
         tab(
-          icon: Icons.description_outlined,
+          icon: LucideIcons.fileText,
           label: l.receiptsTitle,
           count: receiptsCount,
         ),
         tab(
-          icon: Icons.folder_outlined,
+          icon: LucideIcons.folder,
           label: l.contractsTitle,
           count: contractsCount,
         ),
         tab(
-          icon: Icons.insights_outlined,
+          icon: LucideIcons.chartNoAxesCombined,
           label: isSpanish ? 'Gráfico' : 'Chart',
         ),
       ],
@@ -901,7 +902,7 @@ class _ClientCustomDateRange extends StatelessWidget {
       color: cs.surfaceContainerLow.withValues(alpha: .45),
       child: Row(
         children: [
-          Icon(Icons.date_range_outlined, size: 15, color: cs.onSurfaceVariant),
+          Icon(LucideIcons.calendarRange, size: 15, color: cs.onSurfaceVariant),
           const SizedBox(width: 6),
           Flexible(
             child: TextButton(
@@ -939,7 +940,7 @@ class _ClientCustomDateRange extends StatelessWidget {
             onPressed: controller.clear,
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints.tightFor(width: 30, height: 30),
-            icon: const Icon(Icons.close_rounded, size: 16),
+            icon: const Icon(LucideIcons.x, size: 16),
           ),
         ],
       ),
@@ -1013,7 +1014,7 @@ class _ClientPeriodMenu extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.date_range_outlined,
+            Icon(LucideIcons.calendarRange,
                 size: 15, color: hasFilter ? cs.primary : cs.onSurfaceVariant),
             if (!narrow) ...[
               const SizedBox(width: 6),
@@ -1025,7 +1026,7 @@ class _ClientPeriodMenu extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
-              Icon(Icons.expand_more_rounded,
+              Icon(LucideIcons.chevronDown,
                   size: 15,
                   color: hasFilter ? cs.primary : cs.onSurfaceVariant),
             ],

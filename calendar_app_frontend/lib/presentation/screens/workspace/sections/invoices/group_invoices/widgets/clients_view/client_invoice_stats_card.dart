@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/clients/client_invoice_stats.dart';
 import 'package:hexora/services/clients/client_api.dart';
@@ -165,7 +166,7 @@ class _ClientInvoiceStatsCardState extends State<ClientInvoiceStatsCard> {
                   width: 34,
                   height: 34,
                 ),
-                icon: const Icon(Icons.refresh_rounded, size: 18),
+                icon: const Icon(LucideIcons.refreshCw, size: 18),
               ),
             ],
           ),
@@ -596,7 +597,7 @@ class _InvoiceStatsEmptyState extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
-          Icons.insights_outlined,
+          LucideIcons.chartNoAxesCombined,
           size: 44,
           color: cs.onSurfaceVariant.withValues(alpha: 0.55),
         ),

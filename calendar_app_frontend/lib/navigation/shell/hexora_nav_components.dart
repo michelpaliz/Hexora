@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 
@@ -439,9 +440,7 @@ class SidebarCollapseToggle extends StatelessWidget {
             ],
           ),
           child: Icon(
-            collapsed
-                ? Icons.chevron_right_rounded
-                : Icons.chevron_left_rounded,
+            collapsed ? LucideIcons.chevronRight : LucideIcons.chevronLeft,
             size: diameter * 0.61,
             color: Colors.white,
           ),

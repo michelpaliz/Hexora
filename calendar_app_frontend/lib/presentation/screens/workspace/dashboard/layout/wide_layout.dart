@@ -3,6 +3,7 @@ import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_pre
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/navigation/shell/hexora_app_shell.dart';
 import 'package:hexora/navigation/shell/hexora_global_nav_bar.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
@@ -121,8 +122,7 @@ class WideLayout extends StatelessWidget {
       return DashboardPreviewScreen(
         embedded: true,
         onOpenSection: state.openSection,
-        assistantGroup: state.canSeeAdmin ? state.group : null,
-        onAskHexora: (text) => state.askHexoraFromHome(text),
+        onAskHexora: state.canSeeAdmin ? state.askHexoraFromHome : null,
       );
     }
 
@@ -259,85 +259,85 @@ List<HexoraNavDestination> _dashboardDestinations(
   return [
     HexoraNavDestination(
       id: Sections.home,
-      icon: Icons.home_outlined,
+      icon: LucideIcons.house,
       label: es ? 'Inicio' : 'Home',
     ),
+    if (canSeeAdmin)
+      HexoraNavDestination(
+        id: Sections.chat,
+        icon: LucideIcons.sparkles,
+        label: es ? 'Asistente IA' : 'AI assistant',
+      ),
     if (canSeeAdmin) ...[
       HexoraNavDestination(
         id: Sections.invoices,
-        icon: Icons.receipt_long_outlined,
+        icon: LucideIcons.fileText,
         label: es ? 'Ingresos' : 'Income',
       ),
       HexoraNavDestination(
         id: Sections.invoiceClients,
-        icon: Icons.people_alt_outlined,
+        icon: LucideIcons.users,
         label: es ? 'Facturas por cliente' : 'Invoices by client',
       ),
     ],
     if (canSeeAdmin) ...[
       HexoraNavDestination(
         id: Sections.expenses,
-        icon: Icons.trending_down,
+        icon: LucideIcons.trendingDown,
         label: es ? 'Gastos' : 'Expenses',
       ),
       HexoraNavDestination(
         id: Sections.enableBanking,
-        icon: Icons.account_balance_outlined,
+        icon: LucideIcons.landmark,
         label: es ? 'Banco' : 'Bank',
       ),
     ],
     HexoraNavDestination(
       id: Sections.calendar,
-      icon: Icons.calendar_today_outlined,
+      icon: LucideIcons.calendarDays,
       label: l.calendar,
     ),
     HexoraNavDestination(
       id: Sections.quickNotes,
-      icon: Icons.view_kanban_outlined,
+      icon: LucideIcons.squareKanban,
       label: es ? 'Notas rápidas' : 'Quick notes',
     ),
     if (canSeeAdmin) ...[
       HexoraNavDestination(
         id: Sections.budgets,
-        icon: Icons.description_outlined,
+        icon: LucideIcons.fileText,
         label: es ? 'Propuestas' : 'Proposals',
       ),
     ],
     const HexoraNavDestination(
       id: Sections.businessChat,
-      icon: Icons.chat_bubble_outline_rounded,
+      icon: LucideIcons.messageCircle,
       label: 'Chat',
     ),
     HexoraNavDestination(
       id: Sections.maps,
-      icon: Icons.map_outlined,
+      icon: LucideIcons.map,
       label: es ? 'Mapa' : 'Map',
       placement: HexoraNavPlacement.more,
     ),
     if (canSeeAdmin)
       const HexoraNavDestination(
         id: Sections.emails,
-        icon: Icons.email_outlined,
+        icon: LucideIcons.mail,
         label: 'Emails',
         placement: HexoraNavPlacement.more,
       ),
     if (canSeeWorkers)
       HexoraNavDestination(
         id: Sections.workers,
-        icon: Icons.people_outline_rounded,
+        icon: LucideIcons.users,
         label: es ? 'Trabajadores' : 'Workers',
         placement: HexoraNavPlacement.more,
       ),
     if (canSeeAdmin) ...[
-      HexoraNavDestination(
-        id: Sections.chat,
-        icon: Icons.auto_awesome_outlined,
-        label: es ? 'Asistente IA' : 'AI assistant',
-        placement: HexoraNavPlacement.more,
-      ),
       const HexoraNavDestination(
         id: Sections.telegram,
-        icon: Icons.telegram,
+        icon: LucideIcons.send,
         label: 'Telegram',
         placement: HexoraNavPlacement.more,
       ),
@@ -345,13 +345,13 @@ List<HexoraNavDestination> _dashboardDestinations(
     if (canSeeAdmin)
       HexoraNavDestination(
         id: Sections.services,
-        icon: Icons.people_outline,
+        icon: LucideIcons.users,
         label: es ? 'Clientes' : 'Clients',
       ),
     if (canSeeAdmin)
       HexoraNavDestination(
         id: Sections.settings,
-        icon: Icons.settings_outlined,
+        icon: LucideIcons.settings,
         label: es ? 'Ajustes' : 'Settings',
       ),
     HexoraNavDestination(
@@ -454,7 +454,7 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
           ),
         ],
       ),
-      items: entries([Sections.home]),
+      items: entries([Sections.home, Sections.chat]),
       groups: [
         CollapsibleSidebarGroup(
           label: es ? 'OPERACIONES' : 'OPERATIONS',
@@ -480,10 +480,6 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
           label: es ? 'COMUNICACIÓN' : 'COMMUNICATION',
           items: entries(
               [Sections.businessChat, Sections.emails, Sections.telegram]),
-        ),
-        CollapsibleSidebarGroup(
-          label: es ? 'HERRAMIENTAS' : 'TOOLS',
-          items: entries([Sections.chat]),
         ),
         CollapsibleSidebarGroup(label: '', items: entries([Sections.settings])),
       ],

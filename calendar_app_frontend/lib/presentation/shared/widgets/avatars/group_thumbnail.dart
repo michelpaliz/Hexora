@@ -65,8 +65,37 @@ class GroupThumbnail extends StatelessWidget {
     if (fallbackAsset != null && fallbackAsset!.isNotEmpty) {
       return Image.asset(fallbackAsset!, fit: BoxFit.contain);
     }
+    // Keep the no-photo state aligned with the business cards' avatar style:
+    // a compact, branded mark instead of the generic people icon.
+    final diameter = (size * .68).clamp(30.0, 52.0);
     return Center(
-      child: Icon(Icons.groups_rounded, color: scheme.primary, size: 28),
+      child: Container(
+        width: diameter,
+        height: diameter,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(scheme.primary, Colors.white, .16)!,
+              Color.lerp(scheme.primary, Colors.black, .12)!,
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.primary.withValues(alpha: .2),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(
+          Icons.business_rounded,
+          color: Colors.white,
+          size: diameter * .58,
+        ),
+      ),
     );
   }
 }

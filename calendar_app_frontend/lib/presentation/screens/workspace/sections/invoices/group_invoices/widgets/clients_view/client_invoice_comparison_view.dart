@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/clients/client_invoice_stats.dart';
 import 'package:hexora/models/invoice/invoice.dart';
@@ -318,7 +319,7 @@ class _ClientInvoiceComparisonViewState
         segments: [
           ButtonSegment(
             value: _IncomeAnalyticsMode.monthly,
-            icon: const Icon(Icons.bar_chart_rounded, size: 17),
+            icon: const Icon(LucideIcons.chartColumn, size: 17),
             label: Text(
               compactLabels
                   ? (isSpanish ? 'Mensual' : 'Monthly')
@@ -327,7 +328,7 @@ class _ClientInvoiceComparisonViewState
           ),
           ButtonSegment(
             value: _IncomeAnalyticsMode.clients,
-            icon: const Icon(Icons.compare_arrows_rounded, size: 17),
+            icon: const Icon(LucideIcons.arrowLeftRight, size: 17),
             label: Text(isSpanish ? 'Comparar clientes' : 'Compare clients'),
           ),
         ],
@@ -452,7 +453,7 @@ class _ClientInvoiceComparisonViewState
                 hintStyle: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
                 prefixIcon: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(Icons.search_rounded,
+                  child: Icon(LucideIcons.search,
                       size: 18, color: cs.onSurfaceVariant),
                 ),
                 prefixIconConstraints:
@@ -464,7 +465,7 @@ class _ClientInvoiceComparisonViewState
                           _searchController.clear();
                           setState(() {});
                         },
-                        icon: Icon(Icons.close_rounded,
+                        icon: Icon(LucideIcons.x,
                             size: 16, color: cs.onSurfaceVariant),
                         splashRadius: 14,
                       ),
@@ -511,7 +512,7 @@ class _ClientInvoiceComparisonViewState
             Expanded(
               child: clients.isEmpty
                   ? EmptyView(
-                      icon: Icons.search_off_rounded,
+                      icon: LucideIcons.searchX,
                       title: isSpanish
                           ? 'No se encontraron clientes'
                           : 'No clients found',
@@ -568,7 +569,7 @@ class _ClientInvoiceComparisonViewState
         ),
         child: selectedClients.isEmpty
             ? EmptyView(
-                icon: Icons.insights_outlined,
+                icon: LucideIcons.chartNoAxesCombined,
                 title: isSpanish
                     ? 'Selecciona clientes para comparar'
                     : 'Select clients to compare',
@@ -644,7 +645,7 @@ class _ClientInvoiceComparisonViewState
             IconButton(
               onPressed: _loadStats,
               tooltip: isSpanish ? 'Actualizar' : 'Refresh',
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(LucideIcons.refreshCw),
             ),
           ],
         ),
@@ -1044,7 +1045,7 @@ class _ComparisonEmptyState extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
-          Icons.insights_outlined,
+          LucideIcons.chartNoAxesCombined,
           size: 44,
           color: cs.onSurfaceVariant.withValues(alpha: 0.55),
         ),

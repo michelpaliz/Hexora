@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class AvatarIcon extends StatelessWidget {
   final String? photoUrl;
@@ -37,7 +38,7 @@ class AvatarIcon extends StatelessWidget {
     }
 
     return Icon(
-      Icons.person_rounded,
+      LucideIcons.user,
       size: size,
       color: isSelected ? activeColor : inactiveColor,
     );

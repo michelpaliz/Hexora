@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
@@ -141,7 +142,7 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
                 : CircleAvatar(
                     radius: 30,
                     backgroundColor: cs.secondary.withValues(alpha: 0.15),
-                    child: Icon(Icons.person, color: cs.secondary),
+                    child: Icon(LucideIcons.user, color: cs.secondary),
                   ),
           ),
           const SizedBox(height: 6),

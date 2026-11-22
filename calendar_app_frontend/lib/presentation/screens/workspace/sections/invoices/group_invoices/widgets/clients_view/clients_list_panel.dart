@@ -1,5 +1,7 @@
+import 'dart:math' as math;
 import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/clients_search_filters.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
@@ -71,12 +73,129 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
   String _status = 'all';
   bool _sortByType = false;
   bool _ascending = true;
+  final GlobalKey _selectedRowKey = GlobalKey();
+  final ScrollController _clientsScrollController = ScrollController();
+  double? _connectionTop;
+  double? _connectionHeight;
+
+  @override
+  void initState() {
+    super.initState();
+    _clientsScrollController.addListener(_scheduleConnectionMeasure);
+  }
+
+  @override
+  void dispose() {
+    _clientsScrollController
+      ..removeListener(_scheduleConnectionMeasure)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _scheduleConnectionMeasure() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _measureSelectedConnection();
+    });
+  }
+
+  void _measureSelectedConnection() {
+    final rowContext = _selectedRowKey.currentContext;
+    final stackContext = context;
+    final rowObject = rowContext?.findRenderObject();
+    final stackObject = stackContext.findRenderObject();
+    if (rowObject is! RenderBox ||
+        stackObject is! RenderBox ||
+        !rowObject.attached ||
+        !stackObject.attached ||
+        !rowObject.hasSize ||
+        !stackObject.hasSize) {
+      _clearSelectedConnection();
+      return;
+    }
+
+    final topLeft =
+        stackObject.globalToLocal(rowObject.localToGlobal(Offset.zero));
+    final rowRect = Rect.fromLTWH(
+      topLeft.dx,
+      topLeft.dy,
+      rowObject.size.width,
+      rowObject.size.height,
+    );
+    final viewportHeight = stackObject.size.height;
+    final visibleTop = math.max(0, rowRect.top).toDouble();
+    final visibleBottom = math.min(viewportHeight, rowRect.bottom).toDouble();
+    if (visibleBottom <= visibleTop ||
+        rowRect.bottom < 0 ||
+        rowRect.top > viewportHeight) {
+      _clearSelectedConnection();
+      return;
+    }
+
+    if (_connectionTop != visibleTop || _connectionHeight != rowRect.height) {
+      setState(() {
+        _connectionTop = visibleTop;
+        _connectionHeight = rowRect.height;
+      });
+    }
+  }
+
+  void _clearSelectedConnection() {
+    if (_connectionTop == null && _connectionHeight == null) return;
+    setState(() {
+      _connectionTop = null;
+      _connectionHeight = null;
+    });
+  }
 
   static String _clientType(GroupClient client) {
     final value =
         (client.effectiveCustomerType ?? client.effectivePropertyType ?? '')
             .trim();
     return value.isEmpty ? '—' : clientClassificationLabel(value);
+  }
+
+  Future<void> _openClientSearch(BuildContext context) async {
+    final controller =
+        TextEditingController(text: widget.searchController.text);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(Localizations.localeOf(context).languageCode == 'es'
+            ? 'Buscar clientes'
+            : 'Search clients'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          onChanged: (value) {
+            widget.searchController.text = value;
+            widget.onSearchChanged();
+          },
+          decoration: InputDecoration(
+            hintText: Localizations.localeOf(context).languageCode == 'es'
+                ? 'Nombre, tipo o inmueble'
+                : 'Name, type or property',
+            prefixIcon: const Icon(LucideIcons.search),
+            suffixIcon: controller.text.isEmpty
+                ? null
+                : IconButton(
+                    onPressed: () {
+                      controller.clear();
+                      widget.searchController.clear();
+                      widget.onSearchChanged();
+                    },
+                    icon: const Icon(LucideIcons.x),
+                  ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
   }
 
   @override
@@ -87,41 +206,8 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     final hasInvoiceFlagData =
         widget.allClients.any((c) => c.hasCurrentMonthInvoiceFlagData);
-    final missingInvoiceCount = widget.allClients
-        .where((c) => c.missingCurrentMonthInvoice == true)
-        .length;
-    final countsSource = widget.missingCurrentMonthInvoiceOnly
-        ? widget.allClients
-            .where((c) => c.missingCurrentMonthInvoice == true)
-            .toList(growable: false)
-        : widget.allClients;
     final effectiveStatus = widget.hideInactive ? 'active' : _status;
-    final normalizedSearch = widget.searchController.text.trim().toLowerCase();
-    final statusCountSource = countsSource.where((client) {
-      if (normalizedSearch.isNotEmpty) {
-        final haystack = <String>[
-          client.name,
-          client.email ?? '',
-          client.phone ?? '',
-          client.billing?.legalName ?? '',
-        ].join(' ').toLowerCase();
-        if (!haystack.contains(normalizedSearch)) return false;
-      }
-      if ((widget.entityFilter ?? '').trim().isNotEmpty &&
-          (client.effectiveCustomerType ?? '').trim() !=
-              widget.entityFilter!.trim()) {
-        return false;
-      }
-      if ((widget.propertyFilter ?? '').trim().isNotEmpty &&
-          (client.effectivePropertyType ?? '').trim() !=
-              widget.propertyFilter!.trim()) {
-        return false;
-      }
-      return true;
-    }).toList(growable: false);
-    final activeCount =
-        statusCountSource.where((client) => client.isActive != false).length;
-    final inactiveCount = statusCountSource.length - activeCount;
+    _scheduleConnectionMeasure();
     final visibleClients = widget.filteredClients
         .where((client) =>
             effectiveStatus == 'all' ||
@@ -140,349 +226,620 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
         (widget.entityFilter ?? '').trim().isNotEmpty ||
             (widget.propertyFilter ?? '').trim().isNotEmpty ||
             effectiveStatus != 'all';
-
-    // Compact summary below the toolbar: a muted count plus, when filters are
-    // applied, the most relevant filter as a subtle chip and a "+N" overflow.
-    final noun = isEs ? 'clientes' : 'customers';
-    final visibleCount = visibleClients.length;
-    final totalCount = widget.allClients.length;
-    final countLabel = visibleCount == totalCount
-        ? '$visibleCount $noun'
-        : '$visibleCount ${isEs ? 'de' : 'of'} $totalCount $noun';
-    final summaryFilters = <({String label, bool active})>[];
-    if (effectiveStatus == 'active') {
-      summaryFilters.add((label: isEs ? 'Activos' : 'Active', active: true));
-    } else if (effectiveStatus == 'inactive') {
-      summaryFilters
-          .add((label: isEs ? 'Inactivos' : 'Inactive', active: false));
-    }
-    final entityValue = (widget.entityFilter ?? '').trim();
-    if (entityValue.isNotEmpty) {
-      summaryFilters
-          .add((label: clientClassificationLabel(entityValue), active: false));
-    }
-    final propertyValue = (widget.propertyFilter ?? '').trim();
-    if (propertyValue.isNotEmpty) {
-      summaryFilters.add(
-          (label: clientClassificationLabel(propertyValue), active: false));
-    }
-    if (widget.missingCurrentMonthInvoiceOnly) {
-      summaryFilters
-          .add((label: isEs ? 'Sin factura' : 'No invoice', active: false));
-    }
-
     return Card(
       color: Colors.transparent,
       elevation: 0,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 6, 12, 5),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ClientsSearchFilters(
-                  searchController: widget.searchController,
-                  onSearchChanged: widget.onSearchChanged,
-                  searchHint: l.clientSearchHint,
-                  clearFiltersLabel: isEs ? 'Restablecer' : 'Reset',
-                  padding: EdgeInsets.zero,
-                  activeCount: activeCount,
-                  inactiveCount: inactiveCount,
-                  activeCountLabel: l.activeClientsSection,
-                  inactiveCountLabel: l.statusInactive,
-                  countInactiveAsFilter: false,
-                  clearInactiveOnClear: false,
-                  moveSummaryIntoFilters: true,
-                  filtersInMenu: true,
-                  filterMenuWidth: 310,
-                  filterBeforeSearch: true,
-                  compactClassificationDropdowns: true,
-                  additionalFiltersInFilterBody: true,
-                  searchDesktopHeight: 32,
-                  compactDesktopControls: true,
-                  searchMaxWidth: double.infinity,
-                  topSpacing: 0,
-                  statusContent: _SidebarStatusFilter(
-                    value: effectiveStatus,
-                    active: activeCount,
-                    inactive: inactiveCount,
-                    onChanged: (value) {
-                      setState(() => _status = value);
-                      if (value != 'active' && widget.hideInactive) {
-                        widget.onToggleHideInactive();
-                      }
-                    },
-                  ),
-                  additionalFilters: _SidebarMissingInvoiceFilter(
-                    count: hasInvoiceFlagData ? missingInvoiceCount : null,
-                    selected: widget.missingCurrentMonthInvoiceOnly,
-                    onChanged: (value) =>
-                        widget.onToggleMissingCurrentMonthInvoiceOnly(value),
-                  ),
-                  extraActiveFilterCount:
-                      (widget.missingCurrentMonthInvoiceOnly ? 1 : 0) +
-                          (effectiveStatus != 'all' ? 1 : 0),
-                  onClearFilters: () {
-                    setState(() => _status = 'all');
-                    if (widget.hideInactive) widget.onToggleHideInactive();
-                    widget.onClearFilters();
-                  },
-                  entityLabel: isEs ? 'Tipo de cliente' : 'Client type',
-                  entityOptions: widget.entityOptions,
-                  entityFilter: widget.entityFilter,
-                  onToggleEntity: widget.onToggleEntityFilter,
-                  onClearEntity: widget.onClearEntityFilter,
-                  propertyLabel: isEs ? 'Tipo de inmueble' : 'Property type',
-                  propertyOptions: widget.propertyOptions,
-                  propertyFilter: widget.propertyFilter,
-                  onToggleProperty: widget.onTogglePropertyFilter,
-                  onClearProperty: widget.onClearPropertyFilter,
-                  trailingActions: [
-                    if (widget.onAddClient != null)
-                      IconButton(
-                        tooltip: l.addClient,
-                        onPressed: widget.onAddClient,
-                        icon: const Icon(Icons.person_add_alt_1_rounded),
-                        visualDensity: VisualDensity.compact,
-                        constraints: const BoxConstraints.tightFor(
-                          width: 32,
-                          height: 32,
-                        ),
-                      ),
-                    if (widget.onCollapse != null)
-                      IconButton(
-                        tooltip: isEs ? 'Contraer panel' : 'Collapse panel',
-                        onPressed: widget.onCollapse,
-                        icon: const Icon(
-                            Icons.keyboard_double_arrow_left_rounded),
-                        visualDensity: VisualDensity.compact,
-                        constraints: const BoxConstraints.tightFor(
-                          width: 32,
-                          height: 32,
-                        ),
-                      ),
-                    _CompactListInfo(
-                      key: const ValueKey('client-sidebar-list-summary'),
-                      visibleCount: visibleCount,
-                      totalCount: totalCount,
-                      countLabel: countLabel,
-                      activeFilters: summaryFilters,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
           Expanded(
-            child: widget.allClients.isEmpty
-                ? EmptyView(
-                    icon: Icons.person_outline,
-                    title: l.noClientsYet,
-                    subtitle: l.noClientsYet,
-                    cta: widget.onAddClient != null ? l.addClient : null,
-                    onPressed: widget.onAddClient,
-                  )
-                : visibleClients.isEmpty
-                    ? Column(children: [
-                        if (widget.selectedClient != null &&
-                            widget.allClients.any((client) =>
-                                client.id == widget.selectedClient!.id))
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
-                            child: Row(children: [
-                              Expanded(
-                                child: LayoutBuilder(
-                                  builder: (context, constraints) => _ClientRow(
-                                    client: widget.selectedClient!,
-                                    selected: true,
-                                    showType: constraints.maxWidth >= 390,
-                                    onTap: () => widget
-                                        .onSelectClient(widget.selectedClient!),
-                                    onEdit: widget.onEditClient == null
-                                        ? null
-                                        : () => widget.onEditClient!(
-                                              widget.selectedClient!,
-                                            ),
-                                  ),
-                                ),
-                              ),
-                              Tooltip(
-                                message: widget.selectedHiddenByFilters
-                                    ? (isEs
-                                        ? 'Cliente seleccionado fuera de los filtros'
-                                        : 'Selected client is outside the filters')
-                                    : (isEs
-                                        ? 'Cliente seleccionado'
-                                        : 'Selected client'),
-                                child: Icon(Icons.push_pin_outlined,
-                                    size: 15, color: cs.primary),
-                              ),
-                            ]),
-                          ),
-                        Expanded(
-                          child: EmptyView(
-                            icon: widget.missingCurrentMonthInvoiceOnly &&
-                                    !hasSearch &&
-                                    !hasStructuredFilters
-                                ? (hasInvoiceFlagData
-                                    ? Icons.verified_outlined
-                                    : Icons.hourglass_empty_rounded)
-                                : Icons.search_off_rounded,
-                            title: widget.missingCurrentMonthInvoiceOnly &&
-                                    !hasSearch &&
-                                    !hasStructuredFilters
-                                ? (hasInvoiceFlagData
-                                    ? l.clientAllHaveInvoiceTitle
-                                    : l.clientInvoiceStatusUnavailableTitle)
-                                : l.clientNoMatchFiltersTitle,
-                            subtitle: widget.missingCurrentMonthInvoiceOnly &&
-                                    !hasSearch &&
-                                    !hasStructuredFilters
-                                ? (hasInvoiceFlagData
-                                    ? l.clientAllHaveInvoiceDesc
-                                    : l.clientInvoiceStatusUnavailableDesc)
-                                : l.clientNoMatchFiltersDesc,
-                          ),
-                        ),
-                      ])
-                    : Column(
-                        children: [
-                          Container(
-                            height: 30,
-                            padding: const EdgeInsetsDirectional.fromSTEB(
-                                12, 0, 8, 0),
-                            decoration: BoxDecoration(
-                              color:
-                                  cs.surfaceContainerLow.withValues(alpha: .7),
-                              border: Border(
-                                bottom: BorderSide(
-                                  color:
-                                      cs.outlineVariant.withValues(alpha: .25),
-                                ),
-                              ),
-                            ),
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                final showType = constraints.maxWidth >= 390;
-                                return Row(children: [
-                                  const SizedBox(width: 36),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                widget.allClients.isEmpty
+                    ? EmptyView(
+                        icon: LucideIcons.user,
+                        title: l.noClientsYet,
+                        subtitle: l.noClientsYet,
+                        cta: widget.onAddClient != null ? l.addClient : null,
+                        onPressed: widget.onAddClient,
+                      )
+                    : visibleClients.isEmpty
+                        ? Column(children: [
+                            if (widget.selectedClient != null &&
+                                widget.allClients.any((client) =>
+                                    client.id == widget.selectedClient!.id))
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
+                                child: Row(children: [
                                   Expanded(
-                                    flex: showType ? 5 : 1,
-                                    child: _SortHeader(
-                                      label: isEs ? 'Cliente' : 'Client',
-                                      active: !_sortByType,
-                                      ascending: _ascending,
-                                      onTap: () => setState(() {
-                                        if (_sortByType) {
-                                          _sortByType = false;
-                                          _ascending = true;
-                                        } else {
-                                          _ascending = !_ascending;
-                                        }
-                                      }),
-                                    ),
-                                  ),
-                                  if (showType)
-                                    Expanded(
-                                      flex: 3,
-                                      child: _SortHeader(
-                                        label: isEs ? 'Tipo' : 'Type',
-                                        active: _sortByType,
-                                        ascending: _ascending,
-                                        onTap: () => setState(() {
-                                          if (!_sortByType) {
-                                            _sortByType = true;
-                                            _ascending = true;
-                                          } else {
-                                            _ascending = !_ascending;
-                                          }
-                                        }),
+                                    child: LayoutBuilder(
+                                      builder: (context, constraints) =>
+                                          _ClientRow(
+                                        key: _selectedRowKey,
+                                        client: widget.selectedClient!,
+                                        selected: true,
+                                        showType: constraints.maxWidth >= 390,
+                                        showProperty:
+                                            constraints.maxWidth >= 560,
+                                        showStatus:
+                                            constraints.maxWidth >= 680 &&
+                                                effectiveStatus != 'active',
+                                        onTap: () => widget.onSelectClient(
+                                            widget.selectedClient!),
+                                        onEdit: widget.onEditClient == null
+                                            ? null
+                                            : () => widget.onEditClient!(
+                                                  widget.selectedClient!,
+                                                ),
                                       ),
                                     ),
-                                  SizedBox(
-                                    width: 36,
-                                    child: Text(
-                                      isEs ? 'Acc.' : 'Actions',
-                                      textAlign: TextAlign.center,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall
-                                          ?.copyWith(
-                                              color: cs.onSurfaceVariant),
-                                    ),
                                   ),
-                                ]);
-                              },
+                                  Tooltip(
+                                    message: widget.selectedHiddenByFilters
+                                        ? (isEs
+                                            ? 'Cliente seleccionado fuera de los filtros'
+                                            : 'Selected client is outside the filters')
+                                        : (isEs
+                                            ? 'Cliente seleccionado'
+                                            : 'Selected client'),
+                                    child: Icon(LucideIcons.pin,
+                                        size: 15, color: cs.primary),
+                                  ),
+                                ]),
+                              ),
+                            Expanded(
+                              child: EmptyView(
+                                icon: widget.missingCurrentMonthInvoiceOnly &&
+                                        !hasSearch &&
+                                        !hasStructuredFilters
+                                    ? (hasInvoiceFlagData
+                                        ? LucideIcons.badgeCheck
+                                        : LucideIcons.hourglass)
+                                    : LucideIcons.searchX,
+                                title: widget.missingCurrentMonthInvoiceOnly &&
+                                        !hasSearch &&
+                                        !hasStructuredFilters
+                                    ? (hasInvoiceFlagData
+                                        ? l.clientAllHaveInvoiceTitle
+                                        : l.clientInvoiceStatusUnavailableTitle)
+                                    : l.clientNoMatchFiltersTitle,
+                                subtitle: widget
+                                            .missingCurrentMonthInvoiceOnly &&
+                                        !hasSearch &&
+                                        !hasStructuredFilters
+                                    ? (hasInvoiceFlagData
+                                        ? l.clientAllHaveInvoiceDesc
+                                        : l.clientInvoiceStatusUnavailableDesc)
+                                    : l.clientNoMatchFiltersDesc,
+                              ),
                             ),
-                          ),
-                          if (widget.selectedHiddenByFilters ||
-                              (widget.selectedClient != null &&
-                                  !visibleClients.any((client) =>
-                                      client.id == widget.selectedClient!.id)))
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
+                          ])
+                        : Column(
+                            children: [
+                              Container(
+                                height: 30,
+                                padding: const EdgeInsetsDirectional.fromSTEB(
+                                    12, 0, 8, 0),
                                 decoration: BoxDecoration(
-                                  color: Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: cs.outlineVariant.withValues(
-                                      alpha: 0.35,
+                                  color: cs.surfaceContainerLow
+                                      .withValues(alpha: .7),
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: cs.outlineVariant
+                                          .withValues(alpha: .25),
                                     ),
                                   ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.filter_alt_outlined,
-                                      size: 18,
-                                      color: cs.onSurfaceVariant,
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final showType =
+                                        constraints.maxWidth >= 390;
+                                    final showProperty =
+                                        constraints.maxWidth >= 560;
+                                    final showStatus =
+                                        constraints.maxWidth >= 680 &&
+                                            effectiveStatus != 'active';
+                                    return Row(children: [
+                                      const SizedBox(width: 36),
+                                      Expanded(
+                                        flex: showType ? 5 : 1,
+                                        child: _SortHeader(
+                                          label: isEs ? 'Cliente' : 'Client',
+                                          active: !_sortByType,
+                                          ascending: _ascending,
+                                          onTap: () => setState(() {
+                                            if (_sortByType) {
+                                              _sortByType = false;
+                                              _ascending = true;
+                                            } else {
+                                              _ascending = !_ascending;
+                                            }
+                                          }),
+                                          trailing: IconButton(
+                                            tooltip: isEs
+                                                ? 'Buscar clientes'
+                                                : 'Search clients',
+                                            onPressed: () =>
+                                                _openClientSearch(context),
+                                            icon: Icon(
+                                              LucideIcons.search,
+                                              size: 15,
+                                              color: widget
+                                                      .searchController.text
+                                                      .trim()
+                                                      .isEmpty
+                                                  ? cs.onSurfaceVariant
+                                                  : cs.primary,
+                                            ),
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            padding: EdgeInsets.zero,
+                                            constraints:
+                                                const BoxConstraints.tightFor(
+                                              width: 24,
+                                              height: 26,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      if (showType)
+                                        Expanded(
+                                          flex: 3,
+                                          child: _SortHeader(
+                                            label: isEs ? 'Tipo' : 'Type',
+                                            active: _sortByType,
+                                            ascending: _ascending,
+                                            onTap: () => setState(() {
+                                              if (!_sortByType) {
+                                                _sortByType = true;
+                                                _ascending = true;
+                                              } else {
+                                                _ascending = !_ascending;
+                                              }
+                                            }),
+                                            trailing: PopupMenuButton<String>(
+                                              tooltip: isEs
+                                                  ? 'Filtrar por tipo'
+                                                  : 'Filter by type',
+                                              icon: Icon(
+                                                LucideIcons.funnel,
+                                                size: 14,
+                                                color:
+                                                    (widget.entityFilter ?? '')
+                                                            .trim()
+                                                            .isEmpty
+                                                        ? cs.onSurfaceVariant
+                                                        : cs.primary,
+                                              ),
+                                              padding: EdgeInsets.zero,
+                                              style: IconButton.styleFrom(
+                                                minimumSize: const Size(24, 26),
+                                                fixedSize: const Size(24, 26),
+                                                padding: EdgeInsets.zero,
+                                                tapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                              ),
+                                              itemBuilder: (_) => [
+                                                PopupMenuItem<String>(
+                                                  value: '__clear__',
+                                                  enabled:
+                                                      widget.entityFilter !=
+                                                          null,
+                                                  child: Text(
+                                                      isEs ? 'Todos' : 'All'),
+                                                ),
+                                                ...widget.entityOptions.map(
+                                                  (value) =>
+                                                      PopupMenuItem<String>(
+                                                    value: value,
+                                                    child: Row(children: [
+                                                      if (widget.entityFilter ==
+                                                          value)
+                                                        const Icon(
+                                                            LucideIcons.check,
+                                                            size: 16)
+                                                      else
+                                                        const SizedBox(
+                                                            width: 16),
+                                                      const SizedBox(width: 6),
+                                                      Flexible(
+                                                        child: Text(
+                                                          clientClassificationLabel(
+                                                              value),
+                                                        ),
+                                                      ),
+                                                    ]),
+                                                  ),
+                                                ),
+                                              ],
+                                              onSelected: (value) {
+                                                if (value == '__clear__') {
+                                                  widget.onClearEntityFilter();
+                                                } else {
+                                                  widget.onToggleEntityFilter(
+                                                      value);
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      if (showProperty)
+                                        Expanded(
+                                          flex: 3,
+                                          child: _SortHeader(
+                                            label:
+                                                isEs ? 'Inmueble' : 'Property',
+                                            active: false,
+                                            ascending: true,
+                                            onTap: () {},
+                                            trailing: PopupMenuButton<String>(
+                                              tooltip: isEs
+                                                  ? 'Filtrar inmueble'
+                                                  : 'Filter property',
+                                              icon: Icon(
+                                                LucideIcons.funnel,
+                                                size: 14,
+                                                color: (widget.propertyFilter ??
+                                                            '')
+                                                        .trim()
+                                                        .isEmpty
+                                                    ? cs.onSurfaceVariant
+                                                    : cs.primary,
+                                              ),
+                                              padding: EdgeInsets.zero,
+                                              style: IconButton.styleFrom(
+                                                minimumSize: const Size(24, 26),
+                                                fixedSize: const Size(24, 26),
+                                                padding: EdgeInsets.zero,
+                                                tapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                              ),
+                                              itemBuilder: (_) => [
+                                                PopupMenuItem<String>(
+                                                  value: '__clear__',
+                                                  enabled:
+                                                      widget.propertyFilter !=
+                                                          null,
+                                                  child: Text(
+                                                      isEs ? 'Todos' : 'All'),
+                                                ),
+                                                ...widget.propertyOptions.map(
+                                                  (value) =>
+                                                      PopupMenuItem<String>(
+                                                    value: value,
+                                                    child: Row(children: [
+                                                      if (widget
+                                                              .propertyFilter ==
+                                                          value)
+                                                        const Icon(
+                                                            LucideIcons.check,
+                                                            size: 16)
+                                                      else
+                                                        const SizedBox(
+                                                            width: 16),
+                                                      const SizedBox(width: 6),
+                                                      Flexible(
+                                                        child: Text(
+                                                          clientClassificationLabel(
+                                                              value),
+                                                        ),
+                                                      ),
+                                                    ]),
+                                                  ),
+                                                ),
+                                              ],
+                                              onSelected: (value) {
+                                                if (value == '__clear__') {
+                                                  widget
+                                                      .onClearPropertyFilter();
+                                                } else {
+                                                  widget.onTogglePropertyFilter(
+                                                      value);
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      if (showStatus)
+                                        Expanded(
+                                          flex: 2,
+                                          child: _SortHeader(
+                                            label: isEs ? 'Estado' : 'Status',
+                                            active: effectiveStatus != 'all',
+                                            ascending: true,
+                                            onTap: () {},
+                                            trailing: PopupMenuButton<String>(
+                                              tooltip: isEs
+                                                  ? 'Filtrar estado'
+                                                  : 'Filter status',
+                                              icon: Icon(
+                                                LucideIcons.funnel,
+                                                size: 14,
+                                                color: effectiveStatus == 'all'
+                                                    ? cs.onSurfaceVariant
+                                                    : cs.primary,
+                                              ),
+                                              padding: EdgeInsets.zero,
+                                              style: IconButton.styleFrom(
+                                                minimumSize: const Size(24, 26),
+                                                fixedSize: const Size(24, 26),
+                                                padding: EdgeInsets.zero,
+                                                tapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                              ),
+                                              itemBuilder: (_) => [
+                                                for (final option in [
+                                                  (
+                                                    'all',
+                                                    isEs ? 'Todos' : 'All'
+                                                  ),
+                                                  (
+                                                    'active',
+                                                    isEs ? 'Activos' : 'Active'
+                                                  ),
+                                                  (
+                                                    'inactive',
+                                                    isEs
+                                                        ? 'Inactivos'
+                                                        : 'Inactive'
+                                                  ),
+                                                  (
+                                                    'missing',
+                                                    isEs
+                                                        ? 'Sin factura este mes'
+                                                        : 'No invoice this month'
+                                                  ),
+                                                ])
+                                                  PopupMenuItem<String>(
+                                                    value: option.$1,
+                                                    child: Text(option.$2),
+                                                  ),
+                                              ],
+                                              onSelected: (value) {
+                                                if (value == 'missing') {
+                                                  widget
+                                                      .onToggleMissingCurrentMonthInvoiceOnly(
+                                                    !widget
+                                                        .missingCurrentMonthInvoiceOnly,
+                                                  );
+                                                  return;
+                                                }
+                                                setState(() => _status = value);
+                                                if (value == 'active' &&
+                                                    !widget.hideInactive) {
+                                                  widget.onToggleHideInactive();
+                                                } else if (value != 'active' &&
+                                                    widget.hideInactive) {
+                                                  widget.onToggleHideInactive();
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      SizedBox(
+                                        width: widget.onAddClient != null
+                                            ? 110
+                                            : 84,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            if (widget.onAddClient != null)
+                                              IconButton(
+                                                tooltip: l.addClient,
+                                                onPressed: widget.onAddClient,
+                                                icon: const Icon(
+                                                  LucideIcons.userPlus,
+                                                  size: 16,
+                                                ),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                padding: EdgeInsets.zero,
+                                                constraints:
+                                                    const BoxConstraints
+                                                        .tightFor(
+                                                  width: 26,
+                                                  height: 26,
+                                                ),
+                                              ),
+                                            if (widget.onRefresh != null)
+                                              IconButton(
+                                                tooltip: l.refreshAction,
+                                                onPressed: widget.refreshing
+                                                    ? null
+                                                    : widget.onRefresh,
+                                                icon: widget.refreshing
+                                                    ? const SizedBox(
+                                                        width: 14,
+                                                        height: 14,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                      )
+                                                    : const Icon(
+                                                        LucideIcons.refreshCw,
+                                                        size: 16,
+                                                      ),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                padding: EdgeInsets.zero,
+                                                constraints:
+                                                    const BoxConstraints
+                                                        .tightFor(
+                                                  width: 26,
+                                                  height: 26,
+                                                ),
+                                              ),
+                                            if (!showStatus)
+                                              _StatusFilterMenu(
+                                                isEs: isEs,
+                                                selected: effectiveStatus,
+                                                missingSelected: widget
+                                                    .missingCurrentMonthInvoiceOnly,
+                                                onSelected: (value) {
+                                                  if (value == 'missing') {
+                                                    widget
+                                                        .onToggleMissingCurrentMonthInvoiceOnly(
+                                                      !widget
+                                                          .missingCurrentMonthInvoiceOnly,
+                                                    );
+                                                    return;
+                                                  }
+                                                  setState(
+                                                      () => _status = value);
+                                                  if (value == 'active' &&
+                                                      !widget.hideInactive) {
+                                                    widget
+                                                        .onToggleHideInactive();
+                                                  } else if (value !=
+                                                          'active' &&
+                                                      widget.hideInactive) {
+                                                    widget
+                                                        .onToggleHideInactive();
+                                                  }
+                                                },
+                                              ),
+                                            if (widget.onCollapse != null)
+                                              IconButton(
+                                                tooltip: isEs
+                                                    ? 'Contraer panel'
+                                                    : 'Collapse panel',
+                                                onPressed: widget.onCollapse,
+                                                icon: const Icon(
+                                                  LucideIcons.chevronsLeft,
+                                                  size: 16,
+                                                ),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                padding: EdgeInsets.zero,
+                                                constraints:
+                                                    const BoxConstraints
+                                                        .tightFor(
+                                                  width: 26,
+                                                  height: 26,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ]);
+                                  },
+                                ),
+                              ),
+                              if (widget.selectedHiddenByFilters ||
+                                  (widget.selectedClient != null &&
+                                      !visibleClients.any((client) =>
+                                          client.id ==
+                                          widget.selectedClient!.id)))
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        l.clientSelectedHiddenByFilters,
-                                        style: t.bodySmall.copyWith(
-                                          color: cs.onSurfaceVariant,
+                                    decoration: BoxDecoration(
+                                      color: Colors.transparent,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: cs.outlineVariant.withValues(
+                                          alpha: 0.35,
                                         ),
                                       ),
                                     ),
-                                    TextButton(
-                                      onPressed: widget.onClearFilters,
-                                      child: Text(l.clientFiltersClear),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          LucideIcons.funnel,
+                                          size: 18,
+                                          color: cs.onSurfaceVariant,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            l.clientSelectedHiddenByFilters,
+                                            style: t.bodySmall.copyWith(
+                                              color: cs.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: widget.onClearFilters,
+                                          child: Text(l.clientFiltersClear),
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
+                                ),
+                              Expanded(
+                                child: ListView.builder(
+                                  controller: _clientsScrollController,
+                                  itemCount: visibleClients.length,
+                                  itemBuilder: (_, i) {
+                                    final c = visibleClients[i];
+                                    return LayoutBuilder(
+                                      builder: (context, constraints) =>
+                                          _ClientRow(
+                                        key: widget.selectedClient?.id == c.id
+                                            ? _selectedRowKey
+                                            : ValueKey(
+                                                'client-sidebar-row-${c.id}',
+                                              ),
+                                        client: c,
+                                        selected:
+                                            widget.selectedClient?.id == c.id,
+                                        showType: constraints.maxWidth >= 390,
+                                        showProperty:
+                                            constraints.maxWidth >= 560,
+                                        showStatus:
+                                            constraints.maxWidth >= 680 &&
+                                                effectiveStatus != 'active',
+                                        onTap: () => widget.onSelectClient(c),
+                                        onEdit: widget.onEditClient == null
+                                            ? null
+                                            : () => widget.onEditClient!(c),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
-                            ),
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: visibleClients.length,
-                              itemBuilder: (_, i) {
-                                final c = visibleClients[i];
-                                return LayoutBuilder(
-                                  builder: (context, constraints) => _ClientRow(
-                                    client: c,
-                                    selected: widget.selectedClient?.id == c.id,
-                                    showType: constraints.maxWidth >= 390,
-                                    onTap: () => widget.onSelectClient(c),
-                                    onEdit: widget.onEditClient == null
-                                        ? null
-                                        : () => widget.onEditClient!(c),
-                                  ),
-                                );
-                              },
-                            ),
+                            ],
                           ),
-                        ],
+                if (_connectionTop != null &&
+                    _connectionHeight != null &&
+                    widget.selectedClient != null)
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOut,
+                    top: _connectionTop,
+                    right: -10,
+                    width: 18,
+                    height: _connectionHeight,
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _SelectedClientConnectorPainter(
+                          Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: .07),
+                        ),
                       ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
@@ -490,59 +847,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
   }
 }
 
-/// Result count kept inside the toolbar to avoid consuming a second row.
-class _CompactListInfo extends StatelessWidget {
-  const _CompactListInfo({
-    super.key,
-    required this.visibleCount,
-    required this.totalCount,
-    required this.countLabel,
-    required this.activeFilters,
-  });
-
-  final int visibleCount;
-  final int totalCount;
-  final String countLabel;
-  final List<({String label, bool active})> activeFilters;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final filters = activeFilters.map((filter) => filter.label).join(', ');
-    final tooltip = filters.isEmpty ? countLabel : '$countLabel · $filters';
-    final shortCount = visibleCount == totalCount
-        ? '$visibleCount'
-        : '$visibleCount/$totalCount';
-
-    return Tooltip(
-      message: tooltip,
-      child: Container(
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 7),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: .45),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.info_outline_rounded,
-                size: 15, color: cs.onSurfaceVariant),
-            const SizedBox(width: 4),
-            Text(
-              shortCount,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
+/*
 class _SidebarStatusFilter extends StatelessWidget {
   const _SidebarStatusFilter({
     required this.value,
@@ -712,11 +1017,94 @@ class _SidebarMissingInvoiceFilter extends StatelessWidget {
   }
 }
 
+*/
+class _SelectedClientConnectorPainter extends CustomPainter {
+  const _SelectedClientConnectorPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width * .45, 0)
+      ..quadraticBezierTo(
+        size.width * .62,
+        size.height * .28,
+        size.width,
+        size.height * .5,
+      )
+      ..quadraticBezierTo(
+        size.width * .62,
+        size.height * .72,
+        size.width * .45,
+        size.height,
+      )
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SelectedClientConnectorPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+class _StatusFilterMenu extends StatelessWidget {
+  const _StatusFilterMenu({
+    required this.isEs,
+    required this.selected,
+    required this.missingSelected,
+    required this.onSelected,
+  });
+
+  final bool isEs;
+  final String selected;
+  final bool missingSelected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return PopupMenuButton<String>(
+      tooltip: isEs ? 'Filtrar estado' : 'Filter status',
+      icon: Icon(LucideIcons.funnel,
+          size: 16,
+          color: selected == 'all' && !missingSelected
+              ? cs.onSurfaceVariant
+              : cs.primary),
+      padding: EdgeInsets.zero,
+      style: IconButton.styleFrom(
+        minimumSize: const Size(26, 26),
+        fixedSize: const Size(26, 26),
+        padding: EdgeInsets.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+      ),
+      itemBuilder: (_) => [
+        PopupMenuItem(value: 'all', child: Text(isEs ? 'Todos' : 'All')),
+        PopupMenuItem(
+            value: 'active', child: Text(isEs ? 'Activos' : 'Active')),
+        PopupMenuItem(
+            value: 'inactive', child: Text(isEs ? 'Inactivos' : 'Inactive')),
+        PopupMenuItem(
+            value: 'missing',
+            child:
+                Text(isEs ? 'Sin factura este mes' : 'No invoice this month')),
+      ],
+      onSelected: onSelected,
+    );
+  }
+}
+
 class _ClientRow extends StatelessWidget {
   const _ClientRow({
+    super.key,
     required this.client,
     required this.selected,
     required this.showType,
+    required this.showProperty,
+    required this.showStatus,
     required this.onTap,
     this.onEdit,
   });
@@ -724,6 +1112,8 @@ class _ClientRow extends StatelessWidget {
   final GroupClient client;
   final bool selected;
   final bool showType;
+  final bool showProperty;
+  final bool showStatus;
   final VoidCallback onTap;
   final VoidCallback? onEdit;
 
@@ -743,9 +1133,11 @@ class _ClientRow extends StatelessWidget {
       minHeight: 42,
       verticalPadding: 2,
       separatorWidth: 0,
+      margin: EdgeInsets.zero,
+      borderRadius: selected ? 8 : 0,
       child: Row(children: [
         CircleAvatar(
-          radius: 14,
+          radius: 12,
           backgroundColor:
               selected ? cs.primaryContainer : cs.surfaceContainerHighest,
           child: Text(
@@ -790,48 +1182,98 @@ class _ClientRow extends StatelessWidget {
                   ),
                 ),
               ),
-              if (client.missingCurrentMonthInvoice == true)
-                Tooltip(
-                  message: l.clientMissingInvoiceThisMonth,
-                  child: Icon(Icons.receipt_long_outlined,
-                      size: 14, color: cs.error),
-                ),
-              if (!client.isActive)
-                Tooltip(
-                  message: l.statusInactive,
-                  child: Icon(Icons.pause_circle_outline,
-                      size: 14, color: cs.onSurfaceVariant),
-                ),
             ]),
           ),
-        SizedBox(
-          width: 36,
-          child: PopupMenuButton<_ClientRowAction>(
-            tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
-            position: PopupMenuPosition.under,
-            icon: const Icon(Icons.more_horiz_rounded),
-            iconSize: 18,
-            padding: EdgeInsets.zero,
-            style: IconButton.styleFrom(
-              minimumSize: const Size(30, 30),
-              fixedSize: const Size(30, 30),
-              padding: EdgeInsets.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-              foregroundColor: cs.onSurfaceVariant,
+        if (showProperty)
+          Expanded(
+            flex: 3,
+            child: Row(
+              children: [
+                if (client.effectivePropertyType != null &&
+                    client.effectivePropertyType!.trim().isNotEmpty) ...[
+                  Icon(LucideIcons.house, size: 14, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 5),
+                ],
+                Expanded(
+                  child: Text(
+                    client.effectivePropertyType == null ||
+                            client.effectivePropertyType!.trim().isEmpty
+                        ? '—'
+                        : clientClassificationLabel(
+                            client.effectivePropertyType!),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            onSelected: (_) => onEdit?.call(),
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: _ClientRowAction.edit,
-                enabled: onEdit != null,
-                child: Row(children: [
-                  const Icon(Icons.edit_outlined, size: 17),
-                  const SizedBox(width: 8),
-                  Text(l.editClient),
-                ]),
+          ),
+        if (showStatus)
+          Expanded(
+            flex: 2,
+            child: Row(
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: client.isActive
+                        ? const Color(0xFF22A06B)
+                        : cs.onSurfaceVariant.withValues(alpha: .55),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    client.isActive ? l.active : l.inactive,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: client.isActive
+                          ? const Color(0xFF247A55)
+                          : cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        SizedBox(
+          width: 70,
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: PopupMenuButton<_ClientRowAction>(
+              tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+              position: PopupMenuPosition.under,
+              icon: const Icon(LucideIcons.ellipsis),
+              iconSize: 18,
+              padding: EdgeInsets.zero,
+              style: IconButton.styleFrom(
+                minimumSize: const Size(30, 30),
+                fixedSize: const Size(30, 30),
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                foregroundColor: cs.onSurfaceVariant,
               ),
-            ],
+              onSelected: (_) => onEdit?.call(),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: _ClientRowAction.edit,
+                  enabled: onEdit != null,
+                  child: Row(children: [
+                    const Icon(LucideIcons.pencil, size: 17),
+                    const SizedBox(width: 8),
+                    Text(l.editClient),
+                  ]),
+                ),
+              ],
+            ),
           ),
         ),
       ]),
@@ -845,12 +1287,14 @@ class _SortHeader extends StatelessWidget {
     required this.active,
     required this.ascending,
     required this.onTap,
+    this.trailing,
   });
 
   final String label;
   final bool active;
   final bool ascending;
   final VoidCallback onTap;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -870,12 +1314,12 @@ class _SortHeader extends StatelessWidget {
           ),
         ),
         if (active)
-          Icon(
-              ascending
-                  ? Icons.arrow_upward_rounded
-                  : Icons.arrow_downward_rounded,
-              size: 12,
-              color: cs.primary),
+          Icon(ascending ? LucideIcons.arrowUp : LucideIcons.arrowDown,
+              size: 12, color: cs.primary),
+        if (trailing != null) ...[
+          const SizedBox(width: 2),
+          trailing!,
+        ],
       ]),
     );
   }

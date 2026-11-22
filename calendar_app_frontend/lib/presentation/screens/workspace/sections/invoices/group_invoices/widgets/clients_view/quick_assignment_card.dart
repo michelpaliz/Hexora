@@ -31,7 +31,8 @@ class QuickAssignmentCard extends StatelessWidget {
     final hasProperty = (client.propertyKind ?? '').trim().isNotEmpty;
     final done = (hasEntity ? 1 : 0) + (hasProperty ? 1 : 0);
 
-    final hasAnyOptions = entityOptions.isNotEmpty || propertyOptions.isNotEmpty;
+    final hasAnyOptions =
+        entityOptions.isNotEmpty || propertyOptions.isNotEmpty;
     if (!hasAnyOptions) return const SizedBox.shrink();
 
     return Material(
@@ -129,4 +130,3 @@ class _ProgressPill extends StatelessWidget {
     );
   }
 }
-

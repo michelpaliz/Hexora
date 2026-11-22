@@ -11,6 +11,10 @@ class _GroupInvoicesView extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final isMobile = MediaQuery.sizeOf(context).width < 700;
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
     if (isMobile) return _InvoicesMobileView(state: state);
     final isWide = MediaQuery.of(context).size.width >= 980;
     final showInlineEditor = state._selectedMenu == 'invoice_editor' &&
@@ -25,14 +29,6 @@ class _GroupInvoicesView extends StatelessWidget {
         : state._selectedMenu == 'receipt_editor'
             ? state._menuBeforeReceiptEditor
             : state._selectedMenu;
-    final compactPrimaryButtonStyle = FilledButton.styleFrom(
-      minimumSize: const Size(32, HexoraDimensions.buttonCompact),
-      padding:
-          const EdgeInsets.symmetric(horizontal: HexoraTableTokens.cellPadding),
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(HexoraDimensions.radius)),
-      elevation: 0,
-    );
     final compactIconButtonStyle = IconButton.styleFrom(
       minimumSize: const Size.square(HexoraDimensions.buttonCompact),
       fixedSize: const Size.square(HexoraDimensions.buttonCompact),
@@ -70,8 +66,9 @@ class _GroupInvoicesView extends StatelessWidget {
               'budgets_list' => l.budgetsMenuList,
               'budgets_new' => l.budgetsMenuNew,
               'budgets_convert' => 'Convertir presupuesto',
-              'clients' => 'Clientes',
-              'client_invoice_stats' => 'Análisis de ingresos',
+              'clients' => isEs ? 'Clientes' : 'Customers',
+              'client_invoice_stats' =>
+                isEs ? 'Análisis de ingresos' : 'Income analysis',
               'operations' =>
                 Localizations.localeOf(context).languageCode == 'es'
                     ? 'Operaciones'
@@ -102,8 +99,9 @@ class _GroupInvoicesView extends StatelessWidget {
                       .startsWith('es')
                   ? 'Auditoría IVA gastos'
                   : 'Expense VAT audit',
-              'recurring' => 'Recurrentes',
-              'recurring_receipts' => 'Recibos recurrentes',
+              'recurring' => isEs ? 'Recurrentes' : 'Recurring',
+              'recurring_receipts' =>
+                isEs ? 'Recibos recurrentes' : 'Recurring receipts',
               'client_classifications' => l.clientClassificationTitle,
               _ => l.invoicesTitle(state.widget.group.name),
             };
@@ -131,9 +129,10 @@ class _GroupInvoicesView extends StatelessWidget {
               ),
             ]
           : null;
-      final clientsActions = activeMenu == 'clients' ||
-              activeMenu == 'clients_flow' ||
-              activeMenu == 'client_invoice_stats'
+      // Client-list actions live in the compact table header so they do not
+      // consume a separate toolbar row. Invoice statistics keeps its refresh
+      // action in the page toolbar because it has no client table header.
+      final clientsActions = activeMenu == 'client_invoice_stats'
           ? <Widget>[
               Tooltip(
                 message: l.refreshAction,
@@ -151,15 +150,6 @@ class _GroupInvoicesView extends StatelessWidget {
                       : const Icon(Icons.refresh_rounded, size: 18),
                 ),
               ),
-              if (activeMenu != 'client_invoice_stats')
-                Tooltip(
-                  message: l.addClient,
-                  child: FilledButton(
-                    onPressed: state._openCreateClient,
-                    style: compactPrimaryButtonStyle,
-                    child: const Icon(Icons.person_add_outlined, size: 18),
-                  ),
-                ),
             ]
           : null;
       final List<Widget>? classificationActions =

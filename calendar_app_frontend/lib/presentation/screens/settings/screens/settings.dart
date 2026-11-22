@@ -14,6 +14,7 @@ import 'package:hexora/presentation/screens/settings/widgets/language_sheet.dart
 import 'package:hexora/presentation/screens/settings/widgets/preferences_section.dart';
 import 'package:hexora/presentation/screens/settings/widgets/nav_tile.dart';
 import 'package:hexora/presentation/screens/settings/widgets/section_card.dart';
+import 'package:hexora/presentation/screens/preferences/user_preferences_screen.dart';
 import 'package:hexora/state/locale_provider.dart';
 import 'package:hexora/theme/theme_provider.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -33,6 +34,7 @@ class _SettingsState extends State<Settings> {
   String userName = "";
   static const String _appVersion = '1.0.0';
   bool _autoStatementImportLoading = false;
+  bool _showPreferences = false;
 
   @override
   void didChangeDependencies() {
@@ -182,125 +184,162 @@ class _SettingsState extends State<Settings> {
         appBar: AppBar(
           backgroundColor: cs.surface,
           iconTheme: IconThemeData(color: cs.onSurface),
-          title: Text(
-            loc.settings,
-            style: typography.titleLarge.copyWith(
-              fontWeight: FontWeight.w700,
-              color: cs.onSurface,
-            ),
+          leading: _showPreferences
+              ? IconButton(
+                  tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                  onPressed: () => setState(() => _showPreferences = false),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                )
+              : null,
+          title: Row(
+            children: [
+              Text(
+                loc.settings,
+                style: typography.titleLarge.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface,
+                ),
+              ),
+              if (_showPreferences) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    '/',
+                    style: typography.bodyLarge.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                Text(
+                  loc.preferencesTitle,
+                  style: typography.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         backgroundColor: theme.scaffoldBackgroundColor,
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          children: [
-            _ProfileHeroCard(
-              userName: userName,
-              photoUrl: authProvider.currentUser?.photoUrl,
-            ),
-            const SizedBox(height: 24),
-            SectionHeader(
-              title: loc.accountSectionTitle,
-              textStyle: typography.bodyLarge.copyWith(
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
+        body: _showPreferences
+            ? const UserPreferencesView(
+                maxWidth: 900,
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 24),
+              )
+            : ListView(
+                key: const PageStorageKey<String>('settings-main-content'),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [
+                  _ProfileHeroCard(
+                    userName: userName,
+                    photoUrl: authProvider.currentUser?.photoUrl,
+                  ),
+                  const SizedBox(height: 24),
+                  SectionHeader(
+                    title: loc.accountSectionTitle,
+                    textStyle: typography.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  SectionCard(
+                    child: AccountSection(
+                      userName: userName,
+                      onEditUsername: () async {
+                        final successMessage = loc.successChangingUsername;
+                        final newName = await showChangeUsernameDialog(context);
+                        if (newName == null) return;
+                        final err = await _changeUsername(newName);
+                        _snack(err ?? successMessage);
+                      },
+                      onEditProfile: () =>
+                          Navigator.pushNamed(context, AppRoutes.profile),
+                      onChangePassword: () async {
+                        final result = await showChangePasswordDialog(context);
+                        if (result == null) return;
+                        await _changePassword(
+                            result.current, result.newPass, result.confirm);
+                      },
+                      onLogout: _confirmLogout,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SectionHeader(
+                    title: loc.preferencesSectionTitle,
+                    textStyle: typography.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  SectionCard(
+                    child: PreferencesSection(
+                      isDark: themeModeProv.mode == ThemeMode.dark,
+                      onToggleDark: () => themeModeProv.toggleLightDark(),
+                      languageName: _languageName(context),
+                      onChangeLanguage: _openLanguageSheet,
+                      showDisplayPreferences: false,
+                      onOpenPreferences: () =>
+                          setState(() => _showPreferences = true),
+                      autoStatementImportEnabled: authProvider
+                              .currentUser?.autoStatementImportEnabled ??
+                          false,
+                      autoStatementImportBusy: _autoStatementImportLoading,
+                      onToggleAutoStatementImport: _toggleAutoStatementImport,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SectionHeader(
+                    title: Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Experimentos'
+                        : 'Experiments',
+                    textStyle: typography.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  SectionCard(
+                    child: NavTile(
+                      leading: Icon(Icons.dashboard_customize_outlined,
+                          color: cs.primary, size: 20),
+                      iconBgColor: cs.primary.withValues(alpha: 0.12),
+                      title:
+                          Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Vista previa del panel'
+                              : 'Dashboard preview',
+                      subtitle:
+                          Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Nuevo diseño del inicio (experimental)'
+                              : 'New home design (experimental)',
+                      onTap: () => Navigator.pushNamed(
+                          context, AppRoutes.dashboardPreview),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SectionHeader(
+                    title: Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Contactar con Hexora'
+                        : 'Contact Hexora',
+                    textStyle: typography.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  SectionCard(
+                    child: ContactSection(
+                      isSpanish:
+                          Localizations.localeOf(context).languageCode == 'es',
+                      onEmail: _email,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    '${loc.appVersionLabel}: $_appVersion',
+                    style: typography.caption
+                        .copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
               ),
-            ),
-            SectionCard(
-              child: AccountSection(
-                userName: userName,
-                onEditUsername: () async {
-                  final successMessage = loc.successChangingUsername;
-                  final newName = await showChangeUsernameDialog(context);
-                  if (newName == null) return;
-                  final err = await _changeUsername(newName);
-                  _snack(err ?? successMessage);
-                },
-                onEditProfile: () =>
-                    Navigator.pushNamed(context, AppRoutes.profile),
-                onChangePassword: () async {
-                  final result = await showChangePasswordDialog(context);
-                  if (result == null) return;
-                  await _changePassword(
-                      result.current, result.newPass, result.confirm);
-                },
-                onLogout: _confirmLogout,
-              ),
-            ),
-            const SizedBox(height: 20),
-            SectionHeader(
-              title: loc.preferencesSectionTitle,
-              textStyle: typography.bodyLarge.copyWith(
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            SectionCard(
-              child: PreferencesSection(
-                isDark: themeModeProv.mode == ThemeMode.dark,
-                onToggleDark: () => themeModeProv.toggleLightDark(),
-                languageName: _languageName(context),
-                onChangeLanguage: _openLanguageSheet,
-                showDisplayPreferences: false,
-                onOpenPreferences: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.preferences),
-                autoStatementImportEnabled:
-                    authProvider.currentUser?.autoStatementImportEnabled ??
-                        false,
-                autoStatementImportBusy: _autoStatementImportLoading,
-                onToggleAutoStatementImport: _toggleAutoStatementImport,
-              ),
-            ),
-            const SizedBox(height: 20),
-            SectionHeader(
-              title: Localizations.localeOf(context).languageCode == 'es'
-                  ? 'Experimentos'
-                  : 'Experiments',
-              textStyle: typography.bodyLarge.copyWith(
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            SectionCard(
-              child: NavTile(
-                leading: Icon(Icons.dashboard_customize_outlined,
-                    color: cs.primary, size: 20),
-                iconBgColor: cs.primary.withValues(alpha: 0.12),
-                title: Localizations.localeOf(context).languageCode == 'es'
-                    ? 'Vista previa del panel'
-                    : 'Dashboard preview',
-                subtitle:
-                    Localizations.localeOf(context).languageCode == 'es'
-                        ? 'Nuevo diseño del inicio (experimental)'
-                        : 'New home design (experimental)',
-                onTap: () => Navigator.pushNamed(
-                    context, AppRoutes.dashboardPreview),
-              ),
-            ),
-            const SizedBox(height: 20),
-            SectionHeader(
-              title: Localizations.localeOf(context).languageCode == 'es'
-                  ? 'Contactar con Hexora'
-                  : 'Contact Hexora',
-              textStyle: typography.bodyLarge.copyWith(
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            SectionCard(
-              child: ContactSection(
-                isSpanish: Localizations.localeOf(context).languageCode == 'es',
-                onEmail: _email,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              '${loc.appVersionLabel}: $_appVersion',
-              style: typography.caption
-                  .copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -5,7 +5,7 @@ import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/navigation/horizontal_nav/components/avatar_icon.dart';
 import 'package:hexora/navigation/horizontal_nav/models/nav_item_data.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:iconsax/iconsax.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 class HorizontalDrawerNav extends StatefulWidget {
@@ -20,17 +20,17 @@ class _HorizontalDrawerNavState extends State<HorizontalDrawerNav> {
 
   final List<NavItemData> _items = const [
     NavItemData(
-      icon: Iconsax.home_1,
+      icon: LucideIcons.house,
       route: AppRoutes.homePage,
       semanticLabel: 'Home',
     ),
     NavItemData(
-      icon: Iconsax.notification,
+      icon: LucideIcons.bell,
       route: AppRoutes.showNotifications,
       semanticLabel: 'Notifications',
     ),
     NavItemData(
-      icon: Iconsax.user,
+      icon: LucideIcons.user,
       route: AppRoutes.profileDetails,
       semanticLabel: 'Profile',
       isProfile: true,

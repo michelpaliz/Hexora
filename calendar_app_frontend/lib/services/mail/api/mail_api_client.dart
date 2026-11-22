@@ -153,12 +153,15 @@ class MailApiClient implements IMailApiClient {
   Future<MailPage<MailMessage>> getMessages({
     required String folder,
     required String token,
+    String? groupId,
     int limit = 25,
     String? cursor,
   }) async {
     final params = <String, String>{
       'folder': folder,
       'limit': '$limit',
+      if (groupId != null && groupId.trim().isNotEmpty)
+        'groupId': groupId.trim(),
       if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
     };
     final r = await AuthenticatedHttpClient.get(
@@ -173,9 +176,10 @@ class MailApiClient implements IMailApiClient {
   Future<MailMessage> getMessage({
     required String id,
     required String token,
+    String? groupId,
   }) async {
     final r = await AuthenticatedHttpClient.get(
-      _u('/messages/$id'),
+      _u('/messages/$id', groupId == null ? null : {'groupId': groupId}),
       headers: _headers(token: token),
       client: _client,
     );
@@ -188,6 +192,7 @@ class MailApiClient implements IMailApiClient {
   @override
   Future<MailPage<MailMessage>> searchMessages({
     required String token,
+    String? groupId,
     String? query,
     String? folder,
     bool? unread,
@@ -198,6 +203,8 @@ class MailApiClient implements IMailApiClient {
   }) async {
     final params = <String, String>{
       if (query != null) 'q': query,
+      if (groupId != null && groupId.trim().isNotEmpty)
+        'groupId': groupId.trim(),
       if (folder != null) 'folder': folder,
       if (unread != null) 'unread': unread ? 'true' : 'false',
       if (after != null) 'after': after.toIso8601String(),
@@ -217,6 +224,7 @@ class MailApiClient implements IMailApiClient {
   Future<MailPage<MailThread>> getThreads({
     required String folder,
     required String token,
+    String? groupId,
     int limit = 25,
     String? cursor,
     String? query,
@@ -224,6 +232,8 @@ class MailApiClient implements IMailApiClient {
     final params = <String, String>{
       'folder': folder,
       'limit': '$limit',
+      if (groupId != null && groupId.trim().isNotEmpty)
+        'groupId': groupId.trim(),
       if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
       if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
     };
@@ -239,22 +249,25 @@ class MailApiClient implements IMailApiClient {
   Future<MailThreadDetail> getThread({
     required String threadKey,
     required String token,
+    String? groupId,
   }) async {
     final r = await AuthenticatedHttpClient.get(
-      _u('/threads/$threadKey'),
+      _u('/threads/$threadKey', groupId == null ? null : {'groupId': groupId}),
       headers: _headers(token: token),
       client: _client,
     );
     final data = _decode(r);
     if (data is Map<String, dynamic>) return MailThreadDetail.fromJson(data);
-    if (data is Map) return MailThreadDetail.fromJson(data.cast<String, dynamic>());
+    if (data is Map)
+      return MailThreadDetail.fromJson(data.cast<String, dynamic>());
     throw HttpFailure(r.statusCode, 'Unexpected thread payload');
   }
 
   @override
-  Future<void> markRead({required String id, required String token}) async {
+  Future<void> markRead(
+      {required String id, required String token, String? groupId}) async {
     final r = await AuthenticatedHttpClient.post(
-      _u('/messages/$id/read'),
+      _u('/messages/$id/read', groupId == null ? null : {'groupId': groupId}),
       headers: _headers(token: token),
       body: jsonEncode({}),
       client: _client,
@@ -263,9 +276,10 @@ class MailApiClient implements IMailApiClient {
   }
 
   @override
-  Future<void> markUnread({required String id, required String token}) async {
+  Future<void> markUnread(
+      {required String id, required String token, String? groupId}) async {
     final r = await AuthenticatedHttpClient.post(
-      _u('/messages/$id/unread'),
+      _u('/messages/$id/unread', groupId == null ? null : {'groupId': groupId}),
       headers: _headers(token: token),
       body: jsonEncode({}),
       client: _client,
@@ -274,9 +288,11 @@ class MailApiClient implements IMailApiClient {
   }
 
   @override
-  Future<void> archive({required String id, required String token}) async {
+  Future<void> archive(
+      {required String id, required String token, String? groupId}) async {
     final r = await AuthenticatedHttpClient.post(
-      _u('/messages/$id/archive'),
+      _u('/messages/$id/archive',
+          groupId == null ? null : {'groupId': groupId}),
       headers: _headers(token: token),
       body: jsonEncode({}),
       client: _client,
@@ -285,9 +301,10 @@ class MailApiClient implements IMailApiClient {
   }
 
   @override
-  Future<void> trash({required String id, required String token}) async {
+  Future<void> trash(
+      {required String id, required String token, String? groupId}) async {
     final r = await AuthenticatedHttpClient.post(
-      _u('/messages/$id/trash'),
+      _u('/messages/$id/trash', groupId == null ? null : {'groupId': groupId}),
       headers: _headers(token: token),
       body: jsonEncode({}),
       client: _client,
@@ -310,9 +327,10 @@ class MailApiClient implements IMailApiClient {
   }
 
   @override
-  Future<void> spam({required String id, required String token}) async {
+  Future<void> spam(
+      {required String id, required String token, String? groupId}) async {
     final r = await AuthenticatedHttpClient.post(
-      _u('/messages/$id/spam'),
+      _u('/messages/$id/spam', groupId == null ? null : {'groupId': groupId}),
       headers: _headers(token: token),
       body: jsonEncode({}),
       client: _client,
@@ -324,9 +342,11 @@ class MailApiClient implements IMailApiClient {
   Future<http.Response> downloadAttachment({
     required String attachmentId,
     required String token,
+    String? groupId,
   }) async {
     final r = await AuthenticatedHttpClient.get(
-      _u('/attachments/$attachmentId'),
+      _u('/attachments/$attachmentId',
+          groupId == null ? null : {'groupId': groupId}),
       headers: _headers(token: token),
       client: _client,
     );
@@ -341,7 +361,8 @@ class MailApiClient implements IMailApiClient {
     required String token,
   }) async {
     if (kDebugMode) {
-      debugPrint('[MailApiClient] /api/mail/send payload=${jsonEncode(payload)}');
+      debugPrint(
+          '[MailApiClient] /api/mail/send payload=${jsonEncode(payload)}');
     }
     final r = await AuthenticatedHttpClient.post(
       _u('/send'),

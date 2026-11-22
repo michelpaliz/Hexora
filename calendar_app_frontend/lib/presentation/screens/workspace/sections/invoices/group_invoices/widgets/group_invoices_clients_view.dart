@@ -163,6 +163,8 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
         c.email ?? '',
         c.phone ?? '',
         c.billing?.legalName ?? '',
+        c.effectiveCustomerType ?? '',
+        c.effectivePropertyType ?? '',
       ].join(' ').toLowerCase();
       if (!haystack.contains(q)) return false;
     }
@@ -280,11 +282,13 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                     Expanded(child: detail),
                   ])
                 : HexoraResizableSplit(
-                    preferenceKey: 'invoices_clients_split_fraction_v3',
-                    initialFraction: 0.34,
-                    minStartWidth: 320,
-                    maxStartWidth: 500,
-                    minEndWidth: 420,
+                    // Keep the client table as the primary workspace while
+                    // retaining enough room for the selected client's detail.
+                    preferenceKey: 'invoices_clients_split_fraction_v5',
+                    initialFraction: 0.40,
+                    minStartWidth: 360,
+                    maxStartWidth: 560,
+                    minEndWidth: 460,
                     start: ClientsListPanel(
                       allClients: widget.clients,
                       filteredClients: filteredClients,

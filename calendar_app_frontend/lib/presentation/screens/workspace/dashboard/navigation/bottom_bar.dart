@@ -1,7 +1,5 @@
 import 'package:hexora/theme/themes/navigation_tokens.dart';
-import 'package:hexora/presentation/shared/widgets/insights_chat_fab.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
@@ -64,18 +62,6 @@ class BottomBar extends StatelessWidget {
                       onPressed: () => state.openSection('calendar'),
                     ),
             ),
-            if (!kIsWeb && state.canSeeAdmin) ...[
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 48,
-                height: 48,
-                child: InsightsChatFab(
-                  groupId: state.group.id,
-                  group: state.group,
-                  heroTag: 'group-dashboard-insights-chat-fab',
-                ),
-              ),
-            ],
           ],
         ),
       ),

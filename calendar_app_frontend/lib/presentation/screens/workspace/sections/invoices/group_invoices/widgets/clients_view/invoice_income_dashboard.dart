@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -154,22 +155,19 @@ class _InvoiceIncomeDashboardState extends State<InvoiceIncomeDashboard> {
       final cardWidth = (constraints.maxWidth - 12 * (columns - 1)) / columns;
       final cards = [
         metric(t('Facturado', 'Billed'), money(data.billedTotal),
-            Icons.receipt_long_outlined, _blue,
+            LucideIcons.receiptText, _blue,
             note: trend(data.billedTotal, previous.billedTotal)),
         metric(t('Cobrado', 'Collected'), money(data.collectedTotal),
-            Icons.payments_outlined, _green,
+            LucideIcons.banknote, _green,
             note: trend(data.collectedTotal, previous.collectedTotal)),
-        metric(
-            t('Pendiente de cobro', 'Outstanding'),
-            money(data.outstandingTotal),
-            Icons.schedule_outlined,
-            Colors.orange,
+        metric(t('Pendiente de cobro', 'Outstanding'),
+            money(data.outstandingTotal), LucideIcons.clock, Colors.orange,
             note: t('Saldo actual de las facturas del periodo',
                 'Current balance of invoices in this period')),
         metric(
             t('Media mensual', 'Monthly average'),
             money(data.monthlyAverage),
-            Icons.bar_chart_rounded,
+            LucideIcons.chartColumn,
             Colors.amber.shade800,
             note: trend(data.monthlyAverage, previous.monthlyAverage)),
       ];
@@ -240,14 +238,13 @@ class _InvoiceIncomeDashboardState extends State<InvoiceIncomeDashboard> {
                                   .outlineVariant
                                   .withValues(alpha: .55)),
                         ),
-                        icon:
-                            const Icon(Icons.calendar_month_outlined, size: 18),
+                        icon: const Icon(LucideIcons.calendarDays, size: 18),
                         label: Row(mainAxisSize: MainAxisSize.min, children: [
                           Flexible(
                               child:
                                   Text(range, overflow: TextOverflow.ellipsis)),
                           const SizedBox(width: 8),
-                          const Icon(Icons.expand_more, size: 18),
+                          const Icon(LucideIcons.chevronDown, size: 18),
                         ]),
                       ),
                     ),
@@ -271,7 +268,7 @@ class _InvoiceIncomeDashboardState extends State<InvoiceIncomeDashboard> {
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.refresh_rounded, size: 20),
+                          : const Icon(LucideIcons.refreshCw, size: 20),
                     ),
                   ]),
             ],
@@ -395,24 +392,24 @@ class _InvoiceIncomeDashboardState extends State<InvoiceIncomeDashboard> {
   Widget _summary(InvoiceIncomeAnalytics data) {
     final entries = [
       (
-        Icons.receipt_long_outlined,
+        LucideIcons.receiptText,
         t('Facturas emitidas', 'Issued invoices'),
         '${data.invoiceCount}'
       ),
       (
-        Icons.people_outline,
+        LucideIcons.users,
         t('Clientes con actividad', 'Active clients'),
         '${data.clientTotals.length}'
       ),
       (
-        Icons.schedule,
+        LucideIcons.clock,
         t('Plazo medio de cobro', 'Average payment time'),
         data.averagePaymentDays == null
             ? '—'
             : '${data.averagePaymentDays!.round()} ${t('días', 'days')}'
       ),
       (
-        Icons.percent,
+        LucideIcons.percent,
         t('Ratio de cobro', 'Collection ratio'),
         data.collectionRatio == null
             ? '—'

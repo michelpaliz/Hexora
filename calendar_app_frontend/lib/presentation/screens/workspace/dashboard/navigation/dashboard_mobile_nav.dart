@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 
@@ -53,7 +54,7 @@ class DashboardMobileNav extends StatelessWidget {
             children: [
               Expanded(
                 child: _DashboardNavItem(
-                  icon: Icons.home_rounded,
+                  icon: LucideIcons.house,
                   label: l.home,
                   selected: !primarySections.contains(activeSection),
                   onTap: () => select(Sections.home),
@@ -61,7 +62,7 @@ class DashboardMobileNav extends StatelessWidget {
               ),
               Expanded(
                 child: _DashboardNavItem(
-                  icon: Icons.mail_outline_rounded,
+                  icon: LucideIcons.mail,
                   label: es ? 'Correo' : 'Email',
                   selected: activeSection == Sections.emails,
                   onTap: () => select(Sections.emails),
@@ -69,7 +70,7 @@ class DashboardMobileNav extends StatelessWidget {
               ),
               Expanded(
                 child: _DashboardNavItem(
-                  icon: Icons.access_time_rounded,
+                  icon: LucideIcons.users,
                   label: es ? 'Trabajadores' : 'Workers',
                   selected: activeSection == Sections.workers,
                   onTap: () => select(Sections.workers),
@@ -78,7 +79,7 @@ class DashboardMobileNav extends StatelessWidget {
               if (state.canSeeAdmin)
                 Expanded(
                   child: _DashboardNavItem(
-                    icon: Icons.auto_awesome_rounded,
+                    icon: LucideIcons.sparkles,
                     label: es ? 'IA' : 'AI',
                     tooltip: l.insightsChatFabTooltip,
                     selected: activeSection == Sections.chat,
@@ -87,7 +88,7 @@ class DashboardMobileNav extends StatelessWidget {
                 ),
               Expanded(
                 child: _DashboardNavItem(
-                  icon: Icons.forum_rounded,
+                  icon: LucideIcons.messageCircle,
                   label: es ? 'Chat' : 'Chat',
                   selected: activeSection == Sections.businessChat,
                   onTap: () => select(Sections.businessChat),

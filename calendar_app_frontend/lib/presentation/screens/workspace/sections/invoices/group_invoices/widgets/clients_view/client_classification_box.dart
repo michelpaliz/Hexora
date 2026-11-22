@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -69,7 +70,7 @@ class _ClientClassificationBoxState extends State<ClientClassificationBox> {
                     ? () => setState(() => _expanded = !_expanded)
                     : null,
                 icon: Icon(
-                  _expanded ? Icons.expand_less : Icons.expand_more,
+                  _expanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
                 ),
               ),
             ],

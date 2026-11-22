@@ -370,5 +370,24 @@
                 }
             }
         ]
+    },
+    "window.titleBarStyle": "custom",
+    "workbench.colorCustomizations": {
+        "window.activeBorder": "#1677FF",
+        "window.inactiveBorder": "#A8C7FA",
+        "titleBar.activeBackground": "#0B5ED7",
+        "titleBar.activeForeground": "#FFFFFF",
+        "titleBar.inactiveBackground": "#DCEBFF",
+        "titleBar.inactiveForeground": "#23436B",
+        "activityBar.background": "#0B5ED7",
+        "activityBar.foreground": "#FFFFFF",
+        "activityBar.inactiveForeground": "#CFE2FF",
+        "statusBar.background": "#084298",
+        "statusBar.foreground": "#FFFFFF",
+        "panel.border": "#9CC3FF",
+        "sideBar.border": "#9CC3FF",
+        "editorGroup.border": "#9CC3FF",
+        "tab.activeBorderTop": "#1677FF",
+        "tab.activeBorder": "#1677FF"
     }
 }

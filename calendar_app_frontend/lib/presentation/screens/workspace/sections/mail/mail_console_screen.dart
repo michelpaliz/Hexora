@@ -166,6 +166,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final domain = context.read<MailDomain>();
+      domain.setGroupScope(_currentGroupId());
       final currentQuery = (domain.threadsState.query ?? '').trim();
       if (currentQuery.isNotEmpty) {
         _threadSearchCtrl?.text = currentQuery;
@@ -174,6 +175,22 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       if (_selectedThreadKey != null) {
         _selectThread(_selectedThreadKey!);
       }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // GroupDashboardState changes while this embedded screen is kept alive.
+    // Re-scope the shared mail domain after the provider update and reload only
+    // the newly active business mailbox.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final domain = context.read<MailDomain>();
+      final before = domain.scopeGroupId;
+      final current = _currentGroupId();
+      domain.setGroupScope(current);
+      if (before != domain.scopeGroupId) _loadThreads(refresh: true);
     });
   }
 

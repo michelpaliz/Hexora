@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/navigation/fab/fab_action.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
@@ -36,7 +37,7 @@ class ContextualFab extends StatelessWidget {
       return FloatingActionButton.extended(
         tooltip: extendedLabel,
         onPressed: action.onPressed,
-        icon: const Icon(Icons.add),
+        icon: const Icon(LucideIcons.plus),
         label: Text(extendedLabel!),
       );
     }

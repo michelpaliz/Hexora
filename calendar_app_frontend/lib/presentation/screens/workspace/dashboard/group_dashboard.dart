@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/models/groups/group.dart';
-import 'package:hexora/presentation/shared/widgets/insights_chat_fab.dart';
-import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'state/group_dashboard_state.dart';
@@ -35,19 +32,6 @@ class GroupDashboard extends StatelessWidget {
           ),
           bottomNavigationBar:
               state.showBottomBar ? DashboardMobileNav(state: state) : null,
-          floatingActionButton:
-              kIsWeb || state.showBottomBar || !state.canSeeAdmin
-                  ? null
-                  : PremiumFeatureGate(
-                      group: group,
-                      feature: PremiumFeatureRequest.aiChat,
-                      child: InsightsChatFab(
-                        groupId: group.id,
-                        group: group,
-                        heroTag: 'group-dashboard-insights-chat-fab',
-                      ),
-                    ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
       },
     );

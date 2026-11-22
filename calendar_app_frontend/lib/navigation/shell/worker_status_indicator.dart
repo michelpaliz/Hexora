@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -135,8 +136,7 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
         builder: (context, fg) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.people_alt_outlined,
-                size: NavigationTokens.iconSize, color: fg),
+            Icon(LucideIcons.users, size: NavigationTokens.iconSize, color: fg),
             const SizedBox(width: 6),
             Text(
               '$_activeCount',
@@ -156,7 +156,7 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
             ],
             if (!compact) ...[
               const SizedBox(width: 2),
-              Icon(Icons.expand_more_rounded, size: 16, color: fg),
+              Icon(LucideIcons.chevronDown, size: 16, color: fg),
             ],
           ],
         ),
@@ -171,7 +171,7 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
     return [
       if (_loading)
         _StatusRow(
-          icon: Icons.badge_outlined,
+          icon: LucideIcons.idCard,
           label: _isSpanish ? 'Trabajando ahora' : 'Working now',
           trailing: const SizedBox.square(
             dimension: 16,
@@ -180,7 +180,7 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
         )
       else
         _StatusRow(
-          icon: Icons.badge_outlined,
+          icon: LucideIcons.idCard,
           label: _isSpanish ? 'Trabajando ahora' : 'Working now',
           count: _hasError ? null : _activeCount,
         ),
@@ -195,21 +195,21 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
           ),
         ),
         MenuItemButton(
-          leadingIcon: const Icon(Icons.refresh_rounded, size: 16),
+          leadingIcon: const Icon(LucideIcons.refreshCw, size: 16),
           onPressed: _retry,
           child: Text(_isSpanish ? 'Reintentar' : 'Retry'),
         ),
       ],
       const Divider(height: 8),
       _StatusRow(
-        icon: Icons.online_prediction_outlined,
+        icon: LucideIcons.radio,
         label: _isSpanish ? 'Conectados' : 'Online',
         count: onlineCount,
       ),
       const Divider(height: 8),
       MenuItemButton(
-        leadingIcon: const Icon(Icons.group_outlined, size: 16),
-        trailingIcon: const Icon(Icons.chevron_right_rounded, size: 18),
+        leadingIcon: const Icon(LucideIcons.users, size: 16),
+        trailingIcon: const Icon(LucideIcons.chevronRight, size: 18),
         onPressed: widget.onOpenWorkers,
         child: Text(_isSpanish ? 'Ver trabajadores' : 'View workers'),
       ),

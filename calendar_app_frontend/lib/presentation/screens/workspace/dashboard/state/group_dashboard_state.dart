@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -193,6 +194,28 @@ class GroupDashboardState extends ChangeNotifier {
     final userId = user?.id;
     if (userId != null) unawaited(_rememberSection(userId, section));
     notifyListeners();
+  }
+
+  /// Opens the existing assistant workspace and submits [prompt] into the
+  /// same business-scoped conversation used by the sidebar entry point.
+  void askHexoraFromHome(String prompt) {
+    final text = prompt.trim();
+    if (text.isEmpty || !canSeeAdmin) return;
+    selectSection(Sections.chat);
+    unawaited(_submitHomeAssistantPrompt(text));
+  }
+
+  Future<void> _submitHomeAssistantPrompt(String prompt) async {
+    final runtime = InsightsChatRuntime.instanceFor('panel::${group.id}');
+    await runtime.ensureLoaded(context);
+    if (!context.mounted) return;
+    runtime.setInteractionMode(InsightsInteractionMode.openQuestions);
+    await runtime.send(
+      context: context,
+      text: prompt,
+      groupId: group.id,
+      source: InsightsSendSource.typedInput,
+    );
   }
 
   void openInvoicesWorkspace({
@@ -420,57 +443,42 @@ class GroupDashboardState extends ChangeNotifier {
     final l = AppLocalizations.of(context)!;
     final es = l.localeName.startsWith('es');
     final defaults = switch (section) {
-      Sections.home => (Icons.home_outlined, 'Home'),
-      Sections.invoices => (
-          Icons.receipt_long_outlined,
-          es ? 'Ingresos' : 'Income'
-        ),
+      Sections.home => (LucideIcons.house, 'Home'),
+      Sections.invoices => (LucideIcons.fileText, es ? 'Ingresos' : 'Income'),
       Sections.invoiceClients => (
-          Icons.people_alt_outlined,
+          LucideIcons.users,
           es ? 'Facturas por cliente' : 'Invoices by client'
         ),
       Sections.expenses => (
-          Icons.trending_down_rounded,
+          LucideIcons.trendingDown,
           es ? 'Gastos' : 'Expenses'
         ),
-      Sections.enableBanking => (
-          Icons.account_balance_outlined,
-          es ? 'Banco' : 'Bank'
-        ),
-      Sections.calendar => (Icons.calendar_month_rounded, l.calendar),
+      Sections.enableBanking => (LucideIcons.landmark, es ? 'Banco' : 'Bank'),
+      Sections.calendar => (LucideIcons.calendarDays, l.calendar),
       Sections.quickNotes => (
-          Icons.view_kanban_outlined,
+          LucideIcons.squareKanban,
           es ? 'Notas rápidas' : 'Quick notes'
         ),
       Sections.budgets => (
-          Icons.description_outlined,
+          LucideIcons.fileText,
           es ? 'Propuestas' : 'Proposals'
         ),
-      Sections.businessChat => (Icons.chat_bubble_outline_rounded, 'Chat'),
-      Sections.maps => (Icons.map_outlined, es ? 'Mapa' : 'Map'),
-      Sections.emails => (Icons.email_outlined, 'Emails'),
-      Sections.workers => (
-          Icons.access_time_rounded,
-          es ? 'Trabajadores' : 'Workers'
-        ),
+      Sections.businessChat => (LucideIcons.messageCircle, 'Chat'),
+      Sections.maps => (LucideIcons.map, es ? 'Mapa' : 'Map'),
+      Sections.emails => (LucideIcons.mail, 'Emails'),
+      Sections.workers => (LucideIcons.users, es ? 'Trabajadores' : 'Workers'),
       Sections.chat => (
-          Icons.auto_awesome_outlined,
+          LucideIcons.sparkles,
           es ? 'Asistente IA' : 'AI assistant'
         ),
       Sections.telegram => (Icons.telegram, 'Telegram'),
-      Sections.settings => (
-          Icons.settings_outlined,
-          es ? 'Ajustes' : 'Settings'
-        ),
+      Sections.settings => (LucideIcons.settings, es ? 'Ajustes' : 'Settings'),
       Sections.notifications => (
           Icons.notifications_none_rounded,
           l.notifications
         ),
       Sections.agenda => (Icons.event_note_outlined, es ? 'Agenda' : 'Agenda'),
-      Sections.services => (
-          Icons.people_outline_rounded,
-          es ? 'Clientes' : 'Clients'
-        ),
+      Sections.services => (LucideIcons.users, es ? 'Clientes' : 'Clients'),
       Sections.members => (Icons.groups_outlined, es ? 'Miembros' : 'Members'),
       _ => (Icons.dashboard_outlined, section),
     };
@@ -623,7 +631,7 @@ class GroupDashboardState extends ChangeNotifier {
             if (ma.onOpenFolderMenu != null)
               IconButton(
                 style: iconButtonStyle,
-                icon: const Icon(Icons.menu_rounded),
+                icon: const Icon(LucideIcons.panelLeft),
                 tooltip: l.mailConsoleFoldersTitle,
                 onPressed: ma.onOpenFolderMenu,
               ),

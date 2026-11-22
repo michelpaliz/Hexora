@@ -1,6 +1,7 @@
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -173,7 +174,7 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
     }
     if (_contracts.isEmpty) {
       return EmptyView(
-        icon: Icons.description_outlined,
+        icon: LucideIcons.fileText,
         title: l.contractsEmptyTitle,
         subtitle: l.contractsEmptySubtitle,
       );
@@ -196,7 +197,7 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline, color: cs.error),
+                  Icon(LucideIcons.circleAlert, color: cs.error),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -385,7 +386,7 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
                   IconButton(
                     tooltip: l.tryAgain,
                     onPressed: _loading ? null : _loadContracts,
-                    icon: const Icon(Icons.refresh_rounded),
+                    icon: const Icon(LucideIcons.refreshCw),
                   ),
                   FilledButton.tonalIcon(
                     onPressed: _uploading ? null : _handleUpload,
@@ -395,7 +396,7 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.upload_file_outlined),
+                        : const Icon(LucideIcons.upload),
                     label: Text(l.contractUploadAction),
                   ),
                 ],
@@ -467,7 +468,7 @@ class _ContractsErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.folder_off_outlined, size: 52, color: cs.error),
+            Icon(LucideIcons.folderX, size: 52, color: cs.error),
             const SizedBox(height: 12),
             Text(
               l.contractsLoadFailedTitle,
@@ -482,7 +483,7 @@ class _ContractsErrorState extends StatelessWidget {
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
+              icon: const Icon(LucideIcons.refreshCw),
               label: Text(l.tryAgain),
             ),
           ],
@@ -553,17 +554,17 @@ class _ClientContractCardState extends State<_ClientContractCard> {
       children: [
         _ContractIconAction(
           tooltip: l.contractViewPdfAction,
-          icon: Icons.picture_as_pdf_outlined,
+          icon: LucideIcons.fileText,
           onPressed: busy ? null : widget.onView,
         ),
         _ContractIconAction(
           tooltip: l.contractDownloadAction,
-          icon: Icons.download_rounded,
+          icon: LucideIcons.download,
           onPressed: busy ? null : widget.onDownload,
         ),
         _ContractIconAction(
           tooltip: l.edit,
-          icon: Icons.edit_outlined,
+          icon: LucideIcons.pencil,
           onPressed: busy ? null : widget.onEdit,
         ),
         _ContractIconAction(
@@ -571,13 +572,13 @@ class _ClientContractCardState extends State<_ClientContractCard> {
               ? l.contractCurrentBadge
               : l.contractMarkCurrentAction,
           icon: widget.onMarkCurrent == null
-              ? Icons.star_rounded
-              : Icons.star_outline_rounded,
+              ? LucideIcons.star
+              : LucideIcons.star,
           onPressed: busy ? null : widget.onMarkCurrent,
         ),
         _ContractIconAction(
           tooltip: l.delete,
-          icon: Icons.delete_outline_rounded,
+          icon: LucideIcons.trash2,
           destructive: true,
           onPressed: busy ? null : widget.onDelete,
         ),
@@ -585,8 +586,7 @@ class _ClientContractCardState extends State<_ClientContractCard> {
           tooltip: _expanded
               ? l.clientDetailsCollapseTooltip
               : l.clientDetailsExpandTooltip,
-          icon:
-              _expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+          icon: _expanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
           onPressed: () => setState(() => _expanded = !_expanded),
         ),
       ],
@@ -620,60 +620,60 @@ class _ClientContractCardState extends State<_ClientContractCard> {
     final chips = <Widget>[
       _ContractMetaChip(
         label: clientContractStatusLabel(l, contract.status),
-        icon: Icons.circle,
+        icon: LucideIcons.circle,
       ),
       if ((contract.contractType ?? '').trim().isNotEmpty)
         _ContractMetaChip(
           label: clientContractTypeLabel(l, contract.contractType),
-          icon: Icons.description_outlined,
+          icon: LucideIcons.fileText,
         ),
       if ((contract.version ?? '').trim().isNotEmpty)
         _ContractMetaChip(
           label: '${l.contractVersionLabel}: ${contract.version!.trim()}',
-          icon: Icons.layers_outlined,
+          icon: LucideIcons.layers,
         ),
       _ContractMetaChip(
         label:
             '${l.startDate}: ${formatClientContractDate(l, contract.startDate)}',
-        icon: Icons.play_circle_outline_rounded,
+        icon: LucideIcons.circlePlay,
       ),
       _ContractMetaChip(
         label: '${l.endDate}: ${formatClientContractDate(l, contract.endDate)}',
-        icon: Icons.stop_circle_outlined,
+        icon: LucideIcons.circleStop,
       ),
       _ContractMetaChip(
         label:
             '${l.contractRenewalDateLabel}: ${formatClientContractDate(l, contract.renewalDate)}',
-        icon: Icons.autorenew_rounded,
+        icon: LucideIcons.refreshCw,
       ),
       _ContractMetaChip(
         label: '${l.contractUploadedAtLabel}: $uploadedLabel',
-        icon: Icons.upload_file_outlined,
+        icon: LucideIcons.upload,
       ),
       _ContractMetaChip(
         label: formatClientContractSize(contract.size),
-        icon: Icons.sd_storage_outlined,
+        icon: LucideIcons.hardDrive,
       ),
       if (contract.isCurrent)
         _StatusPill(
           label: l.contractCurrentBadge,
           background: cs.primaryContainer,
           foreground: cs.onPrimaryContainer,
-          icon: Icons.verified_rounded,
+          icon: LucideIcons.badgeCheck,
         ),
       if (expired)
         _StatusPill(
           label: l.contractExpiredBadge,
           background: cs.errorContainer,
           foreground: cs.onErrorContainer,
-          icon: Icons.warning_amber_rounded,
+          icon: LucideIcons.triangleAlert,
         ),
       if (expiringSoon)
         _StatusPill(
           label: l.contractExpiringSoonBadge,
           background: cs.tertiaryContainer,
           foreground: cs.onTertiaryContainer,
-          icon: Icons.schedule_rounded,
+          icon: LucideIcons.clock,
         ),
     ];
 
@@ -690,7 +690,7 @@ class _ClientContractCardState extends State<_ClientContractCard> {
         border: Border.all(color: borderColor),
       ),
       child: Icon(
-        Icons.picture_as_pdf_outlined,
+        LucideIcons.fileText,
         size: 20,
         color: expired
             ? cs.error
@@ -704,7 +704,7 @@ class _ClientContractCardState extends State<_ClientContractCard> {
       return CompactDocumentRow(
         title: contract.displayTitle,
         metadata: contract.fileName,
-        icon: Icons.picture_as_pdf_outlined,
+        icon: LucideIcons.fileText,
         previewLabel: l.contractViewPdfAction,
         onPreview: busy ? null : widget.onView,
         previewBusy: busy,
@@ -717,10 +717,10 @@ class _ClientContractCardState extends State<_ClientContractCard> {
             ].join(' · '),
             child: Icon(
                 expired || expiringSoon
-                    ? Icons.warning_amber_rounded
+                    ? LucideIcons.triangleAlert
                     : contract.isCurrent
-                        ? Icons.verified_outlined
-                        : Icons.description_outlined,
+                        ? LucideIcons.badgeCheck
+                        : LucideIcons.fileText,
                 size: 14,
                 color: expired ? cs.error : cs.onSurfaceVariant)),
         actions: [

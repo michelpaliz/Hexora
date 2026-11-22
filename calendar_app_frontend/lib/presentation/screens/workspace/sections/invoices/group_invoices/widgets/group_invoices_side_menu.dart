@@ -94,6 +94,10 @@ class GroupInvoicesSideMenu extends StatelessWidget {
         .languageCode
         .toLowerCase()
         .startsWith('es');
+    final customersLabel = isEs ? 'Clientes' : 'Customers';
+    final incomeAnalysisLabel =
+        isEs ? 'Análisis de ingresos' : 'Income analysis';
+    final recurringLabel = isEs ? 'Recurrentes' : 'Recurring';
     const childIndent = 0.0;
 
     if (collapsed) {
@@ -106,7 +110,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
         (
           key: 'clients',
           icon: Icons.people_outline,
-          label: 'Clientes',
+          label: customersLabel,
           destinations: [
             CollapsedNavigationDestination(
               icon: Icons.people_outline,
@@ -122,14 +126,16 @@ class GroupInvoicesSideMenu extends StatelessWidget {
             ),
             CollapsedNavigationDestination(
               icon: Icons.insights_outlined,
-              label: 'Análisis de ingresos',
+              label: incomeAnalysisLabel,
               selected: selectedMenu == 'client_invoice_stats',
               onTap: () => onMenuChanged('client_invoice_stats'),
             ),
             if (showOperations)
               CollapsedNavigationDestination(
                 icon: Icons.design_services_outlined,
-                label: isEs ? 'Crear cliente o servicios' : 'Create client or services',
+                label: isEs
+                    ? 'Crear cliente o servicios'
+                    : 'Create client or services',
                 selected: selectedMenu == 'operations',
                 onTap: () => onMenuChanged('operations'),
               ),
@@ -155,7 +161,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
             ),
             CollapsedNavigationDestination(
               icon: Icons.sync_alt_rounded,
-              label: 'Recurrentes',
+              label: recurringLabel,
               selected: selectedMenu == 'recurring',
               onTap: () => onMenuChanged('recurring'),
             ),
@@ -204,7 +210,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
             ),
             CollapsedNavigationDestination(
               icon: Icons.sync_alt_rounded,
-              label: 'Recurrentes',
+              label: recurringLabel,
               selected: selectedMenu == 'recurring_receipts',
               onTap: () => onMenuChanged('recurring_receipts'),
             ),
@@ -268,7 +274,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     GroupInvoicesNavSection(
-                      title: 'Clientes',
+                      title: customersLabel,
                       icon: Icons.people_outline,
                       expanded: clientsExpanded,
                       onToggle: onToggleClientsExpanded,
@@ -292,7 +298,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                           ),
                           GroupInvoicesSubMenuItem(
                             icon: Icons.insights_outlined,
-                            label: 'Análisis de ingresos',
+                            label: incomeAnalysisLabel,
                             selected: selectedMenu == 'client_invoice_stats',
                             indent: childIndent,
                             onPressed: () =>
@@ -301,7 +307,9 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                           if (showOperations)
                             GroupInvoicesSubMenuItem(
                               icon: Icons.design_services_outlined,
-                              label: isEs ? 'Crear cliente o servicios' : 'Create client or services',
+                              label: isEs
+                                  ? 'Crear cliente o servicios'
+                                  : 'Create client or services',
                               selected: selectedMenu == 'operations',
                               indent: childIndent,
                               onPressed: () => onMenuChanged('operations'),
@@ -341,7 +349,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                           ),
                           GroupInvoicesSubMenuItem(
                             icon: Icons.repeat_rounded,
-                            label: 'Recurrentes',
+                            label: recurringLabel,
                             selected: selectedMenu == 'recurring',
                             indent: childIndent,
                             onPressed: () => onMenuChanged('recurring'),
@@ -410,7 +418,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                           ),
                           GroupInvoicesSubMenuItem(
                             icon: Icons.repeat_rounded,
-                            label: 'Recurrentes',
+                            label: recurringLabel,
                             selected: selectedMenu == 'recurring_receipts',
                             indent: childIndent,
                             onPressed: () =>
@@ -430,7 +438,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                     if (_showLegacyClientsInInvoiceSideMenu) ...[
                       const SizedBox(height: 8),
                       GroupInvoicesNavSection(
-                        title: 'Clientes',
+                        title: customersLabel,
                         icon: Icons.people_outline,
                         expanded: clientsExpanded,
                         onToggle: onToggleClientsExpanded,
@@ -445,7 +453,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                             ),
                             GroupInvoicesSubMenuItem(
                               icon: Icons.insights_outlined,
-                              label: 'Análisis de ingresos',
+                              label: incomeAnalysisLabel,
                               selected: selectedMenu == 'client_invoice_stats',
                               onPressed: () =>
                                   onMenuChanged('client_invoice_stats'),

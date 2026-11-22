@@ -252,13 +252,19 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
     final oldStatus = note['status'];
     setState(() => note['status'] = status);
     try {
+      // Send the same core fields used by the edit flow. Some API versions
+      // validate the complete note document when changing its status rather
+      // than accepting a status-only patch.
+      final payload = <String, dynamic>{
+        'title': note['title']?.toString().trim() ?? '',
+        'details': note['details']?.toString().trim() ?? '',
+        'status': status,
+        if (reason != null) 'reason': reason,
+      };
       final response = await _api.update(
         widget.group.id,
         _noteId(note),
-        {
-          'status': status,
-          if (reason != null) 'reason': reason,
-        },
+        payload,
       );
       final updated = response['note'];
       if (updated is Map) {

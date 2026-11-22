@@ -16,6 +16,12 @@ class MailRepository implements IMailRepository {
 
   final IMailApiClient _api;
   final TokenSupplier _token;
+  String? _scopeGroupId;
+
+  void setGroupScope(String? groupId) {
+    final trimmed = groupId?.trim();
+    _scopeGroupId = trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
 
   Future<String> _requireToken() async {
     final token = await _token();
@@ -33,6 +39,7 @@ class MailRepository implements IMailRepository {
     return _api.getMessages(
       folder: folder.wireName,
       token: token,
+      groupId: _scopeGroupId,
       limit: limit,
       cursor: cursor,
     );
@@ -41,7 +48,7 @@ class MailRepository implements IMailRepository {
   @override
   Future<MailMessage> getMessage(String id) async {
     final token = await _requireToken();
-    return _api.getMessage(id: id, token: token);
+    return _api.getMessage(id: id, token: token, groupId: _scopeGroupId);
   }
 
   @override
@@ -57,6 +64,7 @@ class MailRepository implements IMailRepository {
     final token = await _requireToken();
     return _api.searchMessages(
       token: token,
+      groupId: _scopeGroupId,
       query: query,
       folder: folder?.wireName,
       unread: unread,
@@ -78,6 +86,7 @@ class MailRepository implements IMailRepository {
     return _api.getThreads(
       folder: folder.wireName,
       token: token,
+      groupId: _scopeGroupId,
       limit: limit,
       cursor: cursor,
       query: query,
@@ -87,37 +96,41 @@ class MailRepository implements IMailRepository {
   @override
   Future<MailThreadDetail> getThread(String threadKey) async {
     final token = await _requireToken();
-    return _api.getThread(threadKey: threadKey, token: token);
+    return _api.getThread(
+      threadKey: threadKey,
+      token: token,
+      groupId: _scopeGroupId,
+    );
   }
 
   @override
   Future<void> markRead(String id) async {
     final token = await _requireToken();
-    await _api.markRead(id: id, token: token);
+    await _api.markRead(id: id, token: token, groupId: _scopeGroupId);
   }
 
   @override
   Future<void> markUnread(String id) async {
     final token = await _requireToken();
-    await _api.markUnread(id: id, token: token);
+    await _api.markUnread(id: id, token: token, groupId: _scopeGroupId);
   }
 
   @override
   Future<void> archive(String id) async {
     final token = await _requireToken();
-    await _api.archive(id: id, token: token);
+    await _api.archive(id: id, token: token, groupId: _scopeGroupId);
   }
 
   @override
   Future<void> trash(String id) async {
     final token = await _requireToken();
-    await _api.trash(id: id, token: token);
+    await _api.trash(id: id, token: token, groupId: _scopeGroupId);
   }
 
   @override
   Future<void> spam(String id) async {
     final token = await _requireToken();
-    await _api.spam(id: id, token: token);
+    await _api.spam(id: id, token: token, groupId: _scopeGroupId);
   }
 
   @override
@@ -126,6 +139,7 @@ class MailRepository implements IMailRepository {
     return _api.downloadAttachment(
       attachmentId: attachmentId,
       token: token,
+      groupId: _scopeGroupId,
     );
   }
 

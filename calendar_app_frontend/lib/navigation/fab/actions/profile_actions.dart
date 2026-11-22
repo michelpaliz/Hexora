@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:iconsax/iconsax.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 Future<void> openProfileActions(BuildContext context, Color accent) async {
@@ -18,7 +18,7 @@ Future<void> openProfileActions(BuildContext context, Color accent) async {
   }
 
   await showModalBottomSheet<void>(
-      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
+    sheetAnimationStyle: HexoraMotion.sheetStyle(context),
     context: context,
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surface,
@@ -29,7 +29,7 @@ Future<void> openProfileActions(BuildContext context, Color accent) async {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Iconsax.edit, color: accent),
+              leading: Icon(LucideIcons.pencil, color: accent),
               title: Text(loc.edit),
               onTap: () {
                 Navigator.pop(ctx);
@@ -37,7 +37,7 @@ Future<void> openProfileActions(BuildContext context, Color accent) async {
               },
             ),
             ListTile(
-              leading: Icon(Icons.ios_share_rounded, color: onVar),
+              leading: Icon(LucideIcons.share2, color: onVar),
               title: Text(loc.share),
               onTap: () {
                 Navigator.pop(ctx);
@@ -46,7 +46,7 @@ Future<void> openProfileActions(BuildContext context, Color accent) async {
               },
             ),
             ListTile(
-              leading: Icon(Icons.person_add_alt_1_rounded, color: onVar),
+              leading: Icon(LucideIcons.userPlus, color: onVar),
               title: Text(loc.addToContacts),
               onTap: () {
                 Navigator.pop(ctx);

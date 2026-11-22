@@ -95,6 +95,44 @@ class AvatarUtils {
         ? CachedNetworkImageProvider(imageUrl)
         : null;
 
+    if (img == null) {
+      final cs = Theme.of(context).colorScheme;
+      final base = backgroundColor ?? cs.primary;
+      return Container(
+        width: radius * 2,
+        height: radius * 2,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(base, Colors.white, .16)!,
+              Color.lerp(base, Colors.black, .12)!,
+            ],
+          ),
+          border: borderWidth > 0
+              ? Border.all(
+                  color: borderColor ?? Colors.white.withValues(alpha: .72),
+                  width: borderWidth,
+                )
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: base.withValues(alpha: .22),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(
+          icon == Icons.groups ? Icons.business_rounded : icon,
+          size: radius * .92,
+          color: Colors.white,
+        ),
+      );
+    }
+
     return _circleAvatar(
       context: context,
       radius: radius,

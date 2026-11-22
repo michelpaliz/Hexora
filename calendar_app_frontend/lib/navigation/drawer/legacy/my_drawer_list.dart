@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -18,15 +19,19 @@ enum DrawerSections { calendar, settings, logOut }
 final List<Map<String, dynamic>> menuItems = [
   {
     'section': DrawerSections.calendar,
-    'icon': Icons.calendar_month,
+    'icon': LucideIcons.calendarDays,
     'isSelected': false
   },
   {
     'section': DrawerSections.settings,
-    'icon': Icons.settings,
+    'icon': LucideIcons.settings,
     'isSelected': false
   },
-  {'section': DrawerSections.logOut, 'icon': Icons.logout, 'isSelected': false},
+  {
+    'section': DrawerSections.logOut,
+    'icon': LucideIcons.logOut,
+    'isSelected': false
+  },
 ];
 
 //* UI FOR THE DRAWER LIST */

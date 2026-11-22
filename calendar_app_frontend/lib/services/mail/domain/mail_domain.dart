@@ -5,12 +5,39 @@ import 'package:hexora/models/mail/mail_page.dart';
 import 'package:hexora/models/mail/mail_thread.dart';
 import 'package:hexora/services/mail/models/mail_requests.dart';
 import 'package:hexora/services/mail/repository/i_mail_repository.dart';
+import 'package:hexora/services/mail/repository/mail_repository.dart';
 import 'package:http/http.dart' as http;
 
 class MailDomain extends ChangeNotifier {
   MailDomain({required IMailRepository repository}) : _repository = repository;
 
   final IMailRepository _repository;
+
+  String? _scopeGroupId;
+  String? get scopeGroupId => _scopeGroupId;
+
+  /// Mail state is business-scoped. Clear all cached threads/messages when
+  /// the active business changes so data cannot bleed between workspaces.
+  void setGroupScope(String? groupId) {
+    final trimmed = groupId?.trim();
+    final next = trimmed == null || trimmed.isEmpty ? null : trimmed;
+    if (_scopeGroupId == next) return;
+    _scopeGroupId = next;
+    if (_repository is MailRepository) {
+      _repository.setGroupScope(next);
+    }
+    _folderStates
+      ..clear()
+      ..addAll({
+        for (final folder in MailFolder.values) folder: const MailFolderState(),
+      });
+    _threadsState = const MailThreadsState();
+    _searchState = const MailSearchState();
+    _messageStates.clear();
+    _threadStates.clear();
+    _messageCache.clear();
+    notifyListeners();
+  }
 
   MailFolder _currentFolder = MailFolder.inbox;
   MailFolder get currentFolder => _currentFolder;
@@ -86,9 +113,8 @@ class MailDomain extends ChangeNotifier {
         cursor: initial ? null : state.nextCursor,
       );
 
-      final nextMessages = initial
-          ? page.items
-          : [...state.messages, ...page.items];
+      final nextMessages =
+          initial ? page.items : [...state.messages, ...page.items];
 
       for (final message in page.items) {
         _messageCache[message.id] = message;
@@ -229,18 +255,15 @@ class MailDomain extends ChangeNotifier {
       final page = await _repository.searchMessages(
         query: trimmed,
         folder: _searchState.filters.folder,
-        unread: _searchState.filters.unreadOnly
-            ? true
-            : null,
+        unread: _searchState.filters.unreadOnly ? true : null,
         after: _searchState.filters.after,
         before: _searchState.filters.before,
         limit: 25,
         cursor: refresh ? null : _searchState.nextCursor,
       );
 
-      final nextResults = refresh
-          ? page.items
-          : [..._searchState.results, ...page.items];
+      final nextResults =
+          refresh ? page.items : [..._searchState.results, ...page.items];
       for (final message in page.items) {
         _messageCache[message.id] = message;
       }
@@ -268,13 +291,15 @@ class MailDomain extends ChangeNotifier {
     bool refresh = false,
     String? query,
   }) async {
-    if ((_threadsState.loading || _threadsState.loadingMore) && !refresh) return;
+    if ((_threadsState.loading || _threadsState.loadingMore) && !refresh)
+      return;
 
     final currentQuery = (_threadsState.query ?? '').trim();
     final effectiveQuery = (query ?? currentQuery).trim();
     final changedQuery = effectiveQuery != currentQuery;
 
-    final initial = refresh || !_threadsState.hasRequested ||
+    final initial = refresh ||
+        !_threadsState.hasRequested ||
         _threadsState.folder != folder ||
         changedQuery;
 
@@ -310,9 +335,8 @@ class MailDomain extends ChangeNotifier {
 
       if (!identical(requestMarker, _threadsRequestMarker)) return;
 
-      final nextThreads = initial
-          ? page.items
-          : [..._threadsState.threads, ...page.items];
+      final nextThreads =
+          initial ? page.items : [..._threadsState.threads, ...page.items];
 
       _threadsState = _threadsState.copyWith(
         loading: false,
@@ -398,8 +422,7 @@ class MailDomain extends ChangeNotifier {
     }
 
     _updateMessageEverywhere(
-      cached?.copyWith(unread: unread) ??
-          MailMessage(id: id, unread: unread),
+      cached?.copyWith(unread: unread) ?? MailMessage(id: id, unread: unread),
       addIfMissing: false,
     );
   }
@@ -452,7 +475,8 @@ class MailDomain extends ChangeNotifier {
       _folderStates[entry.key] = state.copyWith(messages: next);
     }
 
-    final searchIdx = _searchState.results.indexWhere((m) => m.id == message.id);
+    final searchIdx =
+        _searchState.results.indexWhere((m) => m.id == message.id);
     if (searchIdx != -1) {
       final next = [..._searchState.results];
       next[searchIdx] = message;

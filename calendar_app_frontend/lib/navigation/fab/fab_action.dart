@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
-import 'package:iconsax/iconsax.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'actions/group_event_actions.dart';
 import 'actions/notification_actions.dart';
@@ -22,7 +22,7 @@ FabAction resolveFabAction({
   // route with Group argument → add event to that group
   if (groupArg != null) {
     return FabAction(
-      icon: Iconsax.calendar_add,
+      icon: LucideIcons.calendarPlus,
       onPressed: () =>
           Navigator.pushNamed(context, AppRoutes.addEvent, arguments: groupArg),
     );
@@ -31,7 +31,7 @@ FabAction resolveFabAction({
   // home (or empty) → create group
   if (routeName == AppRoutes.homePage || routeName.isEmpty) {
     return FabAction(
-      icon: Iconsax.add_circle,
+      icon: LucideIcons.circlePlus,
       onPressed: () => Navigator.pushNamed(context, AppRoutes.createGroupData),
     );
   }
@@ -39,7 +39,7 @@ FabAction resolveFabAction({
   // agenda → pick group then add event
   if (routeName == AppRoutes.agenda) {
     return FabAction(
-      icon: Iconsax.calendar_add,
+      icon: LucideIcons.calendarPlus,
       onPressed: () => pickGroupAndAddEvent(context),
     );
   }
@@ -47,7 +47,7 @@ FabAction resolveFabAction({
   // notifications → clear all
   if (routeName == AppRoutes.showNotifications) {
     return FabAction(
-      icon: Iconsax.trash,
+      icon: LucideIcons.trash2,
       onPressed: () => confirmAndClearAllNotifications(context),
     );
   }
@@ -55,14 +55,14 @@ FabAction resolveFabAction({
   // profile details → open action sheet (edit/share/add to contacts)
   if (routeName == AppRoutes.profileDetails) {
     return FabAction(
-      icon: Iconsax.edit,
+      icon: LucideIcons.pencil,
       onPressed: () => openProfileActions(context, accentColor),
     );
   }
 
   // default → create group
   return FabAction(
-    icon: Iconsax.add_circle,
+    icon: LucideIcons.circlePlus,
     onPressed: () => Navigator.pushNamed(context, AppRoutes.createGroupData),
   );
 }

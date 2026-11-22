@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -80,7 +81,7 @@ class BillingVerificationCard extends StatelessWidget {
                 IconButton(
                   tooltip: l.edit,
                   onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined),
+                  icon: const Icon(LucideIcons.pencil),
                 ),
               ],
             ),
@@ -291,7 +292,7 @@ class _Field extends StatelessWidget {
             const SizedBox(width: 6),
             IconButton(
               tooltip: MaterialLocalizations.of(context).copyButtonLabel,
-              icon: const Icon(Icons.content_copy_outlined),
+              icon: const Icon(LucideIcons.copy),
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: copyValue!.trim()));
                 if (!context.mounted) return;
@@ -305,7 +306,7 @@ class _Field extends StatelessWidget {
             const SizedBox(width: 2),
             IconButton(
               tooltip: l.emailLabel,
-              icon: const Icon(Icons.email_outlined),
+              icon: const Icon(LucideIcons.mail),
               onPressed: () async {
                 final ok = await canLaunchUrl(link!);
                 if (!ok) return;
@@ -340,7 +341,7 @@ class _MissingBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline, color: cs.onErrorContainer),
+          Icon(LucideIcons.info, color: cs.onErrorContainer),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

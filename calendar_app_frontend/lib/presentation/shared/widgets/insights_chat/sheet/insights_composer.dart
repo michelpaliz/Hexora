@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 import '../insights_chat_enums.dart';
@@ -75,50 +76,60 @@ mixin InsightsComposer on InsightsChatSheetStateBase {
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: inputCtrl,
-              focusNode: chatComposerFocusNode,
-              enabled: !sending,
-              minLines: 1,
-              maxLines: MediaQuery.viewInsetsOf(context).bottom > 0 ? 2 : 4,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => submitTypedMessage(),
-              decoration: InputDecoration(
-                hintText: runtime.interactionMode ==
-                        InsightsInteractionMode.openQuestions
-                    ? isEs
-                        ? 'Pregunta sobre este negocio…'
-                        : 'Ask about this business…'
-                    : isEs
-                        ? 'Escribe un mensaje…'
-                        : 'Write a message…',
-                hintMaxLines: 1,
-                filled: true,
-                fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.28),
-                border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: cs.outlineVariant.withValues(alpha: 0.45),
+            child: Focus(
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent &&
+                    event.logicalKey == LogicalKeyboardKey.enter &&
+                    !HardwareKeyboard.instance.isShiftPressed) {
+                  if (!sending) submitTypedMessage();
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
+              child: TextField(
+                controller: inputCtrl,
+                focusNode: chatComposerFocusNode,
+                enabled: !sending,
+                minLines: 1,
+                maxLines: MediaQuery.viewInsetsOf(context).bottom > 0 ? 2 : 4,
+                textInputAction: TextInputAction.newline,
+                decoration: InputDecoration(
+                  hintText: runtime.interactionMode ==
+                          InsightsInteractionMode.openQuestions
+                      ? isEs
+                          ? 'Pregunta sobre este negocio…'
+                          : 'Ask about this business…'
+                      : isEs
+                          ? 'Escribe un mensaje…'
+                          : 'Write a message…',
+                  hintMaxLines: 1,
+                  filled: true,
+                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.28),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: cs.primary, width: 1.4),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
                   ),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: cs.outlineVariant.withValues(alpha: 0.45),
-                  ),
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurface,
+                  fontSize: 13,
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: cs.primary, width: 1.4),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 9,
-                ),
-              ),
-              style: t.bodySmall.copyWith(
-                color: cs.onSurface,
-                fontSize: 13,
               ),
             ),
           ),

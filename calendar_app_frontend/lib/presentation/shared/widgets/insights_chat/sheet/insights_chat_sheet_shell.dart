@@ -689,7 +689,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                       label: Text(
                         compact
                             ? (isEs ? 'Guiadas' : 'Guided')
-                            : (isEs ? 'Respuestas guiadas' : 'Guided answers'),
+                            : (isEs ? 'Guiado' : 'Guided'),
                       ),
                     ),
                     ButtonSegment(
@@ -698,7 +698,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                       label: Text(
                         compact
                             ? (isEs ? 'Abiertas' : 'Open')
-                            : (isEs ? 'Preguntas abiertas' : 'Open questions'),
+                            : (isEs ? 'Preguntar' : 'Ask'),
                       ),
                     ),
                   ],
@@ -778,6 +778,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
     final desktopUserMessages =
         messages.where((message) => message.isUser).toList(growable: false);
 
+    // Retained for the legacy compact preview path.
+    // ignore: unused_element
     Widget buildDesktopMessageList() {
       ChatMessage? firstReplyForUser(ChatMessage userMessage) {
         final startIndex = messages.indexOf(userMessage);
@@ -1156,6 +1158,101 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 ),
               ),
             ),
+          );
+        },
+      );
+    }
+
+    // Desktop uses the same chronological bubble layout as the responsive
+    // chat. Only this conversation pane scrolls; the composer remains fixed.
+    Widget buildConversationMessageList() {
+      return ListView.builder(
+        controller: scrollCtrl,
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        itemCount: messages.length +
+            (sending && mode == InsightsResponseMode.auto ? 1 : 0) +
+            (messages.isEmpty && !sending ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (messages.isEmpty && !sending) {
+            return buildStarterQuestionCard(
+              context,
+              cs: cs,
+              t: t,
+              isEs: isEs,
+            );
+          }
+          if (sending && index == messages.length) {
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 11,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? cs.surfaceContainerHighest
+                      : cs.surfaceContainerHigh,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(14),
+                    topRight: Radius.circular(14),
+                    bottomRight: Radius.circular(14),
+                    bottomLeft: Radius.circular(4),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: cs.primary,
+                      ),
+                    ),
+                    if (takingTooLong) ...[
+                      const SizedBox(width: 10),
+                      Text(
+                        takingTooLongText,
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          }
+          final message = messages[index];
+          final exportAction = getExportActionFromMessage(message);
+          final messageKey = messageKeyFor(message);
+          return ChatBubble(
+            message: message,
+            markdownBoldSpans: markdownBoldSpans,
+            isEs: isEs,
+            sending: sending,
+            buildMenuActions: buildMenuActions,
+            buildEventPreview: buildEventPreviewBubble,
+            buildStructuredTable: (context, message) => buildInsightsTableView(
+              context,
+              message: message,
+              cs: Theme.of(context).colorScheme,
+              t: AppTypography.of(context),
+            ),
+            isStructuredTableResponse:
+                !message.isUser && messageHasStructuredTable(message),
+            canExportToExcel: exportAction != null,
+            isExporting: exportingMessageKey == messageKey,
+            onExportExcel: exportAction == null || exportingMessageKey != null
+                ? null
+                : () => exportMessageToExcel(message),
+            showInlineMenuActions: true,
           );
         },
       );
@@ -2252,7 +2349,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                           ),
                                         buildInteractionModeTabs(),
                                         Expanded(
-                                            child: buildDesktopMessageList()),
+                                            child:
+                                                buildConversationMessageList()),
                                         if (latestIncomeAmountPromptMessage !=
                                             null)
                                           buildIncomeAmountPromptInput(

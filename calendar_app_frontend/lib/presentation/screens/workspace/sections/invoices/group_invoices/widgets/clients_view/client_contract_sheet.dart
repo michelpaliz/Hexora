@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/models/clients/client_contract.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/client_contracts_support.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -271,7 +272,7 @@ class _ClientContractSheetState extends State<ClientContractSheet> {
                           ),
                         ),
                         child: Icon(
-                          Icons.picture_as_pdf_outlined,
+                          LucideIcons.fileText,
                           size: 18,
                           color: _fileBytes != null
                               ? cs.primary
@@ -314,7 +315,7 @@ class _ClientContractSheetState extends State<ClientContractSheet> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 8),
                         ),
-                        icon: const Icon(Icons.folder_open_outlined, size: 16),
+                        icon: const Icon(LucideIcons.folderOpen, size: 16),
                         label: Text(l.contractPickPdf,
                             style: const TextStyle(fontSize: 12)),
                       ),
@@ -361,7 +362,8 @@ class _ClientContractSheetState extends State<ClientContractSheet> {
                         ),
                       DropdownButtonFormField<String>(
                         initialValue: _contractType != null &&
-                                kClientContractTypeValues.contains(_contractType)
+                                kClientContractTypeValues
+                                    .contains(_contractType)
                             ? _contractType
                             : null,
                         decoration: InputDecoration(
@@ -400,8 +402,7 @@ class _ClientContractSheetState extends State<ClientContractSheet> {
                               ),
                             )
                             .toList(),
-                        onChanged: (value) =>
-                            setState(() => _status = value),
+                        onChanged: (value) => setState(() => _status = value),
                       ),
                       if (isEdit)
                         TextField(
@@ -463,7 +464,7 @@ class _ClientContractSheetState extends State<ClientContractSheet> {
                   children: [
                     _CompactDateChip(
                       label: l.startDate,
-                      icon: Icons.play_circle_outline_rounded,
+                      icon: LucideIcons.circlePlay,
                       value: _startDate,
                       onPick: () => _pickDate(
                         _startDate,
@@ -475,7 +476,7 @@ class _ClientContractSheetState extends State<ClientContractSheet> {
                     ),
                     _CompactDateChip(
                       label: l.endDate,
-                      icon: Icons.stop_circle_outlined,
+                      icon: LucideIcons.circleStop,
                       value: _endDate,
                       onPick: () => _pickDate(
                         _endDate,
@@ -487,7 +488,7 @@ class _ClientContractSheetState extends State<ClientContractSheet> {
                     ),
                     _CompactDateChip(
                       label: l.contractRenewalDateLabel,
-                      icon: Icons.autorenew_rounded,
+                      icon: LucideIcons.refreshCw,
                       value: _renewalDate,
                       onPick: () => _pickDate(
                         _renewalDate,
@@ -499,7 +500,7 @@ class _ClientContractSheetState extends State<ClientContractSheet> {
                     ),
                     _CompactDateChip(
                       label: l.contractSignedDateLabel,
-                      icon: Icons.draw_outlined,
+                      icon: LucideIcons.penTool,
                       value: _signedAt,
                       onPick: () => _pickDate(
                         _signedAt,
@@ -518,7 +519,7 @@ class _ClientContractSheetState extends State<ClientContractSheet> {
                     labelText: l.contractTagsLabel,
                     hintText: l.contractTagsHint,
                     isDense: true,
-                    prefixIcon: const Icon(Icons.label_outline_rounded, size: 18),
+                    prefixIcon: const Icon(LucideIcons.tag, size: 18),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -532,7 +533,7 @@ class _ClientContractSheetState extends State<ClientContractSheet> {
                     alignLabelWithHint: true,
                     prefixIcon: const Padding(
                       padding: EdgeInsets.only(bottom: 40),
-                      child: Icon(Icons.notes_rounded, size: 18),
+                      child: Icon(LucideIcons.notebookText, size: 18),
                     ),
                   ),
                 ),
@@ -555,8 +556,8 @@ class _ClientContractSheetState extends State<ClientContractSheet> {
                     children: [
                       Icon(
                         _isCurrent
-                            ? Icons.verified_rounded
-                            : Icons.verified_outlined,
+                            ? LucideIcons.badgeCheck
+                            : LucideIcons.badgeCheck,
                         size: 18,
                         color: _isCurrent ? cs.primary : cs.onSurfaceVariant,
                       ),
@@ -677,8 +678,7 @@ class _CompactDateChip extends StatelessWidget {
                 '$label: ${formatClientContractDate(l, value)}',
                 style: t.bodySmall.copyWith(
                   color: hasValue ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-                  fontWeight:
-                      hasValue ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: hasValue ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
               if (hasValue && onClear != null) ...[
@@ -689,7 +689,7 @@ class _CompactDateChip extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(4),
                     child: Icon(
-                      Icons.close_rounded,
+                      LucideIcons.x,
                       size: 12,
                       color: cs.primary,
                     ),

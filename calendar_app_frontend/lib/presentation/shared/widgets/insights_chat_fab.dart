@@ -50,7 +50,7 @@ class _InsightsChatFabState extends State<InsightsChatFab> {
 
   void _bindRuntime(String groupId) {
     if (_hasRuntime) _runtime.removeListener(_onRuntimeChanged);
-    _runtime = InsightsChatRuntime.instanceFor('fab::$groupId');
+    _runtime = InsightsChatRuntime.instanceFor('panel::$groupId');
     _hasRuntime = true;
     _lastBackgroundEvents = _runtime.backgroundReplyEvents;
     _runtime.addListener(_onRuntimeChanged);

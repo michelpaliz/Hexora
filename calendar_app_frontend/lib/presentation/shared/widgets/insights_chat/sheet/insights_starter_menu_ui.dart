@@ -99,29 +99,33 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
                   children: [
                     for (final option in options)
                       ActionChip(
-                        onPressed: runtime.sending
-                            ? null
-                            : option.index == 5
-                                ? () => prefillEventCreationShortcut(isEs)
-                                : () => sendStarterChoice(option),
+                        onPressed: () {
+                          if (runtime.sending) return;
+                          if (option.index == 5) {
+                            prefillEventCreationShortcut(isEs);
+                          } else {
+                            sendStarterChoice(option);
+                          }
+                        },
                         avatar: CircleAvatar(
                           radius: 10,
-                          backgroundColor: cs.primary.withValues(alpha: 0.16),
+                          backgroundColor: const Color(0xFFD5E7FF),
                           child: Text(
                             '${option.index}',
                             style: t.bodySmall.copyWith(
-                              color: cs.primary,
+                              color: const Color(0xFF1457C5),
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
-                        backgroundColor: cs.primary.withValues(alpha: 0.08),
+                        backgroundColor: const Color(0xFFEAF2FF),
+                        disabledColor: const Color(0xFFEAF2FF),
                         side: BorderSide.none,
                         label: Text(
                           option.label,
                           style: t.bodySmall.copyWith(
-                            color: cs.onSurface,
+                            color: const Color(0xFF203A5D),
                             fontWeight: FontWeight.w700,
                             fontSize: 12,
                           ),
