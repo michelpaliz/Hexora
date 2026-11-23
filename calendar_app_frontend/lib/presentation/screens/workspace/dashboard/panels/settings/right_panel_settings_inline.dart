@@ -18,6 +18,7 @@ import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_members_section.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_notifications_section.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_generated_files_section.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_help_support_section.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_system_config_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/billing_profile_inline_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/domain/models/members_vm.dart';
@@ -344,6 +345,27 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
                     collapsed: collapsed,
                     onTap: () => _selectSection('files'),
                   ),
+                  SizedBox(height: collapsed ? 8 : 18),
+                  if (!collapsed) ...[
+                    _buildSectionHeader(
+                      context,
+                      icon: Icons.help_outline_rounded,
+                      label: Localizations.localeOf(context).languageCode == 'es'
+                          ? 'AYUDA'
+                          : 'SUPPORT',
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.support_agent_rounded,
+                    label: Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Ayuda y soporte'
+                        : 'Help & support',
+                    selected: _selectedSection == 'support',
+                    collapsed: collapsed,
+                    onTap: () => _selectSection('support'),
+                  ),
                 ],
               ),
             ),
@@ -455,6 +477,8 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
         );
       case 'files':
         return SettingsGeneratedFilesSection(group: widget.group);
+      case 'support':
+        return SettingsHelpSupportSection(group: widget.group);
       default:
         return const SizedBox();
     }
