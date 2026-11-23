@@ -86,11 +86,9 @@ class _ChatBubbleState extends State<ChatBubble> {
     final message = widget.message;
     final isUser = message.isUser;
     final align = isUser ? Alignment.centerRight : Alignment.centerLeft;
-    // AI bubble uses a clearly distinct surface so text is always legible
-    // in both dark and light themes.
     final bg = isUser
         ? cs.primary
-        : (isDark ? cs.surfaceContainerHighest : cs.surfaceContainerHigh);
+        : (isDark ? cs.surfaceContainerHighest : cs.surface);
     final fg = isUser ? cs.onPrimary : cs.onSurface;
     final l = AppLocalizations.of(context)!;
     final showCopyAction = _hovering || _copied;
@@ -129,57 +127,36 @@ class _ChatBubbleState extends State<ChatBubble> {
                     bottomLeft: Radius.circular(isUser ? 12 : 4),
                     bottomRight: Radius.circular(isUser ? 4 : 12),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.shadow.withValues(alpha: isDark ? 0.18 : 0.05),
-                      blurRadius: 5,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
+                  border: isUser
+                      ? null
+                      : Border.all(
+                          color: cs.outlineVariant.withValues(
+                            alpha: isDark ? 0.28 : 0.55,
+                          ),
+                        ),
                 ),
                 child: !isUser && widget.isStructuredTableResponse
                     ? widget.buildStructuredTable(context, message)
                     : !isUser && messageHasEventAssistant(message)
                         ? widget.buildEventPreview(context, message)
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 1),
-                                child: Icon(
-                                  isUser
-                                      ? Icons.person_rounded
-                                      : Icons.auto_awesome_rounded,
-                                  size: 14,
-                                  color: isUser
-                                      ? fg.withValues(alpha: 0.85)
-                                      : cs.primary.withValues(alpha: 0.75),
+                        : visibleText.trim().isEmpty
+                            ? const SizedBox.shrink()
+                            : RichText(
+                                text: TextSpan(
+                                  children: widget.markdownBoldSpans(
+                                    text: visibleText,
+                                    baseStyle: t.bodySmall.copyWith(
+                                      color: fg,
+                                      height: 1.45,
+                                      fontSize: isUser ? 12.5 : 13,
+                                      fontWeight: isUser
+                                          ? FontWeight.w500
+                                          : FontWeight.w400,
+                                      letterSpacing: 0.1,
+                                    ),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: visibleText.trim().isEmpty
-                                    ? const SizedBox.shrink()
-                                    : RichText(
-                                        text: TextSpan(
-                                          children: widget.markdownBoldSpans(
-                                            text: visibleText,
-                                            baseStyle: t.bodySmall.copyWith(
-                                              color: fg,
-                                              height: 1.55,
-                                              fontSize: isUser ? 12.5 : 13,
-                                              fontWeight: isUser
-                                                  ? FontWeight.w500
-                                                  : FontWeight.w400,
-                                              letterSpacing: 0.1,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                            ],
-                          ),
               ),
               if (hasMenuActions)
                 Padding(

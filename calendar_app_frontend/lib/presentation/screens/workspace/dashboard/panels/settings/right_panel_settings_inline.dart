@@ -1,6 +1,7 @@
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -189,11 +190,17 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
   @override
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
+    // Light-blue workspace canvas behind the settings content; the secondary
+    // sidebar keeps its own surface, width and behaviour.
+    final canvas = isLight
+        ? AppColors.workspaceCanvas
+        : Theme.of(context).scaffoldBackgroundColor;
 
     return Padding(
       padding: EdgeInsets.zero,
       child: Container(
-        color: isLight ? Colors.white : Colors.transparent,
+        key: const ValueKey('settings-canvas'),
+        color: canvas,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final forceCollapsed = constraints.maxWidth < 620;
@@ -250,7 +257,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.only(bottom: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -350,9 +357,10 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
                     _buildSectionHeader(
                       context,
                       icon: Icons.help_outline_rounded,
-                      label: Localizations.localeOf(context).languageCode == 'es'
-                          ? 'AYUDA'
-                          : 'SUPPORT',
+                      label:
+                          Localizations.localeOf(context).languageCode == 'es'
+                              ? 'AYUDA'
+                              : 'SUPPORT',
                     ),
                     const SizedBox(height: 4),
                   ],
@@ -429,7 +437,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
       content = _buildSectionContent(context);
     } else {
       content = SingleChildScrollView(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: _buildSectionContent(context),
       );
     }
@@ -556,7 +564,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
           SnackBar(content: Text(l.billingProfileSaved)),
         );
       },
-      showFolder: true,
+      showFolder: false,
     );
   }
 }

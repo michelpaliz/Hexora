@@ -686,6 +686,10 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
                   ? (touchTargets ? 58 : 50)
                   : 36,
           showTab: !isChats,
+          // Chats sit directly on the light-blue workspace canvas; only the
+          // active conversation surfaces (header, bubbles, composer) are white.
+          backgroundColor: isChats ? Colors.transparent : null,
+          showBorder: !isChats,
           actions: !isChats && showPanelMenu ? [menu] : null,
           child: ConstrainedBox(
             constraints: const BoxConstraints(
@@ -1389,7 +1393,7 @@ class ResponsiveWorkspaceLayout extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(width: 320, child: chatsSidebar),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Expanded(child: workspace),
             ],
           );
@@ -1452,14 +1456,9 @@ class ChatsSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
+    return Padding(
+      key: const ValueKey('telegram-chats-sidebar'),
+      padding: const EdgeInsets.fromLTRB(2, 4, 2, 0),
       child: TelegramChatListWidget(
         chats: domain.chats,
         selectedChatId: domain.selectedChatId,
@@ -1587,13 +1586,17 @@ class _WorkspaceShellState extends State<WorkspaceShell>
     final cs = Theme.of(context).colorScheme;
     final chat = widget.selectedChat;
     final phone = MediaQuery.sizeOf(context).width < 700;
+    // The conversation canvas is the light-blue workspace itself; a hairline
+    // frame separates it from the conversation list (the panel divider).
+    final frame = BoxDecoration(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+    );
     if (chat == null) {
       return Container(
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-        ),
+        key: const ValueKey('telegram-workspace-shell'),
+        decoration: frame,
         child: const TelegramChatEmptyState(),
       );
     }
@@ -1607,13 +1610,8 @@ class _WorkspaceShellState extends State<WorkspaceShell>
     final topicError = widget.domain.topicsErrorForChat(chat.id);
 
     return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: phone ? null : BorderRadius.circular(8),
-        border: phone
-            ? null
-            : Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
+      key: const ValueKey('telegram-workspace-shell'),
+      decoration: phone ? const BoxDecoration() : frame,
       clipBehavior: phone ? Clip.none : Clip.antiAlias,
       child: Column(
         children: [
@@ -1708,17 +1706,26 @@ class WorkspaceHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isCompact = MediaQuery.sizeOf(context).width < 860;
     final phone = MediaQuery.sizeOf(context).width < 700;
+    final headerAction = IconButton.styleFrom(
+      fixedSize: const Size(34, 34),
+      minimumSize: const Size(34, 34),
+      padding: EdgeInsets.zero,
+      foregroundColor: cs.onSurfaceVariant,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+    // One compact white header surface, fixed above the message canvas.
     return Material(
+      key: const ValueKey('telegram-workspace-header'),
       color: cs.surface,
       elevation: 0,
       child: Container(
         padding: phone
             ? EdgeInsets.fromLTRB(8, 8, 10, chat.isForumChat ? 2 : 8)
-            : EdgeInsets.fromLTRB(12, 8, 12, chat.isForumChat ? 6 : 8),
+            : EdgeInsets.fromLTRB(12, 8, 10, chat.isForumChat ? 6 : 8),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: cs.outlineVariant.withValues(alpha: 0.32),
+              color: cs.outlineVariant.withValues(alpha: 0.6),
             ),
           ),
         ),
@@ -1741,19 +1748,28 @@ class WorkspaceHeader extends StatelessWidget {
                     onPressed: onOpenChats,
                     icon: const Icon(Icons.menu_rounded),
                   ),
+                // Same avatar as the selected row in the conversation list.
+                TelegramChatAvatar(
+                  key: const ValueKey('telegram-header-avatar'),
+                  chat: chat,
+                  size: phone ? 30 : 32,
+                ),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        chat.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
-                    ],
+                  child: Tooltip(
+                    message: chat.title,
+                    waitDuration: const Duration(milliseconds: 600),
+                    child: Text(
+                      chat.title,
+                      key: const ValueKey('telegram-header-title'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSurface,
+                          ),
+                    ),
                   ),
                 ),
                 if (!phone) const SizedBox(width: 12),
@@ -1788,9 +1804,10 @@ class WorkspaceHeader extends StatelessWidget {
                     ],
                   )
                 else ...[
-                  IconButton.outlined(
+                  IconButton(
                     tooltip: AppLocalizations.of(context)!.telegramRefresh,
                     onPressed: isLoadingTopics ? null : onRefresh,
+                    style: headerAction,
                     icon: isLoadingTopics
                         ? const SizedBox(
                             width: 16,
@@ -1799,9 +1816,10 @@ class WorkspaceHeader extends StatelessWidget {
                           )
                         : const Icon(Icons.refresh_rounded, size: 18),
                   ),
-                  IconButton.outlined(
+                  IconButton(
                     tooltip: AppLocalizations.of(context)!.telegramExport,
                     onPressed: onExportChat,
+                    style: headerAction,
                     icon: const Icon(Icons.ios_share_rounded, size: 18),
                   ),
                 ],
@@ -1868,17 +1886,9 @@ class TopicTabs extends StatelessWidget {
       return const SizedBox(height: 4);
     }
 
-    return Container(
-      height: 36,
-      decoration: phone
-          ? null
-          : BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.28),
-              ),
-            ),
+    return SizedBox(
+      key: const ValueKey('telegram-topic-tabs'),
+      height: 34,
       child: TabBar(
         controller: controller,
         isScrollable: true,
@@ -1890,29 +1900,34 @@ class TopicTabs extends StatelessWidget {
         indicator: phone
             ? null
             : BoxDecoration(
-                color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(7),
+                color: cs.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
               ),
         dividerColor: phone
             ? cs.outlineVariant.withValues(alpha: 0.7)
             : Colors.transparent,
-        labelColor: phone ? cs.primary : cs.onPrimaryContainer,
-        unselectedLabelColor:
-            phone ? cs.onSurfaceVariant : cs.onSurface.withValues(alpha: 0.64),
+        labelColor: cs.primary,
+        unselectedLabelColor: cs.onSurfaceVariant,
+        overlayColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.hovered)
+              ? cs.primary.withValues(alpha: 0.05)
+              : null,
+        ),
         labelStyle: phone
             ? Theme.of(context)
                 .textTheme
                 .labelLarge
                 ?.copyWith(fontWeight: FontWeight.w700)
-            : const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            : const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
         unselectedLabelStyle: phone
             ? Theme.of(context)
                 .textTheme
                 .labelLarge
                 ?.copyWith(fontWeight: FontWeight.w500)
-            : const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            : const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
         labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-        padding: phone ? EdgeInsets.zero : const EdgeInsets.all(3),
+        padding:
+            phone ? EdgeInsets.zero : const EdgeInsets.symmetric(vertical: 2),
         tabs: [
           for (final topic in topics)
             Tab(
@@ -1949,15 +1964,15 @@ class _TabCounter extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
-        color: cs.surface.withValues(alpha: 0.58),
+        color: cs.primary,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         '$count',
         style: TextStyle(
-          color: cs.onSurface.withValues(alpha: 0.62),
+          color: cs.onPrimary,
           fontSize: 11,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

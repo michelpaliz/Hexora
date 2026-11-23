@@ -1,104 +1,28 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
-import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
-import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/user/presence_domain.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:provider/provider.dart';
 
-/// Replaces the old "Members" icon with a compact, live worker-status
-/// indicator (👥 3 trabajando ▾). The count comes from the time-tracking
-/// "active workers" total; the popover lists active workers and, only when
-/// presence is available, the group members who are online.
+/// Compact live connected-user indicator for the global navigation bar.
+/// Presence is shown inline; the previous worker-status popover is kept out
+/// of the main bar so it does not compete with navigation.
 class WorkerStatusIndicator extends StatefulWidget {
   const WorkerStatusIndicator({
     super.key,
-    required this.groupId,
     required this.memberIds,
     required this.groupRoles,
-    required this.onOpenWorkers,
-    this.compact = false,
   });
 
-  final String groupId;
   final List<String> memberIds;
   final Map<String, String> groupRoles;
-  final VoidCallback onOpenWorkers;
-  final bool compact;
 
   @override
   State<WorkerStatusIndicator> createState() => _WorkerStatusIndicatorState();
 }
 
 class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
-  int _activeCount = 0;
-  bool _loading = true;
-  bool _hasError = false;
-  Timer? _refreshTimer;
-  late UserDomain _userDomain;
-  late ITimeTrackingRepository _repository;
-  bool _dependenciesReady = false;
-  int _loadGeneration = 0;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _userDomain = context.read<UserDomain>();
-    _repository = context.read<ITimeTrackingRepository>();
-    if (_dependenciesReady) return;
-
-    _dependenciesReady = true;
-    _load();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) => _load());
-  }
-
-  @override
-  void didUpdateWidget(covariant WorkerStatusIndicator oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_dependenciesReady && oldWidget.groupId != widget.groupId) _load();
-  }
-
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    _loadGeneration += 1;
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    if (!_dependenciesReady || !mounted) return;
-    final generation = ++_loadGeneration;
-    final groupId = widget.groupId;
-    try {
-      final token = await _userDomain.getAuthToken();
-      if (!mounted || generation != _loadGeneration) return;
-      final totals = await _repository.getActiveWorkersTotals(groupId, token);
-      if (!mounted || generation != _loadGeneration) return;
-      setState(() {
-        _activeCount = (totals['activeWorkersCount'] as num?)?.toInt() ?? 0;
-        _loading = false;
-        _hasError = false;
-      });
-    } catch (_) {
-      if (!mounted || generation != _loadGeneration) return;
-      setState(() {
-        _loading = false;
-        _hasError = true;
-      });
-    }
-  }
-
-  void _retry() {
-    setState(() {
-      _loading = true;
-      _hasError = false;
-    });
-    _load();
-  }
-
   bool get _isSpanish => Localizations.localeOf(context).languageCode == 'es';
 
   @override
@@ -113,182 +37,28 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
     final int? onlineCount =
         presence.hasReceivedPresence ? onlineMembers.length : null;
 
-    final viewportWidth = MediaQuery.sizeOf(context).width;
-    final compact = widget.compact || viewportWidth < 1200;
-    final menuWidth = viewportWidth >= 296 ? 280.0 : viewportWidth - 16;
-
-    return MenuAnchor(
-      alignmentOffset: const Offset(0, 8),
-      style: hexoraDropdownMenuStyle().copyWith(
-        minimumSize: WidgetStatePropertyAll(Size(menuWidth, 0)),
-        maximumSize: WidgetStatePropertyAll(Size(menuWidth, double.infinity)),
+    return HexoraNavTile(
+      tooltip: _isSpanish ? 'Usuarios conectados' : 'Connected users',
+      semanticLabel: onlineCount == null
+          ? (_isSpanish ? 'Usuarios conectados' : 'Connected users')
+          : (_isSpanish
+              ? '$onlineCount usuarios conectados'
+              : '$onlineCount connected users'),
+      padding: const EdgeInsets.symmetric(
+        horizontal: NavigationTokens.globalItemPadding,
       ),
-      menuChildren: _buildMenu(context, onlineCount),
-      builder: (context, controller, _) => HexoraNavTile(
-        selected: controller.isOpen,
-        tooltip: _isSpanish ? 'Estado de los trabajadores' : 'Worker status',
-        semanticLabel:
-            _isSpanish ? '$_activeCount trabajando' : '$_activeCount working',
-        padding: const EdgeInsets.symmetric(
-          horizontal: NavigationTokens.globalItemPadding,
-        ),
-        onTap: () => controller.isOpen ? controller.close() : controller.open(),
-        builder: (context, fg) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(LucideIcons.users, size: NavigationTokens.iconSize, color: fg),
-            const SizedBox(width: 6),
-            Text(
-              '$_activeCount',
-              style: NavigationTokens.label(context)
-                  .copyWith(color: fg, fontWeight: FontWeight.w600),
-            ),
-            if (!compact) ...[
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  _isSpanish ? 'trabajando' : 'working',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: NavigationTokens.label(context).copyWith(color: fg),
-                ),
-              ),
-            ],
-            if (!compact) ...[
-              const SizedBox(width: 2),
-              Icon(LucideIcons.chevronDown, size: 16, color: fg),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildMenu(BuildContext context, int? onlineCount) {
-    final cs = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    return [
-      if (_loading)
-        _StatusRow(
-          icon: LucideIcons.idCard,
-          label: _isSpanish ? 'Trabajando ahora' : 'Working now',
-          trailing: const SizedBox.square(
-            dimension: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        )
-      else
-        _StatusRow(
-          icon: LucideIcons.idCard,
-          label: _isSpanish ? 'Trabajando ahora' : 'Working now',
-          count: _hasError ? null : _activeCount,
-        ),
-      if (_hasError) ...[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-          child: Text(
-            _isSpanish
-                ? 'No se pudo cargar el estado.'
-                : 'Could not load status.',
-            style: text.bodySmall?.copyWith(color: cs.error),
-          ),
-        ),
-        MenuItemButton(
-          leadingIcon: const Icon(LucideIcons.refreshCw, size: 16),
-          onPressed: _retry,
-          child: Text(_isSpanish ? 'Reintentar' : 'Retry'),
-        ),
-      ],
-      const Divider(height: 8),
-      _StatusRow(
-        icon: LucideIcons.radio,
-        label: _isSpanish ? 'Conectados' : 'Online',
-        count: onlineCount,
-      ),
-      const Divider(height: 8),
-      MenuItemButton(
-        leadingIcon: const Icon(LucideIcons.users, size: 16),
-        trailingIcon: const Icon(LucideIcons.chevronRight, size: 18),
-        onPressed: widget.onOpenWorkers,
-        child: Text(_isSpanish ? 'Ver trabajadores' : 'View workers'),
-      ),
-    ];
-  }
-}
-
-class _StatusRow extends StatelessWidget {
-  const _StatusRow({
-    required this.icon,
-    required this.label,
-    this.count,
-    this.trailing,
-  });
-
-  final IconData icon;
-  final String label;
-
-  /// null = unavailable (renders a dash).
-  final int? count;
-
-  /// When provided (e.g. a loading spinner) it replaces the count.
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+      onTap: null,
+      builder: (context, fg) => Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: cs.onSurfaceVariant),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
+          Icon(LucideIcons.users, size: NavigationTokens.iconSize, color: fg),
+          const SizedBox(width: 6),
+          Text(
+            onlineCount?.toString() ?? '—',
+            style: NavigationTokens.label(context)
+                .copyWith(color: fg, fontWeight: FontWeight.w600),
           ),
-          trailing ??
-              (count == null ? null : _StatusCountBadge(count: count!)) ??
-              Text(
-                count == null ? '—' : '$count',
-                style: text.bodyMedium?.copyWith(
-                  color: count == null ? cs.onSurfaceVariant : cs.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
         ],
-      ),
-    );
-  }
-}
-
-class _StatusCountBadge extends StatelessWidget {
-  const _StatusCountBadge({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      constraints: const BoxConstraints(minWidth: 24, minHeight: 22),
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Text(
-        '$count',
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: cs.onPrimaryContainer,
-              fontWeight: FontWeight.w800,
-            ),
       ),
     );
   }

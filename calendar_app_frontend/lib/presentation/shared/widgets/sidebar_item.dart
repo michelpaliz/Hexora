@@ -19,7 +19,9 @@ class SidebarItem extends StatelessWidget {
       this.activeAncestor = false,
       this.rowHeight,
       this.iconSize,
-      this.tooltipLabel});
+      this.tooltipLabel,
+      this.selectedBackgroundColor,
+      this.selectedBorderColor});
   final IconData icon;
   final String label;
   final bool isSelected;
@@ -41,6 +43,12 @@ class SidebarItem extends StatelessWidget {
   final double? rowHeight;
   final double? iconSize;
   final String? tooltipLabel;
+
+  /// Opt-in selected fill, e.g. white rows on a light-blue sidebar canvas.
+  final Color? selectedBackgroundColor;
+
+  /// Opt-in hairline around the selected row.
+  final Color? selectedBorderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -82,11 +90,16 @@ class SidebarItem extends StatelessWidget {
             child: Material(
                 animationDuration: selectionDuration,
                 color: isSelected
-                    ? colors.selectedBackground
+                    ? selectedBackgroundColor ?? colors.selectedBackground
                     : activeAncestor
                         ? colors.hover
                         : Colors.transparent,
-                borderRadius: radius,
+                shape: RoundedRectangleBorder(
+                  borderRadius: radius,
+                  side: isSelected && selectedBorderColor != null
+                      ? BorderSide(color: selectedBorderColor!)
+                      : BorderSide.none,
+                ),
                 child: InkWell(
                     onTap: onTap,
                     borderRadius: radius,

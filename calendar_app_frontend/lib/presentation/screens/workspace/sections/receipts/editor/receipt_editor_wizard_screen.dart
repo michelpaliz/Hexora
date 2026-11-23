@@ -19,7 +19,6 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/p
 import 'package:hexora/presentation/screens/workspace/sections/invoices/widgets/lines_json_import_panel.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
-import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
@@ -306,18 +305,11 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   Widget build(BuildContext context) {
     final isEmbedded = widget.embedded == true;
     if (isEmbedded) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        child: FolderPanel(
-          // The embedded workspace already has its own vertical step rail
-          // and footer actions. Do not spend a second row on a title/back
-          // toolbar; closing remains available through the footer.
-          showTab: false,
-          contentTopPadding: 0,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-            child: _buildContent(context),
-          ),
+      return ColoredBox(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: _buildContent(context),
         ),
       );
     }

@@ -95,6 +95,7 @@ class ListItemCard extends StatelessWidget {
   final bool selected;
   final bool showLeadingStripe;
   final bool flat;
+  final Color? selectedBackgroundColor;
   final EdgeInsetsGeometry padding;
   final BorderRadius? borderRadius;
 
@@ -112,6 +113,7 @@ class ListItemCard extends StatelessWidget {
     this.selected = false,
     this.showLeadingStripe = false,
     this.flat = false,
+    this.selectedBackgroundColor,
     this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
     this.borderRadius,
   }) : assert(title != null || titleWidget != null);
@@ -122,7 +124,8 @@ class ListItemCard extends StatelessWidget {
     final t = AppTypography.of(context);
     final isLight = Theme.of(context).brightness == Brightness.light;
     final bg = selected
-        ? cs.primaryContainer.withValues(alpha: 0.28)
+        ? (selectedBackgroundColor ??
+            cs.primaryContainer.withValues(alpha: 0.28))
         : flat
             ? Colors.transparent
             : isLight

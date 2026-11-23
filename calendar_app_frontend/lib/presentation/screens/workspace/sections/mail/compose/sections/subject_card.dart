@@ -43,13 +43,28 @@ Widget _composeSubjectCard(
               decoration: InputDecoration(
                 labelText: compact ? l.mailComposeSubjectLabel : null,
                 hintText: compact ? null : l.mailComposeSubjectHint,
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
+                filled: true,
+                fillColor: cs.brightness == Brightness.dark
+                    ? cs.surfaceContainerLow
+                    : AppColors.inputBackground,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.inputBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: .55),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: cs.primary, width: 1.3),
+                ),
                 isDense: true,
                 contentPadding: compact
-                    ? const EdgeInsets.symmetric(vertical: 7)
-                    : EdgeInsets.zero,
+                    ? const EdgeInsets.symmetric(horizontal: 10, vertical: 7)
+                    : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               ),
               onChanged: (_) => state.update(() {}),
             ),

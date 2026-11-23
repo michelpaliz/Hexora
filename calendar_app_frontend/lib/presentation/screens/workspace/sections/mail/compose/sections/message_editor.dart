@@ -18,7 +18,9 @@ Widget _composeMessageEditor(
           key: const ValueKey('mail-compose-body-input-surface'),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: cs.surface,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).colorScheme.surfaceContainerLow
+                : AppColors.inputBackground,
             borderRadius:
                 const BorderRadius.vertical(bottom: Radius.circular(8)),
             border: Border(

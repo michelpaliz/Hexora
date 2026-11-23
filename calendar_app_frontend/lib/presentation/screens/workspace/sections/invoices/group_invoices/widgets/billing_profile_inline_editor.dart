@@ -11,6 +11,92 @@ import 'package:hexora/presentation/utils/validation/email_validator.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
+/// Invoice-logo file picker (PNG/JPG, at most 15 MB) shared by the billing
+/// profile editor and the Home business card.
+Future<PlatformFile?> showBillingLogoPicker(BuildContext context) {
+  final l = AppLocalizations.of(context)!;
+  return showHexoraDialog<PlatformFile>(
+    context: context,
+    builder: (context) {
+      PlatformFile? selected;
+      String? error;
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          Future<void> pickFile() async {
+            setDialogState(() => error = null);
+            final result = await FilePicker.platform.pickFiles(
+              allowMultiple: false,
+              withData: true,
+              type: FileType.custom,
+              allowedExtensions: ['png', 'jpg', 'jpeg'],
+            );
+            final file = result?.files.single;
+            if (file == null) return;
+            final ext = (file.extension?.toLowerCase().trim().isNotEmpty == true
+                    ? file.extension!
+                    : file.name.split('.').last)
+                .toLowerCase()
+                .trim();
+            final validType = const ['png', 'jpg', 'jpeg'].contains(ext);
+            final tooLarge = file.size > 15 * 1024 * 1024;
+            setDialogState(() {
+              if (!validType || tooLarge) {
+                error = l.billingLogoUploadError;
+                selected = null;
+              } else {
+                error = null;
+                selected = file;
+              }
+            });
+          }
+
+          return AlertDialog(
+            title: Text(l.billingLogoUploadTitle),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.billingLogoUploadBody),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: pickFile,
+                  icon: const Icon(Icons.upload_file_outlined),
+                  label: Text(l.billingLogoUploadSelectFile),
+                ),
+                if (selected != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(selected!.name,
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ),
+                if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(error!,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error)),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l.cancel),
+              ),
+              FilledButton(
+                onPressed: selected == null
+                    ? null
+                    : () => Navigator.of(context).pop(selected),
+                child: Text(l.billingLogoUploadCta),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
 class BillingProfileInlineEditor extends StatefulWidget {
   final BillingProfile? initial;
   final String groupId;
@@ -300,87 +386,7 @@ class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
     final l = AppLocalizations.of(context)!;
     if (!mounted || widget.initial == null) return;
 
-    final picked = await showHexoraDialog<PlatformFile>(
-      context: context,
-      builder: (context) {
-        PlatformFile? selected;
-        String? error;
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Future<void> pickFile() async {
-              setDialogState(() => error = null);
-              final result = await FilePicker.platform.pickFiles(
-                allowMultiple: false,
-                withData: true,
-                type: FileType.custom,
-                allowedExtensions: ['png', 'jpg', 'jpeg'],
-              );
-              final file = result?.files.single;
-              if (file == null) return;
-              final ext =
-                  (file.extension?.toLowerCase().trim().isNotEmpty == true
-                          ? file.extension!
-                          : file.name.split('.').last)
-                      .toLowerCase()
-                      .trim();
-              final validType = const ['png', 'jpg', 'jpeg'].contains(ext);
-              final tooLarge = file.size > 15 * 1024 * 1024;
-              setDialogState(() {
-                if (!validType || tooLarge) {
-                  error = l.billingLogoUploadError;
-                  selected = null;
-                } else {
-                  error = null;
-                  selected = file;
-                }
-              });
-            }
-
-            return AlertDialog(
-              title: Text(l.billingLogoUploadTitle),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l.billingLogoUploadBody),
-                  const SizedBox(height: 12),
-                  TextButton.icon(
-                    onPressed: pickFile,
-                    icon: const Icon(Icons.upload_file_outlined),
-                    label: Text(l.billingLogoUploadSelectFile),
-                  ),
-                  if (selected != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(selected!.name,
-                          style: Theme.of(context).textTheme.bodySmall),
-                    ),
-                  if (error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(error!,
-                          style: TextStyle(
-                              color: Theme.of(context).colorScheme.error)),
-                    ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l.cancel),
-                ),
-                FilledButton(
-                  onPressed: selected == null
-                      ? null
-                      : () => Navigator.of(context).pop(selected),
-                  child: Text(l.billingLogoUploadCta),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+    final picked = await showBillingLogoPicker(context);
     if (picked == null || !mounted) return;
     if (picked.bytes == null || picked.bytes!.isEmpty) {
       ScaffoldMessenger.of(context)
@@ -517,12 +523,13 @@ class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
   }) {
     final cs = Theme.of(context).colorScheme;
     final isLight = Theme.of(context).brightness == Brightness.light;
+    // Pale-blue editable inputs inside the white card.
     final fieldColor = isLight
-        ? Colors.white
+        ? Color.alphaBlend(cs.primary.withValues(alpha: 0.06), cs.surface)
         : cs.surfaceContainerHighest.withValues(alpha: 0.22);
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
     );
     return InputDecoration(
       labelText: label,
@@ -591,9 +598,13 @@ class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
             Icon(icon, size: 16, color: cs.primary),
             const SizedBox(width: 8),
           ],
-          Text(title,
-              style: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700, color: cs.onSurfaceVariant)),
+          Flexible(
+            child: Text(title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700, color: cs.onSurfaceVariant)),
+          ),
         ],
       ),
     );
@@ -601,11 +612,34 @@ class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
 
   // ── Tab contents ──
 
+  /// Each tab's fields live in one white card on the workspace canvas that
+  /// ends with its content instead of stretching to the bottom.
+  Widget _tabCard({required List<Widget> children}) {
+    final cs = Theme.of(context).colorScheme;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      children: [
+        Container(
+          key: const ValueKey('billing-tab-card'),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildGeneralTab(bool wide) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+    return _tabCard(
       children: [
         _sectionLabel(l.billingDetails, icon: Icons.apartment_outlined),
         _textField(
@@ -711,8 +745,7 @@ class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
 
   Widget _buildContactoTab() {
     final l = AppLocalizations.of(context)!;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+    return _tabCard(
       children: [
         _sectionLabel(l.billingEmailLabel, icon: Icons.email_outlined),
         _textField(
@@ -757,8 +790,7 @@ class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
     final subtleTint =
         isLight ? cs.primary.withValues(alpha: 0.035) : cs.primaryContainer;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+    return _tabCard(
       children: [
         // Logo section
         _sectionLabel(l.invoiceLogoTitle, icon: Icons.image_outlined),
@@ -927,8 +959,7 @@ class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
     final langValue = _language.text.trim();
     final langKnown = _languages.any((l) => l.$1 == langValue);
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+    return _tabCard(
       children: [
         _sectionLabel(l.billingCurrency,
             icon: Icons.currency_exchange_outlined),
@@ -989,9 +1020,6 @@ class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final subtleTint =
-        isLight ? cs.primary.withValues(alpha: 0.035) : cs.primaryContainer;
     final es = l.localeName.startsWith('es');
 
     final complete = _completionPercent >= 100;
@@ -1060,13 +1088,27 @@ class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
 
           // ── Tabs ──
           TabBar(
+            key: const ValueKey('billing-profile-tabs'),
             controller: _tabController,
             isScrollable: true,
             tabAlignment: TabAlignment.start,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            labelPadding: const EdgeInsets.symmetric(horizontal: 14),
+            labelColor: cs.primary,
+            unselectedLabelColor: cs.onSurfaceVariant,
             labelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
-            unselectedLabelStyle: t.bodySmall,
-            indicatorSize: TabBarIndicatorSize.label,
-            dividerColor: cs.outlineVariant.withValues(alpha: 0.25),
+            unselectedLabelStyle:
+                t.bodySmall.copyWith(fontWeight: FontWeight.w500),
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicator: BoxDecoration(
+              color: cs.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            overlayColor: WidgetStateProperty.resolveWith((states) =>
+                states.contains(WidgetState.hovered)
+                    ? cs.primary.withValues(alpha: 0.05)
+                    : null),
+            dividerColor: Colors.transparent,
             tabs: const [
               Tab(text: 'General'),
               Tab(text: 'Contacto'),
@@ -1097,12 +1139,14 @@ class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
           SafeArea(
             top: false,
             child: Container(
-              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              key: const ValueKey('billing-profile-save-bar'),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               decoration: BoxDecoration(
-                color: subtleTint,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: cs.primary.withValues(alpha: .16)),
+                color: cs.surface,
+                border: Border(
+                  top: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.7)),
+                ),
               ),
               child: Row(
                 children: [
@@ -1115,25 +1159,39 @@ class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
                       _hasChanges
                           ? (es ? 'Hay cambios pendientes' : 'Unsaved changes')
                           : (es ? 'Perfil actualizado' : 'Profile up to date'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: t.caption,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  HexoraButton(
-                    onPressed: (!_hasChanges || _saving) ? null : _resetFields,
-                    label: es ? 'Descartar' : 'Discard',
-                    icon: Icons.undo,
-                    variant: HexoraButtonVariant.secondary,
-                    size: HexoraButtonSize.compact,
-                  ),
-                  const SizedBox(width: 8),
-                  HexoraButton(
-                    key: const ValueKey('billing-profile-save'),
-                    onPressed: (!_hasChanges || _saving) ? null : _save,
-                    label: _saving ? l.saving : l.saveChanges,
-                    icon: Icons.check,
-                    loading: _saving,
-                    size: HexoraButtonSize.compact,
+                  // Buttons stay right-aligned and wrap instead of
+                  // overflowing on narrow widths.
+                  Flexible(
+                    flex: 3,
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        HexoraButton(
+                          onPressed:
+                              (!_hasChanges || _saving) ? null : _resetFields,
+                          label: es ? 'Descartar' : 'Discard',
+                          icon: Icons.undo,
+                          variant: HexoraButtonVariant.secondary,
+                          size: HexoraButtonSize.compact,
+                        ),
+                        HexoraButton(
+                          key: const ValueKey('billing-profile-save'),
+                          onPressed: (!_hasChanges || _saving) ? null : _save,
+                          label: _saving ? l.saving : l.saveChanges,
+                          icon: Icons.check,
+                          loading: _saving,
+                          size: HexoraButtonSize.compact,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/client_initial_avatar.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
@@ -100,6 +101,10 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
   String? _receiptsCountRequestKey;
   Invoice? _selectedInvoice;
 
+  /// Active document tab, kept when another client is selected so switching
+  /// clients from the list doesn't bounce the user back to Facturas.
+  late int _tabIndex = widget.initialTabIndex.clamp(0, 3);
+
   String _classificationLabel(String value) =>
       {
         'particular': 'Particular',
@@ -117,15 +122,21 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
       }[value.toLowerCase()] ??
       value;
 
-  String _clientMetadata(GroupClient client) => <String>[
-        if ((client.pdfAlias ?? '').trim().isNotEmpty) client.pdfAlias!.trim(),
-        if ((client.effectiveCustomerType ?? '').trim().isNotEmpty)
-          _classificationLabel(client.effectiveCustomerType!.trim()),
-        if ((client.effectivePropertyType ?? '').trim().isNotEmpty)
-          _classificationLabel(client.effectivePropertyType!.trim()),
-        if ((client.effectivePropertyRelationship ?? '').trim().isNotEmpty)
-          _classificationLabel(client.effectivePropertyRelationship!.trim()),
-      ].join(' · ');
+  String _clientMetadata(GroupClient client) {
+    final parts = <String>[
+      if ((client.pdfAlias ?? '').trim().isNotEmpty) client.pdfAlias!.trim(),
+      if ((client.effectiveCustomerType ?? '').trim().isNotEmpty)
+        _classificationLabel(client.effectiveCustomerType!.trim()),
+      if ((client.effectivePropertyType ?? '').trim().isNotEmpty)
+        _classificationLabel(client.effectivePropertyType!.trim()),
+      if ((client.effectivePropertyRelationship ?? '').trim().isNotEmpty)
+        _classificationLabel(client.effectivePropertyRelationship!.trim()),
+    ];
+    // Drop repeats (e.g. "Chalet" as both client and property type) and the
+    // client name itself, which is already the heading.
+    final seen = <String>{client.name.trim().toLowerCase()};
+    return parts.where((part) => seen.add(part.toLowerCase())).join(' · ');
+  }
 
   @override
   void initState() {
@@ -143,6 +154,9 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
   @override
   void didUpdateWidget(covariant ClientDetailPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTabIndex != widget.initialTabIndex) {
+      _tabIndex = widget.initialTabIndex.clamp(0, 3);
+    }
     if (oldWidget.selectedClient?.id != widget.selectedClient?.id) {
       _selectedInvoice = null;
     } else if (_selectedInvoice != null &&
@@ -252,11 +266,13 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
               ),
             )
           : DefaultTabController(
+              // Keyed per client so each client's tabs start fresh (no stale
+              // documents from the previous client), opening on the same tab.
               key: ValueKey(
                 'client-detail-${widget.selectedClient!.id}-${widget.initialTabIndex}',
               ),
               length: 4,
-              initialIndex: widget.initialTabIndex.clamp(0, 3),
+              initialIndex: _tabIndex,
               animationDuration: HexoraMotion.duration(
                 context,
                 HexoraMotion.tabIndicator,
@@ -265,28 +281,41 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                 children: [
                   Padding(
                     key: const ValueKey('client-detail-compact-header'),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(12, 6, 8, 4),
                     child: Row(children: [
-                      ClientPropertyImage(
-                        client: widget.selectedClient!,
-                        width: 36,
-                        height: 36,
-                      ),
+                      // Same initial avatar and blue accent as the selected
+                      // row in the client list; a saved photo still wins.
+                      if (widget.selectedClient!.imageVersion != null)
+                        ClientPropertyImage(
+                          client: widget.selectedClient!,
+                          width: 32,
+                          height: 32,
+                        )
+                      else
+                        ClientInitialAvatar(
+                          key: const ValueKey('client-detail-avatar'),
+                          name: widget.selectedClient!.name,
+                          size: 32,
+                          emphasized: true,
+                        ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              widget.selectedClient!.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.bodyLarge.copyWith(
-                                fontWeight: FontWeight.w700,
+                            Tooltip(
+                              message: widget.selectedClient!.name,
+                              waitDuration: const Duration(milliseconds: 500),
+                              child: Text(
+                                widget.selectedClient!.name,
+                                key: const ValueKey('client-detail-name'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: t.bodyLarge.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: cs.onSurface,
+                                ),
                               ),
                             ),
                             if (selectedClientMetadata.isNotEmpty)
@@ -328,6 +357,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                       ),
                     ),
                     child: _ClientTabNavigationRow(
+                      onIndexChanged: (index) => _tabIndex = index,
                       tabs: _ClientTabs(
                         invoicesCount: widget.issuedInvoices.length,
                         contractsCount: _contractsCount,
@@ -517,22 +547,27 @@ class _ClientTabNavigationRow extends StatelessWidget {
   const _ClientTabNavigationRow({
     required this.tabs,
     required this.invoiceActions,
+    this.onIndexChanged,
   });
 
   final Widget tabs;
   final Widget invoiceActions;
+  final ValueChanged<int>? onIndexChanged;
 
   @override
   Widget build(BuildContext context) {
     final controller = DefaultTabController.of(context);
     return AnimatedBuilder(
       animation: controller,
-      builder: (context, _) => Row(
-        children: [
-          Expanded(child: tabs),
-          if (controller.index == 0) invoiceActions,
-        ],
-      ),
+      builder: (context, _) {
+        onIndexChanged?.call(controller.index);
+        return Row(
+          children: [
+            Expanded(child: tabs),
+            if (controller.index == 0) invoiceActions,
+          ],
+        );
+      },
     );
   }
 }

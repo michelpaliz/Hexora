@@ -5,11 +5,10 @@ import 'package:hexora/presentation/screens/workspace/premium/premium_feature_re
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
-import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:provider/provider.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 
 import 'enable_banking_controller.dart';
 import 'enable_banking_left_nav.dart';
@@ -86,6 +85,9 @@ class _SourceDataTabsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final workspaceCanvas = Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).scaffoldBackgroundColor
+        : AppColors.workspaceCanvas;
     final tabs = [
       Tab(text: isSpanish ? 'Movimientos' : 'Movements'),
       Tab(text: isSpanish ? 'Importar' : 'Import'),
@@ -97,7 +99,7 @@ class _SourceDataTabsView extends StatelessWidget {
       child: Column(
         children: [
           Material(
-            color: cs.surface,
+            color: workspaceCanvas,
             child: SizedBox(
               height: 44,
               child: TabBar(
@@ -456,6 +458,9 @@ class _EnableBankingViewState extends State<_EnableBankingView>
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final group = widget.group;
     final isMobile = MediaQuery.sizeOf(context).width < 700;
+    final workspaceCanvas = Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).scaffoldBackgroundColor
+        : AppColors.workspaceCanvas;
 
     // ── Mobile layout ─────────────────────────────────────────────────────────
     if (isMobile) {
@@ -512,7 +517,7 @@ class _EnableBankingViewState extends State<_EnableBankingView>
         return Column(
           children: [
             Material(color: cs.surface, child: tabBar),
-            Expanded(child: body),
+            Expanded(child: ColoredBox(color: workspaceCanvas, child: body)),
           ],
         );
       }
@@ -522,38 +527,43 @@ class _EnableBankingViewState extends State<_EnableBankingView>
           title: isSpanish ? 'Bancos' : 'Bank',
           bottom: tabBar,
         ),
-        body: body,
+        backgroundColor: workspaceCanvas,
+        body: ColoredBox(color: workspaceCanvas, child: body),
       );
     }
 
     // ── Wide / desktop layout ─────────────────────────────────────────────────
-    final desktopContent = LayoutBuilder(
-      builder: (context, constraints) {
-        final autoCollapse = constraints.maxWidth < 1100;
-        final collapsed = _sidebarCollapsedManual ?? autoCollapse;
-        return Row(
-          children: [
-            EnableBankingLeftNav(
-              selected: _selectedMenu,
-              onSelect: (menu) => setState(() => _selectedMenu = menu),
-              collapsed: collapsed,
-              onToggleCollapse: () =>
-                  setState(() => _sidebarCollapsedManual = !collapsed),
-            ),
-            Expanded(
-              child: WorkspaceMainContent(
-                child: _buildContentArea(context, l, isMobile: false),
+    final desktopContent = ColoredBox(
+      color: workspaceCanvas,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final autoCollapse = constraints.maxWidth < 1100;
+          final collapsed = _sidebarCollapsedManual ?? autoCollapse;
+          return Row(
+            children: [
+              EnableBankingLeftNav(
+                selected: _selectedMenu,
+                onSelect: (menu) => setState(() => _selectedMenu = menu),
+                collapsed: collapsed,
+                onToggleCollapse: () =>
+                    setState(() => _sidebarCollapsedManual = !collapsed),
               ),
-            ),
-            const SizedBox(width: 12),
-          ],
-        );
-      },
+              Expanded(
+                child: WorkspaceMainContent(
+                  child: _buildContentArea(context, l, isMobile: false),
+                ),
+              ),
+              const SizedBox(width: 12),
+            ],
+          );
+        },
+      ),
     );
 
     if (widget.embedded) return desktopContent;
 
     return Scaffold(
+      backgroundColor: workspaceCanvas,
       appBar: SectionAppBar(
         title: group == null
             ? _menuTitle(l, _selectedMenu)

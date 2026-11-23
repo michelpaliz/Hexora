@@ -42,6 +42,28 @@ typedef SidebarHeaderBuilder = Widget Function(
   bool collapsed,
 );
 
+/// Aligns contextual module sidebars beneath the primary sidebar controls.
+/// The primary module sidebar sits outside this scope, so only secondary
+/// navigation receives the inset.
+class SecondarySidebarTopInsetScope extends InheritedWidget {
+  const SecondarySidebarTopInsetScope({
+    super.key,
+    required this.topInset,
+    this.title,
+    required super.child,
+  });
+
+  final double topInset;
+  final String? title;
+
+  static SecondarySidebarTopInsetScope? maybeOf(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<SecondarySidebarTopInsetScope>();
+
+  @override
+  bool updateShouldNotify(SecondarySidebarTopInsetScope oldWidget) =>
+      oldWidget.topInset != topInset || oldWidget.title != title;
+}
+
 /// Publishes one workspace-level header to every shared module sidebar.
 class SidebarHeaderScope extends InheritedWidget {
   const SidebarHeaderScope({
@@ -167,10 +189,19 @@ class SidebarEdgeShell extends StatelessWidget {
           showHandle &&
           (headerTitle ?? '').trim().isNotEmpty;
       final secondaryHeaderExtent = showHeader ? 36.0 : 0.0;
+      final contextualScope = SecondarySidebarTopInsetScope.maybeOf(context);
+      final contextualTopInset = contextualScope?.topInset ?? 0;
+      final contextualTitle = contextualScope?.title?.trim();
+      final showContextualTitle = !collapsed &&
+          !showHeader &&
+          contextualTitle != null &&
+          contextualTitle.isNotEmpty;
       final accountHeaderExtent =
           sidebarHeader == null ? 0.0 : (collapsed ? 48.0 : 52.0);
-      final headerExtent =
-          globalHeaderExtent + accountHeaderExtent + secondaryHeaderExtent;
+      final headerExtent = globalHeaderExtent +
+          accountHeaderExtent +
+          secondaryHeaderExtent +
+          contextualTopInset;
 
       return SizedBox.expand(
         child: Stack(
@@ -218,6 +249,22 @@ class SidebarEdgeShell extends StatelessWidget {
                   onCollapse: onToggle!,
                   toggleKey: collapseInHeader ? toggleKey : null,
                   showCollapseAction: collapseInHeader,
+                ),
+              ),
+            if (showContextualTitle)
+              PositionedDirectional(
+                start: 0,
+                end: usesEdgeHandle
+                    ? SidebarEdgeGeometry.contentSafeInset(false)
+                    : 0,
+                top: globalHeaderExtent +
+                    accountHeaderExtent +
+                    secondaryHeaderExtent,
+                height: contextualTopInset,
+                child: SecondarySidebarHeader(
+                  title: contextualTitle,
+                  onCollapse: () {},
+                  showCollapseAction: false,
                 ),
               ),
             if (sidebarHeader != null)

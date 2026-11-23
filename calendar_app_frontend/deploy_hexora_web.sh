@@ -3,8 +3,9 @@ set -e
 
 # ===== Configuration Variables (Adjust if paths change) =====
 
-# SSH user + host (your Linux server)
-REMOTE_USER_HOST="${REMOTE_USER_HOST:-azureuser@hexora-vm}"
+# SSH target from ~/.ssh/config. The alias carries the non-default port and
+# deployment identity; callers can still override it for CI or another host.
+REMOTE_USER_HOST="${REMOTE_USER_HOST:-wicchu-server}"
 
 # This MUST match where your Node app serves Hexora from:
 # In your code you have:
@@ -20,6 +21,8 @@ LOCAL_PROJECT_PATH="${LOCAL_PROJECT_PATH:-$SCRIPT_DIR}"
 LOCAL_BUILD_PATH="$LOCAL_PROJECT_PATH/build/web/"
 FLUTTER_BIN="${FLUTTER_BIN:-flutter}"
 DEPLOY_LOCAL="${DEPLOY_LOCAL:-0}"
+BUILD_TAG="$(date +%s)"
+ASSET_RELEASE_ROOT="asset_releases/$BUILD_TAG"
 
 # Base path for Hexora web (must end with trailing slash)
 BASE_HREF="/hexora/"
@@ -34,7 +37,16 @@ echo "Step 1/2: Building Hexora web for base path $BASE_HREF ..."
 # The --no-tree-shake-icons flag is used to avoid the icon font issue you hit earlier.
 cd "$LOCAL_PROJECT_PATH"
 # Force cache-busting per deploy by embedding a unique compile-time tag.
-"$FLUTTER_BIN" build web --release --base-href "$BASE_HREF" --no-tree-shake-icons --pwa-strategy=none --dart-define=APP_BUILD_TAG="$(date +%s)"
+"$FLUTTER_BIN" build web --release --base-href "$BASE_HREF" --no-tree-shake-icons --pwa-strategy=none --dart-define=APP_BUILD_TAG="$BUILD_TAG"
+
+# Flutter's font and asset URLs are otherwise stable between releases. The
+# production server caches them as immutable, which can pair a new app bundle
+# with an older Lucide/Material icon font. Give every build its own asset base.
+mkdir -p "${LOCAL_BUILD_PATH}${ASSET_RELEASE_ROOT}"
+mv "${LOCAL_BUILD_PATH}assets" \
+  "${LOCAL_BUILD_PATH}${ASSET_RELEASE_ROOT}/assets"
+perl -0pi -e 's#_flutter\.loader\.load\(\);#_flutter.loader.load({onEntrypointLoaded:async function(engineInitializer){const appRunner=await engineInitializer.initializeEngine({assetBase:"'"$ASSET_RELEASE_ROOT"'/"});await appRunner.runApp();}});#' \
+  "${LOCAL_BUILD_PATH}flutter_bootstrap.js"
 
 # Retire any previously installed offline-first Flutter worker immediately.
 # Flutter's `none` strategy emits an empty worker, which can remain waiting
@@ -49,11 +61,12 @@ if [ ! -d "$LOCAL_BUILD_PATH" ]; then
 fi
 
 echo "Verifying icon assets locally..."
-if [ ! -f "${LOCAL_BUILD_PATH}FontManifest.json" ] && [ ! -f "${LOCAL_BUILD_PATH}assets/FontManifest.json" ]; then
+RELEASE_ASSETS_PATH="${LOCAL_BUILD_PATH}${ASSET_RELEASE_ROOT}/assets"
+if [ ! -f "${LOCAL_BUILD_PATH}FontManifest.json" ] && [ ! -f "${RELEASE_ASSETS_PATH}/FontManifest.json" ]; then
   echo "Error: FontManifest.json missing from build output (root or assets)."
   exit 1
 fi
-if [ ! -f "${LOCAL_BUILD_PATH}assets/fonts/MaterialIcons-Regular.otf" ] && ! find "${LOCAL_BUILD_PATH}assets" -type f -name "*MaterialSymbols*" | grep -q .; then
+if [ ! -f "${RELEASE_ASSETS_PATH}/fonts/MaterialIcons-Regular.otf" ] && ! find "${RELEASE_ASSETS_PATH}" -type f -name "*MaterialSymbols*" | grep -q .; then
   echo "Error: icon font assets missing (MaterialIcons or MaterialSymbols)."
   exit 1
 fi
@@ -84,12 +97,10 @@ ssh "$REMOTE_USER_HOST" "bash -lc '
   test -f \"$REMOTE_TMP_PATH/index.html\" &&
   test -f \"$REMOTE_TMP_PATH/flutter_bootstrap.js\" &&
   test -f \"$REMOTE_TMP_PATH/main.dart.js\" &&
-  (test -f \"$REMOTE_TMP_PATH/FontManifest.json\" || test -f \"$REMOTE_TMP_PATH/assets/FontManifest.json\") &&
+  (test -f \"$REMOTE_TMP_PATH/FontManifest.json\" || test -f \"$REMOTE_TMP_PATH/$ASSET_RELEASE_ROOT/assets/FontManifest.json\") &&
   (
-    test -f \"$REMOTE_TMP_PATH/assets/fonts/MaterialIcons-Regular.otf\" ||
-    test -f \"$REMOTE_TMP_PATH/assets/fonts/MaterialSymbolsOutlined.ttf\" ||
-    test -f \"$REMOTE_TMP_PATH/assets/fonts/MaterialSymbolsRounded.ttf\" ||
-    test -f \"$REMOTE_TMP_PATH/assets/fonts/MaterialSymbolsSharp.ttf\"
+    test -f \"$REMOTE_TMP_PATH/$ASSET_RELEASE_ROOT/assets/fonts/MaterialIcons-Regular.otf\" ||
+    find \"$REMOTE_TMP_PATH/$ASSET_RELEASE_ROOT/assets\" -type f -name \"*MaterialSymbols*\" | grep -q .
   )
 '"
 echo "Remote asset verification passed."

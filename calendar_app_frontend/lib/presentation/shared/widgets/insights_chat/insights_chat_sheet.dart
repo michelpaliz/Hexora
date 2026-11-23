@@ -70,6 +70,7 @@ class _InsightsChatSheetState extends InsightsChatSheetStateBase
     super.initState();
     runtime = widget.runtime;
     runtime.addListener(onRuntimeChanged);
+    inputCtrl.addListener(onComposerChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       runtime.setSheetOpen(true);
@@ -96,10 +97,15 @@ class _InsightsChatSheetState extends InsightsChatSheetStateBase
     scrollToBottom();
   }
 
+  void onComposerChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     closeInlineSurface(notify: false);
     runtime.removeListener(onRuntimeChanged);
+    inputCtrl.removeListener(onComposerChanged);
     runtime.setSheetOpen(false, notify: false);
     inputCtrl.dispose();
     chatComposerFocusNode.dispose();

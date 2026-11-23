@@ -132,7 +132,10 @@ class _TelegramChatListWidgetState extends State<TelegramChatListWidget> {
                             )
                           : null,
                       filled: true,
-                      fillColor: cs.onSurface.withValues(alpha: 0.05),
+                      fillColor: Color.alphaBlend(
+                        cs.primary.withValues(alpha: 0.06),
+                        cs.surface,
+                      ),
                       contentPadding: const EdgeInsets.symmetric(vertical: 0),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -145,7 +148,7 @@ class _TelegramChatListWidgetState extends State<TelegramChatListWidget> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: _kTelegramBlue.withValues(alpha: 0.45),
+                          color: cs.primary.withValues(alpha: 0.55),
                           width: 1.4,
                         ),
                       ),
@@ -156,9 +159,9 @@ class _TelegramChatListWidgetState extends State<TelegramChatListWidget> {
               ),
               const SizedBox(width: 8),
               SizedBox(
-                width: 40,
-                height: 40,
-                child: IconButton.outlined(
+                width: 36,
+                height: 36,
+                child: IconButton(
                   onPressed: widget.isLoading ? null : widget.onRefresh,
                   icon: widget.isLoading
                       ? SizedBox(
@@ -174,7 +177,8 @@ class _TelegramChatListWidgetState extends State<TelegramChatListWidget> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    minimumSize: const Size(40, 40),
+                    minimumSize: const Size(36, 36),
+                    foregroundColor: cs.onSurfaceVariant,
                   ),
                   padding: EdgeInsets.zero,
                 ),
@@ -339,17 +343,7 @@ class _TelegramChatListWidgetState extends State<TelegramChatListWidget> {
         ),
       );
       if (index != chats.length - 1) {
-        widgets.add(
-          Builder(
-            builder: (context) {
-              final cs = Theme.of(context).colorScheme;
-              return Divider(
-                height: 1,
-                color: cs.outlineVariant.withValues(alpha: 0.35),
-              );
-            },
-          ),
-        );
+        widgets.add(const SizedBox(height: 2));
       }
     }
     return widgets;
@@ -479,49 +473,55 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-        decoration: BoxDecoration(
-          color: selected
-              ? _kTelegramBlue.withValues(alpha: 0.12)
-              : cs.onSurface.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected
-                ? _kTelegramBlue.withValues(alpha: 0.4)
-                : Colors.transparent,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: selected
-                    ? _kTelegramBlue
-                    : cs.onSurface.withValues(alpha: 0.65),
-              ),
+    // Active: stronger pale blue + blue semibold text. Inactive: transparent
+    // with muted text. No borders, so the filters sit on the canvas.
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          hoverColor: cs.primary.withValues(alpha: 0.05),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: selected
+                  ? cs.primary.withValues(alpha: 0.13)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
             ),
-            if (count > 0) ...[
-              const SizedBox(width: 5),
-              Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: selected
-                      ? _kTelegramBlue.withValues(alpha: 0.75)
-                      : cs.onSurface.withValues(alpha: 0.4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    color: selected ? cs.primary : cs.onSurfaceVariant,
+                  ),
                 ),
-              ),
-            ],
-          ],
+                if (count > 0) ...[
+                  const SizedBox(width: 5),
+                  Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                      color: selected
+                          ? cs.primary.withValues(alpha: 0.8)
+                          : cs.onSurfaceVariant.withValues(alpha: 0.75),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -549,184 +549,173 @@ class _ChatListItem extends StatelessWidget {
     final showPinned = chat.isPinned;
     final showArchiveBadge = chat.isArchivedChat;
 
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          decoration: BoxDecoration(
-            color: selected
-                ? _kTelegramBlue.withValues(alpha: 0.08)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: selected
-                ? Border(
-                    left: BorderSide(
-                      color: _kTelegramBlue.withValues(alpha: 0.7),
-                      width: 2.5,
-                    ),
-                  )
-                : null,
-          ),
-          constraints: const BoxConstraints(minHeight: 48),
-          padding: EdgeInsets.fromLTRB(selected ? 6 : 8, 5, 8, 5),
-          child: Row(
-            children: [
-              // Avatar with type badge
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _avatarColor(chat.title),
-                    ),
-                    child: Center(
-                      child: Text(
-                        chat.title.isNotEmpty
-                            ? chat.title[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: -2,
-                    right: -2,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: cs.surface,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Icon(
-                          _typeIcon,
-                          size: 10,
-                          color: cs.onSurface.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+    // Normal: transparent on the canvas · hover: faint blue · selected: white
+    // surface, hairline border and a 3 px blue indicator (painted inside the
+    // row so selection never shifts the layout).
+    return Semantics(
+      selected: selected,
+      child: Material(
+        key: ValueKey('telegram-chat-row-${chat.id}'),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          hoverColor: cs.primary.withValues(alpha: 0.05),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: selected ? cs.surface : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected
+                    ? cs.outlineVariant.withValues(alpha: 0.6)
+                    : Colors.transparent,
               ),
-              const SizedBox(width: 12),
+            ),
+            constraints: const BoxConstraints(minHeight: 50),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: AnimatedContainer(
+                    key: const ValueKey('telegram-chat-row-indicator'),
+                    duration: const Duration(milliseconds: 120),
+                    width: 3,
+                    color: selected ? cs.primary : Colors.transparent,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(9, 6, 8, 6),
+                  child: Row(
+                    children: [
+                      TelegramChatAvatar(chat: chat),
+                      const SizedBox(width: 10),
 
-              // Title + optional useful context
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            chat.title,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w600,
+                      // Title + optional useful context
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    chat.title,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          fontSize: 13.5,
+                                          fontWeight: selected
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
+                                          color: cs.onSurface,
+                                        ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                                if (showPinned) ...[
+                                  const SizedBox(width: 6),
+                                  Icon(
+                                    Icons.push_pin_rounded,
+                                    size: 13,
+                                    color: cs.onSurface.withValues(alpha: 0.38),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            if (_subtitle(context) case final subtitle?) ...[
+                              const SizedBox(height: 1),
+                              Text(
+                                subtitle,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color:
+                                          cs.onSurface.withValues(alpha: 0.5),
+                                      fontSize: 11.5,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
                         ),
-                        if (showPinned) ...[
-                          const SizedBox(width: 6),
-                          Icon(
-                            Icons.push_pin_rounded,
-                            size: 13,
-                            color: cs.onSurface.withValues(alpha: 0.38),
+                      ),
+
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (lastMessageLabel != null)
+                            Text(
+                              lastMessageLabel,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: cs.onSurface.withValues(alpha: 0.42),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (showArchiveBadge) ...[
+                                Icon(
+                                  Icons.archive_outlined,
+                                  size: 13,
+                                  color: cs.onSurface.withValues(alpha: 0.34),
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                              if (showUnread)
+                                Container(
+                                  constraints:
+                                      const BoxConstraints(minWidth: 20),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: cs.primary,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    unreadCount > 99 ? '99+' : '$unreadCount',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                )
+                              else
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 18,
+                                  color: cs.onSurface.withValues(alpha: 0.3),
+                                ),
+                            ],
                           ),
                         ],
-                      ],
-                    ),
-                    if (_subtitle(context) case final subtitle?) ...[
-                      const SizedBox(height: 1),
-                      Text(
-                        subtitle,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: cs.onSurface.withValues(alpha: 0.5),
-                              fontSize: 11.5,
-                            ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  if (lastMessageLabel != null)
-                    Text(
-                      lastMessageLabel,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.42),
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (showArchiveBadge) ...[
-                        Icon(
-                          Icons.archive_outlined,
-                          size: 13,
-                          color: cs.onSurface.withValues(alpha: 0.34),
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                      if (showUnread)
-                        Container(
-                          constraints: const BoxConstraints(minWidth: 20),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _kTelegramBlue,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            unreadCount > 99 ? '99+' : '$unreadCount',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        )
-                      else
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          size: 18,
-                          color: cs.onSurface.withValues(alpha: 0.3),
-                        ),
-                    ],
                   ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -753,13 +742,6 @@ class _ChatListItem extends StatelessWidget {
     return null;
   }
 
-  IconData get _typeIcon {
-    if (chat.isForumChat) return Icons.forum_outlined;
-    if (chat.isChannel) return Icons.campaign_rounded;
-    if (chat.isGroup) return Icons.group_rounded;
-    return Icons.person_rounded;
-  }
-
   String? _formatLastMessageDate(DateTime? value) {
     if (value == null) return null;
     final local = value.toLocal();
@@ -777,8 +759,24 @@ class _ChatListItem extends StatelessWidget {
     }
     return '${local.day}/${local.month}/${local.year}';
   }
+}
 
-  static Color _avatarColor(String title) {
+/// Conversation avatar (initial + type badge). Shared by the conversation
+/// list and the active chat header so both panels show the same identity.
+class TelegramChatAvatar extends StatelessWidget {
+  const TelegramChatAvatar({super.key, required this.chat, this.size = 36});
+
+  final TelegramChat chat;
+  final double size;
+
+  IconData get _typeIcon {
+    if (chat.isForumChat) return Icons.forum_outlined;
+    if (chat.isChannel) return Icons.campaign_rounded;
+    if (chat.isGroup) return Icons.group_rounded;
+    return Icons.person_rounded;
+  }
+
+  static Color colorFor(String title) {
     const palette = [
       Color(0xFF5B8DEF),
       Color(0xFF3DBF7A),
@@ -790,6 +788,57 @@ class _ChatListItem extends StatelessWidget {
       Color(0xFFE91E8C),
     ];
     return palette[title.hashCode.abs() % palette.length];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final badge = (size * .44).roundToDouble();
+    return SizedBox.square(
+      dimension: size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colorFor(chat.title),
+            ),
+            child: Center(
+              child: Text(
+                chat.title.isNotEmpty ? chat.title[0].toUpperCase() : '?',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: size * .42,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -2,
+            right: -2,
+            child: Container(
+              width: badge,
+              height: badge,
+              decoration: BoxDecoration(
+                color: cs.surface,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Icon(
+                  _typeIcon,
+                  size: badge * .62,
+                  color: cs.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -827,7 +876,7 @@ class TelegramChatDetailSheet extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _ChatListItem._avatarColor(chat.title),
+                  color: TelegramChatAvatar.colorFor(chat.title),
                 ),
                 child: Center(
                   child: Text(

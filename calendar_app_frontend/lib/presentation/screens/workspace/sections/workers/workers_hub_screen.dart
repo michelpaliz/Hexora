@@ -21,6 +21,7 @@ import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/l10n/build_context_locale.dart';
 import 'package:provider/provider.dart';
@@ -72,18 +73,24 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
       _RegisterHoursImportPanel(group: widget.group),
       WorkerAccountSetupScreen(group: widget.group),
     ];
-    return HexoraMenuContentTransition.submenu(
-      transitionKey: _section,
-      child: IndexedStack(
-        index: _section.index,
-        children: [
-          for (var i = 0; i < sections.length; i++)
-            if (!isMobile ||
-                _visitedMobileSections.contains(_WorkersSection.values[i]))
-              sections[i]
-            else
-              const SizedBox.shrink(),
-        ],
+    final canvas = Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).scaffoldBackgroundColor
+        : AppColors.workspaceCanvas;
+    return ColoredBox(
+      color: canvas,
+      child: HexoraMenuContentTransition.submenu(
+        transitionKey: _section,
+        child: IndexedStack(
+          index: _section.index,
+          children: [
+            for (var i = 0; i < sections.length; i++)
+              if (!isMobile ||
+                  _visitedMobileSections.contains(_WorkersSection.values[i]))
+                sections[i]
+              else
+                const SizedBox.shrink(),
+          ],
+        ),
       ),
     );
   }
@@ -206,54 +213,61 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
         ),
     ];
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
+    final workspaceCanvas = Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).scaffoldBackgroundColor
+        : AppColors.workspaceCanvas;
 
     return Scaffold(
+      backgroundColor: workspaceCanvas,
       appBar: SectionAppBar(
         title: l.timeTrackingTitle,
       ),
-      body: isNarrow
-          ? Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: PopupMenuButton<_WorkersSection>(
-                    tooltip: isEs ? 'Cambiar sección' : 'Change section',
-                    initialValue: _section,
-                    onSelected: (value) => setState(() => _section = value),
-                    itemBuilder: (_) => [
-                      for (final item in navItems)
-                        NavigationPopupMenuItem(
-                          value: item.section,
-                          child: Text(item.label),
+      body: ColoredBox(
+        color: workspaceCanvas,
+        child: isNarrow
+            ? Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: PopupMenuButton<_WorkersSection>(
+                      tooltip: isEs ? 'Cambiar sección' : 'Change section',
+                      initialValue: _section,
+                      onSelected: (value) => setState(() => _section = value),
+                      itemBuilder: (_) => [
+                        for (final item in navItems)
+                          NavigationPopupMenuItem(
+                            value: item.section,
+                            child: Text(item.label),
+                          ),
+                      ],
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: cs.primaryContainer,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                    ],
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: cs.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
+                        child: Row(children: [
+                          Expanded(
+                              child: Text(
+                            navItems
+                                .firstWhere((item) => item.section == _section)
+                                .label,
+                            style: NavigationTokens.label(context).copyWith(
+                                color: cs.onPrimaryContainer,
+                                fontWeight: FontWeight.w700),
+                          )),
+                          Icon(Icons.expand_more_rounded,
+                              color: cs.onPrimaryContainer),
+                        ]),
                       ),
-                      child: Row(children: [
-                        Expanded(
-                            child: Text(
-                          navItems
-                              .firstWhere((item) => item.section == _section)
-                              .label,
-                          style: NavigationTokens.label(context).copyWith(
-                              color: cs.onPrimaryContainer,
-                              fontWeight: FontWeight.w700),
-                        )),
-                        Icon(Icons.expand_more_rounded,
-                            color: cs.onPrimaryContainer),
-                      ]),
                     ),
                   ),
-                ),
-                Expanded(child: _buildSectionContent()),
-              ],
-            )
-          : _buildDesktopLayout(context, navItems),
+                  Expanded(child: _buildSectionContent()),
+                ],
+              )
+            : _buildDesktopLayout(context, navItems),
+      ),
     );
   }
 }

@@ -37,6 +37,7 @@ import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
@@ -1656,7 +1657,8 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       final bytes = InvoiceEditorPdf.validatePdf(r);
       await pdf_launcher.launchPdfPreview(
         bytes,
-        fileName: '${_isSpanishLocale ? 'presupuesto' : 'budget'}-preview-$id.pdf',
+        fileName:
+            '${_isSpanishLocale ? 'presupuesto' : 'budget'}-preview-$id.pdf',
       );
     } catch (e) {
       if (!mounted) return;

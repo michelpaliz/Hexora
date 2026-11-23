@@ -67,7 +67,7 @@ class _CompactConversationTileState extends State<CompactConversationTile> {
         color: widget.selected
             ? (widget.navySurface
                 ? cs.primary.withValues(alpha: .28)
-                : cs.primary.withValues(alpha: .06))
+                : cs.surface)
             : (_hovering || _focused)
                 ? (widget.navySurface
                     ? Colors.white.withValues(alpha: .07)

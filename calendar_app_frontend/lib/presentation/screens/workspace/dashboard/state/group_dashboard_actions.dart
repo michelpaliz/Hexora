@@ -33,6 +33,10 @@ class DashboardActions {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (routeContext) => DashboardPreviewScreen(
+              onOpenAssistant: () {
+                Navigator.of(routeContext).pop();
+                state.openSection(Sections.chat);
+              },
               onAskHexora: (text, selectedCharts) {
                 state.askHexoraFromHome(text, selectedCharts);
                 Navigator.of(routeContext).pop();

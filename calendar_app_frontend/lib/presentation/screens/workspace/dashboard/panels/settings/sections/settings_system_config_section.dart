@@ -150,6 +150,9 @@ class _SettingsSystemConfigSectionState
     setState(() => _autoStatementImportLoading = true);
     try {
       await context.read<AuthProvider>().setAutoStatementImportEnabled(enabled);
+      if (!mounted) return;
+      final isEs = Localizations.localeOf(context).languageCode == 'es';
+      _snack(isEs ? 'Configuración guardada.' : 'Settings saved.');
     } catch (_) {
       _snack(loc.autoStatementImportUpdateFailed);
     } finally {
@@ -418,9 +421,22 @@ class _LanguageTile extends StatelessWidget {
               ButtonSegment(value: 'en', label: Text('EN')),
             ],
             selected: {current},
-            onSelectionChanged: (selection) => context
-                .read<LocaleProvider>()
-                .setLocale(Locale(selection.first)),
+            onSelectionChanged: (selection) {
+              final next = selection.first;
+              if (next == current) return;
+              context.read<LocaleProvider>().setLocale(Locale(next));
+              final isSpanish = next == 'es';
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(
+                    behavior: SnackBarBehavior.floating,
+                    content: Text(isSpanish
+                        ? 'Configuración guardada.'
+                        : 'Settings saved.'),
+                  ),
+                );
+            },
             showSelectedIcon: false,
             style: const ButtonStyle(
               visualDensity: VisualDensity.compact,

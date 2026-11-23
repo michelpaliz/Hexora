@@ -1,6 +1,7 @@
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
@@ -868,6 +869,9 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
   }
 
   Widget _buildWorkersSection(BuildContext context) {
+    final workspaceCanvas = Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).scaffoldBackgroundColor
+        : AppColors.workspaceCanvas;
     final directory = WorkerDirectoryView(
       group: widget.group,
       workers: _workers,
@@ -952,7 +956,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
         if (_showWorkerForm)
           Positioned.fill(
               child: Material(
-            color: Theme.of(context).colorScheme.surface,
+            color: workspaceCanvas,
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1107,56 +1111,64 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     return LayoutBuilder(
       builder: (context, constraints) {
         final mobile = constraints.maxWidth < 760;
+        final workspaceCanvas = Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).scaffoldBackgroundColor
+            : AppColors.workspaceCanvas;
         final mainContent = WorkspaceMainContent(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(mobile ? 8 : 0, 8, mobile ? 8 : 12, 8),
-            child: Column(
-              children: [
-                if (mobile) _buildMobileSectionSelector(context),
-                Expanded(
-                  child: FolderPanel(
-                    title: _sectionTitle(context),
-                    showTab: _section != _InlineSection.workers,
-                    showBorder: false,
-                    showToolbarDivider: false,
-                    contentTopPadding:
-                        _section == _InlineSection.workers ? 12 : 30,
-                    child: HexoraMenuContentTransition.tab(
-                      transitionKey: _section,
-                      child: IndexedStack(
-                        index: _section.index,
-                        children: [
-                          IndexedStack(
-                            index: _overviewWorker == null ? 0 : 1,
-                            children: [
-                              _buildWorkersSection(context),
-                              if (_overviewWorker != null)
-                                WorkerMonthlyOverviewInline(
-                                  group: widget.group,
-                                  worker: _overviewWorker!,
-                                  repo: _repo,
-                                  getToken: _token,
-                                  onBack: () =>
-                                      setState(() => _overviewWorker = null),
-                                  onDataChanged: _reloadActiveTotals,
-                                ),
-                            ],
-                          ),
-                          WorkerTimeHistoryGraphView(
-                            key: ValueKey(
-                                'inline-worker-graphs-${widget.group.id}'),
-                            group: widget.group,
-                          ),
-                          _buildHistorialSection(context),
-                          TelegramWorkerHoursImportView(group: widget.group),
-                          _buildRegisterHoursImportSection(context),
-                          WorkerAccountSetupScreen(group: widget.group),
-                        ],
+          child: ColoredBox(
+            color: workspaceCanvas,
+            child: Padding(
+              padding:
+                  EdgeInsets.fromLTRB(mobile ? 8 : 0, 8, mobile ? 8 : 12, 8),
+              child: Column(
+                children: [
+                  if (mobile) _buildMobileSectionSelector(context),
+                  Expanded(
+                    child: FolderPanel(
+                      title: _sectionTitle(context),
+                      showTab: _section != _InlineSection.workers,
+                      showBorder: false,
+                      showToolbarDivider: false,
+                      backgroundColor: workspaceCanvas,
+                      contentTopPadding:
+                          _section == _InlineSection.workers ? 12 : 30,
+                      child: HexoraMenuContentTransition.tab(
+                        transitionKey: _section,
+                        child: IndexedStack(
+                          index: _section.index,
+                          children: [
+                            IndexedStack(
+                              index: _overviewWorker == null ? 0 : 1,
+                              children: [
+                                _buildWorkersSection(context),
+                                if (_overviewWorker != null)
+                                  WorkerMonthlyOverviewInline(
+                                    group: widget.group,
+                                    worker: _overviewWorker!,
+                                    repo: _repo,
+                                    getToken: _token,
+                                    onBack: () =>
+                                        setState(() => _overviewWorker = null),
+                                    onDataChanged: _reloadActiveTotals,
+                                  ),
+                              ],
+                            ),
+                            WorkerTimeHistoryGraphView(
+                              key: ValueKey(
+                                  'inline-worker-graphs-${widget.group.id}'),
+                              group: widget.group,
+                            ),
+                            _buildHistorialSection(context),
+                            TelegramWorkerHoursImportView(group: widget.group),
+                            _buildRegisterHoursImportSection(context),
+                            WorkerAccountSetupScreen(group: widget.group),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

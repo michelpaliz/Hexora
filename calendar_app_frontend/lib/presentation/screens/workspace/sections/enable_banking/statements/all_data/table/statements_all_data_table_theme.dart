@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 
 /// Banking retains its surface toggle while using the application palette.
@@ -40,14 +41,18 @@ class StatementsTableTheme {
 
   factory StatementsTableTheme._fromScheme(ColorScheme cs,
       {required bool elevated}) {
-    final surface = elevated ? cs.surfaceContainerLow : cs.surface;
+    // Keep the transaction list on one calm canvas. White is reserved for
+    // the active/selected row, while semantic badges retain their own colors.
+    final surface = cs.brightness == Brightness.light
+        ? AppColors.workspaceCanvas
+        : cs.surfaceContainerLow;
     return StatementsTableTheme(
-      headerBg: cs.surfaceContainerLow,
+      headerBg: surface,
       headerText: cs.onSurfaceVariant,
       rowBg: surface,
       rowBgAlt: surface,
       rowHover: Color.alphaBlend(cs.primary.withValues(alpha: .04), surface),
-      rowSelected: Color.alphaBlend(cs.primary.withValues(alpha: .10), surface),
+      rowSelected: cs.surface,
       rowActive: Color.alphaBlend(cs.primary.withValues(alpha: .20), surface),
       border: cs.outlineVariant
           .withValues(alpha: HexoraTableTokens.separatorOpacity),

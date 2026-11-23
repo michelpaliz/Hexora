@@ -8,8 +8,8 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
       return _buildEmptyState(context);
     }
 
+    // No fixed height: the detail card ends with its content (max 480).
     return SizedBox(
-      height: 480,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -53,11 +53,12 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
 
     return Container(
       constraints: const BoxConstraints(maxHeight: 480),
+      key: const ValueKey('settings-member-list'),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.15),
+        color: cs.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.25),
+          color: cs.outlineVariant.withValues(alpha: 0.7),
         ),
       ),
       child: ListView.separated(
@@ -83,20 +84,29 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
                   : ref.username;
 
               return InkWell(
+                key: ValueKey('settings-member-row-${ref.username}'),
                 onTap: () => _selectMember(ref),
                 borderRadius: BorderRadius.circular(8),
+                hoverColor: cs.primary.withValues(alpha: 0.05),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                   margin:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  // Selected: stronger pale blue with a 3 px blue indicator.
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? cs.primaryContainer.withValues(alpha: 0.5)
+                        ? cs.primary.withValues(alpha: 0.10)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                   ),
+                  foregroundDecoration: isSelected
+                      ? BoxDecoration(
+                          border: Border(
+                            left: BorderSide(color: cs.primary, width: 3),
+                          ),
+                        )
+                      : null,
                   child: Row(
                     children: [
                       HexoraUserAvatar(

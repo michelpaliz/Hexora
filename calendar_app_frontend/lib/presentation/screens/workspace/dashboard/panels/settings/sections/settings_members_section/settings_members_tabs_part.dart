@@ -74,9 +74,7 @@ extension _SettingsMembersTabsPart on _SettingsMembersSectionState {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: selected
-              ? cs.primaryContainer
-              : cs.surfaceContainerHighest.withValues(alpha: 0.3),
+          color: selected ? cs.primaryContainer : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected

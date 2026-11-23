@@ -11,7 +11,6 @@ import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/errors/error_classes/error_classes.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
-import 'package:hexora/presentation/screens/workspace/sections/enable_banking/widgets/folder_section_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/add_user_controller.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/i_group_editor_port.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/service/vm_group_editor_port.dart';
@@ -197,7 +196,6 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final isLight = Theme.of(context).brightness == Brightness.light;
 
     return PopScope(
       canPop: _pendingRole == null,
@@ -209,15 +207,12 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
           Navigator.of(context).maybePop();
         }
       },
-      child: Padding(
-        padding: const EdgeInsets.only(top: 24),
-        child: FolderSectionCard(
-          label: l.membersTitle,
-          showTitle: false,
-          leftTabOffset: 0,
-          backgroundColor: isLight ? Colors.white : null,
-          child: _buildContent(context),
-        ),
+      // Tabs, list and details sit on the light-blue canvas; only the member
+      // list and the selected member's details are white.
+      child: Semantics(
+        label: l.membersTitle,
+        container: true,
+        child: _buildContent(context),
       ),
     );
   }
@@ -235,7 +230,7 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
+      padding: EdgeInsets.zero,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

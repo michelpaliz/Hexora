@@ -450,7 +450,8 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                     fontWeight: FontWeight.w600,
                   ),
                   selected: selected,
-                  showLeadingStripe: false,
+                  selectedBackgroundColor: cs.surface,
+                  showLeadingStripe: true,
                   borderRadius: BorderRadius.circular(8),
                   trailing: selected
                       ? Icon(

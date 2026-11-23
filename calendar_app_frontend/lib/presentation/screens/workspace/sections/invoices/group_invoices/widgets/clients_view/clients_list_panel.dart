@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:hexora/presentation/shared/widgets/client_initial_avatar.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -36,6 +37,18 @@ class ClientsListPanel extends StatefulWidget {
   final ValueChanged<GroupClient>? onEditClient;
   final VoidCallback? onCollapse;
 
+  /// Draws the small white tab that joins the selected row to the divider.
+  /// Disable it where the panels are not side by side or space is tight.
+  final bool showSelectionConnector;
+
+  /// Hairline shared by the selected row, its connector and the panel divider.
+  static Color selectionEdgeColor(ColorScheme cs) =>
+      cs.outlineVariant.withValues(alpha: .7);
+
+  /// Distance from the panel's content edge to the split divider line:
+  /// the card margin (4) plus half of the split handle (12 / 2).
+  static const double connectorReach = 10;
+
   const ClientsListPanel({
     super.key,
     required this.allClients,
@@ -63,6 +76,7 @@ class ClientsListPanel extends StatefulWidget {
     this.refreshing = false,
     this.onEditClient,
     this.onCollapse,
+    this.showSelectionConnector = true,
   });
 
   @override
@@ -74,9 +88,15 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
   bool _sortByType = false;
   bool _ascending = true;
   final GlobalKey _selectedRowKey = GlobalKey();
+  final GlobalKey _listViewportKey = GlobalKey();
+  // The connector is positioned inside this stack, so measure against it
+  // (the panel itself also includes the card margin).
+  final GlobalKey _stackKey = GlobalKey();
   final ScrollController _clientsScrollController = ScrollController();
   double? _connectionTop;
   double? _connectionHeight;
+  bool _connectionClippedTop = false;
+  bool _connectionClippedBottom = false;
 
   @override
   void initState() {
@@ -99,8 +119,12 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
   }
 
   void _measureSelectedConnection() {
+    if (!widget.showSelectionConnector) {
+      _clearSelectedConnection();
+      return;
+    }
     final rowContext = _selectedRowKey.currentContext;
-    final stackContext = context;
+    final stackContext = _stackKey.currentContext ?? context;
     final rowObject = rowContext?.findRenderObject();
     final stackObject = stackContext.findRenderObject();
     if (rowObject is! RenderBox ||
@@ -121,20 +145,38 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
       rowObject.size.width,
       rowObject.size.height,
     );
-    final viewportHeight = stackObject.size.height;
-    final visibleTop = math.max(0, rowRect.top).toDouble();
-    final visibleBottom = math.min(viewportHeight, rowRect.bottom).toDouble();
-    if (visibleBottom <= visibleTop ||
-        rowRect.bottom < 0 ||
-        rowRect.top > viewportHeight) {
+    // Clip to the scrolling list (not the whole panel) so the connector never
+    // floats beside the filters or the column header.
+    var viewTop = 0.0;
+    var viewBottom = stackObject.size.height;
+    final viewportObject = _listViewportKey.currentContext?.findRenderObject();
+    if (viewportObject is RenderBox &&
+        viewportObject.attached &&
+        viewportObject.hasSize) {
+      final origin =
+          stackObject.globalToLocal(viewportObject.localToGlobal(Offset.zero));
+      viewTop = origin.dy;
+      viewBottom = origin.dy + viewportObject.size.height;
+    }
+    final visibleTop = math.max(viewTop, rowRect.top).toDouble();
+    final visibleBottom = math.min(viewBottom, rowRect.bottom).toDouble();
+    if (visibleBottom - visibleTop < 1) {
       _clearSelectedConnection();
       return;
     }
 
-    if (_connectionTop != visibleTop || _connectionHeight != rowRect.height) {
+    final height = visibleBottom - visibleTop;
+    final clippedTop = rowRect.top < viewTop - .5;
+    final clippedBottom = rowRect.bottom > viewBottom + .5;
+    if (_connectionTop != visibleTop ||
+        _connectionHeight != height ||
+        _connectionClippedTop != clippedTop ||
+        _connectionClippedBottom != clippedBottom) {
       setState(() {
         _connectionTop = visibleTop;
-        _connectionHeight = rowRect.height;
+        _connectionHeight = height;
+        _connectionClippedTop = clippedTop;
+        _connectionClippedBottom = clippedBottom;
       });
     }
   }
@@ -234,6 +276,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
         children: [
           Expanded(
             child: Stack(
+              key: _stackKey,
               clipBehavior: Clip.none,
               children: [
                 widget.allClients.isEmpty
@@ -338,8 +381,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                                     final showProperty =
                                         constraints.maxWidth >= 560;
                                     final showStatus =
-                                        constraints.maxWidth >= 680 &&
-                                            effectiveStatus != 'active';
+                                        constraints.maxWidth >= 500;
                                     return Row(children: [
                                       const SizedBox(width: 36),
                                       Expanded(
@@ -784,6 +826,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                                   ),
                                 ),
                               Expanded(
+                                key: _listViewportKey,
                                 child: ListView.builder(
                                   controller: _clientsScrollController,
                                   itemCount: visibleClients.length,
@@ -803,9 +846,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                                         showType: constraints.maxWidth >= 390,
                                         showProperty:
                                             constraints.maxWidth >= 560,
-                                        showStatus:
-                                            constraints.maxWidth >= 680 &&
-                                                effectiveStatus != 'active',
+                                        showStatus: constraints.maxWidth >= 500,
                                         onTap: () => widget.onSelectClient(c),
                                         onEdit: widget.onEditClient == null
                                             ? null
@@ -820,20 +861,19 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                 if (_connectionTop != null &&
                     _connectionHeight != null &&
                     widget.selectedClient != null)
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOut,
+                  Positioned(
+                    key: const ValueKey('client-selection-connector'),
                     top: _connectionTop,
-                    right: -10,
-                    width: 18,
+                    right: -ClientsListPanel.connectorReach,
+                    width: ClientsListPanel.connectorReach,
                     height: _connectionHeight,
                     child: IgnorePointer(
                       child: CustomPaint(
                         painter: _SelectedClientConnectorPainter(
-                          Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: .07),
+                          fill: cs.surface,
+                          edge: ClientsListPanel.selectionEdgeColor(cs),
+                          drawTop: !_connectionClippedTop,
+                          drawBottom: !_connectionClippedBottom,
                         ),
                       ),
                     ),
@@ -1018,36 +1058,43 @@ class _SidebarMissingInvoiceFilter extends StatelessWidget {
 }
 
 */
+/// White tab continuing the selected row up to the panel divider, with the
+/// row's top and bottom hairlines, so the row reads as opening into the
+/// workspace on the right. Purely decorative.
 class _SelectedClientConnectorPainter extends CustomPainter {
-  const _SelectedClientConnectorPainter(this.color);
+  const _SelectedClientConnectorPainter({
+    required this.fill,
+    required this.edge,
+    required this.drawTop,
+    required this.drawBottom,
+  });
 
-  final Color color;
+  final Color fill;
+  final Color edge;
+  final bool drawTop;
+  final bool drawBottom;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width * .45, 0)
-      ..quadraticBezierTo(
-        size.width * .62,
-        size.height * .28,
-        size.width,
-        size.height * .5,
-      )
-      ..quadraticBezierTo(
-        size.width * .62,
-        size.height * .72,
-        size.width * .45,
-        size.height,
-      )
-      ..lineTo(0, size.height)
-      ..close();
-    canvas.drawPath(path, Paint()..color = color);
+    canvas.drawRect(Offset.zero & size, Paint()..color = fill);
+    final line = Paint()
+      ..color = edge
+      ..strokeWidth = 1;
+    if (drawTop) {
+      canvas.drawLine(const Offset(0, .5), Offset(size.width, .5), line);
+    }
+    if (drawBottom) {
+      canvas.drawLine(Offset(0, size.height - .5),
+          Offset(size.width, size.height - .5), line);
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _SelectedClientConnectorPainter oldDelegate) =>
-      oldDelegate.color != color;
+  bool shouldRepaint(covariant _SelectedClientConnectorPainter old) =>
+      old.fill != fill ||
+      old.edge != edge ||
+      old.drawTop != drawTop ||
+      old.drawBottom != drawBottom;
 }
 
 class _StatusFilterMenu extends StatelessWidget {
@@ -1124,8 +1171,18 @@ class _ClientRow extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final name = client.name.trim();
     final type = _ClientsListPanelState._clientType(client);
-    final initial = name.isEmpty ? '?' : name.characters.first.toUpperCase();
+    final property = (client.effectivePropertyType ?? '').trim();
+    final propertyLabel =
+        property.isEmpty ? '' : clientClassificationLabel(property);
+    // When the client has no customer type, the type column already falls
+    // back to the property type; don't repeat it in the next column.
+    final propertyRepeatsType = propertyLabel.isNotEmpty &&
+        showType &&
+        propertyLabel.toLowerCase() == type.toLowerCase();
 
+    // Normal: transparent · hover: faint blue (HexoraListRow) · selected:
+    // white with a 3 px blue indicator and hairline top/bottom edges. The
+    // edges are foreground-painted so selection never changes the row size.
     return HexoraListRow(
       key: ValueKey('client-sidebar-row-${client.id}'),
       selected: selected,
@@ -1134,21 +1191,14 @@ class _ClientRow extends StatelessWidget {
       verticalPadding: 2,
       separatorWidth: 0,
       margin: EdgeInsets.zero,
-      borderRadius: selected ? 8 : 0,
-      selectedBackgroundColor: selected ? cs.surface : null,
-      selectedBorderColor: selected ? cs.primary.withValues(alpha: 0.18) : null,
+      selectedBackgroundColor: cs.surface,
+      selectedIndicatorWidth: 3,
+      selectedEdgeColor: ClientsListPanel.selectionEdgeColor(cs),
       child: Row(children: [
-        CircleAvatar(
-          radius: 12,
-          backgroundColor:
-              selected ? cs.primaryContainer : cs.surfaceContainerHighest,
-          child: Text(
-            initial,
-            style: textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-            ),
-          ),
+        ClientInitialAvatar(
+          key: ValueKey('client-sidebar-avatar-${client.id}'),
+          name: client.name,
+          emphasized: selected,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -1161,7 +1211,7 @@ class _ClientRow extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                 color: cs.onSurface,
               ),
             ),
@@ -1191,22 +1241,23 @@ class _ClientRow extends StatelessWidget {
             flex: 3,
             child: Row(
               children: [
-                if (client.effectivePropertyType != null &&
-                    client.effectivePropertyType!.trim().isNotEmpty) ...[
+                if (propertyLabel.isNotEmpty && !propertyRepeatsType) ...[
                   Icon(LucideIcons.house, size: 14, color: cs.onSurfaceVariant),
                   const SizedBox(width: 5),
                 ],
                 Expanded(
-                  child: Text(
-                    client.effectivePropertyType == null ||
-                            client.effectivePropertyType!.trim().isEmpty
-                        ? '—'
-                        : clientClassificationLabel(
-                            client.effectivePropertyType!),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant,
+                  child: Tooltip(
+                    message: propertyLabel,
+                    waitDuration: const Duration(milliseconds: 500),
+                    child: Text(
+                      propertyLabel.isEmpty || propertyRepeatsType
+                          ? '—'
+                          : propertyLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),

@@ -102,7 +102,7 @@ extension _SettingsMembersAddUserPart on _SettingsMembersSectionState {
                   }
 
                   await showModalBottomSheet<void>(
-      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
+                    sheetAnimationStyle: HexoraMotion.sheetStyle(context),
                     context: context,
                     isScrollControlled: true,
                     useSafeArea: true,

@@ -1,7 +1,6 @@
 // presentation/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'widgets/calendar_details_empty.dart';
 import 'package:intl/intl.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
@@ -38,6 +37,8 @@ import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/widgets/calendar_workspace_surfaces.dart';
 
 class CalendarDashboardActions {
   final Future<void> Function() onAddEvent;
@@ -347,13 +348,18 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     final loc = AppLocalizations.of(context)!;
     final screenWidth = MediaQuery.of(context).size.width;
     final isWide = screenWidth >= 1000;
+    final workspaceCanvas = Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).scaffoldBackgroundColor
+        : AppColors.workspaceCanvas;
 
     return ValueListenableBuilder<bool>(
       valueListenable: _c.loading,
       builder: (_, isLoading, __) {
         if (isLoading) {
-          return const Scaffold(
-              body: Center(child: CircularProgressIndicator()));
+          return Scaffold(
+            backgroundColor: workspaceCanvas,
+            body: const Center(child: CircularProgressIndicator()),
+          );
         }
 
         final currentUser = userDomain.user;
@@ -363,6 +369,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
         if (currentUser == null || currentGroup == null) {
           return CalendarTabsTheme(
             child: Scaffold(
+              backgroundColor: workspaceCanvas,
               appBar: CalendarTopBar(
                 title: loc.calendarTitle, // localized
                 showTabs: false,
@@ -519,6 +526,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
             ],
           );
           final viewSelector = Container(
+            key: const ValueKey('calendar-view-selector'),
             height: 34,
             decoration: BoxDecoration(
               color: cs.surface,
@@ -561,16 +569,20 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 foregroundColor: WidgetStateProperty.resolveWith((states) =>
                     states.contains(WidgetState.selected)
                         ? cs.primary
-                        : cs.onSurface),
+                        : cs.onSurfaceVariant),
                 backgroundColor: WidgetStateProperty.resolveWith((states) =>
                     states.contains(WidgetState.selected)
-                        ? cs.primary.withValues(alpha: 0.10)
+                        ? Color.alphaBlend(
+                            cs.primary.withValues(alpha: 0.14), cs.surface)
                         : cs.surface),
-                minimumSize: const WidgetStatePropertyAll(Size(0, 34)),
-                textStyle: WidgetStatePropertyAll(typo.bodySmall.copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                )),
+                minimumSize: const WidgetStatePropertyAll(Size(0, 32)),
+                textStyle: WidgetStateProperty.resolveWith(
+                    (states) => typo.bodySmall.copyWith(
+                          fontSize: 13,
+                          fontWeight: states.contains(WidgetState.selected)
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                        )),
                 padding: const WidgetStatePropertyAll(
                   EdgeInsets.symmetric(horizontal: 8),
                 ),
@@ -772,17 +784,17 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                       const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                   child: Row(children: [
                     Icon(Icons.event_available_rounded,
-                        size: 18, color: AppDarkColors.primary),
+                        size: 18, color: cs.primary),
                     const SizedBox(width: 8),
                     Expanded(
                         child: Text(currentGroup.name,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: typo.bodySmall.copyWith(
-                                color: AppColors.navigationForeground,
+                                color: cs.onSurface,
                                 fontWeight: FontWeight.w600))),
                     const SizedBox(width: 6),
-                    Icon(Icons.circle, size: 6, color: AppDarkColors.primary),
+                    Icon(Icons.circle, size: 6, color: cs.primary),
                   ]),
                 ),
                 PopupMenuButton<String>(
@@ -805,7 +817,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                         const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                     child: Row(children: [
                       Icon(Icons.people_outline,
-                          size: 18, color: AppDarkColors.textSecondary),
+                          size: 18, color: cs.onSurfaceVariant),
                       const SizedBox(width: 8),
                       Expanded(
                           child: Text(
@@ -820,10 +832,10 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                       .userName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: typo.bodySmall.copyWith(
-                                  color: AppColors.navigationForeground))),
+                              style: typo.bodySmall
+                                  .copyWith(color: cs.onSurface))),
                       Icon(Icons.expand_more,
-                          size: 16, color: AppDarkColors.textSecondary),
+                          size: 16, color: cs.onSurfaceVariant),
                     ]),
                   ),
                 ),
@@ -1613,67 +1625,56 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 ),
               );
             default:
-              final es = Localizations.localeOf(context).languageCode == 'es';
-              Widget quickAction(
-                  IconData icon, String label, VoidCallback action) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: OutlinedButton.icon(
-                    onPressed: action,
-                    icon: Icon(icon, size: 18),
-                    label: Text(label),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(42),
-                      foregroundColor: cs.primary,
-                      backgroundColor:
-                          cs.surfaceContainerLow.withValues(alpha: .55),
-                      side: BorderSide(
-                          color: cs.outlineVariant.withValues(alpha: .35)),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      textStyle:
-                          typo.bodySmall.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                );
-              }
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
-                children: [
-                  const SizedBox(height: 38),
-                  const CalendarDetailsIllustration(),
-                  const SizedBox(height: 16),
-                  Text(es ? 'Sin evento seleccionado' : 'No event selected',
-                      textAlign: TextAlign.center,
-                      style: typo.bodyMedium
-                          .copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 10),
-                  Text(
-                    es
-                        ? 'Selecciona un evento en el calendario para ver sus detalles.'
-                        : 'Select an event in the calendar to see its details.',
-                    textAlign: TextAlign.center,
-                    style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 24),
-                  Divider(
-                      height: 1,
-                      color: cs.outlineVariant.withValues(alpha: .3)),
-                  const SizedBox(height: 18),
-                  Text(es ? 'Acciones rápidas' : 'Quick actions',
-                      style: typo.bodyMedium
-                          .copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 12),
-                  if (canAddEvents)
-                    quickAction(Icons.add_rounded, loc.addEvent,
-                        () => _openAddEvent(currentGroup)),
-                  quickAction(Icons.alarm_rounded, loc.sectionUpcoming,
-                      () => _onSideMenuChanged('upcoming')),
-                  quickAction(Icons.edit_calendar_outlined, loc.tasks,
-                      () => _onSideMenuChanged('tasks')),
-                ],
-              );
+              // The empty state is CalendarEmptyDetailsCard (see below).
+              return const SizedBox.shrink();
           }
+        }
+
+        Widget calendarRightPanel() {
+          void close() => setState(() => _rightPanelCollapsed = true);
+          final hasContent = _panelView == _SidePanelView.addEvent ||
+              _panelView == _SidePanelView.viewEvent ||
+              _panelView == _SidePanelView.editEvent;
+          if (hasContent) {
+            return CalendarDetailsCard(
+              title: calendarRightPanelTitle(),
+              onClose: close,
+              child: calendarRightPanelContent(),
+            );
+          }
+          final es = Localizations.localeOf(context).languageCode == 'es';
+          return CalendarEmptyDetailsCard(
+            title: calendarRightPanelTitle(),
+            message: es ? 'Ningún evento seleccionado' : 'No event selected',
+            hint: es
+                ? 'Selecciona un evento del calendario para consultar sus detalles.'
+                : 'Select an event in the calendar to see its details.',
+            actionsTitle: es ? 'Acciones rápidas' : 'Quick actions',
+            onClose: close,
+            actions: [
+              // "New event" is already the primary action in the expanded
+              // sidebar; only repeat it here when the sidebar is collapsed.
+              if (canAddEvents && _leftCollapsed)
+                CalendarQuickAction(
+                  key: const ValueKey('calendar-quick-add'),
+                  icon: LucideIcons.plus,
+                  label: loc.addEvent,
+                  onPressed: () => _openAddEvent(currentGroup),
+                ),
+              CalendarQuickAction(
+                key: const ValueKey('calendar-quick-upcoming'),
+                icon: LucideIcons.calendarClock,
+                label: loc.sectionUpcoming,
+                onPressed: () => _onSideMenuChanged('upcoming'),
+              ),
+              CalendarQuickAction(
+                key: const ValueKey('calendar-quick-tasks'),
+                icon: LucideIcons.listChecks,
+                label: loc.tasks,
+                onPressed: () => _onSideMenuChanged('tasks'),
+              ),
+            ],
+          );
         }
 
         String sectionTitle() {
@@ -1833,7 +1834,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                   onWeatherToggle: _toggleWeatherIcons,
                 )
               : null,
-          backgroundColor: Theme.of(context).canvasColor,
+          backgroundColor: workspaceCanvas,
           body: SafeArea(
             child: isWide
                 ? Padding(
@@ -1844,85 +1845,65 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                         calendarSidebar(),
                         Expanded(
                           child: WorkspaceMainContent(
-                            child: HexoraMenuContentTransition.submenu(
-                              transitionKey: _selectedSideMenu,
-                              child: isCalendarSection
-                                  ? Row(
-                                      children: [
-                                        Expanded(
-                                          child: FolderPanel(
-                                            title: sectionTitle(),
-                                            showTab: true,
-                                            actions: calendarHeaderActions(),
-                                            child: calendarContent(
-                                              showActions: false,
-                                              showPresenceStrip: false,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: HexoraMenuContentTransition.submenu(
+                                transitionKey: _selectedSideMenu,
+                                child: isCalendarSection
+                                    ? Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          // Center: white toolbar + white
+                                          // grid on the light-blue canvas.
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                CalendarToolbarCard(
+                                                  actions:
+                                                      calendarHeaderActions(),
+                                                ),
+                                                const SizedBox(height: 10),
+                                                Expanded(
+                                                  child: CalendarSurfaceCard(
+                                                    key: const ValueKey(
+                                                        'calendar-grid-card'),
+                                                    padding:
+                                                        const EdgeInsets.all(4),
+                                                    child: calendarContent(
+                                                      showActions: false,
+                                                      showPresenceStrip: false,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                        ),
-                                        if (!_rightPanelCollapsed)
-                                          const SizedBox(width: 8),
-                                        Visibility(
+                                          if (!_rightPanelCollapsed)
+                                            const SizedBox(width: 12),
+                                          Visibility(
                                             visible: !_rightPanelCollapsed,
                                             maintainState: true,
                                             child: SizedBox(
                                               width: HexoraDimensions
                                                   .calendarPanel,
-                                              child: FolderPanel(
-                                                title:
-                                                    calendarRightPanelTitle(),
-                                                tabContent: Row(children: [
-                                                  Icon(
-                                                      Icons
-                                                          .event_available_rounded,
-                                                      size: 18,
-                                                      color: cs.primary),
-                                                  const SizedBox(width: 8),
-                                                  Expanded(
-                                                      child: Text(
-                                                          calendarRightPanelTitle(),
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                          style: typo.bodySmall
-                                                              .copyWith(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w700))),
-                                                  IconButton(
-                                                    tooltip:
-                                                        MaterialLocalizations
-                                                                .of(context)
-                                                            .closeButtonTooltip,
-                                                    onPressed: () => setState(
-                                                        () =>
-                                                            _rightPanelCollapsed =
-                                                                true),
-                                                    icon: const Icon(
-                                                        Icons.close_rounded,
-                                                        size: 18),
-                                                    visualDensity:
-                                                        VisualDensity.compact,
-                                                  ),
-                                                ]),
-                                                showToolbarDivider: false,
-                                                showTab: true,
-                                                child:
-                                                    HexoraMenuContentTransition
-                                                        .tab(
-                                                  transitionKey: _panelView,
-                                                  child:
-                                                      calendarRightPanelContent(),
-                                                ),
+                                              child: HexoraMenuContentTransition
+                                                  .tab(
+                                                transitionKey: _panelView,
+                                                child: calendarRightPanel(),
                                               ),
-                                            )),
-                                      ],
-                                    )
-                                  : FolderPanel(
-                                      title: sectionTitle(),
-                                      showTab: true,
-                                      child: sectionContent(),
-                                    ),
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : FolderPanel(
+                                        title: sectionTitle(),
+                                        showTab: true,
+                                        child: sectionContent(),
+                                      ),
+                              ),
                             ),
                           ),
                         ),

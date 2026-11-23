@@ -1099,6 +1099,9 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
     final cs = Theme.of(context).colorScheme;
     final tone = _Tone.of(context);
     final focused = _focusNode.hasFocus;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final functionalSurface = isDark ? tone.inputBg : const Color(0xFFF1F5FB);
+    final functionalBorder = isDark ? tone.border : const Color(0xFFDCE5F2);
     final suggestions = <({String label, String prompt, IconData icon})>[
       (
         label: widget.isEs ? 'Facturas pendientes' : 'Pending invoices',
@@ -1132,7 +1135,7 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
     ];
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: tone.surface,
         borderRadius: BorderRadius.circular(14),
@@ -1147,14 +1150,14 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
             return Row(
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
                     color: cs.primary.withValues(alpha: .10),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child:
-                      Icon(LucideIcons.sparkles, size: 22, color: cs.primary),
+                      Icon(LucideIcons.sparkles, size: 17, color: cs.primary),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -1166,7 +1169,7 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
                         style: TextStyle(
                           color: tone.navy,
                           fontWeight: FontWeight.w700,
-                          fontSize: 20,
+                          fontSize: 16,
                           letterSpacing: -.1,
                         ),
                       ),
@@ -1177,7 +1180,7 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
                             : 'Get information or help with your tasks.',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: tone.muted, fontSize: 13),
+                        style: TextStyle(color: tone.muted, fontSize: 12),
                       ),
                     ],
                   ),
@@ -1192,12 +1195,12 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
                           widget.isEs ? 'Abrir asistente' : 'Open assistant'),
                       style: OutlinedButton.styleFrom(
                         visualDensity: VisualDensity.standard,
-                        minimumSize: const Size(0, 36),
+                        minimumSize: const Size(0, 34),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                            horizontal: 10, vertical: 7),
                         textStyle: const TextStyle(
                             fontSize: 12, fontWeight: FontWeight.w600),
                       ),
@@ -1214,7 +1217,7 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
               ],
             );
           }),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           if (widget.selectedChartCount > 0) ...[
             Wrap(
               crossAxisAlignment: WrapCrossAlignment.center,
@@ -1246,32 +1249,42 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
           ],
           LayoutBuilder(builder: (context, constraints) {
             final twoColumns = constraints.maxWidth >= 850;
+            const columnGap = 22.0;
             final composerWidth = twoColumns
-                ? (constraints.maxWidth - 28) * .58
+                ? (constraints.maxWidth - columnGap) * .60
                 : constraints.maxWidth;
             final suggestionsWidth = twoColumns
-                ? (constraints.maxWidth - 28) * .42
+                ? (constraints.maxWidth - columnGap) * .40
                 : constraints.maxWidth;
+            final showKeyboardHint = MediaQuery.sizeOf(context).width >= 700;
             return Wrap(
-              spacing: 28,
-              runSpacing: 20,
+              spacing: columnGap,
+              runSpacing: 16,
               children: [
                 SizedBox(
                   width: composerWidth,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (twoColumns) ...[
+                        const SizedBox(height: 15),
+                        const SizedBox(height: 7),
+                      ],
                       AnimatedContainer(
                         duration:
                             _motion(context, const Duration(milliseconds: 150)),
                         curve: Curves.easeOut,
-                        constraints: const BoxConstraints(minHeight: 90),
-                        padding: const EdgeInsets.all(12),
+                        constraints: BoxConstraints(
+                          minHeight: twoColumns ? 88 : 80,
+                          maxHeight: 140,
+                        ),
+                        padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
                         decoration: BoxDecoration(
-                          color: tone.inputBg,
-                          borderRadius: BorderRadius.circular(12),
+                          color: functionalSurface,
+                          borderRadius: BorderRadius.circular(11),
                           border: Border.all(
-                              color: focused ? cs.primary : tone.border),
+                            color: focused ? cs.primary : functionalBorder,
+                          ),
                           boxShadow: focused
                               ? [
                                   BoxShadow(
@@ -1281,86 +1294,95 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
                                 ]
                               : null,
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                        child: Stack(
                           children: [
-                            Expanded(
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 9),
-                                child: TextField(
-                                  controller: _controller,
-                                  focusNode: _focusNode,
-                                  enabled: !_submitting,
-                                  keyboardType: TextInputType.multiline,
-                                  textInputAction: TextInputAction.newline,
-                                  minLines: 2,
-                                  maxLines: 5,
-                                  onChanged: (_) => setState(() {}),
-                                  style: TextStyle(
-                                    color: tone.ink,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.35,
-                                  ),
-                                  decoration: InputDecoration(
-                                    isCollapsed: true,
-                                    filled: false,
-                                    border: InputBorder.none,
-                                    enabledBorder: InputBorder.none,
-                                    focusedBorder: InputBorder.none,
-                                    disabledBorder: InputBorder.none,
-                                    contentPadding: EdgeInsets.zero,
-                                    hintText: widget.isEs
-                                        ? 'Pregunta algo o pide ayuda con una tarea...'
-                                        : 'Ask something or get help with a task...',
-                                    hintStyle: TextStyle(
-                                        color: tone.muted, fontSize: 14),
-                                  ),
+                            Padding(
+                              padding: EdgeInsets.only(
+                                right: 48,
+                                bottom: showKeyboardHint ? 20 : 0,
+                              ),
+                              child: TextField(
+                                controller: _controller,
+                                focusNode: _focusNode,
+                                enabled: !_submitting,
+                                keyboardType: TextInputType.multiline,
+                                textInputAction: TextInputAction.newline,
+                                minLines: 1,
+                                maxLines: 5,
+                                onChanged: (_) => setState(() {}),
+                                style: TextStyle(
+                                  color: tone.ink,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.35,
+                                ),
+                                decoration: InputDecoration(
+                                  isCollapsed: true,
+                                  filled: false,
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  disabledBorder: InputBorder.none,
+                                  contentPadding: EdgeInsets.zero,
+                                  hintText: widget.isEs
+                                      ? 'Pregunta algo o pide ayuda con una tarea...'
+                                      : 'Ask something or get help with a task...',
+                                  hintStyle: TextStyle(
+                                      color: tone.muted, fontSize: 14),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            IconButton.filled(
-                              tooltip: widget.isEs
-                                  ? 'Enviar (Enter) · Nueva línea (Mayús+Enter)'
-                                  : 'Send (Enter) · New line (Shift+Enter)',
-                              onPressed: _canSubmit ? _submit : null,
-                              icon: _submitting
-                                  ? SizedBox.square(
-                                      dimension: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: cs.onPrimary,
-                                      ),
-                                    )
-                                  : const Icon(LucideIcons.arrowUp, size: 18),
-                              style: IconButton.styleFrom(
-                                backgroundColor: cs.primary,
-                                foregroundColor: cs.onPrimary,
-                                disabledBackgroundColor: _submitting
-                                    ? cs.primary
-                                    : cs.onSurface.withValues(alpha: .08),
-                                disabledForegroundColor: _submitting
-                                    ? cs.onPrimary
-                                    : cs.onSurface.withValues(alpha: .38),
-                                minimumSize: const Size.square(44),
-                                fixedSize: const Size.square(44),
-                                padding: EdgeInsets.zero,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                            if (showKeyboardHint)
+                              Positioned(
+                                left: 0,
+                                bottom: 2,
+                                child: Text(
+                                  widget.isEs
+                                      ? 'Enter para enviar · Mayús + Enter para una nueva línea'
+                                      : 'Enter to send · Shift + Enter for a new line',
+                                  style: TextStyle(
+                                    color: tone.muted,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: IconButton.filled(
+                                tooltip: widget.isEs
+                                    ? 'Enviar (Enter) · Nueva línea (Mayús+Enter)'
+                                    : 'Send (Enter) · New line (Shift+Enter)',
+                                onPressed: _canSubmit ? _submit : null,
+                                icon: _submitting
+                                    ? SizedBox.square(
+                                        dimension: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: cs.onPrimary,
+                                        ),
+                                      )
+                                    : const Icon(LucideIcons.arrowUp, size: 18),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: cs.primary,
+                                  foregroundColor: cs.onPrimary,
+                                  disabledBackgroundColor: _submitting
+                                      ? cs.primary
+                                      : cs.onSurface.withValues(alpha: .08),
+                                  disabledForegroundColor: _submitting
+                                      ? cs.onPrimary
+                                      : cs.onSurface.withValues(alpha: .38),
+                                  minimumSize: const Size.square(36),
+                                  fixedSize: const Size.square(36),
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(9),
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.isEs
-                            ? 'Enter para enviar · Mayús + Enter para una nueva línea'
-                            : 'Enter to send · Shift + Enter for a new line',
-                        style: TextStyle(color: tone.muted, fontSize: 11.5),
                       ),
                     ],
                   ),
@@ -1374,10 +1396,10 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
                         widget.isEs ? 'Prueba a preguntar' : 'Try asking',
                         style: TextStyle(
                             color: tone.navy,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 7),
                       LayoutBuilder(builder: (context, c) {
                         final columns = c.maxWidth >= 380 ? 2 : 1;
                         return Wrap(
@@ -1393,6 +1415,8 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
                                   child: _SuggestionChip(
                                     icon: s.icon,
                                     label: s.label,
+                                    backgroundColor: functionalSurface,
+                                    borderColor: functionalBorder,
                                     onTap: _submitting
                                         ? null
                                         : () => _submit(s.prompt),
@@ -1415,38 +1439,52 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
 }
 
 class _SuggestionChip extends StatelessWidget {
-  const _SuggestionChip({required this.icon, required this.label, this.onTap});
+  const _SuggestionChip({
+    required this.icon,
+    required this.label,
+    required this.backgroundColor,
+    required this.borderColor,
+    this.onTap,
+  });
   final IconData icon;
   final String label;
+  final Color backgroundColor;
+  final Color borderColor;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final tone = _Tone.of(context);
     final cs = Theme.of(context).colorScheme;
-    return _HoverSurface(
-      onTap: onTap,
-      radius: 9,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      semanticLabel: label,
-      idleColor: tone.inputBg,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: cs.primary),
-          const SizedBox(width: 10),
-          Expanded(
+    return SizedBox(
+      height: 40,
+      child: _HoverSurface(
+        onTap: onTap,
+        radius: 9,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        semanticLabel: label,
+        idleColor: backgroundColor,
+        idleBorderColor: borderColor,
+        hoverForeground: cs.primary,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15),
+            const SizedBox(width: 8),
+            Expanded(
               child: Text(
-            label,
-            style: TextStyle(
-              color: tone.ink,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-          )),
-          const SizedBox(width: 8),
-          Icon(LucideIcons.arrowUpRight, size: 14, color: cs.primary),
-        ],
+            const SizedBox(width: 6),
+            const Icon(LucideIcons.arrowUpRight, size: 13),
+          ],
+        ),
       ),
     );
   }
@@ -1553,6 +1591,8 @@ class _HoverSurface extends StatefulWidget {
     this.padding = const EdgeInsets.all(12),
     this.semanticLabel,
     this.idleColor,
+    this.idleBorderColor,
+    this.hoverForeground,
   });
 
   final Widget child;
@@ -1561,6 +1601,8 @@ class _HoverSurface extends StatefulWidget {
   final EdgeInsetsGeometry padding;
   final String? semanticLabel;
   final Color? idleColor;
+  final Color? idleBorderColor;
+  final Color? hoverForeground;
 
   @override
   State<_HoverSurface> createState() => _HoverSurfaceState();
@@ -1592,7 +1634,7 @@ class _HoverSurfaceState extends State<_HoverSurface> {
                 ? cs.primary
                 : hovered
                     ? tone.borderHover
-                    : tone.border,
+                    : (widget.idleBorderColor ?? tone.border),
           ),
           boxShadow: _focus
               ? [
@@ -1612,7 +1654,20 @@ class _HoverSurfaceState extends State<_HoverSurface> {
             focusColor: Colors.transparent,
             onHover: (v) => setState(() => _hover = v),
             onFocusChange: (v) => setState(() => _focus = v),
-            child: Padding(padding: widget.padding, child: widget.child),
+            child: Padding(
+              padding: widget.padding,
+              child: IconTheme.merge(
+                data: IconThemeData(
+                  color: hovered ? widget.hoverForeground : tone.ink,
+                ),
+                child: DefaultTextStyle.merge(
+                  style: TextStyle(
+                    color: hovered ? widget.hoverForeground : tone.ink,
+                  ),
+                  child: widget.child,
+                ),
+              ),
+            ),
           ),
         ),
       ),

@@ -160,12 +160,12 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
       children: [
         // ── Compact business header ──
         Container(
+          key: const ValueKey('settings-business-identity'),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: cs.surface,
-            borderRadius: BorderRadius.circular(10),
-            border:
-                Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,11 +197,6 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    const SizedBox(height: 4),
-                    Text(
-                      createdStr,
-                      style: t.caption.copyWith(color: cs.onSurfaceVariant),
-                    ),
                   ],
                 ),
               ),
@@ -231,9 +226,8 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
           padding: const EdgeInsets.symmetric(vertical: 4),
           decoration: BoxDecoration(
             color: cs.surface,
-            borderRadius: BorderRadius.circular(10),
-            border:
-                Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
           ),
           child: Column(
             children: [
@@ -280,9 +274,10 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
 
         // ── Danger zone (owner only) ──
         if (isOwner) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.all(16),
+            key: const ValueKey('settings-danger-zone'),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: cs.errorContainer.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),

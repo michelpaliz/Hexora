@@ -185,7 +185,11 @@ String buildAzureMapsDocument({
         zoom:(selection || pins.length) ? 15 : 5,
         language:'es-ES',
         view:'Auto',
-        style:config.darkMode ? 'night' : 'road',
+          // The plain road theme is intentionally very pale and makes the
+          // geographic context disappear behind the client pins. Use Azure's
+          // shaded road style in light mode for stronger land, water and road
+          // contrast while keeping the dark theme unchanged.
+          style:config.darkMode ? 'night' : 'road_shaded_relief',
         authOptions:{
           authType:atlas.AuthenticationType.anonymous,
           clientId:mapClientId,

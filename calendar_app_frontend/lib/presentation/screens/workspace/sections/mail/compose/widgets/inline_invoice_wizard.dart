@@ -1877,7 +1877,9 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
 
     return Container(
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).scaffoldBackgroundColor
+            : AppColors.workspaceCanvas,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
       ),

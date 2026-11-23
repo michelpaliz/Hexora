@@ -16,6 +16,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/group_in
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 
 class PresupuestosModuleScreen extends StatefulWidget {
   const PresupuestosModuleScreen({
@@ -85,6 +86,9 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
   @override
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
+    final workspaceCanvas = Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).scaffoldBackgroundColor
+        : AppColors.workspaceCanvas;
     final title = _isEs ? 'Propuestas' : 'Proposals';
     final menuContent = HexoraMenuContentTransition.submenu(
       transitionKey: _menu,
@@ -109,7 +113,12 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
                 selected: _menu,
                 onSelected: _selectMenu,
               ),
-              Expanded(child: bodyContent),
+              Expanded(
+                child: ColoredBox(
+                  color: workspaceCanvas,
+                  child: bodyContent,
+                ),
+              ),
             ],
           )
         : Row(
@@ -131,6 +140,8 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
                   child: FolderPanel(
                     title: title,
                     showTab: true,
+                    showBorder: false,
+                    backgroundColor: workspaceCanvas,
                     contentTopPadding: 8,
                     child: menuContent,
                   ),

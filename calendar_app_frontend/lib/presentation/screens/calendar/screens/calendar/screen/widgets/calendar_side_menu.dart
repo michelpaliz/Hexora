@@ -65,12 +65,47 @@ class CalendarSideMenu extends StatelessWidget {
     );
   }
 
+  /// The secondary calendar column is a white content surface. The workspace
+  /// canvas remains visible around it, while the compact month picker below
+  /// provides the light-blue accent surface.
+  static Color sidebarBackground(BuildContext context) =>
+      Theme.of(context).colorScheme.surface;
+
   Widget _buildMenu(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isEs = _isSpanish(context);
     final menuWidth = collapsed ? collapsedWidth : expandedWidth;
-    const childIndent = 0.0;
     final colors = Theme.of(context).colorScheme;
+    final light = colors.brightness == Brightness.light;
+    // Keep the secondary column white so it reads as a focused content panel.
+    // The mini calendar below uses the light-blue workspace canvas as its
+    // accent surface; selected rows remain white for emphasis.
+    final shellBackground = sidebarBackground(context);
+    final miniCalendarDecoration = BoxDecoration(
+      color: light ? AppColors.workspaceCanvas : colors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: colors.outlineVariant.withValues(alpha: .7)),
+    );
+    Widget item({
+      required IconData icon,
+      required String label,
+      required bool selected,
+      required VoidCallback onPressed,
+      int? count,
+      double indent = 0,
+    }) =>
+        GroupInvoicesSubMenuItem(
+          compact: true,
+          icon: icon,
+          label: label,
+          count: count,
+          selected: selected,
+          indent: indent,
+          onPressed: onPressed,
+          selectedBackgroundColor: light ? colors.surface : null,
+          selectedBorderColor:
+              light ? colors.outlineVariant.withValues(alpha: .7) : null,
+        );
     Widget section(
         String title, bool expanded, VoidCallback toggle, Widget child) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -100,7 +135,7 @@ class CalendarSideMenu extends StatelessWidget {
       return SizedBox(
         width: menuWidth,
         child: SidebarEdgeShell(
-          backgroundColor: AppDarkColors.sidebar,
+          backgroundColor: shellBackground,
           collapsed: true,
           onToggle: onToggleCollapse,
           showHandle: showCollapseToggle,
@@ -119,7 +154,7 @@ class CalendarSideMenu extends StatelessWidget {
       curve: Curves.easeOutCubic,
       width: menuWidth,
       child: SidebarEdgeShell(
-        backgroundColor: AppDarkColors.sidebar,
+        backgroundColor: shellBackground,
         collapsed: false,
         onToggle: onToggleCollapse,
         showHandle: showCollapseToggle,
@@ -161,8 +196,14 @@ class CalendarSideMenu extends StatelessWidget {
                         ),
                       ),
                     if (dateNavigator != null) ...[
-                      const SizedBox(height: 8),
-                      dateNavigator!,
+                      const SizedBox(height: 10),
+                      Container(
+                        key: const ValueKey('calendar-mini-calendar-card'),
+                        padding: const EdgeInsets.all(2),
+                        clipBehavior: Clip.antiAlias,
+                        decoration: miniCalendarDecoration,
+                        child: dateNavigator!,
+                      ),
                     ],
                     if (calendarFilters != null)
                       section(
@@ -177,30 +218,24 @@ class CalendarSideMenu extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          GroupInvoicesSubMenuItem(
-                            compact: true,
+                          item(
                             icon: Icons.upcoming_rounded,
                             label: l.sectionUpcoming,
                             count: upcomingCount > 0 ? upcomingCount : null,
                             selected: selectedMenu == 'upcoming',
-                            indent: childIndent,
                             onPressed: () => onMenuChanged('upcoming'),
                           ),
-                          GroupInvoicesSubMenuItem(
-                            compact: true,
+                          item(
                             icon: Icons.task_alt_rounded,
                             label: isEs ? 'Completados' : 'Completed',
                             count: completedCount > 0 ? completedCount : null,
                             selected: selectedMenu == 'completed',
-                            indent: childIndent,
                             onPressed: () => onMenuChanged('completed'),
                           ),
-                          GroupInvoicesSubMenuItem(
-                            compact: true,
+                          item(
                             icon: Icons.checklist_rounded,
                             label: _tasksLabel(context),
                             selected: selectedMenu == 'tasks',
-                            indent: childIndent,
                             onPressed: () => onMenuChanged('tasks'),
                           ),
                         ],
@@ -221,27 +256,22 @@ class CalendarSideMenu extends StatelessWidget {
                                 ? onEditBusinessHours
                                 : null,
                           ),
-                          GroupInvoicesSubMenuItem(
-                            compact: true,
+                          item(
                             icon: Icons.grid_view_rounded,
                             label: _overviewLabel(context),
                             selected: selectedMenu == 'mini_calendar',
                             onPressed: () => onMenuChanged('mini_calendar'),
                           ),
-                          GroupInvoicesSubMenuItem(
-                            compact: true,
+                          item(
                             icon: Icons.analytics_outlined,
                             label: _reportsLabel(context),
                             selected: selectedMenu == 'insights',
-                            indent: childIndent,
                             onPressed: () => onMenuChanged('insights'),
                           ),
-                          GroupInvoicesSubMenuItem(
-                            compact: true,
+                          item(
                             icon: Icons.query_stats_rounded,
                             label: _statsLabel(context),
                             selected: selectedMenu == 'insights',
-                            indent: childIndent,
                             onPressed: () => onMenuChanged('insights'),
                           ),
                         ],

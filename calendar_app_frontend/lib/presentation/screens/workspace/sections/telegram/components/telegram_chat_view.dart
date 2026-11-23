@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -626,6 +627,8 @@ class _TelegramChatViewState extends State<TelegramChatView> {
     final l = AppLocalizations.of(context)!;
     final items = _buildItemList(messages, l);
     final phone = MediaQuery.sizeOf(context).width < 700;
+    final ownUserId =
+        _normalizeTelegramId(widget.domain.account?.telegramUserId);
 
     return Scrollbar(
       controller: _scrollController,
@@ -634,7 +637,7 @@ class _TelegramChatViewState extends State<TelegramChatView> {
         controller: _scrollController,
         padding: phone
             ? const EdgeInsets.fromLTRB(8, 4, 8, 8)
-            : const EdgeInsets.fromLTRB(10, 6, 10, 10),
+            : const EdgeInsets.fromLTRB(14, 8, 14, 8),
         itemCount: items.length + 1, // +1 for load-older slot at index 0
         itemBuilder: (context, index) {
           if (index == 0) {
@@ -649,10 +652,17 @@ class _TelegramChatViewState extends State<TelegramChatView> {
             return _DateSeparator(label: item.label);
           }
           if (item is _MessageItem) {
+            final position = index - 1;
+            final continuesGroup = _continuesGroup(items, position);
+            final groupContinuesBelow = _continuesGroup(items, position + 1);
             return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              // Tight spacing inside a sender's run, more between runs.
+              padding: EdgeInsets.only(bottom: groupContinuesBelow ? 3 : 10),
               child: TelegramMessageItem(
+                key: ValueKey('telegram-message-${item.message.messageId}'),
                 message: item.message,
+                isOutgoing: _isOwnMessage(item.message, ownUserId),
+                showSender: !continuesGroup,
                 onReplyRequested: allowReply
                     ? () => _handleReplyRequested(item.message)
                     : null,
@@ -664,6 +674,22 @@ class _TelegramChatViewState extends State<TelegramChatView> {
         },
       ),
     );
+  }
+
+  static String? _normalizeTelegramId(String? raw) =>
+      telegramNormalizeUserId(raw);
+
+  static bool _isOwnMessage(TelegramChatMessage message, String? ownUserId) =>
+      telegramIsOwnMessage(message, ownUserId);
+
+  /// True when the message at [position] continues the previous message's
+  /// sender run (no date separator in between).
+  static bool _continuesGroup(List<Object> items, int position) {
+    if (position <= 0 || position >= items.length) return false;
+    final current = items[position];
+    final previous = items[position - 1];
+    if (current is! _MessageItem || previous is! _MessageItem) return false;
+    return telegramMessagesShareRun(previous.message, current.message);
   }
 
   /// Interleaves date separators between messages from different days.
@@ -716,6 +742,52 @@ class _TelegramChatViewState extends State<TelegramChatView> {
         return 'application/octet-stream';
     }
   }
+}
+
+/// Telegram ids may arrive as "123", "user123" or "-100123"; compare digits.
+@visibleForTesting
+String? telegramNormalizeUserId(String? raw) {
+  final digits = (raw ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+  return digits.isEmpty ? null : digits;
+}
+
+/// Uses the real Telegram sender id: only messages whose sender is the
+/// connected account's user are treated as outgoing. Chat/channel senders and
+/// messages without a sender id never are.
+@visibleForTesting
+bool telegramIsOwnMessage(TelegramChatMessage message, String? ownUserId) {
+  final own = telegramNormalizeUserId(ownUserId);
+  if (own == null) return false;
+  final sender = message.sender;
+  if (sender == null) return false;
+  final type = (sender.type ?? '').toLowerCase();
+  if (type.contains('chat') || type.contains('channel')) return false;
+  return telegramNormalizeUserId(sender.id) == own;
+}
+
+String _telegramSenderKey(TelegramChatMessage message) {
+  final id = message.sender?.id?.trim();
+  return id != null && id.isNotEmpty
+      ? 'id:$id'
+      : 'label:${message.senderLabel}';
+}
+
+/// Whether [current] continues [previous]'s run: same sender, within five
+/// minutes, not forwarded. Only the repeated avatar/name is hidden; messages
+/// are never merged or reordered.
+@visibleForTesting
+bool telegramMessagesShareRun(
+  TelegramChatMessage previous,
+  TelegramChatMessage current,
+) {
+  if (current.forwardInfo != null) return false;
+  if (_telegramSenderKey(current) != _telegramSenderKey(previous)) {
+    return false;
+  }
+  final a = previous.timestamp;
+  final b = current.timestamp;
+  if (a == null || b == null) return false;
+  return b.difference(a).inMinutes.abs() < 5;
 }
 
 // ─── List item types ────────────────────────
@@ -832,21 +904,21 @@ class _DateSeparator extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
             decoration: BoxDecoration(
               color: isDark
                   ? cs.surfaceContainerHighest.withValues(alpha: 0.55)
-                  : const Color(0xFFF0F3F8),
+                  : cs.surface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: isDark ? 0.12 : 0.2),
+                color: cs.outlineVariant.withValues(alpha: isDark ? 0.12 : 0.5),
               ),
             ),
             child: Text(
               label,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.onSurface.withValues(alpha: 0.55),
-                    fontWeight: FontWeight.w800,
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
                     letterSpacing: 0.1,
                   ),
             ),
@@ -1303,27 +1375,39 @@ class TelegramChatComposer extends StatelessWidget {
         (controller.text.trim().isNotEmpty || hasAttachment);
     final attachEnabled = enabled && !isSending;
 
-    return Container(
-      decoration: phone
-          ? BoxDecoration(
-              color: cs.surface,
-              border: Border(
-                top:
-                    BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
+    // Desktop: one white rounded surface floating on the conversation canvas,
+    // with a primary-coloured border while the input is focused.
+    final surface = ListenableBuilder(
+      listenable: focusNode,
+      builder: (context, child) => AnimatedContainer(
+        key: const ValueKey('telegram-composer-surface'),
+        duration: const Duration(milliseconds: 120),
+        decoration: phone
+            ? BoxDecoration(
+                color: cs.surface,
+                border: Border(
+                  top: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.7)),
+                ),
+              )
+            : BoxDecoration(
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: focusNode.hasFocus
+                      ? cs.primary.withValues(alpha: 0.6)
+                      : cs.outlineVariant.withValues(alpha: 0.6),
+                  width: focusNode.hasFocus ? 1.4 : 1,
+                ),
               ),
-            )
-          : BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.3),
-              ),
-            ),
-      padding: phone
-          ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
-          : const EdgeInsets.all(8),
+        padding: phone
+            ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
+            : const EdgeInsets.fromLTRB(6, 6, 6, 6),
+        child: child,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           if (replyTarget != null) ...[
             TelegramReplyComposerPreview(
@@ -1464,93 +1548,29 @@ class TelegramChatComposer extends StatelessWidget {
                 ),
               ],
             )
-          else ...[
-            Focus(
-              onKeyEvent: onKeyEvent,
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                enabled: attachEnabled,
-                minLines: 1,
-                maxLines: 4,
-                textCapitalization: TextCapitalization.sentences,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      height: 1.35,
-                    ),
-                decoration: InputDecoration(
-                  prefixIcon: Icon(
-                    Icons.chat_bubble_outline_rounded,
-                    size: 18,
-                    color: _kTelegramBlue.withValues(alpha: 0.72),
-                  ),
-                  prefixIconConstraints: const BoxConstraints(
-                    minWidth: 42,
-                    minHeight: 42,
-                  ),
-                  hintText: hasAttachment
-                      ? l.chatComposerHintCaption
-                      : replyTarget == null
-                          ? l.chatComposerHintMessage
-                          : l.chatComposerHintReply,
-                  hintStyle: TextStyle(
-                    color: cs.onSurface.withValues(alpha: 0.38),
-                  ),
-                  filled: true,
-                  fillColor: Color.alphaBlend(
-                    _kTelegramBlue.withValues(alpha: 0.025),
-                    cs.surface,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.26),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.28),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(
-                      color: _kTelegramBlue.withValues(alpha: 0.58),
-                      width: 1.6,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
+          else
             Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // ── Attachment buttons ──────────────────────────
+                // ── Attachment actions: plain icons, grouped at the start ──
                 _AttachButton(
                   tooltip: l.chatComposerAttachFile,
                   icon: Icons.attach_file_rounded,
                   onPressed: attachEnabled ? onPickAttachment : null,
                   cs: cs,
                 ),
-                const SizedBox(width: 4),
                 _AttachButton(
                   tooltip: l.chatComposerAttachClientPdf,
                   icon: Icons.folder_shared_rounded,
                   onPressed: attachEnabled ? onPickClientDocument : null,
                   cs: cs,
                 ),
-                const SizedBox(width: 4),
                 _AttachButton(
                   tooltip: l.chatComposerAttachWorkerPdf,
                   icon: Icons.badge_rounded,
                   onPressed: attachEnabled ? onPickWorkerDocument : null,
                   cs: cs,
                 ),
-                const SizedBox(width: 4),
                 _AttachButton(
                   tooltip: Localizations.localeOf(context).languageCode == 'es'
                       ? 'Presupuestos'
@@ -1559,56 +1579,133 @@ class TelegramChatComposer extends StatelessWidget {
                   onPressed: attachEnabled ? onPickIssuedPresupuesto : null,
                   cs: cs,
                 ),
-                const Spacer(),
-                // ── Send button ────────────────────────────────
-                const SizedBox(width: 10),
-                AnimatedSwitcher(
-                  duration:
-                      HexoraMotion.duration(context, HexoraMotion.standard),
-                  child: FilledButton.icon(
-                    key: ValueKey(isSending),
-                    onPressed: canSend ? onSend : null,
-                    icon: isSending
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Focus(
+                    onKeyEvent: onKeyEvent,
+                    child: ConstrainedBox(
+                      // 1 line ≈ 36 px, grows to ~140 px, then scrolls.
+                      constraints: const BoxConstraints(maxHeight: 140),
+                      child: TextField(
+                        key: const ValueKey('telegram-composer-input'),
+                        controller: controller,
+                        focusNode: focusNode,
+                        enabled: attachEnabled,
+                        minLines: 1,
+                        maxLines: null,
+                        keyboardType: TextInputType.multiline,
+                        textCapitalization: TextCapitalization.sentences,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontSize: 13.5,
+                              height: 1.4,
                             ),
-                          )
-                        : const Icon(Icons.send_rounded, size: 16),
-                    label: Text(
-                      isSending
-                          ? (hasAttachment
-                              ? l.chatComposerUploading
-                              : l.chatComposerSending)
-                          : (hasAttachment
-                              ? sendAttachmentLabel
-                              : l.chatComposerSend),
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _kTelegramBlue,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor:
-                          _kTelegramBlue.withValues(alpha: 0.35),
-                      disabledForegroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 9,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        decoration: InputDecoration(
+                          hintText: hasAttachment
+                              ? l.chatComposerHintCaption
+                              : replyTarget == null
+                                  ? l.chatComposerHintMessage
+                                  : l.chatComposerHintReply,
+                          hintStyle: TextStyle(
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+                          ),
+                          isDense: true,
+                          filled: false,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 9,
+                          ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                        ),
                       ),
                     ),
                   ),
                 ),
+                const SizedBox(width: 6),
+                // ── Send: compact rounded square; labelled for files ──
+                AnimatedSwitcher(
+                  duration:
+                      HexoraMotion.duration(context, HexoraMotion.standard),
+                  child: hasAttachment
+                      ? FilledButton.icon(
+                          key: ValueKey('send-files-$isSending'),
+                          onPressed: canSend ? onSend : null,
+                          icon: isSending
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.send_rounded, size: 16),
+                          label: Text(
+                            isSending
+                                ? l.chatComposerUploading
+                                : sendAttachmentLabel,
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: cs.primary,
+                            foregroundColor: cs.onPrimary,
+                            disabledBackgroundColor:
+                                cs.primary.withValues(alpha: 0.35),
+                            disabledForegroundColor: cs.onPrimary,
+                            minimumSize: const Size(36, 36),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                            ),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        )
+                      : IconButton.filled(
+                          key: ValueKey('send-$isSending'),
+                          tooltip: isSending
+                              ? l.chatComposerSending
+                              : l.chatComposerSend,
+                          onPressed: canSend ? onSend : null,
+                          icon: isSending
+                              ? SizedBox.square(
+                                  dimension: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: cs.onPrimary,
+                                  ),
+                                )
+                              : const Icon(Icons.send_rounded, size: 17),
+                          style: IconButton.styleFrom(
+                            fixedSize: const Size(36, 36),
+                            minimumSize: const Size(36, 36),
+                            padding: EdgeInsets.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            backgroundColor: cs.primary,
+                            foregroundColor: cs.onPrimary,
+                            disabledBackgroundColor:
+                                cs.primary.withValues(alpha: 0.35),
+                            disabledForegroundColor: cs.onPrimary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                ),
               ],
             ),
-          ],
         ],
       ),
     );
+
+    return phone
+        ? surface
+        : Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+            child: surface,
+          );
   }
 
   void _showAttachmentOptions(BuildContext context) {
@@ -1678,26 +1775,15 @@ class _AttachButton extends StatelessWidget {
       child: InkWell(
         onTap: onPressed,
         borderRadius: BorderRadius.circular(8),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: onPressed != null
-                ? _kTelegramBlue.withValues(alpha: 0.10)
-                : cs.onSurface.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: onPressed != null
-                  ? _kTelegramBlue.withValues(alpha: 0.16)
-                  : cs.outlineVariant.withValues(alpha: 0.18),
-            ),
-          ),
+        hoverColor: cs.primary.withValues(alpha: 0.07),
+        child: SizedBox(
+          width: 34,
+          height: 36,
           child: Icon(
             icon,
             size: 18,
             color: onPressed != null
-                ? _kTelegramBlue
+                ? cs.onSurfaceVariant
                 : cs.onSurface.withValues(alpha: 0.3),
           ),
         ),
@@ -1889,11 +1975,24 @@ class TelegramMessageItem extends StatelessWidget {
     required this.message,
     this.onReplyRequested,
     this.replying = false,
+    this.isOutgoing = false,
+    this.showSender = true,
   });
 
   final TelegramChatMessage message;
   final VoidCallback? onReplyRequested;
   final bool replying;
+
+  /// Sent by the connected account (by Telegram sender id): right-aligned,
+  /// pale-blue bubble, no repeated name/avatar.
+  final bool isOutgoing;
+
+  /// First message of a run from the same sender. Follow-up messages hide the
+  /// avatar and name but keep their own time, edited flag and reply action.
+  final bool showSender;
+
+  static const double _avatarSize = 26;
+  static const double _avatarGap = 8;
 
   @override
   Widget build(BuildContext context) {
@@ -1904,155 +2003,192 @@ class TelegramMessageItem extends StatelessWidget {
     final timeLabel = _formatTime(message.timestamp);
     final initials = _senderInitials(message.senderLabel);
     final avatarColor = _senderColor(message.senderLabel);
-    final cardColor = phone
-        ? cs.surfaceContainerLow
-        : isDark
-            ? cs.surface
-            : Color.alphaBlend(
-                _kTelegramBlue.withValues(alpha: 0.018), cs.surface);
+    final showName = showSender && !isOutgoing;
+    final showAvatar = !isOutgoing;
+
+    final bubbleColor = isOutgoing
+        ? Color.alphaBlend(
+            cs.primary.withValues(alpha: isDark ? 0.22 : 0.10),
+            cs.surface,
+          )
+        : cs.surface;
     final borderColor = replying
-        ? _kTelegramBlue.withValues(alpha: isDark ? 0.45 : 0.34)
-        : isDark
-            ? cs.outlineVariant.withValues(alpha: 0.18)
-            : cs.outlineVariant.withValues(alpha: phone ? 0.72 : 0.5);
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(9, 8, 9, 7),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: borderColor),
+        ? cs.primary.withValues(alpha: isDark ? 0.6 : 0.45)
+        : isOutgoing
+            ? cs.primary.withValues(alpha: isDark ? 0.28 : 0.16)
+            : cs.outlineVariant.withValues(alpha: isDark ? 0.25 : 0.5);
+
+    final meta = Text(
+      phone
+          ? timeLabel
+          : [
+              if (message.isEdited) l.telegramEdited,
+              timeLabel,
+            ].where((value) => value.isNotEmpty).join(' · '),
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            fontSize: 11,
+            color: cs.onSurfaceVariant,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Header row: avatar + sender + time + edited ──
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Sender avatar
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          avatarColor.withValues(alpha: 0.92),
-                          avatarColor,
-                        ],
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        initials,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Text(
-                      message.senderLabel,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.92),
-                            fontWeight: FontWeight.w600,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (message.isEdited && phone)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(end: 3),
-                      child: Tooltip(
-                        message: l.telegramEdited,
-                        child: Icon(
-                          Icons.edit_outlined,
-                          size: 13,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  Text(
-                    phone
-                        ? timeLabel
-                        : [
-                            if (message.isEdited) l.telegramEdited,
-                            timeLabel,
-                          ].where((value) => value.isNotEmpty).join(' · '),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                  ),
-                  if (onReplyRequested != null)
-                    IconButton(
-                      tooltip: replying ? l.telegramReplying : l.telegramReply,
-                      onPressed: onReplyRequested,
-                      icon: Icon(
-                        Icons.reply_rounded,
-                        size: 18,
-                        color: replying ? _kTelegramBlue : cs.onSurfaceVariant,
-                      ),
-                      constraints: const BoxConstraints.tightFor(
-                        width: 34,
-                        height: 32,
-                      ),
-                      padding: EdgeInsets.zero,
-                    ),
-                ],
+    );
+    final editedIcon = message.isEdited && phone
+        ? Padding(
+            padding: const EdgeInsetsDirectional.only(end: 3),
+            child: Tooltip(
+              message: l.telegramEdited,
+              child: Icon(
+                Icons.edit_outlined,
+                size: 13,
+                color: cs.onSurfaceVariant,
               ),
+            ),
+          )
+        : null;
+    final replyButton = onReplyRequested == null
+        ? null
+        : IconButton(
+            tooltip: replying ? l.telegramReplying : l.telegramReply,
+            onPressed: onReplyRequested,
+            icon: Icon(
+              Icons.reply_rounded,
+              size: 17,
+              color: replying ? cs.primary : cs.onSurfaceVariant,
+            ),
+            constraints: const BoxConstraints.tightFor(width: 30, height: 28),
+            padding: EdgeInsets.zero,
+          );
 
-              // ── Forward info ──
-              if (message.forwardInfo != null) ...[
-                const SizedBox(height: 8),
-                _InfoPill(
-                  icon: Icons.forward_rounded,
-                  label: _buildForwardLabel(message.forwardInfo!, l),
+    // Header for the first incoming message of a run; otherwise the time and
+    // actions move to a compact footer at the end of the bubble.
+    final header = Row(
+      children: [
+        Expanded(
+          child: Text(
+            message.senderLabel,
+            key: const ValueKey('telegram-message-sender'),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontSize: 12.5,
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
-
-              // ── Reply preview ──
-              if (message.replyTo != null) ...[
-                const SizedBox(height: 8),
-                _ReplyPreview(replyTo: message.replyTo!),
-              ],
-
-              // ── Media placeholder ──
-              if (message.shouldRenderMediaPlaceholder) ...[
-                const SizedBox(height: 9),
-                _MediaPlaceholder(message: message),
-              ],
-
-              // ── Text content ──
-              if (message.displayText != null) ...[
-                const SizedBox(height: 8),
-                _MessageText(text: message.displayText!),
-              ] else if (!message.hasMedia) ...[
-                const SizedBox(height: 8),
-                Text(
-                  message.unsupportedLabel,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurface.withValues(alpha: 0.45),
-                        fontStyle: FontStyle.italic,
-                      ),
-                ),
-              ],
-            ],
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
-      ),
+        const SizedBox(width: 8),
+        if (editedIcon != null) editedIcon,
+        meta,
+        if (replyButton != null) replyButton,
+      ],
     );
+    final footer = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (editedIcon != null) editedIcon,
+        meta,
+        if (replyButton != null) replyButton else const SizedBox(height: 20),
+      ],
+    );
+
+    final content = <Widget>[
+      if (message.forwardInfo != null)
+        _InfoPill(
+          icon: Icons.forward_rounded,
+          label: _buildForwardLabel(message.forwardInfo!, l),
+        ),
+      if (message.replyTo != null) _ReplyPreview(replyTo: message.replyTo!),
+      if (message.shouldRenderMediaPlaceholder)
+        _MediaPlaceholder(message: message),
+      if (message.displayText != null)
+        _MessageText(text: message.displayText!)
+      else if (!message.hasMedia)
+        Text(
+          message.unsupportedLabel,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: cs.onSurface.withValues(alpha: 0.45),
+                fontStyle: FontStyle.italic,
+              ),
+        ),
+    ];
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final avatarSlot = showAvatar ? _avatarSize + _avatarGap : 0.0;
+      final maxBubble = math.max(
+        160.0,
+        math.min(constraints.maxWidth * (phone ? 0.9 : 0.82), 720.0) -
+            avatarSlot,
+      );
+      final bubble = ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxBubble),
+        child: Container(
+          key: const ValueKey('telegram-message-bubble'),
+          padding: EdgeInsets.fromLTRB(11, showName ? 6 : 8, 6, 4),
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor),
+          ),
+          // Shrink-wrap to the content: short messages get short bubbles,
+          // long ones wrap at maxBubble.
+          child: IntrinsicWidth(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (showName) header,
+                for (final (index, child) in content.indexed) ...[
+                  if (index > 0 || showName) const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 5),
+                    child: child,
+                  ),
+                ],
+                if (!showName)
+                  Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [footer])
+                else
+                  const SizedBox(height: 4),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      return Row(
+        mainAxisAlignment:
+            isOutgoing ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (showAvatar) ...[
+            if (showSender)
+              Container(
+                key: const ValueKey('telegram-message-avatar'),
+                width: _avatarSize,
+                height: _avatarSize,
+                margin: const EdgeInsets.only(top: 2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: avatarColor,
+                ),
+                child: Center(
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              )
+            else
+              const SizedBox(width: _avatarSize),
+            const SizedBox(width: _avatarGap),
+          ],
+          Flexible(child: bubble),
+        ],
+      );
+    });
   }
 
   String _senderInitials(String label) {
@@ -2119,8 +2255,8 @@ class _MessageText extends StatelessWidget {
       if (isHashtag || isMention) {
         spans.add(TextSpan(
           text: word,
-          style: const TextStyle(
-            color: _kTelegramBlue,
+          style: TextStyle(
+            color: cs.primary,
             fontWeight: FontWeight.w500,
           ),
         ));
@@ -2128,8 +2264,8 @@ class _MessageText extends StatelessWidget {
         spans.add(TextSpan(
           text: word,
           style: TextStyle(
-            color: cs.onSurface.withValues(alpha: 0.9),
-            height: 1.36,
+            color: cs.onSurface.withValues(alpha: 0.92),
+            height: 1.45,
           ),
         ));
       }
@@ -2142,8 +2278,8 @@ class _MessageText extends StatelessWidget {
     return Text.rich(
       TextSpan(children: spans),
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            height: 1.36,
-            letterSpacing: -0.05,
+            fontSize: 13.5,
+            height: 1.45,
           ),
     );
   }
@@ -2167,13 +2303,13 @@ class _ReplyPreview extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(11, 9, 11, 9),
+      padding: const EdgeInsets.fromLTRB(9, 6, 9, 6),
       decoration: BoxDecoration(
-        color: _kTelegramBlue.withValues(alpha: isDark ? 0.08 : 0.055),
-        borderRadius: BorderRadius.circular(11),
+        color: cs.primary.withValues(alpha: isDark ? 0.10 : 0.06),
+        borderRadius: BorderRadius.circular(8),
         border: Border(
           left: BorderSide(
-            color: _kTelegramBlue.withValues(alpha: isDark ? 0.62 : 0.5),
+            color: cs.primary.withValues(alpha: isDark ? 0.62 : 0.5),
             width: 3,
           ),
         ),
@@ -2188,8 +2324,8 @@ class _ReplyPreview extends StatelessWidget {
                     ? l.telegramReplyTo(messageId)
                     : l.telegramReply,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: _kTelegramBlue,
+                  fontWeight: FontWeight.w600,
+                  color: cs.primary,
                 ),
           ),
           if (preview != null && preview.isNotEmpty) ...[
@@ -2412,39 +2548,32 @@ class _MediaPlaceholder extends StatelessWidget {
     );
     final attachmentColor =
         message.isPdfDocument && !isDark ? const Color(0xFFE65252) : color;
-    final attachmentBg = isDark
-        ? attachmentColor.withValues(alpha: 0.07)
-        : Color.alphaBlend(
-            attachmentColor.withValues(alpha: 0.045),
-            cs.surface,
-          );
-    final attachmentBorder = attachmentColor.withValues(
-      alpha: isDark ? 0.16 : 0.14,
-    );
-
+    // Translucent tint so the file row blends into whichever bubble (white
+    // incoming / pale-blue outgoing) contains it, instead of a nested card.
+    final attachmentBg = cs.onSurface.withValues(alpha: isDark ? 0.06 : 0.035);
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: canPreviewPdf ? () => _previewPdf(context) : null,
         borderRadius: BorderRadius.circular(8),
         child: Ink(
+          key: const ValueKey('telegram-message-attachment'),
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          padding: const EdgeInsets.fromLTRB(8, 6, 4, 6),
           decoration: BoxDecoration(
             color: attachmentBg,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: attachmentBorder),
           ),
           child: Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
-                  color: attachmentColor.withValues(alpha: isDark ? 0.14 : 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: attachmentColor.withValues(alpha: isDark ? 0.16 : 0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, size: 17, color: attachmentColor),
+                child: Icon(icon, size: 16, color: attachmentColor),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -2487,15 +2616,11 @@ class _MediaPlaceholder extends StatelessWidget {
                       size: 18,
                       color: cs.onSurface.withValues(alpha: 0.72),
                     ),
-                    style: IconButton.styleFrom(
-                      backgroundColor:
-                          cs.surface.withValues(alpha: isDark ? 0.08 : 0.62),
-                    ),
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints.tightFor(
-                      width: 40,
-                      height: 40,
+                      width: 32,
+                      height: 32,
                     ),
                     splashRadius: 18,
                   ),
@@ -2512,15 +2637,11 @@ class _MediaPlaceholder extends StatelessWidget {
                       size: 18,
                       color: cs.onSurface.withValues(alpha: 0.72),
                     ),
-                    style: IconButton.styleFrom(
-                      backgroundColor:
-                          cs.surface.withValues(alpha: isDark ? 0.08 : 0.62),
-                    ),
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints.tightFor(
-                      width: 30,
-                      height: 30,
+                      width: 32,
+                      height: 32,
                     ),
                     splashRadius: 18,
                   ),

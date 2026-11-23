@@ -18,6 +18,65 @@ class HexoraDocumentStep {
   final bool hasError;
 }
 
+/// Compact client context displayed beneath the client step in document
+/// creation flows. Keeping it in the step rail makes the selected customer
+/// visible while the user continues through the remaining steps.
+class HexoraDocumentClientContext extends StatelessWidget {
+  const HexoraDocumentClientContext({
+    super.key,
+    required this.clientName,
+    required this.onTap,
+  });
+
+  final String clientName;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = clientName.trim();
+    if (name.isEmpty) return const SizedBox.shrink();
+    final cs = Theme.of(context).colorScheme;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 3, 4, 5),
+      child: Tooltip(
+        message: isEs ? 'Cambiar cliente · $name' : 'Change client · $name',
+        child: Material(
+          color: cs.primary.withValues(alpha: .08),
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                children: [
+                  Icon(Icons.person_outline_rounded,
+                      size: 14, color: cs.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.primary,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                  Icon(Icons.edit_outlined, size: 13, color: cs.primary),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class HexoraDocumentStepper extends StatelessWidget {
   const HexoraDocumentStepper({
     super.key,

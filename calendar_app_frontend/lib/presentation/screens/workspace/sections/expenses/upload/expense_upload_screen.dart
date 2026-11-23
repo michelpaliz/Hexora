@@ -2643,6 +2643,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                   title: l.localeName.startsWith('es')
                       ? 'Registro manual'
                       : 'Manual entry',
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                   onStepSelected: selectManualStep,
                   onSectionSelected: selectManualSection,
                   onToggleGroup: () => setState(
@@ -3066,6 +3067,8 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                         title: l.localeName.startsWith('es')
                             ? 'Importar JSON'
                             : 'Import JSON',
+                        backgroundColor:
+                            Theme.of(context).scaffoldBackgroundColor,
                         footer: jsonRailFooter(),
                         onStepSelected: (step) {
                           if (!canOpenJsonStep(step)) return;

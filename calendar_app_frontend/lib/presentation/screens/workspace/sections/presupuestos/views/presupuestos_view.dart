@@ -30,6 +30,7 @@ import 'package:hexora/presentation/shared/widgets/documents/document_workspace_
 import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_wizard_navigation.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
 import 'package:hexora/presentation/shared/widgets/motion/hexora_step_transition.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
@@ -210,6 +211,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   ];
   bool _useBlocks = true;
   int _visibleStep = 0;
+  bool _budgetWizardRailCollapsed = false;
   String? _error;
   bool _confirmPreview = false;
   bool _useBudgetDiscountPercent = false;
@@ -1043,10 +1045,22 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
               child: HexoraDocumentStepper(
                 steps: editorSteps,
                 currentStep: _visibleStep,
+                afterStepBuilder:
+                    selectedClientName.isEmpty || _visibleStep == 0
+                        ? null
+                        : (index) => index == 0
+                            ? HexoraDocumentClientContext(
+                                key: const ValueKey(
+                                    'budget-selected-client-context'),
+                                clientName: selectedClientName,
+                                onTap: () => setState(() => _setVisibleStep(0)),
+                              )
+                            : null,
                 onStepTapped: (target) {
                   if (target >= _minVisibleStep && target <= _maxAllowedStep) {
-                    if (target > _visibleStep && !_validateCurrentStep())
+                    if (target > _visibleStep && !_validateCurrentStep()) {
                       return;
+                    }
                     setState(() => _setVisibleStep(target));
                     if (target == 3) _createDraftAndPreparePreview();
                   }
@@ -1124,26 +1138,51 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
             return Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(
-                  width: 174,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
-                    child: HexoraDocumentStepper(
-                      steps: editorSteps,
-                      currentStep: _visibleStep,
-                      onStepTapped: (target) {
-                        if (target >= _minVisibleStep &&
-                            target <= _maxAllowedStep) {
-                          if (target > _visibleStep && !_validateCurrentStep())
-                            return;
-                          setState(() => _setVisibleStep(target));
-                          if (target == 3) _createDraftAndPreparePreview();
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
+                  child: DocumentWizardRail(
+                    keyPrefix: 'budget-editor',
+                    title:
+                        _isSpanishLocale ? 'Nuevo presupuesto' : 'New estimate',
+                    steps: [
+                      for (final step in editorSteps)
+                        DocumentWizardStep(
+                          label: step.label,
+                          icon: step.icon ?? Icons.circle_outlined,
+                        ),
+                    ],
+                    currentStep: _visibleStep,
+                    selectedSectionId: null,
+                    groupExpanded: false,
+                    collapsed: _budgetWizardRailCollapsed,
+                    expandedWidth: 174,
+                    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                    afterStepBuilder: selectedClientName.isEmpty ||
+                            _visibleStep == 0
+                        ? null
+                        : (index) => index == 0
+                            ? HexoraDocumentClientContext(
+                                key: const ValueKey(
+                                    'budget-selected-client-context'),
+                                clientName: selectedClientName,
+                                onTap: () => setState(() => _setVisibleStep(0)),
+                              )
+                            : null,
+                    onStepSelected: (target) {
+                      if (target >= _minVisibleStep &&
+                          target <= _maxAllowedStep) {
+                        if (target > _visibleStep && !_validateCurrentStep()) {
+                          return;
                         }
-                      },
-                      itemKeyBuilder: (index, _) =>
-                          ValueKey('budget-editor-step-$index'),
-                      vertical: true,
-                    ),
+                        setState(() => _setVisibleStep(target));
+                        if (target == 3) _createDraftAndPreparePreview();
+                      }
+                    },
+                    onSectionSelected: (_) {},
+                    onToggleGroup: () {},
+                    onToggleCollapsed: () => setState(() {
+                      _budgetWizardRailCollapsed = !_budgetWizardRailCollapsed;
+                    }),
                   ),
                 ),
                 const VerticalDivider(width: 1),
@@ -3097,6 +3136,10 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
             // doesn't pop the preview open on narrow screens.
             selectionKey: _selectedBudgetId,
             list: Container(
+              // Let the light-blue workspace canvas carry the table. Rows
+              // remain transparent until selected, when CompactDocumentRow
+              // supplies the white emphasis surface.
+              color: cs.surfaceContainerLow,
               padding: const EdgeInsets.all(8),
               child: Column(
                 children: [
@@ -3129,6 +3172,10 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                     searchValue: _budgetSearchQuery,
                     onSearchChanged: (value) =>
                         setState(() => _budgetSearchQuery = value),
+                    // Keep the proposal status tabs readable on desktop;
+                    // proposals use a shorter search field so the tabs do not
+                    // collapse into narrow labels.
+                    searchMaxWidth: 240,
                     actions: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

@@ -10,6 +10,9 @@ class _MailComposeView extends StatelessWidget {
     final t = AppTypography.of(context);
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final workspaceCanvas = theme.brightness == Brightness.dark
+        ? theme.scaffoldBackgroundColor
+        : AppColors.workspaceCanvas;
     final inputFill =
         theme.inputDecorationTheme.fillColor ?? cs.surfaceContainerLow;
     final l = AppLocalizations.of(context)!;
@@ -287,7 +290,7 @@ class _MailComposeView extends StatelessWidget {
 
       final desktopBody = ColoredBox(
         key: const ValueKey('mail-compose-desktop-frame'),
-        color: cs.surfaceContainerLowest,
+        color: workspaceCanvas,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
           child: Column(
@@ -348,7 +351,7 @@ class _MailComposeView extends StatelessWidget {
                             child: ColoredBox(
                               key: const ValueKey(
                                   'mail-compose-options-surface'),
-                              color: cs.surface,
+                              color: workspaceCanvas,
                               child: Offstage(
                                 offstage: !state._useClientMode,
                                 child: _InlineInvoiceFlowPanel(

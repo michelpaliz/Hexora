@@ -3,23 +3,11 @@ part of '../receipt_editor_wizard_screen.dart';
 // ignore_for_file: invalid_use_of_protected_member
 
 extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
-  Widget _buildWizardToolbarContent(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    // The workflow navigation is rendered once in the vertical rail below.
-    // Keep the toolbar limited to the screen title so the same steps are not
-    // duplicated horizontally.
-    return Text(
-      l.createReceiptCta,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
-    );
-  }
-
   Widget _buildStepIndicator(BuildContext context, {bool vertical = false}) {
     final l = AppLocalizations.of(context)!;
+    final selectedClientName = _useManualClient
+        ? _clientNameCtrl.text.trim()
+        : (_selectedClient?.name.trim() ?? '');
     return HexoraDocumentStepper(
       steps: [
         HexoraDocumentStep(
@@ -41,6 +29,15 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
       onStepTapped: _tryGoToStep,
       compactConnectors: true,
       vertical: vertical,
+      afterStepBuilder: vertical && _step > 0 && selectedClientName.isNotEmpty
+          ? (index) => index == 0
+              ? HexoraDocumentClientContext(
+                  key: const ValueKey('receipt-selected-client-context'),
+                  clientName: selectedClientName,
+                  onTap: () => _tryGoToStep(0),
+                )
+              : null
+          : null,
       itemKeyBuilder: (index, _) => ValueKey('receipt-editor-step-$index'),
     );
   }

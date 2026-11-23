@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 class FolderSectionCard extends StatelessWidget {
@@ -30,7 +31,10 @@ class FolderSectionCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final typography = showTitle ? AppTypography.of(context) : null;
     final border = cs.outlineVariant.withValues(alpha: 0.35);
-    final bg = backgroundColor ?? cs.surface;
+    final bg = backgroundColor ??
+        (Theme.of(context).brightness == Brightness.dark
+            ? cs.surface
+            : AppColors.workspaceCanvas);
     final hasActions = actions != null && actions!.isNotEmpty;
 
     return Stack(

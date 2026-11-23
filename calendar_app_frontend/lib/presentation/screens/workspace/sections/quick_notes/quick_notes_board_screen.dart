@@ -5,6 +5,7 @@ import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_popup_menu.dart';
 import 'package:hexora/services/quick_notes/quick_notes_api.dart';
+import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:provider/provider.dart';
 
@@ -226,7 +227,7 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = error.toString();
+        _error = _errorMessage(error);
       });
     }
   }
@@ -300,9 +301,19 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
   }
 
   void _showError(Object error) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
-    );
+    final message = _errorMessage(error);
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _errorMessage(Object error) {
+    if (error is BackendApiException &&
+        const {502, 503, 504}.contains(error.statusCode)) {
+      return _isEs
+          ? 'Las notas no están disponibles temporalmente. Inténtalo de nuevo.'
+          : 'Notes are temporarily unavailable. Please try again.';
+    }
+    return error.toString().replaceFirst('Exception: ', '');
   }
 
   bool _requiresStatusReason(Map<String, dynamic> note, String nextStatus) =>

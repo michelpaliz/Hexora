@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -450,7 +451,7 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
         alignment: Alignment.topCenter,
         child: Container(
           key: const ValueKey('business-profile-card'),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: BorderRadius.circular(14),
@@ -460,61 +461,113 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
             final width = c.maxWidth;
             final desktop = width >= 960;
             final tablet = !desktop && width >= 600;
+            // No hover on touch devices: keep the camera badge visible.
+            final touch = !desktop ||
+                const [TargetPlatform.android, TargetPlatform.iOS]
+                    .contains(defaultTargetPlatform);
 
-            // Identity stays visible while editing.
-            final identity = Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _avatar(desktop
-                    ? 96
-                    : tablet
-                        ? 88
-                        : 80),
-                const SizedBox(width: 14),
-                Expanded(child: _nameAndDescription()),
-              ],
-            );
+            final imageWidth =
+                desktop ? (width >= 1180 ? 210.0 : 184.0) : 168.0;
+            final centreWidth = desktop
+                ? width - imageWidth - 20 - 24 - 236
+                : tablet
+                    ? width - imageWidth - 18
+                    : width;
             final info = _editing
                 ? _editForm()
-                : _infoGrid(columns: width >= 600 ? 2 : 1);
+                : _infoGrid(
+                    columns: centreWidth >= 560
+                        ? 3
+                        : centreWidth >= 340
+                            ? 2
+                            : 1);
+            final text = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _nameAndDescription(),
+                const SizedBox(height: 12),
+                info,
+              ],
+            );
             final config =
                 _configPanel(state, setup.issues, horizontal: tablet);
 
+            /// The image fills the height set by the text/config content
+            /// (never less than [minHeight]) instead of making the card
+            /// taller. A Stack keeps this free of intrinsic measurements.
+            Widget besideImage({
+              required double imageWidth,
+              required double gap,
+              required Widget content,
+            }) {
+              return Stack(children: [
+                Padding(
+                  padding: EdgeInsets.only(left: imageWidth + gap),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 150),
+                    child: content,
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: imageWidth,
+                  child: _image(showBadge: touch),
+                ),
+              ]);
+            }
+
             if (desktop) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(width: 300, child: identity),
-                  const SizedBox(width: 24),
-                  Expanded(child: info),
-                  const SizedBox(width: 24),
-                  SizedBox(width: 236, child: config),
-                ],
+              return besideImage(
+                imageWidth: imageWidth,
+                gap: 20,
+                content: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: text,
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    SizedBox(
+                      width: 236,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: config,
+                      ),
+                    ),
+                  ],
+                ),
               );
             }
             if (tablet) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(width: 250, child: identity),
-                      const SizedBox(width: 20),
-                      Expanded(child: info),
-                    ],
+                  besideImage(
+                    imageWidth: imageWidth,
+                    gap: 18,
+                    content: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: text,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   config,
                 ],
               );
             }
+            // Mobile: wide image on top, content stacked below.
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                identity,
-                const SizedBox(height: 14),
-                info,
+                SizedBox(height: 150, child: _image(showBadge: true)),
+                const SizedBox(height: 12),
+                text,
                 const SizedBox(height: 14),
                 config,
               ],
@@ -555,39 +608,44 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
             .toUpperCase();
   }
 
-  Widget _avatar(double size) {
+  /// Large rounded business image. Fills the constraints its parent gives it
+  /// (cropped with BoxFit.cover, never distorted); the fallback keeps the
+  /// same size so the area never collapses.
+  Widget _image({required bool showBadge}) {
     final cs = Theme.of(context).colorScheme;
     final url =
         (widget.group.computedPhotoUrl ?? widget.group.photoUrl)?.trim();
     final hasImage = url != null && url.isNotEmpty;
     final initials = _initials();
     final fallback = Center(
-      child: initials.isEmpty
-          ? Icon(LucideIcons.building2, size: size * .36, color: cs.primary)
-          : Text(initials,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(LucideIcons.building2, size: 30, color: cs.primary),
+        if (initials.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(initials,
               style: TextStyle(
                 color: cs.primary,
-                fontSize: size * .28,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
               )),
+        ],
+      ]),
     );
     final image = Container(
       key: const ValueKey('business-profile-image'),
-      width: size,
-      height: size,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Color.alphaBlend(cs.primary.withValues(alpha: .10), cs.surface),
-        borderRadius: BorderRadius.circular(16),
+        color: Color.alphaBlend(cs.primary.withValues(alpha: .08), cs.surface),
+        borderRadius: BorderRadius.circular(11),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: .7)),
       ),
-      // A broken or unreachable image falls back to the initials.
+      // A broken or unreachable image falls back to the placeholder.
       child: hasImage
           ? Image.network(
               url,
               fit: BoxFit.cover,
-              width: size,
-              height: size,
+              width: double.infinity,
+              height: double.infinity,
               errorBuilder: (_, __, ___) => fallback,
             )
           : fallback,
@@ -595,7 +653,8 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
     if (!_canEdit) return image;
     return _PhotoEditTarget(
       busy: _photoBusy,
-      tooltip: _es ? 'Cambiar imagen de perfil' : 'Change profile image',
+      alwaysShowBadge: showBadge,
+      tooltip: _es ? 'Cambiar imagen del negocio' : 'Change business image',
       onTap: _changePhoto,
       child: image,
     );
@@ -711,21 +770,6 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
       );
     }
 
-    final rows = <Widget>[];
-    for (var i = 0; i < fields.length; i += columns) {
-      final slice = fields.skip(i).take(columns).toList();
-      rows.add(Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var j = 0; j < columns; j++) ...[
-            if (j > 0) const SizedBox(width: 20),
-            Expanded(
-                child: j < slice.length ? cell(slice[j]) : const SizedBox()),
-          ],
-        ],
-      ));
-    }
-
     final fiscalAction = _canEdit && widget.onOpenBillingProfile != null
         ? InkWell(
             key: const ValueKey('business-edit-fiscal'),
@@ -748,25 +792,34 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
           )
         : null;
 
+    final cells = <Widget>[
+      for (final field in fields) cell(field),
+      // Fiscal data opens the existing validated billing profile editor.
+      if (fiscalAction != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Align(alignment: Alignment.centerLeft, child: fiscalAction),
+        ),
+    ];
+    final rows = <Widget>[];
+    for (var i = 0; i < cells.length; i += columns) {
+      final slice = cells.skip(i).take(columns).toList();
+      rows.add(Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var j = 0; j < columns; j++) ...[
+            if (j > 0) const SizedBox(width: 20),
+            Expanded(child: j < slice.length ? slice[j] : const SizedBox()),
+          ],
+        ],
+      ));
+    }
+
     return Column(
       key: const ValueKey('business-profile-details'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(children: [
-          Expanded(
-            child: Text(
-              _es ? 'Datos fiscales y contacto' : 'Fiscal and contact details',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: cs.onSurface,
-              ),
-            ),
-          ),
-          if (fiscalAction != null) fiscalAction,
-        ]),
-        const SizedBox(height: 8),
         for (final (i, row) in rows.indexed) ...[
           if (i > 0) const SizedBox(height: 10),
           row,
@@ -1240,6 +1293,7 @@ class _PhotoEditTarget extends StatefulWidget {
     required this.onTap,
     required this.tooltip,
     required this.busy,
+    this.alwaysShowBadge = false,
   });
 
   final Widget child;
@@ -1247,16 +1301,21 @@ class _PhotoEditTarget extends StatefulWidget {
   final String tooltip;
   final bool busy;
 
+  /// Touch layouts have no hover, so the camera badge stays visible.
+  final bool alwaysShowBadge;
+
   @override
   State<_PhotoEditTarget> createState() => _PhotoEditTargetState();
 }
 
+/// Business image with a small camera badge in the bottom-right corner:
+/// shown on hover/focus with a pointer, always on touch layouts.
 class _PhotoEditTargetState extends State<_PhotoEditTarget> {
   bool _hover = false;
 
   @override
   Widget build(BuildContext context) {
-    final show = _hover || widget.busy;
+    final showBadge = widget.alwaysShowBadge || _hover;
     return Tooltip(
       message: widget.tooltip,
       child: Semantics(
@@ -1273,26 +1332,40 @@ class _PhotoEditTargetState extends State<_PhotoEditTarget> {
           child: GestureDetector(
             key: const ValueKey('business-photo-edit'),
             onTap: widget.busy ? null : widget.onTap,
-            child: Stack(children: [
+            child: Stack(fit: StackFit.passthrough, children: [
               widget.child,
-              Positioned.fill(
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 120),
-                  opacity: show ? 1 : 0,
+              if (widget.busy)
+                Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: .38),
-                      borderRadius: BorderRadius.circular(13),
+                      color: Colors.black.withValues(alpha: .32),
+                      borderRadius: BorderRadius.circular(11),
                     ),
-                    child: Center(
-                      child: widget.busy
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Icon(LucideIcons.camera,
-                              size: 18, color: Colors.white),
+                    child: const Center(
+                      child: SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      ),
                     ),
+                  ),
+                ),
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: AnimatedOpacity(
+                  key: const ValueKey('business-photo-badge'),
+                  duration: const Duration(milliseconds: 120),
+                  opacity: showBadge && !widget.busy ? 1 : 0,
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: .55),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(LucideIcons.camera,
+                        size: 15, color: Colors.white),
                   ),
                 ),
               ),

@@ -4,6 +4,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/services/invoicing/billing_profile_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/billing_profile_inline_editor.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 
 void main() {
@@ -34,16 +35,20 @@ void main() {
       expect(tester.takeException(), isNull);
       final save = find.byKey(const ValueKey('billing-profile-save'));
       expect(save, findsOneWidget);
-      expect(tester.getBottomLeft(find.byType(SingleChildScrollView)).dy,
+      expect(tester.getBottomLeft(find.byType(ListView).first).dy,
+          lessThanOrEqualTo(tester.getTopLeft(save).dy));
+      // The tab's white card ends with its content, above the sticky bar.
+      final card = find.byKey(const ValueKey('billing-tab-card')).first;
+      expect(tester.getBottomLeft(card).dy,
           lessThanOrEqualTo(tester.getTopLeft(save).dy));
       final firstField = find.byType(TextFormField).first;
       await tester.ensureVisible(firstField);
       await tester.enterText(firstField, 'Empresa nueva');
       await tester.pump();
-      expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
-      await tester.tap(find.text('Descartar cambios'));
+      expect(tester.widget<HexoraButton>(save).onPressed, isNotNull);
+      await tester.tap(find.text('Descartar'));
       await tester.pumpAndSettle();
-      expect(tester.widget<FilledButton>(save).onPressed, isNull);
+      expect(tester.widget<HexoraButton>(save).onPressed, isNull);
       expect(tester.takeException(), isNull);
     });
   }

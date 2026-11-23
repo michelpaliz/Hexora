@@ -17,6 +17,7 @@ class HexoraResizableSplit extends StatefulWidget {
     this.maxStartWidth,
     this.minEndWidth = 420,
     this.handleWidth = 12,
+    this.dividerColor,
   });
 
   final Widget start;
@@ -27,6 +28,9 @@ class HexoraResizableSplit extends StatefulWidget {
   final double? maxStartWidth;
   final double minEndWidth;
   final double handleWidth;
+
+  /// Resting colour of the 1 px divider line; defaults to a faint outline.
+  final Color? dividerColor;
 
   @override
   State<HexoraResizableSplit> createState() => _HexoraResizableSplitState();
@@ -138,7 +142,8 @@ class _HexoraResizableSplitState extends State<HexoraResizableSplit> {
                       decoration: BoxDecoration(
                         color: active
                             ? cs.primary.withValues(alpha: 0.7)
-                            : cs.outlineVariant.withValues(alpha: 0.35),
+                            : widget.dividerColor ??
+                                cs.outlineVariant.withValues(alpha: 0.35),
                         borderRadius: BorderRadius.circular(1),
                       ),
                     ),

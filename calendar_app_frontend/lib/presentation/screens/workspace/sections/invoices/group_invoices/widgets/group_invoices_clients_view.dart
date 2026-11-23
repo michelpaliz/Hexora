@@ -281,55 +281,63 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                     ),
                     Expanded(child: detail),
                   ])
-                : HexoraResizableSplit(
-                    // Keep the client table as the primary workspace while
-                    // retaining enough room for the selected client's detail.
-                    preferenceKey: 'invoices_clients_split_fraction_v5',
-                    initialFraction: 0.40,
-                    minStartWidth: 360,
-                    maxStartWidth: 560,
-                    minEndWidth: 460,
-                    start: ClientsListPanel(
-                      allClients: widget.clients,
-                      filteredClients: filteredClients,
-                      selectedClient: widget.selectedClient,
-                      selectedHiddenByFilters: selectedHiddenByFilters,
-                      hideInactive: _hideInactive,
-                      onToggleHideInactive: () =>
-                          setState(() => _hideInactive = !_hideInactive),
-                      missingCurrentMonthInvoiceOnly:
-                          _missingCurrentMonthInvoiceOnly,
-                      onToggleMissingCurrentMonthInvoiceOnly: (value) =>
-                          setState(() {
-                        _missingCurrentMonthInvoiceOnly = value;
-                      }),
-                      searchController: _search,
-                      onSearchChanged: () => setState(() {}),
-                      entityFilter: _entityFilter,
-                      propertyFilter: _propertyFilter,
-                      entityOptions: customerTypeOptions,
-                      propertyOptions: propertyTypeOptions,
-                      onClearFilters: _clearFilters,
-                      onToggleEntityFilter: (v) => setState(() {
-                        _entityFilter = _entityFilter == v ? null : v;
-                      }),
-                      onTogglePropertyFilter: (v) => setState(() {
-                        _propertyFilter = _propertyFilter == v ? null : v;
-                      }),
-                      onClearEntityFilter: () =>
-                          setState(() => _entityFilter = null),
-                      onClearPropertyFilter: () =>
-                          setState(() => _propertyFilter = null),
-                      onSelectClient: widget.onSelectClient,
-                      onAddClient: widget.onAddClient,
-                      onRefresh: widget.onRefresh,
-                      refreshing: widget.refreshing,
-                      onEditClient: widget.onEditClient,
-                      onCollapse: () => setState(
-                        () => _clientsPanelCollapsed = true,
+                : LayoutBuilder(
+                    builder: (context, constraints) => HexoraResizableSplit(
+                      // ~37 / 63: the selected client's workspace is the primary
+                      // area; the table keeps a readable minimum and can still
+                      // be dragged wider.
+                      preferenceKey: 'invoices_clients_split_fraction_v7',
+                      initialFraction: 0.37,
+                      minStartWidth: 340,
+                      maxStartWidth: 620,
+                      minEndWidth: 460,
+                      dividerColor: ClientsListPanel.selectionEdgeColor(
+                        Theme.of(context).colorScheme,
                       ),
+                      start: ClientsListPanel(
+                        // Decorative connector only where both panels have room.
+                        showSelectionConnector: constraints.maxWidth >= 900,
+                        allClients: widget.clients,
+                        filteredClients: filteredClients,
+                        selectedClient: widget.selectedClient,
+                        selectedHiddenByFilters: selectedHiddenByFilters,
+                        hideInactive: _hideInactive,
+                        onToggleHideInactive: () =>
+                            setState(() => _hideInactive = !_hideInactive),
+                        missingCurrentMonthInvoiceOnly:
+                            _missingCurrentMonthInvoiceOnly,
+                        onToggleMissingCurrentMonthInvoiceOnly: (value) =>
+                            setState(() {
+                          _missingCurrentMonthInvoiceOnly = value;
+                        }),
+                        searchController: _search,
+                        onSearchChanged: () => setState(() {}),
+                        entityFilter: _entityFilter,
+                        propertyFilter: _propertyFilter,
+                        entityOptions: customerTypeOptions,
+                        propertyOptions: propertyTypeOptions,
+                        onClearFilters: _clearFilters,
+                        onToggleEntityFilter: (v) => setState(() {
+                          _entityFilter = _entityFilter == v ? null : v;
+                        }),
+                        onTogglePropertyFilter: (v) => setState(() {
+                          _propertyFilter = _propertyFilter == v ? null : v;
+                        }),
+                        onClearEntityFilter: () =>
+                            setState(() => _entityFilter = null),
+                        onClearPropertyFilter: () =>
+                            setState(() => _propertyFilter = null),
+                        onSelectClient: widget.onSelectClient,
+                        onAddClient: widget.onAddClient,
+                        onRefresh: widget.onRefresh,
+                        refreshing: widget.refreshing,
+                        onEditClient: widget.onEditClient,
+                        onCollapse: () => setState(
+                          () => _clientsPanelCollapsed = true,
+                        ),
+                      ),
+                      end: detail,
                     ),
-                    end: detail,
                   ),
           ),
         ),

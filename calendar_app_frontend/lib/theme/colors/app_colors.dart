@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 class AppColors {
   // ðŸ©µ Surfaces & backgrounds
   static const Color background = Color(0xFFF5F8FD);
+  static const Color workspaceCanvas = Color(0xFFF1F5FB);
   static const Color surface = Color(0xFFFFFFFF); // pure white
   static const Color formSection = Color(0xFFFFFFFF);
   static const Color inputBackground = Color(0xFFEEF3FA);

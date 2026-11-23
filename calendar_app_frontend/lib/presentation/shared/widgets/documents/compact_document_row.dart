@@ -25,7 +25,9 @@ Set<HexoraFinancialColumn> _columnsForWidth(
 const _expandedTableWidth = 1080.0;
 const _compactActionSlot = 32.0;
 const _actionGap = 4.0;
-const _totalActionGap = 16.0;
+// Keep the amount and overflow menu visually separate, especially in the
+// compact proposal table where the final headers otherwise run together.
+const _totalActionGap = 24.0;
 const _compactCellHeight = 44.0;
 // The compact identity/client cell may truncate, but keeping it at 112 px
 // lets the status, delivery, payment and date columns remain useful in the

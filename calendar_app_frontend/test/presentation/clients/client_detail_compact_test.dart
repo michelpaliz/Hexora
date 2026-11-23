@@ -71,8 +71,10 @@ void main() {
     ));
     await tester.pump();
 
-    expect(
-        tester.getSize(find.byType(ClientPropertyImage)), const Size(36, 36));
+    // No saved photo: the header shows the same initial avatar as the list.
+    expect(find.byType(ClientPropertyImage), findsNothing);
+    expect(tester.getSize(find.byKey(const ValueKey('client-detail-avatar'))),
+        const Size(32, 32));
     expect(
       tester
           .getSize(find.byKey(const ValueKey('client-detail-compact-header')))

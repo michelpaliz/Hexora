@@ -23,13 +23,25 @@ class NarrowLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Avoid rendering permission-dependent navigation/content while the
+    // dashboard session is still being resolved on a cold entry.
+    if (state.isLoading) {
+      return ColoredBox(
+        color: state.backdrop,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
     Widget child;
     switch (state.activeSection) {
       case Sections.home:
         child = DashboardPreviewScreen(
           embedded: true,
           onOpenSection: state.openSection,
+          onOpenBillingProfile: () =>
+              state.openInvoicesWorkspace(initialMenu: 'billing_profile'),
           onAskHexora: state.canSeeAdmin ? state.askHexoraFromHome : null,
+          onOpenAssistant:
+              state.canSeeAdmin ? () => state.openSection(Sections.chat) : null,
         );
         break;
       case Sections.agenda:

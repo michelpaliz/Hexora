@@ -31,11 +31,8 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
         child: Container(
           padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.26),
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.35),
-            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -435,12 +432,12 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
       clipBehavior: Clip.antiAlias,
       child: Ink(
         decoration: BoxDecoration(
-          color: selected
-              ? cs.primary.withValues(alpha: 0.14)
-              : cs.surfaceContainerHigh.withValues(alpha: 0.42),
+          color: selected ? cs.surface : cs.primary.withValues(alpha: 0.035),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.22),
+            color: selected
+                ? cs.primary.withValues(alpha: 0.52)
+                : cs.outlineVariant.withValues(alpha: 0.28),
           ),
         ),
         child: InkWell(

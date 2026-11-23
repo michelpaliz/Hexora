@@ -645,6 +645,7 @@ class _BatchCompactWorkflowIndicator extends StatelessWidget {
       expandedWidth: 196,
       allowCollapse: onToggleCollapsed != null,
       title: isEs ? 'Importaci\u00f3n masiva' : 'Bulk import',
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       footer: Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Column(

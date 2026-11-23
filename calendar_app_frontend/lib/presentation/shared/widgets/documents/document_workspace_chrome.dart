@@ -16,6 +16,7 @@ class HexoraDocumentToolbar extends StatefulWidget {
     required this.onSearchChanged,
     required this.actions,
     this.searchSemanticLabel,
+    this.searchMaxWidth = 320,
   });
 
   final Widget statusTabs;
@@ -25,6 +26,7 @@ class HexoraDocumentToolbar extends StatefulWidget {
   final ValueChanged<String> onSearchChanged;
   final Widget actions;
   final String? searchSemanticLabel;
+  final double searchMaxWidth;
 
   @override
   State<HexoraDocumentToolbar> createState() => _HexoraDocumentToolbarState();
@@ -119,7 +121,8 @@ class _HexoraDocumentToolbarState extends State<HexoraDocumentToolbar> {
                     const SizedBox(width: 6),
                     Flexible(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 320),
+                        constraints:
+                            BoxConstraints(maxWidth: widget.searchMaxWidth),
                         child: search,
                       ),
                     ),

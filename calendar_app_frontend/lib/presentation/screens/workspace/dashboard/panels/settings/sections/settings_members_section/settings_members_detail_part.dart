@@ -6,33 +6,41 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
     final cs = Theme.of(context).colorScheme;
 
     if (_selectedMember == null) {
-      return Container(
-        constraints: const BoxConstraints(maxHeight: 480),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.person_search_rounded,
-                size: 36,
-                color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+      // Compact empty state on the light-blue canvas, no white container.
+      final es = Localizations.localeOf(context).languageCode == 'es';
+      return Padding(
+        key: const ValueKey('settings-member-empty'),
+        padding: const EdgeInsets.fromLTRB(8, 24, 8, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(10),
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Selecciona un miembro',
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                ),
+              child: Icon(Icons.person_search_rounded,
+                  size: 18, color: cs.primary),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              es ? 'Selecciona un miembro' : 'Select a member',
+              style: t.bodyMedium.copyWith(
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              es
+                  ? 'Elige un miembro para consultar sus permisos y detalles.'
+                  : 'Choose a member to see their permissions and details.',
+              textAlign: TextAlign.center,
+              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
         ),
       );
     }
@@ -41,10 +49,10 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
       return Container(
         constraints: const BoxConstraints(maxHeight: 480),
         decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.1),
+          color: cs.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.2),
+            color: cs.outlineVariant.withValues(alpha: 0.7),
           ),
         ),
         child: Center(
@@ -62,9 +70,10 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
       return Container(
         constraints: const BoxConstraints(maxHeight: 480),
         decoration: BoxDecoration(
+          color: cs.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.2),
+            color: cs.outlineVariant.withValues(alpha: 0.7),
           ),
         ),
         child: Center(
@@ -119,16 +128,17 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
     final displayName = user.name.isNotEmpty ? user.name : user.userName;
 
     return Container(
+      key: const ValueKey('settings-member-detail'),
       constraints: const BoxConstraints(maxHeight: 480),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.1),
+        color: cs.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.2),
+          color: cs.outlineVariant.withValues(alpha: 0.7),
         ),
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -367,9 +377,9 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
     return Container(
       constraints: const BoxConstraints(maxHeight: 480),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.1),
+        color: cs.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
       ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

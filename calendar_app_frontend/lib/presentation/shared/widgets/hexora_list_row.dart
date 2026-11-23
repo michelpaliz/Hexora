@@ -16,7 +16,9 @@ class HexoraListRow extends StatefulWidget {
       this.borderRadius = 0,
       this.outlined = false,
       this.selectedBackgroundColor,
-      this.selectedBorderColor});
+      this.selectedBorderColor,
+      this.selectedIndicatorWidth = 2,
+      this.selectedEdgeColor});
   final double separatorWidth;
   final double minHeight;
   final double verticalPadding;
@@ -33,6 +35,13 @@ class HexoraListRow extends StatefulWidget {
   /// Optional border shown around the selected row.
   final Color? selectedBorderColor;
 
+  /// Width of the leading selection indicator.
+  final double selectedIndicatorWidth;
+
+  /// Optional hairline drawn on the top and bottom edges of the selected row.
+  /// Painted as a foreground so selection never shifts the layout.
+  final Color? selectedEdgeColor;
+
   @override
   State<HexoraListRow> createState() => _HexoraListRowState();
 }
@@ -47,6 +56,7 @@ class _HexoraListRowState extends State<HexoraListRow> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ring = cs.primary.withValues(alpha: .6);
+    final edged = widget.selected && widget.selectedEdgeColor != null;
     return Semantics(
       selected: widget.selected,
       child: Listener(
@@ -93,7 +103,8 @@ class _HexoraListRowState extends State<HexoraListRow> {
                 foregroundDecoration: BoxDecoration(
                   border: BorderDirectional(
                     start: BorderSide(
-                        width: 2,
+                        width:
+                            widget.selected ? widget.selectedIndicatorWidth : 2,
                         color: widget.selected
                             ? cs.primary
                             : _keyboardFocused
@@ -101,19 +112,25 @@ class _HexoraListRowState extends State<HexoraListRow> {
                                 : Colors.transparent),
                     top: BorderSide(
                         width: 1,
-                        color: _keyboardFocused ? ring : Colors.transparent),
+                        color: _keyboardFocused
+                            ? ring
+                            : widget.selected
+                                ? widget.selectedEdgeColor ?? Colors.transparent
+                                : Colors.transparent),
                     end: BorderSide(
                         width: 1,
                         color: _keyboardFocused ? ring : Colors.transparent),
                     bottom: BorderSide(
-                      width: widget.separatorWidth,
-                      style: widget.separatorWidth <= 0
+                      width: edged ? 1 : widget.separatorWidth,
+                      style: !edged && widget.separatorWidth <= 0
                           ? BorderStyle.none
                           : BorderStyle.solid,
                       color: _keyboardFocused
                           ? ring
-                          : cs.outlineVariant.withValues(
-                              alpha: HexoraTableTokens.separatorOpacity),
+                          : widget.selected && widget.selectedEdgeColor != null
+                              ? widget.selectedEdgeColor!
+                              : cs.outlineVariant.withValues(
+                                  alpha: HexoraTableTokens.separatorOpacity),
                     ),
                   ),
                 ),

@@ -6,6 +6,18 @@ import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:hexora/theme/theme_provider.dart';
 import 'package:provider/provider.dart';
 
+void _showPreferenceSuccess(BuildContext context) {
+  final isEs = Localizations.localeOf(context).languageCode == 'es';
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text(isEs ? 'Configuración guardada.' : 'Settings saved.'),
+      ),
+    );
+}
+
 /// Full-screen preferences route used from the profile, home and account menus.
 ///
 /// When Preferences is opened from inside the Settings workspace it renders
@@ -201,7 +213,11 @@ class _NavigationPreference extends StatelessWidget {
             description: choice.description,
             selected: provider.navigationDisplayMode == choice.mode,
             enabled: provider.isLoaded,
-            onTap: () => provider.setNavigationDisplayMode(choice.mode),
+            onTap: () async {
+              if (provider.navigationDisplayMode == choice.mode) return;
+              await provider.setNavigationDisplayMode(choice.mode);
+              if (context.mounted) _showPreferenceSuccess(context);
+            },
           ),
       ],
     );
@@ -305,6 +321,7 @@ class _AppearancePreference extends StatelessWidget {
       ],
       onSelected: provider.isLoaded
           ? (choice) async {
+              if (selected == choice) return;
               switch (choice) {
                 case _AppearanceChoice.automatic:
                   await provider.setMode(ThemeMode.system);
@@ -317,6 +334,7 @@ class _AppearancePreference extends StatelessWidget {
                 case _AppearanceChoice.dark:
                   await provider.setMode(ThemeMode.dark);
               }
+              if (context.mounted) _showPreferenceSuccess(context);
             }
           : null,
     );
@@ -335,7 +353,11 @@ class _LanguagePreference extends StatelessWidget {
         (value: 'es', label: 'Español'),
         (value: 'en', label: 'English'),
       ],
-      onSelected: (languageCode) => provider.setLocale(Locale(languageCode)),
+      onSelected: (languageCode) {
+        if (provider.locale.languageCode == languageCode) return;
+        provider.setLocale(Locale(languageCode));
+        if (context.mounted) _showPreferenceSuccess(context);
+      },
     );
   }
 }

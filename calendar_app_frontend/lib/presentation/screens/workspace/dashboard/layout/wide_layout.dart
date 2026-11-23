@@ -32,6 +32,7 @@ import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram
 import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:hexora/services/weather/weather_service.dart';
@@ -46,6 +47,17 @@ class WideLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Do not build the module sidebar from partially resolved permissions.
+    // On a cold entry the dashboard briefly has no user/role yet, which made
+    // the left navigation appear incomplete beside the loading/retry view.
+    // Keep the whole workspace in one stable loading state until the session
+    // data has been resolved.
+    if (state.isLoading) {
+      return ColoredBox(
+        color: state.backdrop,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
     final l = AppLocalizations.of(context)!;
     final preferences = context.watch<UserPreferencesProvider>();
     final destinations = _dashboardDestinations(
@@ -77,12 +89,17 @@ class WideLayout extends StatelessWidget {
               break;
             }
           }
-          final content = moduleLabel == null
+          final moduleContent = moduleLabel == null
               ? child!
               : HexoraNavContext(
                   moduleLabel: moduleLabel,
                   child: child!,
                 );
+          final content = SecondarySidebarTopInsetScope(
+            topInset: 48,
+            title: moduleLabel,
+            child: moduleContent,
+          );
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -122,7 +139,11 @@ class WideLayout extends StatelessWidget {
       return DashboardPreviewScreen(
         embedded: true,
         onOpenSection: state.openSection,
+        onOpenBillingProfile: () =>
+            state.openInvoicesWorkspace(initialMenu: 'billing_profile'),
         onAskHexora: state.canSeeAdmin ? state.askHexoraFromHome : null,
+        onOpenAssistant:
+            state.canSeeAdmin ? () => state.openSection(Sections.chat) : null,
       );
     }
 
@@ -401,6 +422,8 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
   Widget build(BuildContext context) {
     final es = Localizations.localeOf(context).languageCode == 'es';
     final query = _searchController.text.trim().toLowerCase();
+    final colors = Theme.of(context).colorScheme;
+    final light = colors.brightness == Brightness.light;
     bool matches(HexoraNavDestination destination) =>
         query.isEmpty || destination.label.toLowerCase().contains(query);
     List<CollapsibleSidebarItem> entries(List<String> ids) => [
@@ -422,39 +445,39 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
         children: [
           SizedBox(
             width: double.infinity,
-            height: 32,
+            height: 38,
             child: OutlinedButton.icon(
               onPressed: () => setState(() => _collapsed = true),
               icon: const Icon(Icons.keyboard_double_arrow_left_rounded,
-                  size: 16),
+                  size: 18),
               label: Text(es ? 'Compactar' : 'Compact'),
               style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(32),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                minimumSize: const Size.fromHeight(38),
                 visualDensity: VisualDensity.compact,
-                foregroundColor:
-                    NavigationColors(Theme.of(context).colorScheme).foreground,
-                backgroundColor: NavigationColors(Theme.of(context).colorScheme)
-                    .compactControlSurface
-                    .withValues(alpha: 0.55),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                foregroundColor: colors.onSurface,
+                iconColor: colors.onSurfaceVariant,
+                backgroundColor: light
+                    ? Color.alphaBlend(
+                        colors.primary.withValues(alpha: 0.06), colors.surface)
+                    : colors.surfaceContainerHigh,
                 side: BorderSide(
-                  color: NavigationColors(Theme.of(context).colorScheme)
-                      .compactControlBorder,
+                  color: colors.primary.withValues(alpha: light ? 0.22 : 0.4),
                 ),
                 overlayColor: NavigationColors(Theme.of(context).colorScheme)
                     .compactControlHover,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(9),
+                  borderRadius: BorderRadius.circular(11),
                 ),
                 textStyle: NavigationTokens.label(context).copyWith(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           _MenuSearchField(
             controller: _searchController,
             isSpanish: es,
@@ -514,23 +537,23 @@ class _MenuSearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return SizedBox(
-      height: 36,
+      height: 38,
       child: TextField(
         controller: controller,
         onChanged: onChanged,
         textInputAction: TextInputAction.search,
-        style: NavigationTokens.label(context).copyWith(fontSize: 12),
+        textAlignVertical: TextAlignVertical.center,
+        style: NavigationTokens.label(context).copyWith(fontSize: 13),
         decoration: InputDecoration(
           hintText: isSpanish ? 'Buscar...' : 'Search...',
           hintStyle: NavigationTokens.label(context).copyWith(
-            fontSize: 12,
+            fontSize: 13,
             color: colors.onSurfaceVariant.withValues(alpha: 0.72),
           ),
           prefixIcon: Icon(Icons.search_rounded,
-              size: 16, color: colors.onSurfaceVariant),
+              size: 18, color: colors.onSurfaceVariant),
           suffixIcon: controller.text.isEmpty
-              ? Icon(Icons.tune_rounded,
-                  size: 16, color: colors.onSurfaceVariant)
+              ? null
               : IconButton(
                   tooltip: isSpanish ? 'Limpiar búsqueda' : 'Clear search',
                   onPressed: () {
@@ -540,26 +563,29 @@ class _MenuSearchField extends StatelessWidget {
                   icon: const Icon(Icons.close_rounded, size: 16),
                 ),
           prefixIconConstraints:
-              const BoxConstraints.tightFor(width: 34, height: 36),
+              const BoxConstraints.tightFor(width: 36, height: 38),
           suffixIconConstraints:
-              const BoxConstraints.tightFor(width: 32, height: 36),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              const BoxConstraints.tightFor(width: 34, height: 38),
+          contentPadding: const EdgeInsets.only(right: 8),
           filled: true,
-          fillColor: NavigationColors(colors).compactControlSurface,
+          fillColor: colors.brightness == Brightness.light
+              ? Color.alphaBlend(
+                  colors.primary.withValues(alpha: 0.04), colors.surface)
+              : colors.surfaceContainerHigh,
           isDense: true,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(
-                color: NavigationColors(colors).compactControlBorder),
+            borderSide: BorderSide(color: colors.outlineVariant),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(
-                color: NavigationColors(colors).compactControlBorder),
+              color: colors.outlineVariant.withValues(alpha: .85),
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: colors.primary, width: 1.2),
+            borderSide: BorderSide(color: colors.primary, width: 1.5),
           ),
         ),
       ),
@@ -603,6 +629,11 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
       builder: (context, _) {
         final activeSection =
             state.workspaceTabs.activeTab?.section ?? state.activeSection;
+        // The AI assistant has its own compact toolbar (Guiado/Preguntar).
+        // Keep that toolbar at the top of the pane instead of repeating the
+        // workspace selector directly above it. Other modules still retain
+        // the selector in the global navigation bar.
+        final showGroupSwitcher = activeSection != Sections.chat;
         return HexoraGlobalNavBar(
           destinations: const <HexoraNavDestination>[],
           activeId: activeSection,
@@ -611,11 +642,14 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
               ? () => state.openSection(Sections.settings)
               : null,
           brandTooltip: es ? 'Ajustes del espacio' : 'Workspace settings',
-          groupSwitcher: _GroupSwitcherChip(
-            activeGroup: state.group,
-            userId: user?.id ?? '',
-            onOpenGroupSettings: () => state.openSection(Sections.settings),
-          ),
+          groupSwitcher: showGroupSwitcher
+              ? _GroupSwitcherChip(
+                  activeGroup: state.group,
+                  userId: user?.id ?? '',
+                  onOpenGroupSettings: () =>
+                      state.openSection(Sections.settings),
+                )
+              : null,
           workspaceStatus: _TopWeatherChip(location: user?.location),
           navigationDisplayMode: navigationMode,
           collapsed: preferences.topNavCollapsed,
@@ -642,11 +676,8 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
           ),
           onlineMembers: state.canSeeAdmin
               ? WorkerStatusIndicator(
-                  groupId: state.group.id,
                   memberIds: memberIds.toList(),
                   groupRoles: state.group.userRoles,
-                  onOpenWorkers: () => state.openSection(Sections.workers),
-                  compact: true,
                 )
               : null,
           profile: UserProfilePopup(

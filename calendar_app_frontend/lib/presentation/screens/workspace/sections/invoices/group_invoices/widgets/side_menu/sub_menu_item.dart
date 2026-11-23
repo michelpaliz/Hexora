@@ -14,7 +14,9 @@ class GroupInvoicesSubMenuItem extends StatelessWidget {
       this.activeAncestor = false,
       this.indent = 0,
       this.hasChildren = false,
-      this.compact = false});
+      this.compact = false,
+      this.selectedBackgroundColor,
+      this.selectedBorderColor});
   final IconData icon;
   final String label;
   final bool selected;
@@ -25,6 +27,8 @@ class GroupInvoicesSubMenuItem extends StatelessWidget {
   final double indent;
   final bool hasChildren;
   final bool compact;
+  final Color? selectedBackgroundColor;
+  final Color? selectedBorderColor;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -43,6 +47,8 @@ class GroupInvoicesSubMenuItem extends StatelessWidget {
                 ? const Icon(Icons.keyboard_arrow_down_rounded, size: 16)
                 : null,
             primaryAction: primaryAction,
-            activeAncestor: activeAncestor),
+            activeAncestor: activeAncestor,
+            selectedBackgroundColor: selectedBackgroundColor,
+            selectedBorderColor: selectedBorderColor),
       );
 }
