@@ -39,7 +39,7 @@ class StatementsController extends ChangeNotifier {
     ClientsApi? clientsApi,
     this.groupId,
     bool useAggregated = useAggregatedStatementsEntries,
-  })  : _api = api ?? StatementsApi(),
+  })  : _api = api ?? StatementsApi(groupId: groupId),
         _clientsApi = clientsApi ?? ClientsApi(),
         useAggregatedEntriesFlag = useAggregated;
 

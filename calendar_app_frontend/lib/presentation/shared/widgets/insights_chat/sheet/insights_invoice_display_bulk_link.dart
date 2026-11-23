@@ -201,7 +201,8 @@ mixin InsightsInvoiceDisplayBulkLink on InsightsChatSheetStateBase {
             'invoiceIds': linkedInvoiceIdsFromRow(row),
           },
       ];
-      final response = await StatementsApi().bulkLinkEntryInvoices(
+      final response = await StatementsApi(groupId: runtime.historyGroupId)
+          .bulkLinkEntryInvoices(
         links: links,
         aiConversationId: message.conversationId ?? runtime.conversationId,
       );

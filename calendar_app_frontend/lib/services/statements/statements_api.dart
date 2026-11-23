@@ -39,12 +39,24 @@ String _dateOnly(DateTime date) {
 }
 
 class StatementsApi {
+  StatementsApi({this.groupId});
+
+  final String? groupId;
   final String _base = ApiConstants.baseUrl.endsWith('/api')
       ? '${ApiConstants.baseUrl}/statements'
       : '${ApiConstants.baseUrl}/api/statements';
 
-  Uri _u([String path = '', Map<String, String>? query]) =>
-      Uri.parse('$_base$path').replace(queryParameters: query);
+  Uri _u([String path = '', Map<String, String>? query]) {
+    final scopedQuery = <String, String>{
+      ...?query,
+      if (groupId?.trim().isNotEmpty == true &&
+          !(query?.containsKey('groupId') ?? false))
+        'groupId': groupId!.trim(),
+    };
+    return Uri.parse('$_base$path').replace(
+      queryParameters: scopedQuery.isEmpty ? null : scopedQuery,
+    );
+  }
 
   Future<Map<String, String>> _headers({bool json = true}) {
     return AuthenticatedHttpClient.authorizedHeaders(

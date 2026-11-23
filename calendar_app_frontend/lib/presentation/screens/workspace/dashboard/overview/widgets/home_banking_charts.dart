@@ -26,8 +26,9 @@ class HomeBankingCharts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
+      key: ValueKey(groupId),
       create: (_) => StatementsAnalyticsController(
-        api: StatementsApi(),
+        api: StatementsApi(groupId: groupId),
         groupId: groupId,
         loadDerivedData: false,
       )..loadBatches(),

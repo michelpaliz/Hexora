@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -387,9 +388,16 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
     if (!_canEdit || _logoBusy || _profile == null) return;
     final pick = widget.pickInvoiceLogo ??
         (ctx) async {
-          final file = await showBillingLogoPicker(ctx);
+          final selected = await FilePicker.platform.pickFiles(
+            allowMultiple: false,
+            withData: true,
+            type: FileType.custom,
+            allowedExtensions: ['png', 'jpg', 'jpeg'],
+          );
+          final file = selected?.files.single;
           final bytes = file?.bytes;
-          if (file == null || bytes == null || bytes.isEmpty) return null;
+          if (file == null || bytes == null || bytes.isEmpty ||
+              file.size > 15 * 1024 * 1024) return null;
           return (name: file.name, bytes: bytes.toList());
         };
     final picked = await pick(context);

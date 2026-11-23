@@ -20,7 +20,7 @@ class StatementsAnalyticsController extends ChangeNotifier {
     StatementsApi? api,
     String? groupId,
     this.loadDerivedData = true,
-  })  : _api = api ?? StatementsApi(),
+  })  : _api = api ?? StatementsApi(groupId: groupId),
         _groupId = groupId;
 
   final StatementsApi _api;

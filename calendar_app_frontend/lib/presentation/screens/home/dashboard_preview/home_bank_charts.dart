@@ -42,7 +42,7 @@ class _HomeBankChartsState extends State<HomeBankCharts>
 
   static const _requestTimeout = Duration(seconds: 20);
 
-  final _api = StatementsApi();
+  late StatementsApi _api;
   int _loadId = 0;
 
   bool _loading = true;
@@ -56,6 +56,7 @@ class _HomeBankChartsState extends State<HomeBankCharts>
   @override
   void initState() {
     super.initState();
+    _api = StatementsApi(groupId: widget.groupId);
     _load();
   }
 
@@ -63,6 +64,7 @@ class _HomeBankChartsState extends State<HomeBankCharts>
   void didUpdateWidget(covariant HomeBankCharts oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.groupId != widget.groupId) {
+      _api = StatementsApi(groupId: widget.groupId);
       _load();
       setState(() {});
     }
