@@ -13,6 +13,9 @@ import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashb
 import 'package:hexora/presentation/screens/workspace/dashboard/overview/widgets/home_banking_charts.dart';
 import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/screens/home/dashboard_preview/business_profile_card.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/pulsing_ring_avatar.dart';
 import 'package:provider/provider.dart';
 
 /// A standalone, pixel-faithful preview of a proposed "home dashboard" design
@@ -30,6 +33,8 @@ class DashboardPreviewScreen extends StatefulWidget {
     this.embedded = false,
     this.onOpenSection,
     this.onAskHexora,
+    this.onOpenAssistant,
+    this.onOpenBillingProfile,
   });
 
   /// When true the screen renders only the dashboard content (no Scaffold,
@@ -39,6 +44,10 @@ class DashboardPreviewScreen extends StatefulWidget {
   final ValueChanged<String>? onOpenSection;
   final void Function(String text, List<Map<String, dynamic>> selectedCharts)?
       onAskHexora;
+  final VoidCallback? onOpenAssistant;
+
+  /// Opens the existing billing profile (fiscal data) editor.
+  final VoidCallback? onOpenBillingProfile;
 
   @override
   State<DashboardPreviewScreen> createState() => _DashboardPreviewScreenState();
@@ -408,6 +417,8 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
               loading: loading,
               onOpenSection: _openSection,
               onAskHexora: widget.onAskHexora == null ? null : _askHexora,
+              onOpenAssistant: widget.onOpenAssistant,
+              onOpenBillingProfile: widget.onOpenBillingProfile,
               selectedCharts: _selectedCharts,
               onChartSelectionChanged: _updateChartSelection,
             );
@@ -452,6 +463,9 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
                                         onAskHexora: widget.onAskHexora == null
                                             ? null
                                             : _askHexora,
+                                        onOpenAssistant: widget.onOpenAssistant,
+                                        onOpenBillingProfile:
+                                            widget.onOpenBillingProfile,
                                         selectedCharts: _selectedCharts,
                                         onChartSelectionChanged:
                                             _updateChartSelection),
@@ -474,6 +488,9 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
                                 onAskHexora: widget.onAskHexora == null
                                     ? null
                                     : _askHexora,
+                                onOpenAssistant: widget.onOpenAssistant,
+                                onOpenBillingProfile:
+                                    widget.onOpenBillingProfile,
                                 selectedCharts: _selectedCharts,
                                 onChartSelectionChanged: _updateChartSelection),
                           ),
@@ -748,16 +765,19 @@ class _TopBar extends StatelessWidget {
           const SizedBox(width: 6),
           const _TopIcon(Icons.help_outline_rounded),
           const SizedBox(width: 10),
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: _Tone.of(context).sidebarActive,
-            backgroundImage: (user?.photoUrl?.trim().isNotEmpty ?? false)
-                ? NetworkImage(user!.photoUrl!.trim())
-                : null,
-            child: (user?.photoUrl?.trim().isNotEmpty ?? false)
-                ? null
-                : const Icon(Icons.person_rounded,
-                    size: 16, color: _Palette.blue),
+          Tooltip(
+            message: isEs ? 'Tu perfil está activo' : 'Your profile is active',
+            child: PulsingRingAvatar(
+              radius: 14,
+              image: AvatarUtils.profileImageProvider(
+                user?.photoUrl,
+                assetFallback: 'assets/images/default_profile.png',
+              ),
+              isOnline: true,
+              onlineColor: _Palette.blue,
+              offlineBorderColor: _Tone.of(context).border,
+              backgroundColor: _Tone.of(context).sidebarActive,
+            ),
           ),
         ],
       ),
@@ -859,12 +879,16 @@ class _Content extends StatelessWidget {
       required this.selectedCharts,
       required this.onChartSelectionChanged,
       this.onOpenSection,
-      this.onAskHexora});
+      this.onAskHexora,
+      this.onOpenAssistant,
+      this.onOpenBillingProfile});
   final bool isEs;
   final _DashData? data;
   final bool loading;
   final ValueChanged<String>? onOpenSection;
   final ValueChanged<String>? onAskHexora;
+  final VoidCallback? onOpenAssistant;
+  final VoidCallback? onOpenBillingProfile;
   final Map<String, Map<String, dynamic>> selectedCharts;
   final void Function(String id, Map<String, dynamic>? chart)
       onChartSelectionChanged;
@@ -892,11 +916,33 @@ class _Content extends StatelessWidget {
         padding: EdgeInsets.all(twoCol ? 16 : 12),
         children: [
           _GreetingHero(isEs: isEs, name: name),
+          if (group != null) ...[
+            const SizedBox(height: 12),
+            // Watches the selected business so saves and business switches
+            // are reflected immediately; keyed by id so no stale state from
+            // another business is kept.
+            Consumer<GroupDomain>(
+              builder: (context, groups, _) {
+                final current = groups.currentGroup ?? group;
+                return BusinessProfileCard(
+                  key: ValueKey('business-profile-${current.id}'),
+                  group: current,
+                  currentUserId: user?.id,
+                  isEs: isEs,
+                  onOpenSettings: onOpenSection == null
+                      ? null
+                      : () => onOpenSection!(Sections.settings),
+                  onOpenBillingProfile: onOpenBillingProfile,
+                );
+              },
+            ),
+          ],
           if (onAskHexora != null) ...[
             const SizedBox(height: 12),
             _AskHexoraBar(
               isEs: isEs,
               onSubmit: onAskHexora!,
+              onOpenAssistant: onOpenAssistant,
               selectedChartCount: selectedCharts.length,
             ),
           ],
@@ -974,11 +1020,13 @@ class _AskHexoraBar extends StatefulWidget {
     required this.isEs,
     required this.onSubmit,
     required this.selectedChartCount,
+    this.onOpenAssistant,
   });
 
   final bool isEs;
   final ValueChanged<String> onSubmit;
   final int selectedChartCount;
+  final VoidCallback? onOpenAssistant;
 
   @override
   State<_AskHexoraBar> createState() => _AskHexoraBarState();
@@ -1084,7 +1132,7 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
     ];
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: tone.surface,
         borderRadius: BorderRadius.circular(14),
@@ -1095,18 +1143,18 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
         children: [
           // ---- Header ----
           LayoutBuilder(builder: (context, c) {
-            final showBadge = c.maxWidth >= 520;
+            final showActionLabel = c.maxWidth >= 460;
             return Row(
               children: [
                 Container(
-                  width: 30,
-                  height: 30,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: cs.primary.withValues(alpha: .10),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child:
-                      Icon(LucideIcons.sparkles, size: 16, color: cs.primary),
+                      Icon(LucideIcons.sparkles, size: 22, color: cs.primary),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -1114,41 +1162,59 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.isEs
-                            ? '¿En qué puedo ayudarte hoy?'
-                            : 'How can I help you today?',
+                        widget.isEs ? 'Pregunta a Hexora' : 'Ask Hexora',
                         style: TextStyle(
                           color: tone.navy,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 20,
                           letterSpacing: -.1,
                         ),
                       ),
                       const SizedBox(height: 1),
                       Text(
                         widget.isEs
-                            ? 'Consulta tus datos o pide ayuda para gestionar tu negocio.'
-                            : 'Explore your data or ask for help managing your business.',
-                        maxLines: 1,
+                            ? 'Consulta información o recibe ayuda con tus tareas.'
+                            : 'Get information or help with your tasks.',
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: tone.muted, fontSize: 12),
+                        style: TextStyle(color: tone.muted, fontSize: 13),
                       ),
                     ],
                   ),
                 ),
-                if (showBadge)
-                  Text(
-                    widget.isEs ? 'Asistente de Hexora' : 'Hexora Assistant',
-                    style: TextStyle(
-                      color: cs.primary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11.5,
+                if (widget.onOpenAssistant != null) ...[
+                  const SizedBox(width: 8),
+                  if (showActionLabel)
+                    OutlinedButton.icon(
+                      onPressed: widget.onOpenAssistant,
+                      icon: const Icon(LucideIcons.arrowUpRight, size: 15),
+                      label: Text(
+                          widget.isEs ? 'Abrir asistente' : 'Open assistant'),
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.standard,
+                        minimumSize: const Size(0, 36),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        textStyle: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    )
+                  else
+                    IconButton(
+                      onPressed: widget.onOpenAssistant,
+                      tooltip:
+                          widget.isEs ? 'Abrir asistente' : 'Open assistant',
+                      icon: const Icon(LucideIcons.arrowUpRight, size: 17),
+                      visualDensity: VisualDensity.compact,
                     ),
-                  ),
+                ],
               ],
             );
           }),
-          const SizedBox(height: 10),
+          const SizedBox(height: 20),
           if (widget.selectedChartCount > 0) ...[
             Wrap(
               crossAxisAlignment: WrapCrossAlignment.center,
@@ -1178,104 +1244,170 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
             ),
             const SizedBox(height: 6),
           ],
-          // ---- Composer: ~54 px tall, grows to 5 lines (~136 px) ----
-          AnimatedContainer(
-            duration: _motion(context, const Duration(milliseconds: 150)),
-            curve: Curves.easeOut,
-            constraints: const BoxConstraints(minHeight: 54),
-            padding: const EdgeInsets.fromLTRB(14, 7, 7, 7),
-            decoration: BoxDecoration(
-              color: tone.inputBg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: focused ? cs.primary : tone.border),
-              boxShadow: focused
-                  ? [
-                      BoxShadow(
-                        color: cs.primary.withValues(alpha: .12),
-                        spreadRadius: 3,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+          LayoutBuilder(builder: (context, constraints) {
+            final twoColumns = constraints.maxWidth >= 850;
+            final composerWidth = twoColumns
+                ? (constraints.maxWidth - 28) * .58
+                : constraints.maxWidth;
+            final suggestionsWidth = twoColumns
+                ? (constraints.maxWidth - 28) * .42
+                : constraints.maxWidth;
+            return Wrap(
+              spacing: 28,
+              runSpacing: 20,
               children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    child: TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      enabled: !_submitting,
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.newline,
-                      minLines: 1,
-                      maxLines: 5,
-                      onChanged: (_) => setState(() {}),
-                      style: TextStyle(
-                        color: tone.ink,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        height: 1.35,
+                SizedBox(
+                  width: composerWidth,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AnimatedContainer(
+                        duration:
+                            _motion(context, const Duration(milliseconds: 150)),
+                        curve: Curves.easeOut,
+                        constraints: const BoxConstraints(minHeight: 90),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: tone.inputBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: focused ? cs.primary : tone.border),
+                          boxShadow: focused
+                              ? [
+                                  BoxShadow(
+                                    color: cs.primary.withValues(alpha: .08),
+                                    spreadRadius: 2,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 9),
+                                child: TextField(
+                                  controller: _controller,
+                                  focusNode: _focusNode,
+                                  enabled: !_submitting,
+                                  keyboardType: TextInputType.multiline,
+                                  textInputAction: TextInputAction.newline,
+                                  minLines: 2,
+                                  maxLines: 5,
+                                  onChanged: (_) => setState(() {}),
+                                  style: TextStyle(
+                                    color: tone.ink,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.35,
+                                  ),
+                                  decoration: InputDecoration(
+                                    isCollapsed: true,
+                                    filled: false,
+                                    border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    disabledBorder: InputBorder.none,
+                                    contentPadding: EdgeInsets.zero,
+                                    hintText: widget.isEs
+                                        ? 'Pregunta algo o pide ayuda con una tarea...'
+                                        : 'Ask something or get help with a task...',
+                                    hintStyle: TextStyle(
+                                        color: tone.muted, fontSize: 14),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton.filled(
+                              tooltip: widget.isEs
+                                  ? 'Enviar (Enter) · Nueva línea (Mayús+Enter)'
+                                  : 'Send (Enter) · New line (Shift+Enter)',
+                              onPressed: _canSubmit ? _submit : null,
+                              icon: _submitting
+                                  ? SizedBox.square(
+                                      dimension: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: cs.onPrimary,
+                                      ),
+                                    )
+                                  : const Icon(LucideIcons.arrowUp, size: 18),
+                              style: IconButton.styleFrom(
+                                backgroundColor: cs.primary,
+                                foregroundColor: cs.onPrimary,
+                                disabledBackgroundColor: _submitting
+                                    ? cs.primary
+                                    : cs.onSurface.withValues(alpha: .08),
+                                disabledForegroundColor: _submitting
+                                    ? cs.onPrimary
+                                    : cs.onSurface.withValues(alpha: .38),
+                                minimumSize: const Size.square(44),
+                                fixedSize: const Size.square(44),
+                                padding: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      decoration: InputDecoration.collapsed(
-                        hintText: widget.isEs
-                            ? 'Pregunta algo o pide ayuda con una tarea...'
-                            : 'Ask something or get help with a task...',
-                        hintStyle: TextStyle(color: tone.muted, fontSize: 14),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.isEs
+                            ? 'Enter para enviar · Mayús + Enter para una nueva línea'
+                            : 'Enter to send · Shift + Enter for a new line',
+                        style: TextStyle(color: tone.muted, fontSize: 11.5),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  tooltip: widget.isEs
-                      ? 'Enviar (Enter) · Nueva línea (Mayús+Enter)'
-                      : 'Send (Enter) · New line (Shift+Enter)',
-                  onPressed: _canSubmit ? _submit : null,
-                  icon: _submitting
-                      ? SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: cs.onPrimary,
-                          ),
-                        )
-                      : const Icon(LucideIcons.arrowUp, size: 18),
-                  style: IconButton.styleFrom(
-                    backgroundColor: cs.primary,
-                    foregroundColor: cs.onPrimary,
-                    disabledBackgroundColor: _submitting
-                        ? cs.primary
-                        : cs.onSurface.withValues(alpha: .08),
-                    disabledForegroundColor: _submitting
-                        ? cs.onPrimary
-                        : cs.onSurface.withValues(alpha: .38),
-                    minimumSize: const Size.square(38),
-                    fixedSize: const Size.square(38),
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                SizedBox(
+                  width: suggestionsWidth,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        widget.isEs ? 'Prueba a preguntar' : 'Try asking',
+                        style: TextStyle(
+                            color: tone.navy,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 10),
+                      LayoutBuilder(builder: (context, c) {
+                        final columns = c.maxWidth >= 380 ? 2 : 1;
+                        return Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final s in suggestions)
+                              SizedBox(
+                                width:
+                                    (c.maxWidth - (columns - 1) * 8) / columns,
+                                child: Tooltip(
+                                  message: s.prompt,
+                                  child: _SuggestionChip(
+                                    icon: s.icon,
+                                    label: s.label,
+                                    onTap: _submitting
+                                        ? null
+                                        : () => _submit(s.prompt),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      }),
+                    ],
                   ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          // ---- Suggested prompts ----
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (final s in suggestions)
-                _SuggestionChip(
-                  icon: s.icon,
-                  label: s.label,
-                  onTap: _submitting ? null : () => _submit(s.prompt),
-                ),
-            ],
-          ),
+            );
+          }),
         ],
       ),
     );
@@ -1294,22 +1426,26 @@ class _SuggestionChip extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return _HoverSurface(
       onTap: onTap,
-      radius: 8,
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      radius: 9,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       semanticLabel: label,
+      idleColor: tone.inputBg,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: cs.primary),
-          const SizedBox(width: 6),
-          Text(
+          Icon(icon, size: 16, color: cs.primary),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Text(
             label,
             style: TextStyle(
               color: tone.ink,
-              fontSize: 12,
+              fontSize: 12.5,
               fontWeight: FontWeight.w600,
             ),
-          ),
+          )),
+          const SizedBox(width: 8),
+          Icon(LucideIcons.arrowUpRight, size: 14, color: cs.primary),
         ],
       ),
     );
@@ -1337,13 +1473,8 @@ class _GreetingHero extends StatelessWidget {
                 ? 'Good afternoon'
                 : 'Good evening');
 
-    final date = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: tone.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: tone.border),
-      ),
+    final date = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1353,8 +1484,8 @@ class _GreetingHero extends StatelessWidget {
             _formatLongDate(DateTime.now(), isEs),
             style: TextStyle(
               color: tone.ink,
-              fontWeight: FontWeight.w600,
-              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
             ),
           ),
         ],
@@ -1363,25 +1494,10 @@ class _GreetingHero extends StatelessWidget {
 
     return LayoutBuilder(builder: (context, c) {
       final stackDate = c.maxWidth < 600;
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: tone.heroBg,
-          borderRadius: BorderRadius.circular(14),
-        ),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
         child: Row(
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: _Palette.blue.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.waving_hand_rounded,
-                  color: _Palette.blue, size: 19),
-            ),
-            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1410,7 +1526,7 @@ class _GreetingHero extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  if (stackDate) ...[const SizedBox(height: 8), date],
+                  if (stackDate) ...[const SizedBox(height: 5), date],
                 ],
               ),
             ),
@@ -1436,6 +1552,7 @@ class _HoverSurface extends StatefulWidget {
     this.radius = 12,
     this.padding = const EdgeInsets.all(12),
     this.semanticLabel,
+    this.idleColor,
   });
 
   final Widget child;
@@ -1443,6 +1560,7 @@ class _HoverSurface extends StatefulWidget {
   final double radius;
   final EdgeInsetsGeometry padding;
   final String? semanticLabel;
+  final Color? idleColor;
 
   @override
   State<_HoverSurface> createState() => _HoverSurfaceState();
@@ -1467,7 +1585,7 @@ class _HoverSurfaceState extends State<_HoverSurface> {
         duration: _motion(context, const Duration(milliseconds: 150)),
         curve: Curves.easeOut,
         decoration: BoxDecoration(
-          color: hovered ? tone.hover : tone.surface,
+          color: hovered ? tone.hover : (widget.idleColor ?? tone.surface),
           borderRadius: radius,
           border: Border.all(
             color: _focus
@@ -1580,17 +1698,17 @@ class _StatCard extends StatelessWidget {
     return _HoverSurface(
       onTap: onTap,
       radius: 12,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       semanticLabel: '$label ${value ?? ''}',
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: color, size: 18),
+            child: Icon(icon, color: color, size: 17),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1606,7 +1724,7 @@ class _StatCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                         fontSize: 12.5)),
                 SizedBox(
-                  height: 30,
+                  height: 27,
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: loading
@@ -1659,7 +1777,7 @@ class _QuickActions extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionTitle(isEs ? 'Accesos rápidos' : 'Quick actions'),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         LayoutBuilder(builder: (context, c) {
           // One row of six on wide desktops, three columns on desktop/tablet,
           // two on phones.

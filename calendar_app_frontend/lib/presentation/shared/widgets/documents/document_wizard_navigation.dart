@@ -45,6 +45,7 @@ class DocumentWizardRail extends StatelessWidget {
     this.allowCollapse = true,
     this.title,
     this.backgroundColor,
+    this.afterStepBuilder,
   });
 
   final List<DocumentWizardStep> steps;
@@ -64,6 +65,7 @@ class DocumentWizardRail extends StatelessWidget {
   final bool allowCollapse;
   final String? title;
   final Color? backgroundColor;
+  final Widget? Function(int index)? afterStepBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -196,6 +198,12 @@ class DocumentWizardRail extends StatelessWidget {
       );
     }
 
+    List<Widget> extrasAfterStep(int index) {
+      if (collapsed) return const <Widget>[];
+      final extra = afterStepBuilder?.call(index);
+      return extra == null ? const <Widget>[] : <Widget>[extra];
+    }
+
     return AnimatedContainer(
       key:
           Key(useInvoiceLegacyKeys ? 'invoice-wizard-rail' : '$keyPrefix-rail'),
@@ -239,6 +247,7 @@ class DocumentWizardRail extends StatelessWidget {
           if (!collapsed && header != null) header!,
           for (var index = 0; index < steps.length; index++) ...[
             mainStep(index),
+            ...extrasAfterStep(index),
             if (!collapsed &&
                 currentStep == index &&
                 groupExpanded &&

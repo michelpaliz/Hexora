@@ -878,25 +878,29 @@ class _DialogClientSelect extends StatelessWidget {
       child: InkWell(
         onTap: openSelector,
         borderRadius: BorderRadius.circular(10),
-        child: InputDecorator(
-          decoration: InputDecoration(
-            isDense: true,
-            prefixIcon: const Icon(Icons.search, size: 19),
-            suffixIcon: Icon(
-              Icons.unfold_more_rounded,
-              size: 18,
-              color: cs.onSurfaceVariant,
+        child: SizedBox(
+          height: 38,
+          child: InputDecorator(
+            decoration: InputDecoration(
+              isDense: true,
+              prefixIcon: const Icon(Icons.search, size: 18),
+              suffixIcon: Icon(
+                Icons.unfold_more_rounded,
+                size: 17,
+                color: cs.onSurfaceVariant,
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-          ),
-          child: Text(
-            selected?.name ?? 'Buscar cliente...',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: selected == null ? cs.onSurfaceVariant : cs.onSurface,
-              fontWeight: selected == null ? FontWeight.w400 : FontWeight.w700,
+            child: Text(
+              selected?.name ?? 'Buscar cliente...',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: selected == null ? cs.onSurfaceVariant : cs.onSurface,
+                fontWeight:
+                    selected == null ? FontWeight.w400 : FontWeight.w700,
+              ),
             ),
           ),
         ),

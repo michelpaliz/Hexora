@@ -48,12 +48,36 @@ class UserProfilePopup extends StatefulWidget {
   State<UserProfilePopup> createState() => _UserProfilePopupState();
 }
 
-class _UserProfilePopupState extends State<UserProfilePopup> {
+class _UserProfilePopupState extends State<UserProfilePopup>
+    with SingleTickerProviderStateMixin {
   OverlayEntry? _popupEntry;
+  late final AnimationController _activityController;
+  late final Animation<double> _activity;
+
+  @override
+  void initState() {
+    super.initState();
+    _activityController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+    _activity = CurvedAnimation(
+      parent: _activityController,
+      curve: Curves.easeInOut,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted &&
+          widget.placement == UserProfilePopupPlacement.topBar &&
+          !MediaQuery.disableAnimationsOf(context)) {
+        _activityController.repeat(reverse: true);
+      }
+    });
+  }
 
   @override
   void dispose() {
     _dismissPopup();
+    _activityController.dispose();
     super.dispose();
   }
 
@@ -150,6 +174,36 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
       photoUrl: u.photoUrl,
       size: HexoraUserAvatar.compactSize,
     );
+    final activeAvatar = widget.placement != UserProfilePopupPlacement.topBar
+        ? avatar
+        : AnimatedBuilder(
+            animation: _activity,
+            builder: (context, child) => Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: .35 + (_activity.value * .5)),
+                  width: 1.5 + (_activity.value * 1.5),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: .08 + (_activity.value * .14)),
+                    blurRadius: 4 + (_activity.value * 4),
+                    spreadRadius: _activity.value,
+                  ),
+                ],
+              ),
+              child: child,
+            ),
+            child: avatar,
+          );
 
     return Tooltip(
       message: displayName,
@@ -174,7 +228,7 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
                     ? MainAxisAlignment.start
                     : MainAxisAlignment.center,
                 children: [
-                  avatar,
+                  activeAvatar,
                   if (widget.expanded) ...[
                     const SizedBox(width: 8),
                     Expanded(
