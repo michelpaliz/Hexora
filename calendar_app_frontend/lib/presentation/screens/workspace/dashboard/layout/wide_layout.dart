@@ -82,13 +82,14 @@ class WideLayout extends StatelessWidget {
         builder: (context, child) {
           final activeSection =
               state.workspaceTabs.activeTab?.section ?? state.activeSection;
-          String? moduleLabel;
+          HexoraNavDestination? activeDestination;
           for (final destination in destinations) {
             if (destination.id == activeSection) {
-              moduleLabel = destination.label;
+              activeDestination = destination;
               break;
             }
           }
+          final moduleLabel = activeDestination?.label;
           final moduleContent = moduleLabel == null
               ? child!
               : HexoraNavContext(
@@ -98,6 +99,7 @@ class WideLayout extends StatelessWidget {
           final content = SecondarySidebarTopInsetScope(
             topInset: 48,
             title: moduleLabel,
+            icon: activeDestination?.icon,
             child: moduleContent,
           );
           return Row(

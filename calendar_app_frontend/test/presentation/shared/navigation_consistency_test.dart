@@ -178,7 +178,7 @@ void main() {
     expect(styleOf('CLIENTES').fontSize, lessThanOrEqualTo(11));
     expect(styleOf('CLIENTES').fontWeight, FontWeight.w600);
     expect(styleOf('FACTURAS').fontSize, lessThanOrEqualTo(11));
-    expect(styleOf('Recurrentes').fontSize, 12.5);
+    expect(styleOf('Recurrentes').fontSize, NavigationTokens.textSize);
     expect(styleOf('Recurrentes').fontWeight, FontWeight.w500);
     expect(styleOf('Crear factura').fontSize, lessThan(12.5));
     expect(styleOf('Crear factura').fontWeight, FontWeight.w500);
@@ -389,4 +389,46 @@ void main() {
     expect(collapsed, isTrue);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('contextual module header has a distinct visual hierarchy',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          width: 220,
+          height: 48,
+          child: SecondarySidebarHeader(
+            title: 'Ingresos',
+            icon: Icons.receipt_long_outlined,
+            emphasized: true,
+            showCollapseAction: false,
+            onCollapse: _noop,
+          ),
+        ),
+      ),
+    ));
+
+    expect(find.text('Ingresos'), findsOneWidget);
+    expect(find.text('INGRESOS'), findsNothing);
+    final moduleIcon = find.byIcon(Icons.receipt_long_outlined);
+    expect(moduleIcon, findsOneWidget);
+    expect(tester.widget<Icon>(moduleIcon).size, 16);
+
+    final surface = find.byKey(
+      const ValueKey('secondary-module-header-surface'),
+    );
+    final decoration =
+        tester.widget<DecoratedBox>(surface).decoration as BoxDecoration;
+    expect(decoration.color, AppColors.inputBackground);
+    expect(decoration.borderRadius, BorderRadius.circular(8));
+    expect(tester.getSize(surface).height, 32);
+    expect(tester.getTopLeft(surface).dy, 10);
+
+    final title = tester.widget<Text>(find.text('Ingresos'));
+    expect(title.style?.fontSize, 14);
+    expect(title.style?.fontWeight, FontWeight.w600);
+    expect(tester.takeException(), isNull);
+  });
 }
+
+void _noop() {}

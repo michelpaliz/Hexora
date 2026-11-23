@@ -50,18 +50,22 @@ class SecondarySidebarTopInsetScope extends InheritedWidget {
     super.key,
     required this.topInset,
     this.title,
+    this.icon,
     required super.child,
   });
 
   final double topInset;
   final String? title;
+  final IconData? icon;
 
   static SecondarySidebarTopInsetScope? maybeOf(BuildContext context) => context
       .dependOnInheritedWidgetOfExactType<SecondarySidebarTopInsetScope>();
 
   @override
   bool updateShouldNotify(SecondarySidebarTopInsetScope oldWidget) =>
-      oldWidget.topInset != topInset || oldWidget.title != title;
+      oldWidget.topInset != topInset ||
+      oldWidget.title != title ||
+      oldWidget.icon != icon;
 }
 
 /// Publishes one workspace-level header to every shared module sidebar.
@@ -263,6 +267,8 @@ class SidebarEdgeShell extends StatelessWidget {
                 height: contextualTopInset,
                 child: SecondarySidebarHeader(
                   title: contextualTitle,
+                  icon: contextualScope?.icon,
+                  emphasized: true,
                   onCollapse: () {},
                   showCollapseAction: false,
                 ),

@@ -272,7 +272,9 @@ class GroupInvoicesSideMenu extends StatelessWidget {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
+                // The shared contextual module header already provides the
+                // vertical separation above this first navigation group.
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
