@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
@@ -12,6 +11,7 @@ import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 /// Business ("negocio") selector shown on the home screen, below the greeting
@@ -19,8 +19,8 @@ import 'package:hexora/theme/typography/typography_extension.dart';
 /// grid of rich business cards, mirroring the product design mockup.
 ///
 /// Data is sourced exactly like [GroupListSection]
-/// (`UserDomain` + `GroupDomain.watchGroupsForUser`). Favourites are persisted
-/// locally on the device via [SharedPreferences] (not synced to the backend).
+/// (`UserDomain` + `GroupDomain.watchGroupsForUser`). Favorites are saved as
+/// account preferences and follow the user across devices.
 class BusinessSelectorSection extends StatefulWidget {
   const BusinessSelectorSection({super.key});
 
@@ -32,11 +32,8 @@ class BusinessSelectorSection extends StatefulWidget {
 enum _BusinessFilter { todos, activos, favoritos }
 
 class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
-  static const _kFavoritesPrefKey = 'business_favorites';
-
   final _searchCtrl = TextEditingController();
   _BusinessFilter _filter = _BusinessFilter.todos;
-  final Set<String> _favorites = <String>{};
   String _query = '';
 
   @override
@@ -46,7 +43,6 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
       final next = _searchCtrl.text.trim().toLowerCase();
       if (next != _query) setState(() => _query = next);
     });
-    _loadFavorites();
   }
 
   @override
@@ -55,32 +51,11 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
     super.dispose();
   }
 
-  Future<void> _loadFavorites() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final stored = prefs.getStringList(_kFavoritesPrefKey) ?? const [];
-      if (!mounted || stored.isEmpty) return;
-      setState(() {
-        _favorites
-          ..clear()
-          ..addAll(stored);
-      });
-    } catch (_) {
-      // Non-fatal: favourites simply start empty this session.
-    }
-  }
+  Set<String> get _favorites =>
+      context.read<UserPreferencesProvider>().favoriteBusinessIds;
 
-  Future<void> _toggleFavorite(String groupId) async {
-    setState(() {
-      if (!_favorites.remove(groupId)) _favorites.add(groupId);
-    });
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_kFavoritesPrefKey, _favorites.toList());
-    } catch (_) {
-      // Non-fatal: the in-memory toggle still applies for this session.
-    }
-  }
+  Future<void> _toggleFavorite(String groupId) =>
+      context.read<UserPreferencesProvider>().toggleFavoriteBusiness(groupId);
 
   bool get _isSpanish => Localizations.localeOf(context).languageCode == 'es';
 
@@ -116,6 +91,7 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<UserPreferencesProvider>();
     final userDomain = context.watch<UserDomain>();
     final groupDomain = context.watch<GroupDomain>();
 

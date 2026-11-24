@@ -77,8 +77,22 @@ final List<SingleChildWidget> coreProviders = [
 
   // Presence + theme + locale
   ChangeNotifierProvider(create: (_) => PresenceDomain()),
-  ChangeNotifierProvider(create: (_) => ThemeModeProvider()),
-  ChangeNotifierProvider(create: (_) => LocaleProvider()),
+  ChangeNotifierProxyProvider<UserDomain, ThemeModeProvider>(
+    create: (_) => ThemeModeProvider(),
+    update: (_, userDomain, provider) {
+      final value = provider ?? ThemeModeProvider();
+      Future.microtask(() => value.bindUser(userDomain.user?.id));
+      return value;
+    },
+  ),
+  ChangeNotifierProxyProvider<UserDomain, LocaleProvider>(
+    create: (_) => LocaleProvider(),
+    update: (_, userDomain, provider) {
+      final value = provider ?? LocaleProvider();
+      Future.microtask(() => value.bindUser(userDomain.user?.id));
+      return value;
+    },
+  ),
   ChangeNotifierProxyProvider<UserDomain, UserPreferencesProvider>(
     create: (_) => UserPreferencesProvider(),
     update: (_, userDomain, preferences) {

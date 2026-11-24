@@ -26,13 +26,13 @@ import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
 import 'package:hexora/state/locale_provider.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/theme_provider.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../widgets/section_header.dart';
@@ -72,44 +72,18 @@ class HomeSliverContent extends StatefulWidget {
 }
 
 class _HomeSliverContentState extends State<HomeSliverContent> {
-  static const _kShowQuotePrefKey = 'home_show_daily_quote';
-
   bool _autoStatementImportLoading = false;
   late String _userName;
   _HomeView _activeView = _HomeView.groups;
-  bool _showDailyQuote = true;
   bool _appeared = false;
 
   @override
   void initState() {
     super.initState();
     _userName = widget.user.userName;
-    _loadQuotePreference();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _appeared = true);
     });
-  }
-
-  Future<void> _loadQuotePreference() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final value = prefs.getBool(_kShowQuotePrefKey) ?? true;
-      if (mounted && value != _showDailyQuote) {
-        setState(() => _showDailyQuote = value);
-      }
-    } catch (_) {
-      // Default to showing the quote if preferences can't be read.
-    }
-  }
-
-  Future<void> _setShowDailyQuote(bool value) async {
-    setState(() => _showDailyQuote = value);
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_kShowQuotePrefKey, value);
-    } catch (_) {
-      // Non-fatal: the in-memory toggle still applies for this session.
-    }
   }
 
   @override
@@ -240,8 +214,8 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
     final loc = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
-    return Consumer2<ThemeModeProvider, AuthProvider>(
-      builder: (context, themeModeProv, authProvider, _) {
+    return Consumer3<ThemeModeProvider, AuthProvider, UserPreferencesProvider>(
+      builder: (context, themeModeProv, authProvider, preferences, _) {
         final photoUrl = authProvider.currentUser?.photoUrl;
         final autoImportEnabled =
             authProvider.currentUser?.autoStatementImportEnabled ?? false;
@@ -284,13 +258,13 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                         setState(() => _activeView = _HomeView.notifications),
                   ),
                 ),
-                if (_showDailyQuote)
+                if (preferences.showDailyQuote)
                   SliverToBoxAdapter(
                     key: widget.phraseKey,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 2, 16, 2),
                       child: _DailyPhraseCard(
-                        onDismiss: () => _setShowDailyQuote(false),
+                        onDismiss: () => preferences.setShowDailyQuote(false),
                       ),
                     ),
                   ),
@@ -442,8 +416,8 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                         autoStatementImportEnabled: autoImportEnabled,
                         autoStatementImportBusy: _autoStatementImportLoading,
                         onToggleAutoStatementImport: _toggleAutoStatementImport,
-                        showDailyQuote: _showDailyQuote,
-                        onToggleDailyQuote: _setShowDailyQuote,
+                        showDailyQuote: preferences.showDailyQuote,
+                        onToggleDailyQuote: preferences.setShowDailyQuote,
                       ),
                     ),
                   ),

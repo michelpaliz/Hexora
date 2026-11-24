@@ -1,5 +1,6 @@
 // theme_mode_provider.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/services/user/user_preferences_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum LightThemeVariant { neutral, blue }
@@ -7,17 +8,76 @@ enum LightThemeVariant { neutral, blue }
 class ThemeModeProvider with ChangeNotifier {
   static const _key = 'theme_mode'; // 'system' | 'light' | 'dark'
   static const _lightVariantKey = 'light_theme_variant';
+  static const _migrationOwnerKey = 'theme_preferences_migration_owner';
   ThemeMode _mode = ThemeMode.system;
   LightThemeVariant _lightVariant = LightThemeVariant.neutral;
   bool _loaded = false;
+  String? _userId;
+  int _loadVersion = 0;
+  late final Future<void> _initialLoad;
 
   ThemeModeProvider() {
-    _init();
+    _initialLoad = _init();
   }
 
   ThemeMode get mode => _mode;
   LightThemeVariant get lightVariant => _lightVariant;
   bool get isLoaded => _loaded;
+
+  Future<void> bindUser(String? userId) async {
+    final normalized = userId?.trim();
+    final nextUserId = normalized == null || normalized.isEmpty
+        ? null
+        : normalized;
+    if (_userId == nextUserId) return;
+    _userId = nextUserId;
+    final version = ++_loadVersion;
+    if (nextUserId == null) return;
+
+    await _initialLoad;
+    try {
+      final remote = await UserPreferencesApi.load();
+      if (version != _loadVersion) return;
+      final remoteMode = _stringToMode(remote['themeMode'] as String?);
+      final remoteVariant =
+          _stringToLightVariant(remote['lightThemeVariant'] as String?);
+      final prefs = await SharedPreferences.getInstance();
+      final migrationOwner = prefs.getString(_migrationOwnerKey);
+      final canMigrate = migrationOwner == null;
+      if (remoteMode != null) {
+        _mode = remoteMode;
+      } else {
+        _mode = _stringToMode(prefs.getString(_keyFor(nextUserId))) ??
+            (canMigrate ? _mode : ThemeMode.system);
+      }
+      if (remoteVariant != null) {
+        _lightVariant = remoteVariant;
+      } else {
+        _lightVariant = _stringToLightVariant(
+              prefs.getString(_variantKeyFor(nextUserId)),
+            ) ??
+            (canMigrate ? _lightVariant : LightThemeVariant.neutral);
+      }
+      await prefs.setString(_keyFor(nextUserId), _modeToString(_mode));
+      await prefs.setString(
+        _variantKeyFor(nextUserId),
+        _lightVariantToString(_lightVariant),
+      );
+      if (canMigrate) {
+        await prefs.setString(_migrationOwnerKey, nextUserId);
+      }
+      if (remoteMode == null || remoteVariant == null) {
+        await UserPreferencesApi.update({
+          if (remoteMode == null) 'themeMode': _modeToString(_mode),
+          if (remoteVariant == null)
+            'lightThemeVariant': _lightVariantToString(_lightVariant),
+        });
+      }
+      notifyListeners();
+    } catch (error) {
+      debugPrint('[ThemeModeProvider] remote load failed: $error');
+    }
+  }
 
   Future<void> _init() async {
     try {
@@ -43,7 +103,20 @@ class ThemeModeProvider with ChangeNotifier {
     _lightVariant = variant;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_lightVariantKey, _lightVariantToString(variant));
+    final currentUserId = _userId;
+    await prefs.setString(
+      currentUserId == null ? _lightVariantKey : _variantKeyFor(currentUserId),
+      _lightVariantToString(variant),
+    );
+    if (currentUserId != null) {
+      try {
+        await UserPreferencesApi.update({
+          'lightThemeVariant': _lightVariantToString(variant),
+        });
+      } catch (error) {
+        debugPrint('[ThemeModeProvider] remote save failed: $error');
+      }
+    }
   }
 
   Future<void> setMode(ThemeMode mode) async {
@@ -51,7 +124,18 @@ class ThemeModeProvider with ChangeNotifier {
     _mode = mode;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, _modeToString(mode));
+    final currentUserId = _userId;
+    await prefs.setString(
+      currentUserId == null ? _key : _keyFor(currentUserId),
+      _modeToString(mode),
+    );
+    if (currentUserId != null) {
+      try {
+        await UserPreferencesApi.update({'themeMode': _modeToString(mode)});
+      } catch (error) {
+        debugPrint('[ThemeModeProvider] remote save failed: $error');
+      }
+    }
   }
 
   Future<void> toggleLightDark() async {
@@ -97,4 +181,9 @@ class ThemeModeProvider with ChangeNotifier {
         return null;
     }
   }
+
+  static String _keyFor(String userId) => 'hexora.user.$userId.$_key';
+
+  static String _variantKeyFor(String userId) =>
+      'hexora.user.$userId.$_lightVariantKey';
 }
