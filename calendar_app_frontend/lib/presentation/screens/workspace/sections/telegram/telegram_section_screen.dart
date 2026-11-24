@@ -1,4 +1,5 @@
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'dart:async';
@@ -62,12 +63,32 @@ class _TelegramSectionScreenState extends State<TelegramSectionScreen> {
                 ),
               );
             }
-            return WorkspaceMainContent(
+            final connectingContent = WorkspaceMainContent(
               child: SingleChildScrollView(
                 padding: EdgeInsets.all(mobile ? 12 : 24),
                 child: _ConnectingFlow(domain: telegramDomain),
               ),
             );
+            final sidebarHeaderScope = SidebarHeaderScope.maybeOf(context);
+            if (constraints.maxWidth >= 1080 &&
+                sidebarHeaderScope?.enabled == true) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: NavigationTokens.sidebarWidth,
+                    child: NavigationSurface(
+                      builder: (context) => Align(
+                        alignment: Alignment.topCenter,
+                        child: sidebarHeaderScope!.builder(context, false),
+                      ),
+                    ),
+                  ),
+                  Expanded(child: connectingContent),
+                ],
+              );
+            }
+            return connectingContent;
           }),
         );
       },
@@ -990,6 +1011,10 @@ class _TelegramSideMenu extends StatelessWidget {
         final es = Localizations.localeOf(context).languageCode == 'es';
         final l = AppLocalizations.of(context)!;
         final cs = Theme.of(context).colorScheme;
+        final sidebarHeaderScope = SidebarHeaderScope.maybeOf(context);
+        final sidebarHeader = sidebarHeaderScope?.enabled == true
+            ? sidebarHeaderScope!.builder(context, false)
+            : null;
         Widget heading(String label) => Padding(
               padding: const EdgeInsets.fromLTRB(12, 20, 8, 10),
               child: Text(label,
@@ -998,51 +1023,60 @@ class _TelegramSideMenu extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       color: cs.onSurfaceVariant)),
             );
-        return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            children: [
-              heading(es ? 'COMUNICACIÓN' : 'COMMUNICATION'),
-              _TelegramMenuItem(
-                icon: Icons.chat_bubble_outline_rounded,
-                label: l.telegramMenuChats,
-                badgeText: chatsCount > 0 ? '$chatsCount' : null,
-                selected: selectedSection == _TelegramConnectedSection.chats,
-                onTap: () => onSectionSelected(_TelegramConnectedSection.chats),
-              ),
-              _TelegramMenuItem(
-                icon: Icons.file_download_outlined,
-                label: l.telegramMenuExports,
-                badgeLive: hasActiveExport,
-                selected: selectedSection == _TelegramConnectedSection.exports,
-                onTap: () =>
-                    onSectionSelected(_TelegramConnectedSection.exports),
-              ),
-              const SizedBox(height: 16),
-              heading(es ? 'CONFIGURACIÓN' : 'SETTINGS'),
-              _TelegramMenuItem(
-                icon: Icons.telegram,
-                label: es ? 'Conexión Telegram' : 'Telegram connection',
-                selected: selectedSection == _TelegramConnectedSection.account,
-                onTap: () =>
-                    onSectionSelected(_TelegramConnectedSection.account),
-              ),
-              const SizedBox(height: 24),
-              Divider(color: cs.outlineVariant.withValues(alpha: .35)),
-              Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(account.fullName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall)),
-              TextButton.icon(
-                onPressed: loadingAccount ? null : onDisconnect,
-                icon: const Icon(Icons.link_off, size: 16),
-                label: Text(es ? 'Desconectar' : 'Disconnect'),
-                style: TextButton.styleFrom(
-                    foregroundColor: cs.onSurfaceVariant,
-                    alignment: Alignment.centerLeft),
-              ),
-            ]);
+        return Column(children: [
+          if (sidebarHeader != null) sidebarHeader,
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              children: [
+                heading(es ? 'COMUNICACIÓN' : 'COMMUNICATION'),
+                _TelegramMenuItem(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  label: l.telegramMenuChats,
+                  badgeText: chatsCount > 0 ? '$chatsCount' : null,
+                  selected: selectedSection == _TelegramConnectedSection.chats,
+                  onTap: () =>
+                      onSectionSelected(_TelegramConnectedSection.chats),
+                ),
+                _TelegramMenuItem(
+                  icon: Icons.file_download_outlined,
+                  label: l.telegramMenuExports,
+                  badgeLive: hasActiveExport,
+                  selected:
+                      selectedSection == _TelegramConnectedSection.exports,
+                  onTap: () =>
+                      onSectionSelected(_TelegramConnectedSection.exports),
+                ),
+                const SizedBox(height: 16),
+                heading(es ? 'CONFIGURACIÓN' : 'SETTINGS'),
+                _TelegramMenuItem(
+                  icon: Icons.telegram,
+                  label: es ? 'Conexión Telegram' : 'Telegram connection',
+                  selected:
+                      selectedSection == _TelegramConnectedSection.account,
+                  onTap: () =>
+                      onSectionSelected(_TelegramConnectedSection.account),
+                ),
+                const SizedBox(height: 24),
+                Divider(color: cs.outlineVariant.withValues(alpha: .35)),
+                Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(account.fullName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall)),
+                TextButton.icon(
+                  onPressed: loadingAccount ? null : onDisconnect,
+                  icon: const Icon(Icons.link_off, size: 16),
+                  label: Text(es ? 'Desconectar' : 'Disconnect'),
+                  style: TextButton.styleFrom(
+                      foregroundColor: cs.onSurfaceVariant,
+                      alignment: Alignment.centerLeft),
+                ),
+              ],
+            ),
+          ),
+        ]);
       });
 }
 

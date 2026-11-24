@@ -2075,10 +2075,12 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
             message.isDeleted
                 ? (_es ? 'Mensaje eliminado' : 'Message deleted')
                 : message.body,
-            style: message.isDeleted
-                ? TextStyle(
-                    fontStyle: FontStyle.italic, color: colors.onSurfaceVariant)
-                : null,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.35,
+              fontStyle: message.isDeleted ? FontStyle.italic : null,
+              color: message.isDeleted ? colors.onSurfaceVariant : null,
+            ),
           ),
         if (!message.isDeleted && message.bankTransaction != null)
           BankTransactionChatCard(
@@ -2176,7 +2178,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
             Text(
               '${DateFormat('HH:mm').format(message.createdAt.toLocal())}${message.editedAt != null ? (_es ? ' · Editado' : ' · Edited') : ''}',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontSize: 10.5,
+                    fontSize: 11.5,
                     color: colors.onSurfaceVariant,
                   ),
             ),
@@ -2200,7 +2202,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     required bool narrow,
     required double maxBubbleWidth,
   }) {
-    const double avatarSize = 30;
+    const double avatarSize = 36;
     final colors = Theme.of(context).colorScheme;
 
     final actions = <ChatMessageAction>[
@@ -2314,9 +2316,10 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   /// constrained so messages do not stretch across the whole workspace.
   Widget _buildMessageList(bool narrow, double viewportWidth) {
     final hasOlder = _hasOlderMessages;
+    final conversationWidth = viewportWidth.clamp(0.0, 1050.0).toDouble();
     final maxBubbleWidth = narrow
         ? viewportWidth * .85
-        : (viewportWidth * .70).clamp(280.0, 520.0).toDouble();
+        : (conversationWidth * .72).clamp(280.0, 756.0).toDouble();
     final list = ListView.builder(
       controller: _scroll,
       padding: EdgeInsets.symmetric(
@@ -2370,7 +2373,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     if (narrow) return list;
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1000),
+        constraints: const BoxConstraints(maxWidth: 1050),
         child: list,
       ),
     );
@@ -3099,7 +3102,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                               constraints: BoxConstraints(
                                                   maxWidth: narrow
                                                       ? double.infinity
-                                                      : 1000),
+                                                      : 1050),
                                               child: Column(
                                                   mainAxisSize:
                                                       MainAxisSize.min,

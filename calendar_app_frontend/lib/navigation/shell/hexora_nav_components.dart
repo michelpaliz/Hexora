@@ -135,7 +135,7 @@ class _HexoraNavTileState extends State<HexoraNavTile> {
         highlightColor: primary.withValues(alpha: 0.10),
         child: AnimatedContainer(
           duration: NavigationTokens.motion,
-          curve: Curves.easeOut,
+          curve: Curves.easeOutCubic,
           height: widget.moduleTab
               ? NavigationTokens.globalBarHeight
               : NavigationTokens.globalItemHeight,

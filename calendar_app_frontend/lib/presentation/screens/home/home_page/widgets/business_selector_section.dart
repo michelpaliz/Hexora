@@ -82,8 +82,7 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
     }
   }
 
-  bool get _isSpanish =>
-      Localizations.localeOf(context).languageCode == 'es';
+  bool get _isSpanish => Localizations.localeOf(context).languageCode == 'es';
 
   Future<void> _openCreateGroup() async {
     if (kIsWeb) {
@@ -232,8 +231,7 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
               final w = constraints.maxWidth;
               final columns = w >= 1000 ? 3 : (w >= 640 ? 2 : 1);
               const spacing = 14.0;
-              final cardWidth =
-                  (w - (columns - 1) * spacing) / columns;
+              final cardWidth = (w - (columns - 1) * spacing) / columns;
               return Wrap(
                 spacing: spacing,
                 runSpacing: spacing,
@@ -243,8 +241,7 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
                       width: cardWidth,
                       child: _BusinessCard(
                         group: group,
-                        isSelected:
-                            groupDomain.currentGroup?.id == group.id,
+                        isSelected: groupDomain.currentGroup?.id == group.id,
                         isFavorite: _favorites.contains(group.id),
                         isPrincipal: group.ownerId == user.id,
                         isSpanish: _isSpanish,
@@ -433,9 +430,7 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
       selectedColor: cs.primary,
       backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
       side: BorderSide(
-        color: selected
-            ? cs.primary
-            : cs.outlineVariant.withValues(alpha: 0.6),
+        color: selected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.6),
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
     );
@@ -460,7 +455,8 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
               color: cs.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(Icons.info_outline_rounded, size: 20, color: cs.primary),
+            child:
+                Icon(Icons.info_outline_rounded, size: 20, color: cs.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -496,8 +492,7 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
             style: OutlinedButton.styleFrom(
               foregroundColor: cs.primary,
               side: BorderSide(color: cs.primary.withValues(alpha: 0.4)),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -631,7 +626,7 @@ class _BusinessCardState extends State<_BusinessCard> {
                             height: 56,
                             child: AvatarUtils.groupAvatar(
                               context,
-                              group.photoUrl,
+                              group.displayPhotoUrl,
                               radius: 28,
                             ),
                           ),
@@ -680,8 +675,8 @@ class _BusinessCardState extends State<_BusinessCard> {
                         Container(
                           width: 24,
                           height: 24,
-                          decoration:
-                              BoxDecoration(color: cs.primary, shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                              color: cs.primary, shape: BoxShape.circle),
                           child: Icon(Icons.check_rounded,
                               size: 16, color: cs.onPrimary),
                         ),
@@ -738,7 +733,9 @@ class _BusinessCardState extends State<_BusinessCard> {
                     Icons.event_outlined,
                     group.hasCalendar
                         ? (es ? 'Calendario activo' : 'Calendar active')
-                        : (es ? 'Sin tareas programadas' : 'No scheduled tasks'),
+                        : (es
+                            ? 'Sin tareas programadas'
+                            : 'No scheduled tasks'),
                   ),
                   const SizedBox(height: 8),
                   _metaRow(

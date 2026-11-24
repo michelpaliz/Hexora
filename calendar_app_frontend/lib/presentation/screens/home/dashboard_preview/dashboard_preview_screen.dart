@@ -11,7 +11,6 @@ import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/weather/weather_service.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/overview/widgets/home_banking_charts.dart';
-import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/home/dashboard_preview/business_profile_card.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
@@ -897,8 +896,11 @@ class _Content extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.read<AuthService>().currentUser;
     final group = context.read<GroupDomain>().currentGroup;
-    final showBankingCharts = onAskHexora != null &&
-        canManagePremiumFeature(group, user?.id, PremiumFeature.banking);
+    // Banking automation is an entitlement for automated workflows, not a
+    // visibility rule for bank data that already belongs to the business.
+    // When the dashboard assistant is available, let the scoped statements
+    // request decide whether there is anything to render.
+    final showBankingCharts = onAskHexora != null;
     String name = 'Michael';
     if (user != null) {
       if (user.name.trim().isNotEmpty) {

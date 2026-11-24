@@ -27,6 +27,7 @@ import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/premium_upgrade_dialog.dart';
 import 'package:hexora/navigation/main_scaffold.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -379,7 +380,8 @@ class _ShowNotificationsState extends State<ShowNotifications>
       final response = await _downloadsApi.downloadFile(job);
       await launchFileDownload(
         response.bodyBytes,
-        fileName: DownloadJobDisplay.downloadFilename(context, job, response.headers),
+        fileName:
+            DownloadJobDisplay.downloadFilename(context, job, response.headers),
         mimeType: job.mimeType.trim().isNotEmpty
             ? job.mimeType
             : 'application/octet-stream',
@@ -720,24 +722,29 @@ class _ShowNotificationsState extends State<ShowNotifications>
           ],
         ),
       ],
-      body: ListenableBuilder(
-        listenable: OcrImportJobsStore.instance,
-        builder: (context, _) => NotificationsTabView(
-          onRefresh: _refreshNotifications,
-          notificationsStream: _notificationsStream,
-          initialNotifications:
-              context.read<NotificationDomain>().notifications,
-          notificationViewModel: _notificationViewModel,
-          activeJobs: OcrImportJobsStore.instance.activeJobs,
-          jobNotifications: _jobNotifications,
-          loadingJobNotifications: _loadingJobNotifications,
-          isAttentionJobNotification: _isAttentionJobNotification,
-          onConfirm: _handleInviteConfirmation,
-          onOpenDocument: _handleNotificationOpen,
-          onOpenActiveJob: (job) =>
-              _openJobOnce(job.id, () => _openExpenseJob(job)),
-          onOpenJobNotification: (notification) => _openJobOnce(
-              notification.id, () => _openJobNotification(notification)),
+      body: ColoredBox(
+        color: Theme.of(context).brightness == Brightness.light
+            ? AppColors.workspaceCanvas
+            : Theme.of(context).colorScheme.surface,
+        child: ListenableBuilder(
+          listenable: OcrImportJobsStore.instance,
+          builder: (context, _) => NotificationsTabView(
+            onRefresh: _refreshNotifications,
+            notificationsStream: _notificationsStream,
+            initialNotifications:
+                context.read<NotificationDomain>().notifications,
+            notificationViewModel: _notificationViewModel,
+            activeJobs: OcrImportJobsStore.instance.activeJobs,
+            jobNotifications: _jobNotifications,
+            loadingJobNotifications: _loadingJobNotifications,
+            isAttentionJobNotification: _isAttentionJobNotification,
+            onConfirm: _handleInviteConfirmation,
+            onOpenDocument: _handleNotificationOpen,
+            onOpenActiveJob: (job) =>
+                _openJobOnce(job.id, () => _openExpenseJob(job)),
+            onOpenJobNotification: (notification) => _openJobOnce(
+                notification.id, () => _openJobNotification(notification)),
+          ),
         ),
       ),
     );

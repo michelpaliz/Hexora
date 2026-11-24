@@ -87,6 +87,26 @@ void main() {
     ));
 
     final sendButton = find.widgetWithIcon(IconButton, Icons.send_rounded);
+    final plusButton = find.widgetWithIcon(IconButton, Icons.add_rounded);
+    expect(tester.getSize(sendButton), const Size(40, 40));
+    expect(tester.getSize(plusButton), const Size(36, 36));
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('chat-composer-surface')))
+          .height,
+      greaterThanOrEqualTo(48),
+    );
+    expect(
+        tester.widget<TextField>(find.byType(TextField)).style?.fontSize, 14);
+    BoxDecoration composerDecoration() => tester
+        .widget<AnimatedContainer>(
+            find.byKey(const ValueKey('chat-composer-surface')))
+        .decoration! as BoxDecoration;
+    final restingBorder = composerDecoration().border! as Border;
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    final focusedBorder = composerDecoration().border! as Border;
+    expect(focusedBorder.top.color, isNot(restingBorder.top.color));
     expect(tester.widget<IconButton>(sendButton).onPressed, isNull);
 
     await tester.enterText(find.byType(TextField), 'Hello');
@@ -97,7 +117,7 @@ void main() {
     await tester.pump();
     expect(sent, 1);
 
-    await tester.tap(find.widgetWithIcon(IconButton, Icons.add_rounded));
+    await tester.tap(plusButton);
     await tester.pump();
     expect(plus, 1);
   });
@@ -124,7 +144,8 @@ void main() {
     expect(decoration.shape, BoxShape.circle);
   });
 
-  testWidgets('mobile inbox header is a single compact bar with one back action',
+  testWidgets(
+      'mobile inbox header is a single compact bar with one back action',
       (tester) async {
     var backed = 0;
     await tester.pumpWidget(_host(

@@ -76,7 +76,7 @@ class _GroupAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = group.photoUrl ?? group.computedPhotoUrl ?? '';
+    final url = group.displayPhotoUrl ?? '';
     if (url.isEmpty) {
       return const CircleAvatar(
         radius: 24,

@@ -13,7 +13,7 @@ class HexoraMenuContentTransition extends StatefulWidget {
     this.duration = HexoraMotion.standard,
     this.curve = HexoraMotion.enter,
     this.initialOpacity = 0.82,
-    this.slideOffset = const Offset(0.012, 0),
+    this.slideOffset = Offset.zero,
     this.translateX = 0,
     this.preserveState = false,
   });
@@ -23,10 +23,10 @@ class HexoraMenuContentTransition extends StatefulWidget {
     required this.transitionKey,
     required this.child,
     this.duration = HexoraMotion.moduleNavigation,
-    this.curve = HexoraMotion.navigationCurve,
-    this.initialOpacity = 0.86,
+    this.curve = HexoraMotion.enter,
+    this.initialOpacity = 0.92,
     this.slideOffset = Offset.zero,
-    this.translateX = 10,
+    this.translateX = 0,
     this.preserveState = true,
   });
 
@@ -134,11 +134,14 @@ class _HexoraMenuContentTransitionState
       end: Offset.zero,
     ).animate(curved);
 
-    Widget animatedChild = SlideTransition(
-      position: offset,
-      transformHitTests: false,
-      child: child,
-    );
+    Widget animatedChild = child;
+    if (widget.slideOffset != Offset.zero) {
+      animatedChild = SlideTransition(
+        position: offset,
+        transformHitTests: false,
+        child: child,
+      );
+    }
     if (widget.translateX != 0) {
       animatedChild = AnimatedBuilder(
         animation: curved,

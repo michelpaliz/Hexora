@@ -429,6 +429,45 @@ void main() {
     expect(title.style?.fontWeight, FontWeight.w600);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('unified header suppresses the repeated contextual icon',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          width: 220,
+          height: 320,
+          child: SidebarHeaderScope(
+            builder: (_, __) => const SizedBox(
+              key: ValueKey('unified-module-switcher'),
+            ),
+            child: const SecondarySidebarTopInsetScope(
+              topInset: 0,
+              title: 'Inicio',
+              icon: Icons.home_outlined,
+              child: SidebarEdgeShell(
+                collapsed: false,
+                onToggle: _noop,
+                child: SidebarItem(
+                  icon: Icons.home_outlined,
+                  label: 'Inicio',
+                  isSelected: true,
+                  collapsed: false,
+                  onTap: _noop,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ));
+
+    expect(
+        find.byKey(const ValueKey('unified-module-switcher')), findsOneWidget);
+    expect(find.byIcon(Icons.home_outlined), findsOneWidget);
+    expect(find.text('Inicio'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 void _noop() {}

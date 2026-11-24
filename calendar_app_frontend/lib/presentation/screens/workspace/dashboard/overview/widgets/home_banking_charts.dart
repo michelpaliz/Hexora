@@ -132,27 +132,79 @@ class _HomeBankingChartsContent extends StatelessWidget {
           ),
         );
       }
-      if (controller.summaryError != null && !controller.hasLoadedSummary) {
+      Widget loadError({
+        required VoidCallback onRetry,
+      }) {
         return Card(
+          margin: EdgeInsets.zero,
+          color: colors.surface,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: colors.outlineVariant),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Expanded(
-                  child: Text(
-                    controller.summaryError!,
-                    style: TextStyle(color: colors.error),
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: colors.errorContainer.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    LucideIcons.triangleAlert,
+                    size: 18,
+                    color: colors.onErrorContainer,
                   ),
                 ),
-                IconButton(
-                  onPressed: controller.fetchSummary,
-                  tooltip: localizations.refresh,
-                  icon: const Icon(Icons.refresh_rounded),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isSpanish
+                            ? 'No se pudo cargar el resumen bancario'
+                            : 'Could not load the banking overview',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isSpanish
+                            ? 'Comprueba tu conexión e inténtalo de nuevo.'
+                            : 'Check your connection and try again.',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: colors.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(LucideIcons.refreshCw, size: 16),
+                  label: Text(isSpanish ? 'Reintentar' : 'Retry'),
                 ),
               ],
             ),
           ),
         );
+      }
+
+      if (controller.batchesError != null) {
+        return loadError(onRetry: controller.loadBatches);
+      }
+      if (controller.summaryError != null && !controller.hasLoadedSummary) {
+        return loadError(onRetry: controller.fetchSummary);
       }
       if (controller.batches.isEmpty) {
         return Card(

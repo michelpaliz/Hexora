@@ -48,7 +48,7 @@ class BusinessOverviewScreen extends StatelessWidget {
                 child: SizedBox(
                   width: 48,
                   height: 48,
-                  child: AvatarUtils.groupAvatar(context, group.photoUrl,
+                  child: AvatarUtils.groupAvatar(context, group.displayPhotoUrl,
                       radius: 24),
                 ),
               ),

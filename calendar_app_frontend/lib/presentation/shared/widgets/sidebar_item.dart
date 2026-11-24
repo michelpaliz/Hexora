@@ -131,10 +131,17 @@ class SidebarItem extends StatelessWidget {
                                       ? MainAxisAlignment.center
                                       : MainAxisAlignment.start,
                                   children: [
-                                    Icon(icon,
+                                    TweenAnimationBuilder<Color?>(
+                                      duration: selectionDuration,
+                                      curve: Curves.easeOutCubic,
+                                      tween: ColorTween(end: iconColor),
+                                      builder: (context, color, _) => Icon(
+                                        icon,
                                         size: iconSize ??
                                             NavigationTokens.iconSize,
-                                        color: iconColor),
+                                        color: color,
+                                      ),
+                                    ),
                                     if (!collapsed) ...[
                                       const SizedBox(
                                         width: NavigationTokens.itemPadding,

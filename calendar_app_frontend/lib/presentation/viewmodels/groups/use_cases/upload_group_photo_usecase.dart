@@ -28,5 +28,8 @@ class UploadGroupPhotoUseCase {
     groupDomain.currentGroup =
         await groupDomain.groupRepository.getGroupById(groupId);
     await groupDomain.refreshGroupsForCurrentUser(userDomain);
+    // The user/group list endpoint can lag behind the photo commit. Re-fetch
+    // the selected group once more so currentGroup contains the new media URL.
+    await groupDomain.refreshCurrentGroup();
   }
 }

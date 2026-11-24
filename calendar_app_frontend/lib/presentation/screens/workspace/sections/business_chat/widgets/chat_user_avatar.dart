@@ -14,7 +14,7 @@ class ChatUserAvatar extends StatelessWidget {
     super.key,
     required this.name,
     this.photoUrl,
-    this.size = 30,
+    this.size = 36,
   });
 
   final String name;
@@ -64,8 +64,7 @@ class ChatUserAvatar extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return CircleAvatar(
       radius: radius,
-      backgroundColor:
-          isDark ? background.withValues(alpha: 0.42) : background,
+      backgroundColor: isDark ? background.withValues(alpha: 0.42) : background,
       foregroundColor: Colors.white,
       child: Text(
         initials,

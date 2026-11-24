@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 abstract final class HexoraBrandAssets {
   static const icon = 'assets/images/branding/logo_icon.png';
   static const wordmark = 'assets/images/branding/logo_hexora.png';
+  static const defaultBusinessImage = 'assets/images/def_business_img.png';
 }
 
 class HexoraBrandIcon extends StatelessWidget {

@@ -27,7 +27,7 @@ abstract final class NavigationTokens {
   static const double radius = 10;
   static const double indicatorWidth = 3;
   static const double mobileBreakpoint = 760;
-  static const Duration motion = HexoraMotion.standard;
+  static const Duration motion = HexoraMotion.fast;
 
   // App shell (global bar + contextual toolbar).
   static const double globalBarHeight = 52;

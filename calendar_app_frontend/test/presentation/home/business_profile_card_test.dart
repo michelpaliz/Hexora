@@ -191,13 +191,14 @@ void main() {
       expect(eval(_profile()).state, BusinessSetupState.complete);
     });
 
-    test('missing optional items are recommendations, not warnings', () {
+    test('missing invoice logo prevents setup completion', () {
       final r = eval(
         _profile(logoUrl: null, website: null),
         g: _group(photoUrl: null, description: ''),
       );
-      expect(r.state, BusinessSetupState.complete);
-      expect(r.issues.every((i) => !i.critical), isTrue);
+      expect(r.state, BusinessSetupState.attention);
+      expect(r.issues.first.message, 'Añade el logotipo de facturación.');
+      expect(r.issues.where((i) => i.critical), hasLength(1));
       expect(r.issues, hasLength(4));
     });
 
@@ -384,12 +385,14 @@ void main() {
       (tester) async {
     final api = _FakeBillingApi({'g1': _profile(logoUrl: null)});
     final calls = await _pump(tester, api: api);
+    expect(find.text('Requiere atención'), findsOneWidget);
     expect(
         tester.widget<Text>(_k('business-logo-status')).data, 'Sin configurar');
     await tester.tap(find.text('Añadir'));
     await tester.pumpAndSettle();
     expect(api.logos, ['logo.png']);
     expect(calls.photos, isEmpty, reason: 'logo never touches the photo');
+    expect(find.text('Configuración completa'), findsOneWidget);
     expect(tester.widget<Text>(_k('business-logo-status')).data, 'Configurado');
 
     await tester.tap(_k('business-photo-edit'));
@@ -512,7 +515,7 @@ void main() {
       final img = image(tester);
       expect(img.width, 210);
       expect(img.height, greaterThanOrEqualTo(150));
-      expect(find.text('CS'), findsOneWidget);
+      expect(_k('business-default-image'), findsOneWidget);
       expect(_k('business-photo-edit'), findsOneWidget,
           reason: 'upload stays available');
     });

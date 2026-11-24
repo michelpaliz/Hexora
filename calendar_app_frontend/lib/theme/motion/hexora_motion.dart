@@ -16,24 +16,24 @@ abstract final class HexoraMotion {
 
   /// Backwards-compatible default for existing components.
   static const Duration standard = normal;
-  static const Duration navigation = Duration(milliseconds: 240);
+  static const Duration navigation = Duration(milliseconds: 150);
   static const Duration chart = Duration(milliseconds: 750);
 
   /// Motion profiles for navigation surfaces. These intentionally remain
   /// separate from wizard/page timings so changing one does not affect the
   /// other workflows.
-  static const Duration moduleNavigation = Duration(milliseconds: 180);
-  static const Duration submenuNavigation = Duration(milliseconds: 160);
-  static const Duration tabNavigation = Duration(milliseconds: 110);
-  static const Duration tabIndicator = Duration(milliseconds: 150);
+  static const Duration moduleNavigation = Duration(milliseconds: 150);
+  static const Duration submenuNavigation = Duration(milliseconds: 180);
+  static const Duration tabNavigation = Duration(milliseconds: 100);
+  static const Duration tabIndicator = Duration(milliseconds: 120);
   static const Duration sidePanel = layout;
-  static const Duration popup = Duration(milliseconds: 120);
+  static const Duration popup = Duration(milliseconds: 150);
   static const Duration dialog = Duration(milliseconds: 180);
 
   static const Curve enter = Curves.easeOutCubic;
   static const Curve exit = Curves.easeInCubic;
   static const Curve emphasized = Curves.easeInOutCubic;
-  static const Curve navigationCurve = Cubic(0.2, 0, 0, 1);
+  static const Curve navigationCurve = Curves.easeOutCubic;
 
   static bool reduceMotion(BuildContext context) =>
       MediaQuery.maybeOf(context)?.disableAnimations ?? false;
@@ -81,16 +81,6 @@ class HexoraPageTransitionsBuilder extends PageTransitionsBuilder {
       curve: HexoraMotion.enter,
       reverseCurve: HexoraMotion.exit,
     );
-    return FadeTransition(
-      opacity: curved,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(.012, 0),
-          end: Offset.zero,
-        ).animate(curved),
-        transformHitTests: false,
-        child: child,
-      ),
-    );
+    return FadeTransition(opacity: curved, child: child);
   }
 }

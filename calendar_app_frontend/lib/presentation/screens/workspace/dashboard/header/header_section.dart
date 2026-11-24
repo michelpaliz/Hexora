@@ -79,7 +79,8 @@ class _GroupHeaderScreenState extends State<GroupHeaderScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                AvatarUtils.groupAvatar(context, group.photoUrl, radius: 40),
+                AvatarUtils.groupAvatar(context, group.displayPhotoUrl,
+                    radius: 40),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -134,7 +135,8 @@ class _GroupHeaderScreenState extends State<GroupHeaderScreen> {
               color: tileBg,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.25)),
+                side: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: 0.25)),
               ),
               child: ListTile(
                 leading: const Icon(Icons.info_outline),
@@ -144,8 +146,8 @@ class _GroupHeaderScreenState extends State<GroupHeaderScreen> {
                       .copyWith(fontWeight: FontWeight.w600, color: onTile),
                 ),
                 subtitle: Text(l.insightsSubtitle,
-                    style:
-                        t.bodySmall.copyWith(color: onTile.withValues(alpha: 0.8))),
+                    style: t.bodySmall
+                        .copyWith(color: onTile.withValues(alpha: 0.8))),
               ),
             ),
           ],

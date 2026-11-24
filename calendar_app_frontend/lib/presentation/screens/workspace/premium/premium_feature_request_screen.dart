@@ -38,13 +38,15 @@ class PremiumFeatureGate extends StatelessWidget {
     final allowed = managerOnly
         ? canManagePremiumFeature(group, userId, policyFeature)
         : hasPremiumFeature(group, policyFeature) &&
-            userId != null && group != null &&
+            userId != null &&
+            group != null &&
             (group!.ownerId == userId ||
                 group!.userIds.contains(userId) ||
                 group!.userRoles.containsKey(userId));
     return allowed
         ? child
-        : PremiumFeatureRequestScreen(feature: feature, group: group, embedded: embedded);
+        : PremiumFeatureRequestScreen(
+            feature: feature, group: group, embedded: embedded);
   }
 }
 
@@ -61,10 +63,12 @@ class PremiumFeatureRequestScreen extends StatefulWidget {
   final bool embedded;
 
   @override
-  State<PremiumFeatureRequestScreen> createState() => _PremiumFeatureRequestScreenState();
+  State<PremiumFeatureRequestScreen> createState() =>
+      _PremiumFeatureRequestScreenState();
 }
 
-class _PremiumFeatureRequestScreenState extends State<PremiumFeatureRequestScreen> {
+class _PremiumFeatureRequestScreenState
+    extends State<PremiumFeatureRequestScreen> {
   final _message = TextEditingController();
   bool _sending = false;
   bool _sent = false;
@@ -89,13 +93,16 @@ class _PremiumFeatureRequestScreenState extends State<PremiumFeatureRequestScree
         }),
       );
       if (response.statusCode != 202) {
-        throw Exception(isEs ? 'No se pudo enviar la solicitud.' : 'Could not send the request.');
+        throw Exception(isEs
+            ? 'No se pudo enviar la solicitud.'
+            : 'Could not send the request.');
       }
       if (mounted) setState(() => _sent = true);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+          SnackBar(
+              content: Text(error.toString().replaceFirst('Exception: ', ''))),
         );
       }
     } finally {
@@ -107,75 +114,190 @@ class _PremiumFeatureRequestScreenState extends State<PremiumFeatureRequestScree
   Widget build(BuildContext context) {
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     final isBanking = widget.feature == PremiumFeatureRequest.banking;
-    final title = isEs
-        ? 'Función premium'
-        : 'Premium feature';
+    final title = isEs ? 'Función premium' : 'Premium feature';
     final featureLabel = switch (widget.feature) {
-      PremiumFeatureRequest.banking => isEs ? 'Banca y movimientos' : 'Banking and transactions',
-      PremiumFeatureRequest.email => isEs ? 'Envío de correos' : 'Email sending',
+      PremiumFeatureRequest.banking =>
+        isEs ? 'Banca y movimientos' : 'Banking and transactions',
+      PremiumFeatureRequest.email =>
+        isEs ? 'Envío de correos' : 'Email sending',
       PremiumFeatureRequest.aiChat => isEs ? 'Chat con IA' : 'AI chat',
-      PremiumFeatureRequest.teamChat => isEs ? 'Chat cooperativo' : 'Cooperative chat',
+      PremiumFeatureRequest.teamChat =>
+        isEs ? 'Chat cooperativo' : 'Cooperative chat',
     };
     final description = isEs
-        ? 'Esta función está disponible para cuentas premium. Contacta con Hexora para solicitar acceso para tu empresa.'
-        : 'This feature is available for premium accounts. Contact Hexora to request access for your company.';
+        ? 'Solicita acceso para activar esta función en tu empresa.'
+        : 'Request access to enable this feature for your company.';
+    final colors = Theme.of(context).colorScheme;
+    final icon = isBanking
+        ? Icons.account_balance_rounded
+        : widget.feature == PremiumFeatureRequest.email
+            ? Icons.email_rounded
+            : Icons.chat_rounded;
 
-    final content = Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: Card(
-          margin: const EdgeInsets.all(24),
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    final panel = ConstrainedBox(
+      key: const ValueKey('premium-request-dialog'),
+      constraints: const BoxConstraints(maxWidth: 480),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 18, 24, 22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  isBanking ? Icons.account_balance_rounded :
-                    widget.feature == PremiumFeatureRequest.email ? Icons.email_rounded : Icons.chat_rounded,
-                  size: 54,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: 18),
-                Text(title, style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 8),
-                Text(featureLabel, style: Theme.of(context).textTheme.titleMedium),
-                if (widget.group != null) ...[
-                  const SizedBox(height: 4),
-                  Text(widget.group!.name,
-                      style: Theme.of(context).textTheme.bodySmall),
-                ],
-                const SizedBox(height: 14),
-                Text(description, textAlign: TextAlign.center),
-                const SizedBox(height: 22),
-                if (!_sent)
-                  TextField(
-                    controller: _message,
-                    maxLength: 2000,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: isEs ? 'Mensaje (opcional)' : 'Message (optional)',
-                      border: const OutlineInputBorder(),
-                    ),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: colors.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                if (_sent)
-                  Text(isEs ? 'Solicitud enviada a Hexora.' : 'Request sent to Hexora.'),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: _sent || _sending || widget.group == null ? null : _requestAccess,
-                  icon: _sending
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.mail_outline_rounded),
-                  label: Text(isEs ? 'Enviar solicitud a Hexora' : 'Send request to Hexora'),
+                  child: Icon(icon, size: 22, color: colors.onPrimaryContainer),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        featureLabel,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!widget.embedded)
+                  IconButton(
+                    tooltip: isEs ? 'Cerrar' : 'Close',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                  ),
               ],
             ),
-          ),
+            const SizedBox(height: 14),
+            Text(description, style: Theme.of(context).textTheme.bodyMedium),
+            if (widget.group != null) ...[
+              const SizedBox(height: 5),
+              Text(
+                widget.group!.name,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            if (!_sent)
+              TextField(
+                controller: _message,
+                maxLength: 2000,
+                minLines: 2,
+                maxLines: 2,
+                style: const TextStyle(fontSize: 14),
+                decoration: InputDecoration(
+                  labelText: isEs ? 'Mensaje (opcional)' : 'Message (optional)',
+                  hintText: isEs
+                      ? 'Cuéntanos brevemente cómo quieres usarla.'
+                      : 'Briefly tell us how you plan to use it.',
+                  counterText: '',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            if (_sent)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer.withValues(alpha: .55),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_outline_rounded,
+                        size: 19, color: colors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(isEs
+                          ? 'Solicitud enviada a Hexora.'
+                          : 'Request sent to Hexora.'),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (!widget.embedded)
+                  TextButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    child: Text(_sent
+                        ? (isEs ? 'Cerrar' : 'Close')
+                        : (isEs ? 'Cancelar' : 'Cancel')),
+                  ),
+                if (!widget.embedded) const SizedBox(width: 8),
+                if (!_sent)
+                  FilledButton.icon(
+                    onPressed: _sending || widget.group == null
+                        ? null
+                        : _requestAccess,
+                    icon: _sending
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.mail_outline_rounded, size: 18),
+                    label: Text(isEs ? 'Solicitar acceso' : 'Request access'),
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
     );
 
-    if (widget.embedded) return content;
-    return Scaffold(appBar: AppBar(title: Text(title)), body: content);
+    if (widget.embedded) {
+      return Center(
+        child: Card(
+          margin: const EdgeInsets.all(20),
+          elevation: 0,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: colors.outlineVariant),
+          ),
+          child: panel,
+        ),
+      );
+    }
+    return Scaffold(
+      backgroundColor: colors.scrim.withValues(alpha: .28),
+      body: SafeArea(
+        child: Center(
+          child: Dialog(
+            insetPadding: const EdgeInsets.all(24),
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: panel,
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -8,7 +8,9 @@ import 'package:provider/provider.dart';
 
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/billing_profile_inline_editor.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
+import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/presentation/utils/validation/email_validator.dart';
 import 'package:hexora/presentation/viewmodels/groups/use_cases/update_group_usecase.dart';
 import 'package:hexora/presentation/viewmodels/groups/use_cases/upload_group_photo_usecase.dart';
@@ -40,9 +42,9 @@ class BusinessSetupIssue {
   final bool critical;
 }
 
-/// Business setup status derived only from saved data and the same required
-/// fields the billing profile editor validates (legal name, NIF/CIF and the
-/// fiscal address). Optional items are recommendations, never errors.
+/// Business setup status derived only from saved data and the required billing
+/// identity: legal name, NIF/CIF, fiscal address and invoice logo. Remaining
+/// optional items are recommendations and do not block completion.
 @visibleForTesting
 ({BusinessSetupState state, List<BusinessSetupIssue> issues})
     evaluateBusinessSetup({
@@ -99,7 +101,7 @@ class BusinessSetupIssue {
     if (blank(profile.logoUrl)) {
       issues.add(BusinessSetupIssue(
           isEs ? 'Añade el logotipo de facturación.' : 'Add an invoice logo.',
-          critical: false));
+          critical: true));
     }
     if (blank(profile.website)) {
       issues.add(BusinessSetupIssue(
@@ -107,7 +109,7 @@ class BusinessSetupIssue {
           critical: false));
     }
   }
-  if (blank(group.computedPhotoUrl ?? group.photoUrl)) {
+  if (blank(group.displayPhotoUrl)) {
     issues.add(BusinessSetupIssue(
         isEs ? 'Añade una imagen de perfil.' : 'Add a profile image.',
         critical: false));
@@ -365,12 +367,24 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
     if (file == null || !mounted) return;
     setState(() => _photoBusy = true);
     final messenger = ScaffoldMessenger.maybeOf(context);
+    final groupDomain = context.read<GroupDomain?>();
     try {
       final upload = widget.uploadPhoto ??
           (g, f) => context
               .read<UploadGroupPhotoUseCase>()
               .call(groupId: g.id, file: f);
       await upload(widget.group, file);
+      // The backend may keep the same public URL while replacing the blob.
+      // Evict both the old and refreshed URL so Flutter does not paint the
+      // previous image from its global ImageProvider cache.
+      final refreshed = groupDomain?.currentGroup;
+      final urls = <String>{
+        widget.group.displayPhotoUrl ?? '',
+        if (refreshed != null) refreshed.displayPhotoUrl ?? '',
+      }..removeWhere((url) => url.trim().isEmpty);
+      for (final url in urls) {
+        await AvatarUtils.evictNetworkImage(url);
+      }
       messenger?.showSnackBar(SnackBar(
           content: Text(
               _es ? 'Imagen de perfil actualizada' : 'Profile image updated')));
@@ -396,8 +410,12 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
           );
           final file = selected?.files.single;
           final bytes = file?.bytes;
-          if (file == null || bytes == null || bytes.isEmpty ||
-              file.size > 15 * 1024 * 1024) return null;
+          if (file == null ||
+              bytes == null ||
+              bytes.isEmpty ||
+              file.size > 15 * 1024 * 1024) {
+            return null;
+          }
           return (name: file.name, bytes: bytes.toList());
         };
     final picked = await pick(context);
@@ -607,37 +625,19 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
     return result == true;
   }
 
-  String _initials() {
-    final parts = widget.group.name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts.first.isEmpty) return '';
-    return parts.length == 1
-        ? parts.first.characters.first.toUpperCase()
-        : '${parts.first.characters.first}${parts.last.characters.first}'
-            .toUpperCase();
-  }
-
   /// Large rounded business image. Fills the constraints its parent gives it
   /// (cropped with BoxFit.cover, never distorted); the fallback keeps the
   /// same size so the area never collapses.
   Widget _image({required bool showBadge}) {
     final cs = Theme.of(context).colorScheme;
-    final url =
-        (widget.group.computedPhotoUrl ?? widget.group.photoUrl)?.trim();
+    final url = widget.group.displayPhotoUrl;
     final hasImage = url != null && url.isNotEmpty;
-    final initials = _initials();
-    final fallback = Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(LucideIcons.building2, size: 30, color: cs.primary),
-        if (initials.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Text(initials,
-              style: TextStyle(
-                color: cs.primary,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              )),
-        ],
-      ]),
+    final fallback = Image.asset(
+      HexoraBrandAssets.defaultBusinessImage,
+      key: const ValueKey('business-default-image'),
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
     );
     final image = Container(
       key: const ValueKey('business-profile-image'),

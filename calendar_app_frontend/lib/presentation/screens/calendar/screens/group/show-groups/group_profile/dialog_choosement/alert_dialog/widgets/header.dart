@@ -27,11 +27,13 @@ class Header extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.4)),
+            border:
+                Border.all(color: scheme.outlineVariant.withValues(alpha: 0.4)),
           ),
           child: Padding(
             padding: const EdgeInsets.all(2.0),
-            child: AvatarUtils.groupAvatar(context, group.photoUrl, radius: 28),
+            child: AvatarUtils.groupAvatar(context, group.displayPhotoUrl,
+                radius: 28),
           ),
         ),
         const SizedBox(width: 12),

@@ -1,10 +1,60 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/presentation/shared/widgets/motion/hexora_step_transition.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 
 void main() {
+  test('navigation motion profile stays compact and consistent', () {
+    expect(HexoraMotion.moduleNavigation, const Duration(milliseconds: 150));
+    expect(HexoraMotion.submenuNavigation, const Duration(milliseconds: 180));
+    expect(HexoraMotion.popup, const Duration(milliseconds: 150));
+    expect(HexoraMotion.tabNavigation, const Duration(milliseconds: 100));
+    expect(HexoraMotion.tabIndicator, const Duration(milliseconds: 120));
+    expect(HexoraMotion.navigationCurve, Curves.easeOutCubic);
+  });
+
+  testWidgets('module navigation uses a pure fade without sliding',
+      (tester) async {
+    var destination = 'home';
+    late StateSetter update;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: StatefulBuilder(
+          builder: (context, setState) {
+            update = setState;
+            return HexoraMenuContentTransition.module(
+              transitionKey: destination,
+              child: Text(destination),
+            );
+          },
+        ),
+      ),
+    ));
+
+    update(() => destination = 'invoices');
+    await tester.pump();
+
+    final transition = find.byType(HexoraMenuContentTransition);
+    expect(
+      find.descendant(
+        of: transition,
+        matching: find.byType(FadeTransition),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: transition,
+        matching: find.byType(SlideTransition),
+      ),
+      findsNothing,
+    );
+    expect(find.text('invoices'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('step transitions respect reduced motion', (tester) async {
     Widget app({required bool reduceMotion, required int step}) {
       return MaterialApp(

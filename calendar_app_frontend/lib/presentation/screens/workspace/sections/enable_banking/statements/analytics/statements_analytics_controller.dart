@@ -671,7 +671,10 @@ class StatementsAnalyticsController extends ChangeNotifier {
     final Map<String, _AggRow> expenseMerchants = {};
     final Map<String, _AggRow> incomeMerchants = {};
 
-    final topFetch = top < 100 ? 100 : top;
+    // The dashboard only renders totals and trends, so requesting 100 merchant
+    // rows there adds avoidable work to every batch-summary request. Full
+    // analytics still fetches the wider merchant set needed for aggregation.
+    final topFetch = loadDerivedData && top < 100 ? 100 : top;
 
     final batchIds = batches
         .map((batch) =>
@@ -679,20 +682,40 @@ class StatementsAnalyticsController extends ChangeNotifier {
         .whereType<String>()
         .where((id) => id.isNotEmpty)
         .toList(growable: false);
+    Object? firstError;
     final results = await Future.wait(
       batchIds.map(
-        (batchId) => _api.analyticsSummary(
-          batchId: batchId,
-          year: useDateRange ? null : selectedYear,
-          month: useDateRange ? null : selectedMonth,
-          top: topFetch,
-          dateFrom: dateFrom,
-          dateTo: dateTo,
-        ),
+        (batchId) async {
+          try {
+            return await _api.analyticsSummary(
+              batchId: batchId,
+              year: useDateRange ? null : selectedYear,
+              month: useDateRange ? null : selectedMonth,
+              top: topFetch,
+              dateFrom: dateFrom,
+              dateTo: dateTo,
+            );
+          } catch (error) {
+            firstError ??= error;
+            if (kDebugMode) {
+              debugPrint(
+                '[StatementsAnalyticsController] Summary failed for '
+                '$batchId: $error',
+              );
+            }
+            return null;
+          }
+        },
       ),
     );
 
-    for (final res in results) {
+    final availableResults =
+        results.whereType<Map<String, dynamic>>().toList(growable: false);
+    if (availableResults.isEmpty && firstError != null) {
+      throw firstError!;
+    }
+
+    for (final res in availableResults) {
       final yearsList = (res['years'] as List? ?? const [])
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))

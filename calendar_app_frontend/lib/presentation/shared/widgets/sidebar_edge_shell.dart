@@ -200,7 +200,9 @@ class SidebarEdgeShell extends StatelessWidget {
       final contextualScope = SecondarySidebarTopInsetScope.maybeOf(context);
       final contextualTopInset = contextualScope?.topInset ?? 0;
       final contextualTitle = contextualScope?.title?.trim();
-      final showContextualTitle = !collapsed &&
+      final showContextualTitle = sidebarHeader == null &&
+          contextualTopInset > 0 &&
+          !collapsed &&
           !showHeader &&
           contextualTitle != null &&
           contextualTitle.isNotEmpty;

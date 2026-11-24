@@ -28,6 +28,19 @@ class Group {
   String? photoBlobName; // e.g. "groups/<id>/<uuid>.jpg"
   String? computedPhotoUrl; // backend virtual
 
+  /// Best URL for displaying the current business image.
+  ///
+  /// Photo uploads persist [photoUrl]. The computed URL is a backend fallback
+  /// for private-storage deployments, so it must not override a newly saved
+  /// non-empty public URL.
+  String? get displayPhotoUrl {
+    for (final candidate in [photoUrl, computedPhotoUrl]) {
+      final normalized = candidate?.trim();
+      if (normalized != null && normalized.isNotEmpty) return normalized;
+    }
+    return null;
+  }
+
   // ---------- Invite stats (denormalized) ----------
   int inviteCount;
   DateTime? lastInviteAt;
@@ -209,7 +222,8 @@ class Group {
       name: name ?? this.name,
       ownerId: ownerId ?? this.ownerId,
       userRoles: userRoles ?? Map<String, String>.from(this.userRoles),
-      userRolesMeta: userRolesMeta ?? Map<String, RoleMeta>.from(this.userRolesMeta),
+      userRolesMeta:
+          userRolesMeta ?? Map<String, RoleMeta>.from(this.userRolesMeta),
       userIds: userIds ?? List<String>.from(this.userIds),
       createdTime: createdTime ?? this.createdTime,
       description: description ?? this.description,

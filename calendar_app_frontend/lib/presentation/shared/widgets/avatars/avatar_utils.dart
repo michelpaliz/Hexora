@@ -1,8 +1,22 @@
 // lib/theme/utilities/avatar_utils.dart
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
 
 class AvatarUtils {
+  /// Removes a replaced network image from both cache layers used by Hexora.
+  static Future<void> evictNetworkImage(String? imageUrl) async {
+    final url = imageUrl?.trim();
+    if (url == null || url.isEmpty) return;
+    // Flutter's in-memory cache controls Image.network surfaces and can be
+    // cleared immediately. Disk cleanup is best-effort and must not keep the
+    // upload UI in a busy state on web.
+    await NetworkImage(url).evict();
+    unawaited(CachedNetworkImage.evictFromCache(url));
+  }
+
   // ---------- Private helpers ----------
   static Color _adaptiveBg(BuildContext context, [Color? override]) {
     if (override != null) return override;
@@ -96,40 +110,14 @@ class AvatarUtils {
         : null;
 
     if (img == null) {
-      final cs = Theme.of(context).colorScheme;
-      final base = backgroundColor ?? cs.primary;
-      return Container(
-        width: radius * 2,
-        height: radius * 2,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(base, Colors.white, .16)!,
-              Color.lerp(base, Colors.black, .12)!,
-            ],
-          ),
-          border: borderWidth > 0
-              ? Border.all(
-                  color: borderColor ?? Colors.white.withValues(alpha: .72),
-                  width: borderWidth,
-                )
-              : null,
-          boxShadow: [
-            BoxShadow(
-              color: base.withValues(alpha: .22),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(
-          icon == Icons.groups ? Icons.business_rounded : icon,
-          size: radius * .92,
-          color: Colors.white,
-        ),
+      return _circleAvatar(
+        context: context,
+        radius: radius,
+        fallbackIcon: icon,
+        image: const AssetImage(HexoraBrandAssets.defaultBusinessImage),
+        backgroundColor: backgroundColor,
+        borderColor: borderColor,
+        borderWidth: borderWidth,
       );
     }
 
@@ -160,7 +148,7 @@ class AvatarUtils {
   /// GROUP image provider: network if present, else asset fallback.
   static ImageProvider<Object> groupImageProvider(
     String? imageUrl, {
-    String assetFallback = 'assets/images/default_group.png',
+    String assetFallback = HexoraBrandAssets.defaultBusinessImage,
   }) {
     if (imageUrl != null && imageUrl.isNotEmpty) {
       return CachedNetworkImageProvider(imageUrl);

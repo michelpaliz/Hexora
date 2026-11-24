@@ -1,6 +1,8 @@
 import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
 import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_preview_screen.dart';
 
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -13,6 +15,7 @@ import 'package:hexora/models/user/user.dart';
 import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
@@ -28,6 +31,7 @@ import 'package:hexora/presentation/screens/workspace/sections/presupuestos/pres
 import 'package:hexora/presentation/screens/workspace/sections/quick_notes/quick_notes_board_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
 import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
+import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
 import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
@@ -93,15 +97,31 @@ class WideLayout extends StatelessWidget {
           final moduleLabel = activeDestination?.label;
           final unified =
               preferences.navigationLayout == NavigationLayout.unified;
-          final usesContextualSidebar = _usesContextualSidebar(activeSection);
+          final usesContextualSidebar = _usesContextualSidebar(
+            activeSection,
+            MediaQuery.sizeOf(context).width,
+          );
           final moduleContent = moduleLabel == null
               ? child!
               : HexoraNavContext(
                   moduleLabel: moduleLabel,
                   child: child!,
                 );
+          final moduleWorkspace = Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (unified && !usesContextualSidebar)
+                _UnifiedSingleItemSidebar(
+                  destination: activeDestination,
+                  fallbackLabel: moduleLabel,
+                )
+              else
+                const SizedBox.shrink(),
+              Expanded(child: moduleContent),
+            ],
+          );
           final content = SidebarHeaderScope(
-            enabled: unified && usesContextualSidebar,
+            enabled: unified,
             builder: (context, collapsed) => _UnifiedModuleSwitcher(
               destinations: destinations,
               activeDestination: activeDestination,
@@ -112,13 +132,13 @@ class WideLayout extends StatelessWidget {
               topInset: unified ? 0 : 48,
               title: moduleLabel,
               icon: activeDestination?.icon,
-              child: moduleContent,
+              child: moduleWorkspace,
             ),
           );
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (!unified || !usesContextualSidebar)
+              if (!unified)
                 _DashboardModuleSidebar(
                   destinations: destinations,
                   activeId: activeSection,
@@ -134,17 +154,32 @@ class WideLayout extends StatelessWidget {
     );
   }
 
-  bool _usesContextualSidebar(String section) => const {
-        Sections.invoices,
-        Sections.invoiceClients,
-        Sections.expenses,
-        Sections.enableBanking,
-        Sections.budgets,
-        Sections.calendar,
-        Sections.businessChat,
-        Sections.workers,
-        Sections.settings,
-      }.contains(section);
+  bool _usesContextualSidebar(String section, double viewportWidth) {
+    // These modules switch to an inline/sidebar layout at their own wider
+    // breakpoints. Until then, retain the primary rail so module navigation is
+    // never lost in unified mode.
+    if (section == Sections.notifications && viewportWidth < 1180) {
+      return false;
+    }
+    if (section == Sections.telegram && viewportWidth < 1080) {
+      return false;
+    }
+    return const {
+      Sections.invoices,
+      Sections.invoiceClients,
+      Sections.expenses,
+      Sections.enableBanking,
+      Sections.budgets,
+      Sections.calendar,
+      Sections.businessChat,
+      Sections.workers,
+      Sections.settings,
+      Sections.notifications,
+      Sections.telegram,
+      Sections.emails,
+      Sections.maps,
+    }.contains(section);
+  }
 
   Widget _buildContent(
     GroupDashboardState state,
@@ -360,40 +395,336 @@ class _UnifiedModuleSwitcher extends StatelessWidget {
       ),
     );
 
-    return PopupMenuButton<String>(
-      tooltip: isEs ? 'Cambiar módulo' : 'Switch module',
-      initialValue: active?.id,
+    return _GroupedModuleMenu(
+      destinations: destinations,
+      activeId: active?.id,
+      isSpanish: isEs,
       onSelected: onSelected,
-      position: PopupMenuPosition.under,
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
-      itemBuilder: (context) => [
-        for (final destination in destinations)
-          PopupMenuItem<String>(
-            value: destination.id,
-            child: Row(
-              children: [
-                Icon(
-                  destination.icon,
-                  size: 17,
-                  color: destination.id == active?.id
-                      ? cs.primary
-                      : cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    destination.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (destination.id == active?.id)
-                  Icon(Icons.check_rounded, size: 17, color: cs.primary),
-              ],
+      control: control,
+    );
+  }
+}
+
+class _GroupedModuleMenu extends StatefulWidget {
+  const _GroupedModuleMenu({
+    required this.destinations,
+    required this.activeId,
+    required this.isSpanish,
+    required this.onSelected,
+    required this.control,
+  });
+
+  final List<HexoraNavDestination> destinations;
+  final String? activeId;
+  final bool isSpanish;
+  final ValueChanged<String> onSelected;
+  final Widget control;
+
+  @override
+  State<_GroupedModuleMenu> createState() => _GroupedModuleMenuState();
+}
+
+class _GroupedModuleMenuState extends State<_GroupedModuleMenu> {
+  final MenuController _controller = MenuController();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final navigationColors = NavigationColors(cs);
+    final groups = [
+      for (final group in _dashboardNavigationGroups)
+        if (_destinationsForGroup(group, widget.destinations).isNotEmpty)
+          (
+            group: group,
+            destinations: _destinationsForGroup(group, widget.destinations),
+          ),
+    ];
+    final destinationCount = groups.fold<int>(
+      0,
+      (total, entry) => total + entry.destinations.length,
+    );
+    final estimatedHeight = 12.0 +
+        destinationCount * 38.0 +
+        groups.length * 24.0 +
+        math.max(0, groups.length - 1) * 7.0;
+    final availableHeight = math.max(
+      220.0,
+      math.min(620.0, MediaQuery.sizeOf(context).height - 96.0),
+    );
+    final menuHeight = math.min(estimatedHeight, availableHeight);
+
+    return MenuAnchor(
+      controller: _controller,
+      alignmentOffset: const Offset(0, 6),
+      style: const MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(Colors.transparent),
+        surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
+        elevation: WidgetStatePropertyAll(0),
+        padding: WidgetStatePropertyAll(EdgeInsets.zero),
+      ),
+      menuChildren: [
+        _DropdownEntranceTransition(
+          width: 276,
+          height: menuHeight,
+          child: Scrollbar(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var groupIndex = 0;
+                      groupIndex < groups.length;
+                      groupIndex++) ...[
+                    if (groupIndex > 0)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(6, 3, 6, 3),
+                        child: Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: cs.outlineVariant.withValues(alpha: .45),
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 5, 10, 3),
+                      child: Text(
+                        groups[groupIndex].group.label(widget.isSpanish),
+                        style: NavigationTokens.section(context).copyWith(
+                          color: navigationColors.sectionForeground,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                    for (final destination in groups[groupIndex].destinations)
+                      _GroupedModuleMenuItem(
+                        destination: destination,
+                        selected: destination.id == widget.activeId,
+                        onPressed: () {
+                          _controller.close();
+                          widget.onSelected(destination.id);
+                        },
+                      ),
+                  ],
+                ],
+              ),
             ),
           ),
+        ),
       ],
-      child: control,
+      builder: (context, controller, _) => Tooltip(
+        message: widget.isSpanish ? 'Cambiar módulo' : 'Switch module',
+        child: Semantics(
+          button: true,
+          expanded: controller.isOpen,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(9),
+            onTap: () =>
+                controller.isOpen ? controller.close() : controller.open(),
+            child: widget.control,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DropdownEntranceTransition extends StatefulWidget {
+  const _DropdownEntranceTransition({
+    required this.width,
+    required this.height,
+    required this.child,
+  });
+
+  final double width;
+  final double height;
+  final Widget child;
+
+  @override
+  State<_DropdownEntranceTransition> createState() =>
+      _DropdownEntranceTransitionState();
+}
+
+class _DropdownEntranceTransitionState
+    extends State<_DropdownEntranceTransition>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: HexoraMotion.popup,
+  );
+  late final CurvedAnimation _animation = CurvedAnimation(
+    parent: _controller,
+    curve: HexoraMotion.enter,
+  );
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _controller.duration = HexoraMotion.duration(context, HexoraMotion.popup);
+    if (_started) return;
+    _started = true;
+    if (HexoraMotion.reduceMotion(context)) {
+      _controller.value = 1;
+    } else {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _animation.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AnimatedBuilder(
+      animation: _animation,
+      child: SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: widget.child,
+      ),
+      builder: (context, child) => Opacity(
+        opacity: _animation.value,
+        child: Transform.translate(
+          offset: Offset(0, 4 * (1 - _animation.value)),
+          transformHitTests: false,
+          child: Material(
+            color: cs.surface,
+            surfaceTintColor: Colors.transparent,
+            elevation: 8,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: .55),
+              ),
+            ),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GroupedModuleMenuItem extends StatelessWidget {
+  const _GroupedModuleMenuItem({
+    required this.destination,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final HexoraNavDestination destination;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final navigationColors = NavigationColors(cs);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: SizedBox(
+        height: 36,
+        child: MenuItemButton(
+          onPressed: onPressed,
+          leadingIcon: Icon(
+            destination.icon,
+            size: 17,
+            color: selected ? cs.primary : navigationColors.itemForeground,
+          ),
+          trailingIcon: selected
+              ? Icon(Icons.check_rounded, size: 17, color: cs.primary)
+              : const SizedBox(width: 17),
+          style: ButtonStyle(
+            padding: const WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: 10),
+            ),
+            minimumSize: const WidgetStatePropertyAll(Size(0, 36)),
+            maximumSize: const WidgetStatePropertyAll(Size.infinite),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            foregroundColor: WidgetStatePropertyAll(
+              selected ? cs.onSurface : navigationColors.itemForeground,
+            ),
+            backgroundColor: WidgetStateProperty.resolveWith((states) {
+              if (selected) return navigationColors.selectedBackground;
+              if (states.contains(WidgetState.pressed)) {
+                return navigationColors.pressed;
+              }
+              if (states.contains(WidgetState.focused)) {
+                return navigationColors.focus;
+              }
+              if (states.contains(WidgetState.hovered)) {
+                return navigationColors.hover;
+              }
+              return Colors.transparent;
+            }),
+            overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+          ),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              destination.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: NavigationTokens.label(context, selected: selected),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UnifiedSingleItemSidebar extends StatefulWidget {
+  const _UnifiedSingleItemSidebar({
+    required this.destination,
+    required this.fallbackLabel,
+  });
+
+  final HexoraNavDestination? destination;
+  final String? fallbackLabel;
+
+  @override
+  State<_UnifiedSingleItemSidebar> createState() =>
+      _UnifiedSingleItemSidebarState();
+}
+
+class _UnifiedSingleItemSidebarState extends State<_UnifiedSingleItemSidebar> {
+  bool _collapsed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final destination = widget.destination;
+    final label = destination?.label ??
+        widget.fallbackLabel ??
+        (isEs ? 'Módulo' : 'Module');
+    final icon = destination?.icon ?? Icons.apps_rounded;
+
+    return CollapsibleSidebar(
+      title: label,
+      headerIcon: icon,
+      collapsed: _collapsed,
+      onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
+      expandTooltip: isEs ? 'Expandir menú' : 'Expand menu',
+      collapseTooltip: isEs ? 'Contraer menú' : 'Collapse menu',
+      items: [
+        CollapsibleSidebarItem(
+          icon: icon,
+          label: label,
+          selected: true,
+          onTap: () {},
+        ),
+      ],
     );
   }
 }
@@ -517,6 +848,75 @@ List<HexoraNavDestination> _dashboardDestinations(
   ];
 }
 
+class _DashboardNavigationGroup {
+  const _DashboardNavigationGroup({
+    required this.englishLabel,
+    required this.spanishLabel,
+    required this.destinationIds,
+  });
+
+  final String englishLabel;
+  final String spanishLabel;
+  final List<String> destinationIds;
+
+  String label(bool isSpanish) => isSpanish ? spanishLabel : englishLabel;
+}
+
+const _dashboardNavigationGroups = <_DashboardNavigationGroup>[
+  _DashboardNavigationGroup(
+    englishLabel: 'GENERAL',
+    spanishLabel: 'GENERAL',
+    destinationIds: [Sections.home, Sections.chat],
+  ),
+  _DashboardNavigationGroup(
+    englishLabel: 'OPERATIONS',
+    spanishLabel: 'OPERACIONES',
+    destinationIds: [
+      Sections.invoices,
+      Sections.invoiceClients,
+      Sections.expenses,
+      Sections.enableBanking,
+      Sections.budgets,
+    ],
+  ),
+  _DashboardNavigationGroup(
+    englishLabel: 'MANAGEMENT',
+    spanishLabel: 'GESTIÓN',
+    destinationIds: [
+      Sections.services,
+      Sections.workers,
+      Sections.calendar,
+      Sections.maps,
+      Sections.quickNotes,
+    ],
+  ),
+  _DashboardNavigationGroup(
+    englishLabel: 'COMMUNICATION',
+    spanishLabel: 'COMUNICACIÓN',
+    destinationIds: [
+      Sections.businessChat,
+      Sections.emails,
+      Sections.telegram,
+      Sections.notifications,
+    ],
+  ),
+  _DashboardNavigationGroup(
+    englishLabel: 'SETTINGS',
+    spanishLabel: 'CONFIGURACIÓN',
+    destinationIds: [Sections.settings],
+  ),
+];
+
+List<HexoraNavDestination> _destinationsForGroup(
+  _DashboardNavigationGroup group,
+  List<HexoraNavDestination> destinations,
+) =>
+    [
+      for (final id in group.destinationIds)
+        for (final destination in destinations)
+          if (destination.id == id) destination,
+    ];
+
 class _DashboardModuleSidebar extends StatefulWidget {
   const _DashboardModuleSidebar({
     required this.destinations,
@@ -559,12 +959,15 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
     final light = colors.brightness == Brightness.light;
     bool matches(HexoraNavDestination destination) =>
         query.isEmpty || destination.label.toLowerCase().contains(query);
-    List<CollapsibleSidebarItem> entries(List<String> ids) => [
-          for (final id in ids)
-            for (final destination in widget.destinations)
-              if (destination.id == id && matches(destination))
-                _item(destination),
+    List<CollapsibleSidebarItem> entries(_DashboardNavigationGroup group) => [
+          for (final destination
+              in _destinationsForGroup(group, widget.destinations))
+            if (matches(destination)) _item(destination),
         ];
+    final groupedEntries = [
+      for (final group in _dashboardNavigationGroups)
+        (group: group, items: entries(group)),
+    ];
 
     final sidebar = CollapsibleSidebar(
       title: es ? 'Módulos' : 'Modules',
@@ -618,34 +1021,14 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
           ),
         ],
       ),
-      items: entries([Sections.home, Sections.chat]),
+      items: groupedEntries.first.items,
       groups: [
-        CollapsibleSidebarGroup(
-          label: es ? 'OPERACIONES' : 'OPERATIONS',
-          items: entries([
-            Sections.invoices,
-            Sections.invoiceClients,
-            Sections.expenses,
-            Sections.enableBanking,
-            Sections.budgets
-          ]),
-        ),
-        CollapsibleSidebarGroup(
-          label: es ? 'GESTIÓN' : 'MANAGEMENT',
-          items: entries([
-            Sections.services,
-            Sections.workers,
-            Sections.calendar,
-            Sections.quickNotes,
-            Sections.maps
-          ]),
-        ),
-        CollapsibleSidebarGroup(
-          label: es ? 'COMUNICACIÓN' : 'COMMUNICATION',
-          items: entries(
-              [Sections.businessChat, Sections.emails, Sections.telegram]),
-        ),
-        CollapsibleSidebarGroup(label: '', items: entries([Sections.settings])),
+        for (final entry in groupedEntries.skip(1))
+          if (entry.items.isNotEmpty)
+            CollapsibleSidebarGroup(
+              label: entry.group.label(es),
+              items: entry.items,
+            ),
       ],
       secondaryHeader: false,
       expandTooltip: es ? 'Expandir módulos' : 'Expand modules',
@@ -994,18 +1377,9 @@ class _GroupSwitcherChip extends StatelessWidget {
   static const double _nameBreakpoint = 850;
   static const double _chipMaxNameWidth = 320.0;
 
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts.first.isEmpty) return '?';
-    return parts.length == 1
-        ? parts.first[0].toUpperCase()
-        : (parts.first[0] + parts.last[0]).toUpperCase();
-  }
-
-  /// [bg]/[fg] let the dropdown rows use theme colors (legible on a light
-  /// surface), while the trigger keeps its white-on-navy look by default.
+  /// The group photo is shown when available; otherwise use the branded asset.
   Widget _avatar(Group group, double size, {Color? bg, Color? fg}) {
-    final photoUrl = group.computedPhotoUrl ?? group.photoUrl;
+    final photoUrl = group.displayPhotoUrl;
     if (photoUrl != null && photoUrl.isNotEmpty) {
       return ClipOval(
         child: Image.network(
@@ -1013,30 +1387,25 @@ class _GroupSwitcherChip extends StatelessWidget {
           width: size,
           height: size,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _initialsAvatar(group, size, bg, fg),
+          errorBuilder: (_, __, ___) => _defaultAvatar(size, bg),
         ),
       );
     }
-    return _initialsAvatar(group, size, bg, fg);
+    return _defaultAvatar(size, bg);
   }
 
-  Widget _initialsAvatar(Group group, double size, [Color? bg, Color? fg]) {
+  Widget _defaultAvatar(double size, [Color? bg]) {
     return Container(
       width: size,
       height: size,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: bg ?? const Color(0x26FFFFFF), // foreground @ 15 % alpha
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        _initials(group.name),
-        style: TextStyle(
-          fontSize: size * 0.38,
-          fontWeight: FontWeight.w700,
-          color: fg ?? HexoraGlobalNavColors.foreground,
-          fontFamily: 'Inter',
+        image: const DecorationImage(
+          image: AssetImage(HexoraBrandAssets.defaultBusinessImage),
+          fit: BoxFit.cover,
         ),
+        color: bg ?? const Color(0x26FFFFFF), // foreground @ 15 % alpha
       ),
     );
   }

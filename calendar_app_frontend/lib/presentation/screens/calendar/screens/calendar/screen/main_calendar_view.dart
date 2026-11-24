@@ -2,6 +2,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_segmented_control.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/events/event.dart';
@@ -467,156 +469,174 @@ class _MainCalendarViewState extends State<MainCalendarView> {
             _c.calendarUI?.jumpTo(next);
           }
 
+          final isEs = Localizations.localeOf(context).languageCode == 'es';
+          Widget groupDivider() => Container(
+                width: 1,
+                height: 20,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                color: cs.outlineVariant.withValues(alpha: 0.7),
+              );
+          Widget navArrow({
+            required Key key,
+            required String tooltip,
+            required IconData icon,
+            required VoidCallback onPressed,
+          }) =>
+              IconButton(
+                key: key,
+                tooltip: tooltip,
+                constraints:
+                    const BoxConstraints.tightFor(width: 28, height: 28),
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+                style: IconButton.styleFrom(
+                  foregroundColor: cs.onSurfaceVariant,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(7)),
+                ),
+                onPressed: onPressed,
+                icon: Icon(icon, size: 18),
+              );
+
+          // Date navigation: the arrows surround the date they change, with
+          // the week indicator and "Hoy" right next to them.
           final periodToolbar = Row(
+            key: const ValueKey('calendar-date-navigation'),
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                tooltip: 'Previous period',
-                constraints:
-                    const BoxConstraints.tightFor(width: 30, height: 30),
-                padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
+              navArrow(
+                key: const ValueKey('calendar-period-previous'),
+                tooltip: loc.previous,
+                icon: Icons.chevron_left_rounded,
                 onPressed: () => movePeriod(-1),
-                icon: const Icon(Icons.chevron_left_rounded, size: 18),
               ),
-              IconButton(
-                tooltip: 'Next period',
-                constraints:
-                    const BoxConstraints.tightFor(width: 30, height: 30),
-                padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
+              ConstrainedBox(
+                // Keeps the next arrow steady as month names change length.
+                constraints: const BoxConstraints(minWidth: 124),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    dateLabel,
+                    key: const ValueKey('calendar-period-label'),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: typo.bodyMedium.copyWith(
+                        fontSize: 15,
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              navArrow(
+                key: const ValueKey('calendar-period-next'),
+                tooltip: loc.next,
+                icon: Icons.chevron_right_rounded,
                 onPressed: () => movePeriod(1),
-                icon: const Icon(Icons.chevron_right_rounded, size: 18),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                dateLabel,
-                style: typo.bodyMedium.copyWith(
-                    fontSize: 16,
-                    color: cs.onSurface,
-                    fontWeight: FontWeight.w600),
               ),
               const SizedBox(width: 8),
-              Chip(
-                label: Text('Semana $weekNumber'),
-                visualDensity: VisualDensity.compact,
-                labelStyle: typo.bodySmall.copyWith(
-                  fontSize: 12,
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
-                side: BorderSide.none,
-                backgroundColor: cs.surfaceContainerHighest,
+              Container(
+                key: const ValueKey('calendar-week-indicator'),
+                height: 24,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: HexoraSegmentedControl.trackColor(cs),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'Semana $weekNumber',
+                  style: typo.bodySmall.copyWith(
+                    fontSize: 12,
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               const SizedBox(width: 6),
               OutlinedButton(
+                key: const ValueKey('calendar-today-button'),
                 onPressed: _c.jumpToToday,
                 style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(0, 32),
+                  minimumSize: const Size(0, 28),
+                  fixedSize: const Size.fromHeight(28),
                   foregroundColor: cs.primary,
-                  side: BorderSide(color: cs.primary.withValues(alpha: 0.55)),
+                  side: BorderSide(color: cs.primary.withValues(alpha: 0.45)),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                      borderRadius: BorderRadius.circular(7)),
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: typo.bodySmall
+                      .copyWith(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 child: Text(loc.today),
               ),
             ],
           );
-          final viewSelector = Container(
+          final viewSelector = HexoraSegmentedControl<String>(
             key: const ValueKey('calendar-view-selector'),
-            height: 34,
-            decoration: BoxDecoration(
-              color: cs.surface,
-              border:
-                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: SegmentedButton<String>(
-              showSelectedIcon: false,
-              segments: [
-                ButtonSegment(
-                  value: 'day',
-                  label: Text(loc.tabDay),
-                  icon: const Icon(Icons.calendar_view_day_outlined, size: 15),
-                ),
-                ButtonSegment(
-                  value: 'week',
-                  label: Text(loc.tabWeek),
-                  icon: const Icon(Icons.calendar_view_week_outlined, size: 15),
-                ),
-                ButtonSegment(
-                  value: 'month',
-                  label: Text(loc.tabMonth),
-                  icon: const Icon(Icons.calendar_today_outlined, size: 15),
-                ),
-                ButtonSegment(
-                  value: 'agenda',
-                  label: Text(loc.tabAgenda),
-                  icon: const Icon(Icons.view_agenda_outlined, size: 15),
-                ),
-              ],
-              selected: {viewMode},
-              onSelectionChanged: (selection) =>
-                  _onSideMenuChanged(selection.first),
-              style: ButtonStyle(
-                side: const WidgetStatePropertyAll(BorderSide.none),
-                shape: WidgetStatePropertyAll(RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8))),
-                foregroundColor: WidgetStateProperty.resolveWith((states) =>
-                    states.contains(WidgetState.selected)
-                        ? cs.primary
-                        : cs.onSurfaceVariant),
-                backgroundColor: WidgetStateProperty.resolveWith((states) =>
-                    states.contains(WidgetState.selected)
-                        ? Color.alphaBlend(
-                            cs.primary.withValues(alpha: 0.14), cs.surface)
-                        : cs.surface),
-                minimumSize: const WidgetStatePropertyAll(Size(0, 32)),
-                textStyle: WidgetStateProperty.resolveWith(
-                    (states) => typo.bodySmall.copyWith(
-                          fontSize: 13,
-                          fontWeight: states.contains(WidgetState.selected)
-                              ? FontWeight.w600
-                              : FontWeight.w500,
-                        )),
-                padding: const WidgetStatePropertyAll(
-                  EdgeInsets.symmetric(horizontal: 8),
-                ),
+            selected: viewMode,
+            onChanged: _onSideMenuChanged,
+            segments: [
+              HexoraSegment(
+                key: const ValueKey('calendar-view-day'),
+                value: 'day',
+                label: loc.tabDay,
+                icon: Icons.calendar_view_day_outlined,
               ),
-            ),
+              HexoraSegment(
+                key: const ValueKey('calendar-view-week'),
+                value: 'week',
+                label: loc.tabWeek,
+                icon: Icons.calendar_view_week_outlined,
+              ),
+              HexoraSegment(
+                key: const ValueKey('calendar-view-month'),
+                value: 'month',
+                label: loc.tabMonth,
+                icon: Icons.calendar_today_outlined,
+              ),
+              HexoraSegment(
+                key: const ValueKey('calendar-view-agenda'),
+                value: 'agenda',
+                label: loc.tabAgenda,
+                icon: Icons.view_agenda_outlined,
+              ),
+            ],
           );
+          final detailsToggle = IconButton(
+            key: const ValueKey('calendar-details-toggle'),
+            tooltip: isEs
+                ? (_rightPanelCollapsed
+                    ? 'Mostrar detalles'
+                    : 'Ocultar detalles')
+                : (_rightPanelCollapsed ? 'Show details' : 'Hide details'),
+            constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
+            onPressed: () =>
+                setState(() => _rightPanelCollapsed = !_rightPanelCollapsed),
+            icon: Icon(
+                _rightPanelCollapsed
+                    ? Icons.view_sidebar_outlined
+                    : Icons.chevron_right_rounded,
+                size: 18),
+          );
+          // Three groups: view selection | date navigation | filters.
           final actions = <Widget>[
             viewSelector,
-            const SizedBox(width: 8),
+            groupDivider(),
             periodToolbar,
-            const SizedBox(width: 10),
-            IconButton(
-              key: const ValueKey('calendar-details-toggle'),
-              tooltip: Localizations.localeOf(context).languageCode == 'es'
-                  ? (_rightPanelCollapsed
-                      ? 'Mostrar detalles'
-                      : 'Ocultar detalles')
-                  : (_rightPanelCollapsed ? 'Show details' : 'Hide details'),
-              onPressed: () =>
-                  setState(() => _rightPanelCollapsed = !_rightPanelCollapsed),
-              icon: Icon(
-                  _rightPanelCollapsed
-                      ? Icons.view_sidebar_outlined
-                      : Icons.chevron_right_rounded,
-                  size: 18),
-            ),
+            groupDivider(),
             Tooltip(
-              message: 'All',
+              message: isEs ? 'Todos' : 'All',
               child: InkWell(
+                key: const ValueKey('calendar-filter-all'),
                 borderRadius: BorderRadius.circular(999),
                 onTap: () => _onUserFilterChanged(null),
                 child: Container(
-                  width: 30,
-                  height: 30,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: cs.secondaryContainer.withValues(alpha: 0.9),
@@ -629,7 +649,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                   ),
                   child: Icon(
                     Icons.all_inclusive,
-                    size: 16,
+                    size: 15,
                     color: cs.onSecondaryContainer,
                   ),
                 ),
@@ -674,6 +694,9 @@ class _MainCalendarViewState extends State<MainCalendarView> {
               ),
             );
           }
+          actions
+            ..add(const SizedBox(width: 4))
+            ..add(detailsToggle);
           return actions;
         }
 
@@ -1848,7 +1871,11 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                             child: Padding(
                               padding: const EdgeInsets.all(12),
                               child: HexoraMenuContentTransition.submenu(
-                                transitionKey: _selectedSideMenu,
+                                // Switching between Día/Semana/Mes/Agenda keeps
+                                // the toolbar still; only the grid fades.
+                                transitionKey: isCalendarSection
+                                    ? 'calendar-views'
+                                    : _selectedSideMenu,
                                 child: isCalendarSection
                                     ? Row(
                                         crossAxisAlignment:
@@ -1872,9 +1899,21 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                                         'calendar-grid-card'),
                                                     padding:
                                                         const EdgeInsets.all(4),
-                                                    child: calendarContent(
-                                                      showActions: false,
-                                                      showPresenceStrip: false,
+                                                    child:
+                                                        HexoraMenuContentTransition(
+                                                      key: const ValueKey(
+                                                          'calendar-grid-fade'),
+                                                      transitionKey:
+                                                          _selectedSideMenu,
+                                                      duration: HexoraMotion
+                                                          .navigation,
+                                                      curve: HexoraMotion.enter,
+                                                      initialOpacity: 0.55,
+                                                      child: calendarContent(
+                                                        showActions: false,
+                                                        showPresenceStrip:
+                                                            false,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
