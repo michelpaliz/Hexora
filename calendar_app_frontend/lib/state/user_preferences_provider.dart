@@ -8,6 +8,7 @@ class UserPreferencesProvider extends ChangeNotifier {
   static const _legacyMigrationOwnerKey =
       'dashboard_top_nav_compact_migration_owner';
   static const _navigationKey = 'navigation_display_mode';
+  static const _navigationLayoutKey = 'navigation_layout';
   static const _topNavCollapsedKey = 'top_nav_collapsed';
 
   String? _userId;
@@ -15,6 +16,7 @@ class UserPreferencesProvider extends ChangeNotifier {
   bool _loaded = false;
   NavigationDisplayMode _navigationDisplayMode =
       NavigationDisplayMode.automatic;
+  NavigationLayout _navigationLayout = NavigationLayout.split;
   // Visibility of the global top navigation. Independent from the display mode
   // above: a user can collapse the bar in any Automatic/Icons/Text mode.
   bool _topNavCollapsed = false;
@@ -22,6 +24,7 @@ class UserPreferencesProvider extends ChangeNotifier {
   bool get isLoaded => _loaded;
   String? get userId => _userId;
   NavigationDisplayMode get navigationDisplayMode => _navigationDisplayMode;
+  NavigationLayout get navigationLayout => _navigationLayout;
   bool get topNavCollapsed => _topNavCollapsed;
 
   Future<void> bindUser(String? userId) async {
@@ -33,6 +36,7 @@ class UserPreferencesProvider extends ChangeNotifier {
     _userId = nextUserId;
     _loaded = nextUserId == null;
     _navigationDisplayMode = NavigationDisplayMode.automatic;
+    _navigationLayout = NavigationLayout.split;
     _topNavCollapsed = false;
     final version = ++_loadVersion;
     notifyListeners();
@@ -63,9 +67,14 @@ class UserPreferencesProvider extends ChangeNotifier {
       }
       _topNavCollapsed =
           preferences.getBool(_collapsedKeyFor(nextUserId)) ?? false;
+      _navigationLayout = _layoutFromStorage(
+        preferences.getString(_layoutKeyFor(nextUserId)) ??
+            NavigationLayout.split.name,
+      );
     } catch (error) {
       debugPrint('[UserPreferencesProvider] load failed: $error');
       _navigationDisplayMode = NavigationDisplayMode.automatic;
+      _navigationLayout = NavigationLayout.split;
       _topNavCollapsed = false;
     } finally {
       if (version == _loadVersion) {
@@ -112,10 +121,32 @@ class UserPreferencesProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> setNavigationLayout(NavigationLayout layout) async {
+    if (_navigationLayout == layout) return;
+    _navigationLayout = layout;
+    notifyListeners();
+
+    final currentUserId = _userId;
+    if (currentUserId == null) return;
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      if (_userId != currentUserId) return;
+      await preferences.setString(
+        _layoutKeyFor(currentUserId),
+        layout.name,
+      );
+    } catch (error) {
+      debugPrint('[UserPreferencesProvider] layout save failed: $error');
+    }
+  }
+
   static String _keyFor(String userId) => 'hexora.user.$userId.$_navigationKey';
 
   static String _collapsedKeyFor(String userId) =>
       'hexora.user.$userId.$_topNavCollapsedKey';
+
+  static String _layoutKeyFor(String userId) =>
+      'hexora.user.$userId.$_navigationLayoutKey';
 
   static String _modeToStorage(NavigationDisplayMode mode) => mode.name;
 
@@ -123,6 +154,13 @@ class UserPreferencesProvider extends ChangeNotifier {
     return NavigationDisplayMode.values.firstWhere(
       (mode) => mode.name == value,
       orElse: () => NavigationDisplayMode.automatic,
+    );
+  }
+
+  static NavigationLayout _layoutFromStorage(String value) {
+    return NavigationLayout.values.firstWhere(
+      (layout) => layout.name == value,
+      orElse: () => NavigationLayout.split,
     );
   }
 }

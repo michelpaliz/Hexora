@@ -1,12 +1,12 @@
-import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
-import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/themes/navigation_theme.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
-import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
+import 'package:hexora/theme/typography/typography_extension.dart';
 
 class CalendarSideMenu extends StatelessWidget {
   static const double expandedWidth = NavigationTokens.sidebarWidth;
@@ -167,22 +167,6 @@ class CalendarSideMenu extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 4, vertical: 10),
-                      child: Row(children: [
-                        Icon(Icons.calendar_month_outlined,
-                            size: 20,
-                            color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Expanded(
-                            child: Text(l.calendarTitle,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleSmall
-                                    ?.copyWith(fontWeight: FontWeight.w700))),
-                      ]),
-                    ),
                     if (canAddEvents)
                       FilledButton.icon(
                         onPressed: onAddEvent,

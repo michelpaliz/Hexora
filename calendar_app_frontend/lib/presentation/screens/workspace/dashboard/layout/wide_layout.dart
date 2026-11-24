@@ -10,6 +10,7 @@ import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/navigation/shell/worker_status_indicator.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
@@ -90,26 +91,41 @@ class WideLayout extends StatelessWidget {
             }
           }
           final moduleLabel = activeDestination?.label;
+          final unified =
+              preferences.navigationLayout == NavigationLayout.unified;
+          final usesContextualSidebar = _usesContextualSidebar(activeSection);
           final moduleContent = moduleLabel == null
               ? child!
               : HexoraNavContext(
                   moduleLabel: moduleLabel,
                   child: child!,
                 );
-          final content = SecondarySidebarTopInsetScope(
-            topInset: 48,
-            title: moduleLabel,
-            icon: activeDestination?.icon,
-            child: moduleContent,
+          final content = SidebarHeaderScope(
+            enabled: unified && usesContextualSidebar,
+            builder: (context, collapsed) => _UnifiedModuleSwitcher(
+              destinations: destinations,
+              activeDestination: activeDestination,
+              collapsed: collapsed,
+              onSelected: state.openSection,
+            ),
+            child: SecondarySidebarTopInsetScope(
+              topInset: unified ? 0 : 48,
+              title: moduleLabel,
+              icon: activeDestination?.icon,
+              child: moduleContent,
+            ),
           );
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _DashboardModuleSidebar(
-                destinations: destinations,
-                activeId: activeSection,
-                onSelected: state.openSection,
-              ),
+              if (!unified || !usesContextualSidebar)
+                _DashboardModuleSidebar(
+                  destinations: destinations,
+                  activeId: activeSection,
+                  onSelected: state.openSection,
+                )
+              else
+                const SizedBox.shrink(),
               Expanded(child: content),
             ],
           );
@@ -117,6 +133,18 @@ class WideLayout extends StatelessWidget {
       ),
     );
   }
+
+  bool _usesContextualSidebar(String section) => const {
+        Sections.invoices,
+        Sections.invoiceClients,
+        Sections.expenses,
+        Sections.enableBanking,
+        Sections.budgets,
+        Sections.calendar,
+        Sections.businessChat,
+        Sections.workers,
+        Sections.settings,
+      }.contains(section);
 
   Widget _buildContent(
     GroupDashboardState state,
@@ -267,6 +295,109 @@ class WideLayout extends StatelessWidget {
   }
 }
 
+class _UnifiedModuleSwitcher extends StatelessWidget {
+  const _UnifiedModuleSwitcher({
+    required this.destinations,
+    required this.activeDestination,
+    required this.collapsed,
+    required this.onSelected,
+  });
+
+  final List<HexoraNavDestination> destinations;
+  final HexoraNavDestination? activeDestination;
+  final bool collapsed;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final active = activeDestination;
+    final control = Container(
+      height: collapsed ? 36 : 38,
+      margin: EdgeInsetsDirectional.fromSTEB(
+        collapsed ? 8 : 10,
+        collapsed ? 6 : 7,
+        collapsed ? 8 : 12,
+        collapsed ? 6 : 7,
+      ),
+      padding: EdgeInsetsDirectional.symmetric(
+        horizontal: collapsed ? 0 : 10,
+      ),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          cs.primary.withValues(alpha: .10),
+          cs.surface,
+        ),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Row(
+        mainAxisAlignment:
+            collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+        children: [
+          Icon(
+            active?.icon ?? Icons.apps_rounded,
+            size: 17,
+            color: cs.primary,
+          ),
+          if (!collapsed) ...[
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                active?.label ?? (isEs ? 'Módulos' : 'Modules'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: NavigationTokens.label(context).copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface,
+                ),
+              ),
+            ),
+            Icon(Icons.expand_more_rounded,
+                size: 17, color: cs.onSurfaceVariant),
+          ],
+        ],
+      ),
+    );
+
+    return PopupMenuButton<String>(
+      tooltip: isEs ? 'Cambiar módulo' : 'Switch module',
+      initialValue: active?.id,
+      onSelected: onSelected,
+      position: PopupMenuPosition.under,
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
+      itemBuilder: (context) => [
+        for (final destination in destinations)
+          PopupMenuItem<String>(
+            value: destination.id,
+            child: Row(
+              children: [
+                Icon(
+                  destination.icon,
+                  size: 17,
+                  color: destination.id == active?.id
+                      ? cs.primary
+                      : cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    destination.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (destination.id == active?.id)
+                  Icon(Icons.check_rounded, size: 17, color: cs.primary),
+              ],
+            ),
+          ),
+      ],
+      child: control,
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Global navigation (adapter over the shared HexoraGlobalNavBar)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -403,7 +534,7 @@ class _DashboardModuleSidebar extends StatefulWidget {
 }
 
 class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
-  bool _collapsed = false;
+  bool _collapsed = true;
   final _searchController = TextEditingController();
 
   @override

@@ -201,8 +201,11 @@ mixin InsightsInvoiceDisplayBulkLink on InsightsChatSheetStateBase {
             'invoiceIds': linkedInvoiceIdsFromRow(row),
           },
       ];
-      final response = await StatementsApi(groupId: runtime.historyGroupId)
-          .bulkLinkEntryInvoices(
+      // The sheet's group is the authoritative active business context. The
+      // runtime scope key is intentionally private and may not be available
+      // for transient chat instances.
+      final response =
+          await StatementsApi(groupId: widget.groupId).bulkLinkEntryInvoices(
         links: links,
         aiConversationId: message.conversationId ?? runtime.conversationId,
       );

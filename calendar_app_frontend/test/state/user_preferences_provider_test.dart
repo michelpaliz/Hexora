@@ -84,4 +84,18 @@ void main() {
       NavigationDisplayMode.iconsOnly,
     );
   });
+
+  test('navigation layout defaults to split and persists per user', () async {
+    final preferences = UserPreferencesProvider();
+
+    await preferences.bindUser('user-a');
+    expect(preferences.navigationLayout, NavigationLayout.split);
+    await preferences.setNavigationLayout(NavigationLayout.unified);
+
+    await preferences.bindUser('user-b');
+    expect(preferences.navigationLayout, NavigationLayout.split);
+
+    await preferences.bindUser('user-a');
+    expect(preferences.navigationLayout, NavigationLayout.unified);
+  });
 }

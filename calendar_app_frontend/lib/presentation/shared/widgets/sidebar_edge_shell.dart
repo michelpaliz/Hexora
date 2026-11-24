@@ -73,17 +73,19 @@ class SidebarHeaderScope extends InheritedWidget {
   const SidebarHeaderScope({
     super.key,
     required this.builder,
+    this.enabled = true,
     required super.child,
   });
 
   final SidebarHeaderBuilder builder;
+  final bool enabled;
 
   static SidebarHeaderScope? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<SidebarHeaderScope>();
 
   @override
   bool updateShouldNotify(SidebarHeaderScope oldWidget) =>
-      oldWidget.builder != builder;
+      oldWidget.builder != builder || oldWidget.enabled != enabled;
 }
 
 /// Publishes one workspace-level footer to every shared module sidebar.
@@ -181,7 +183,9 @@ class SidebarEdgeShell extends StatelessWidget {
       final footerScope = SidebarFooterScope.maybeOf(context);
       final footer = footerScope?.builder(context, collapsed);
       final sidebarHeaderScope = SidebarHeaderScope.maybeOf(context);
-      final sidebarHeader = sidebarHeaderScope?.builder(context, collapsed);
+      final sidebarHeader = sidebarHeaderScope?.enabled == true
+          ? sidebarHeaderScope!.builder(context, collapsed)
+          : null;
       final globalHeaderExtent =
           SidebarEdgeGeometry.globalRestoreHeaderHeight * (1 - globalExpansion);
       final showGlobalRestoreHeader =

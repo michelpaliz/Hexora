@@ -41,8 +41,9 @@ class StatementsTableTheme {
 
   factory StatementsTableTheme._fromScheme(ColorScheme cs,
       {required bool elevated}) {
-    // Keep the transaction list on one calm canvas. White is reserved for
-    // the active/selected row, while semantic badges retain their own colors.
+    // Keep the transaction table on the same light-blue canvas used by the
+    // surrounding workspace sections. Semantic badges and selected rows retain
+    // their own colors for hierarchy.
     final surface = cs.brightness == Brightness.light
         ? AppColors.workspaceCanvas
         : cs.surfaceContainerLow;
@@ -52,7 +53,7 @@ class StatementsTableTheme {
       rowBg: surface,
       rowBgAlt: surface,
       rowHover: Color.alphaBlend(cs.primary.withValues(alpha: .04), surface),
-      rowSelected: cs.surface,
+      rowSelected: Color.alphaBlend(cs.primary.withValues(alpha: .10), surface),
       rowActive: Color.alphaBlend(cs.primary.withValues(alpha: .20), surface),
       border: cs.outlineVariant
           .withValues(alpha: HexoraTableTokens.separatorOpacity),

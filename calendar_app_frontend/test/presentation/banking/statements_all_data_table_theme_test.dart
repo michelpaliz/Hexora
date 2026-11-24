@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/all_data/table/statements_all_data_table_theme.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 
 void main() {
   double contrastRatio(Color foreground, Color background) {
@@ -33,5 +34,17 @@ void main() {
     expect(standard.headerBg, isNot(const Color(0xFFF8FAFC)));
     expect(standard.rowHover, isNot(standard.rowBg));
     expect(standard.rowSelected, isNot(standard.rowBg));
+  });
+
+  test('light table uses the shared workspace section surface', () {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: Colors.blue,
+      brightness: Brightness.light,
+    );
+    final theme = StatementsTableTheme.light(colorScheme);
+
+    expect(theme.headerBg, AppColors.workspaceCanvas);
+    expect(theme.rowBg, AppColors.workspaceCanvas);
+    expect(theme.rowSelected, isNot(theme.rowBg));
   });
 }
