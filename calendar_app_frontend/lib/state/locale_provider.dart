@@ -23,7 +23,7 @@ class LocaleProvider extends ChangeNotifier {
     try {
       final preferences = await SharedPreferences.getInstance();
       final stored = preferences.getString(_localeKey);
-      if (stored == 'en' || stored == 'es') {
+      if (stored != null && (stored == 'en' || stored == 'es')) {
         _applyLocale(Locale(stored));
       }
     } catch (error) {
@@ -33,9 +33,8 @@ class LocaleProvider extends ChangeNotifier {
 
   Future<void> bindUser(String? userId) async {
     final normalized = userId?.trim();
-    final nextUserId = normalized == null || normalized.isEmpty
-        ? null
-        : normalized;
+    final nextUserId =
+        normalized == null || normalized.isEmpty ? null : normalized;
     if (_userId == nextUserId) return;
     _userId = nextUserId;
     final version = ++_loadVersion;

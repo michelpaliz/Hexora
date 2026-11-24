@@ -24,7 +24,10 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
 
-    final preferences = UserPreferencesProvider();
+    final preferences = UserPreferencesProvider(
+      remoteLoader: () async => <String, dynamic>{},
+      remoteUpdater: (_) async {},
+    );
     await preferences.bindUser('navigation-layout-user');
     addTearDown(preferences.dispose);
     final theme = ThemeModeProvider();

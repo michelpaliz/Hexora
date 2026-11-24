@@ -3,8 +3,19 @@ import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/services/user/user_preferences_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+typedef UserPreferencesLoader = Future<Map<String, dynamic>> Function();
+typedef UserPreferencesUpdater = Future<void> Function(
+  Map<String, dynamic> changes,
+);
+
 /// User-scoped presentation preferences that must not be shared by a business.
 class UserPreferencesProvider extends ChangeNotifier {
+  UserPreferencesProvider({
+    UserPreferencesLoader? remoteLoader,
+    UserPreferencesUpdater? remoteUpdater,
+  })  : _remoteLoader = remoteLoader ?? UserPreferencesApi.load,
+        _remoteUpdater = remoteUpdater ?? UserPreferencesApi.update;
+
   static const _legacyCompactKey = 'dashboard_top_nav_compact_v2';
   static const _legacyMigrationOwnerKey =
       'dashboard_top_nav_compact_migration_owner';
@@ -14,6 +25,9 @@ class UserPreferencesProvider extends ChangeNotifier {
   static const _legacyShowDailyQuoteKey = 'home_show_daily_quote';
   static const _legacyFavoriteBusinessesKey = 'business_favorites';
   static const _homeMigrationOwnerKey = 'home_preferences_migration_owner';
+
+  final UserPreferencesLoader _remoteLoader;
+  final UserPreferencesUpdater _remoteUpdater;
 
   String? _userId;
   int _loadVersion = 0;
@@ -109,7 +123,7 @@ class UserPreferencesProvider extends ChangeNotifier {
       }
 
       try {
-        final remote = await UserPreferencesApi.load();
+        final remote = await _remoteLoader();
         if (version != _loadVersion) return;
         final remoteMode = remote['navigationDisplayMode'];
         final remoteLayout = remote['navigationLayout'];
@@ -159,16 +173,13 @@ class UserPreferencesProvider extends ChangeNotifier {
             remoteCollapsed == null ||
             remoteShowDailyQuote == null ||
             remoteFavoriteBusinesses == null) {
-          await UserPreferencesApi.update({
+          await _remoteUpdater({
             if (remoteMode == null)
-              'navigationDisplayMode':
-                  _modeToStorage(_navigationDisplayMode),
+              'navigationDisplayMode': _modeToStorage(_navigationDisplayMode),
             if (remoteLayout == null)
               'navigationLayout': _navigationLayout.name,
-            if (remoteCollapsed == null)
-              'topNavCollapsed': _topNavCollapsed,
-            if (remoteShowDailyQuote == null)
-              'showDailyQuote': _showDailyQuote,
+            if (remoteCollapsed == null) 'topNavCollapsed': _topNavCollapsed,
+            if (remoteShowDailyQuote == null) 'showDailyQuote': _showDailyQuote,
             if (remoteFavoriteBusinesses == null)
               'favoriteBusinessIds': _favoriteBusinessIds.toList(),
           });
@@ -207,7 +218,7 @@ class UserPreferencesProvider extends ChangeNotifier {
         _keyFor(currentUserId),
         _modeToStorage(mode),
       );
-      await UserPreferencesApi.update({
+      await _remoteUpdater({
         'navigationDisplayMode': _modeToStorage(mode),
       });
     } catch (error) {
@@ -226,7 +237,7 @@ class UserPreferencesProvider extends ChangeNotifier {
       final preferences = await SharedPreferences.getInstance();
       if (_userId != currentUserId) return;
       await preferences.setBool(_collapsedKeyFor(currentUserId), collapsed);
-      await UserPreferencesApi.update({'topNavCollapsed': collapsed});
+      await _remoteUpdater({'topNavCollapsed': collapsed});
     } catch (error) {
       debugPrint('[UserPreferencesProvider] save failed: $error');
     }
@@ -246,7 +257,7 @@ class UserPreferencesProvider extends ChangeNotifier {
         _layoutKeyFor(currentUserId),
         layout.name,
       );
-      await UserPreferencesApi.update({'navigationLayout': layout.name});
+      await _remoteUpdater({'navigationLayout': layout.name});
     } catch (error) {
       debugPrint('[UserPreferencesProvider] layout save failed: $error');
     }
@@ -261,10 +272,11 @@ class UserPreferencesProvider extends ChangeNotifier {
       final currentUserId = _userId;
       if (currentUserId != null) {
         await preferences.setBool(_quoteKeyFor(currentUserId), value);
-        await UserPreferencesApi.update({'showDailyQuote': value});
+        await _remoteUpdater({'showDailyQuote': value});
       }
     } catch (error) {
-      debugPrint('[UserPreferencesProvider] quote preference save failed: $error');
+      debugPrint(
+          '[UserPreferencesProvider] quote preference save failed: $error');
     }
   }
 
@@ -284,7 +296,7 @@ class UserPreferencesProvider extends ChangeNotifier {
           _favoritesKeyFor(currentUserId),
           values,
         );
-        await UserPreferencesApi.update({'favoriteBusinessIds': values});
+        await _remoteUpdater({'favoriteBusinessIds': values});
       }
     } catch (error) {
       debugPrint('[UserPreferencesProvider] favorites save failed: $error');

@@ -11,7 +11,7 @@ void main() {
   });
 
   test('navigation mode is persisted independently for each user', () async {
-    final preferences = UserPreferencesProvider();
+    final preferences = _testPreferencesProvider();
 
     await preferences.bindUser('user-a');
     expect(
@@ -42,7 +42,7 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'dashboard_top_nav_compact_v2': true,
     });
-    final preferences = UserPreferencesProvider();
+    final preferences = _testPreferencesProvider();
 
     await preferences.bindUser('legacy-user');
 
@@ -59,7 +59,7 @@ void main() {
   });
 
   test('top navigation visibility persists independently per user', () async {
-    final preferences = UserPreferencesProvider();
+    final preferences = _testPreferencesProvider();
 
     await preferences.bindUser('user-a');
     await preferences.setNavigationDisplayMode(
@@ -86,7 +86,7 @@ void main() {
   });
 
   test('navigation layout defaults to split and persists per user', () async {
-    final preferences = UserPreferencesProvider();
+    final preferences = _testPreferencesProvider();
 
     await preferences.bindUser('user-a');
     expect(preferences.navigationLayout, NavigationLayout.split);
@@ -98,4 +98,11 @@ void main() {
     await preferences.bindUser('user-a');
     expect(preferences.navigationLayout, NavigationLayout.unified);
   });
+}
+
+UserPreferencesProvider _testPreferencesProvider() {
+  return UserPreferencesProvider(
+    remoteLoader: () async => <String, dynamic>{},
+    remoteUpdater: (_) async {},
+  );
 }
