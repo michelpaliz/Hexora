@@ -14,6 +14,8 @@ import 'package:hexora/models/invoice/invoice_block_payload.dart';
 import 'package:hexora/models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/models/invoice/invoice_line.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
+import 'package:hexora/services/invoicing/business_billing_settings_api.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart' as line_ev;
 import 'package:hexora/services/invoicing/invoice_lines_ocr_flow.dart';
 import 'package:hexora/services/invoicing/invoice_lines_ocr_models.dart';
@@ -112,6 +114,9 @@ class InvoiceEditorController extends ChangeNotifier {
   Map<String, dynamic>? _draftPaymentPayload;
   bool _draftPaymentPayloadInvalid = false;
   String? _issuedChangeReason;
+  String? _documentLanguage;
+  bool _usesBusinessDefaultLanguage = true;
+  BusinessBillingSettings? _billingSettings;
   List<Map<String, dynamic>> _issuedHistory = const [];
   Map<String, dynamic> _issuedClientSnapshot = const {};
   Map<String, dynamic> _issuedIssuerSnapshot = const {};
@@ -130,6 +135,7 @@ class InvoiceEditorController extends ChangeNotifier {
   // --- apis ---
   final _invoicesApi = InvoicesApi();
   final _linesApi = line_ev.InvoiceLinesApi();
+  final _billingSettingsApi = BusinessBillingSettingsApi();
 
   // --- getters ---
   String? get clientId => _clientId;
@@ -176,6 +182,10 @@ class InvoiceEditorController extends ChangeNotifier {
   int get dataRevision => _dataRevision;
   bool get draftDirty => _draftDirty;
   bool get draftSaveFailed => _draftSaveFailed;
+  String? get documentLanguage => _documentLanguage;
+  bool get usesBusinessDefaultLanguage => _usesBusinessDefaultLanguage;
+  String? get businessDefaultInvoiceLanguage =>
+      _billingSettings?.defaultInvoiceLanguage;
   Invoice get paymentEditorInvoice => _paymentEditorInvoice();
   bool get hasLastOcrImagePreview => _lastOcrImageBytes != null;
   Uint8List? get jsonImportFileBytes => _jsonImportFileBytes;
@@ -630,6 +640,123 @@ class InvoiceEditorController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<BusinessBillingSettings> _loadBillingSettings() async {
+    final cached = _billingSettings;
+    if (cached != null) return cached;
+    final loaded = await _billingSettingsApi.load(group.id);
+    _billingSettings = loaded;
+    return loaded;
+  }
+
+  Future<String> _ensureInvoiceLanguage(BuildContext context) async {
+    final current = _documentLanguage;
+    if (current == 'es' || current == 'en') return current;
+
+    var settings = await _loadBillingSettings();
+    var language = settings.defaultInvoiceLanguage;
+    if (settings.requiresInitialConfiguration) {
+      if (!settings.canEdit) {
+        throw Exception(
+          Localizations.localeOf(context).languageCode == 'es'
+              ? 'Un administrador debe configurar el idioma de facturación de la empresa.'
+              : 'A business administrator must configure the invoice language.',
+        );
+      }
+      language = await _showInitialInvoiceLanguageDialog(context);
+      settings = await _billingSettingsApi.save(group.id, language);
+      _billingSettings = settings;
+    }
+    _documentLanguage = language ?? 'es';
+    _usesBusinessDefaultLanguage = true;
+    return _documentLanguage!;
+  }
+
+  Future<void> prepareInvoiceLanguageOptions(BuildContext context) async {
+    await _ensureInvoiceLanguage(context);
+  }
+
+  Future<String> _showInitialInvoiceLanguageDialog(BuildContext context) async {
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    var selected = AuthenticatedHttpClient.preferredLanguageCode;
+    final result = await showHexoraDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isEs ? 'Idioma de facturación' : 'Invoice language'),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(isEs
+                    ? 'Selecciona el idioma predeterminado en el que deseas emitir las facturas de tu empresa.'
+                    : 'Select the default language used to issue your business invoices.'),
+                const SizedBox(height: 16),
+                RadioListTile<String>(
+                  value: 'es',
+                  groupValue: selected,
+                  title: const Text('Español (ES)'),
+                  onChanged: (value) => setDialogState(() => selected = value!),
+                ),
+                RadioListTile<String>(
+                  value: 'en',
+                  groupValue: selected,
+                  title: const Text('English (EN)'),
+                  onChanged: (value) => setDialogState(() => selected = value!),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  isEs
+                      ? 'Esta preferencia se guardará para futuras facturas. Podrás modificarla en cualquier momento desde Ajustes → Facturación.'
+                      : 'This preference will be saved for future invoices. You can change it at any time in Settings → Billing.',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(selected),
+              child: Text(isEs ? 'Guardar y continuar' : 'Save and continue'),
+            ),
+          ],
+        ),
+      ),
+    );
+    return result ?? selected;
+  }
+
+  Future<void> changeDocumentLanguage(
+    BuildContext context,
+    String selection,
+  ) async {
+    if (editingIssued) return;
+    final settings = await _loadBillingSettings();
+    final resolved = selection == 'default'
+        ? settings.defaultInvoiceLanguage ?? await _ensureInvoiceLanguage(context)
+        : selection;
+    if (resolved != 'es' && resolved != 'en') return;
+    _documentLanguage = resolved;
+    _usesBusinessDefaultLanguage = selection == 'default';
+    _draftDirty = true;
+    _previewedPdf = false;
+    _previewPdfBytes = null;
+    notifyListeners();
+
+    if (formKey.currentState?.validate() == true && hasBillableEntries && _clientId != null) {
+      await saveDraft(context);
+      final invoice = _savedInvoice;
+      if (invoice != null) {
+        final response = await _invoicesApi.previewPdf(invoice.id);
+        _previewPdfBytes = InvoiceEditorPdf.validatePdf(response);
+        _previewedPdf = true;
+        notifyListeners();
+      }
+    }
+  }
+
   @override
   void dispose() {
     _disposed = true;
@@ -661,6 +788,8 @@ class InvoiceEditorController extends ChangeNotifier {
 
   void _applyInitialInvoice(Invoice invoice) {
     _savedInvoice = invoice;
+    _documentLanguage = invoice.documentLanguage;
+    _usesBusinessDefaultLanguage = false;
     _editingDraftId = invoice.id.trim().isEmpty ? null : invoice.id.trim();
     final status = (invoice.status ?? '').trim().toLowerCase();
     _editingDraftMode = _editingDraftId != null && !status.contains('issue');

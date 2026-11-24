@@ -113,6 +113,7 @@ class Invoice {
   final String? entityType;
   final String? pdfUrl;
   final String? currency;
+  final String? documentLanguage;
   final DateTime? registeredAt;
   final String? status;
   final int? sequenceNumber;
@@ -173,6 +174,7 @@ class Invoice {
     this.entityType,
     this.pdfUrl,
     this.currency,
+    this.documentLanguage,
     this.registeredAt,
     this.status,
     this.sequenceNumber,
@@ -234,6 +236,7 @@ class Invoice {
     String? entityType,
     String? pdfUrl,
     String? currency,
+    String? documentLanguage,
     DateTime? registeredAt,
     String? status,
     int? sequenceNumber,
@@ -294,6 +297,7 @@ class Invoice {
       entityType: entityType ?? this.entityType,
       pdfUrl: pdfUrl ?? this.pdfUrl,
       currency: currency ?? this.currency,
+      documentLanguage: documentLanguage ?? this.documentLanguage,
       registeredAt: registeredAt ?? this.registeredAt,
       status: status ?? this.status,
       sequenceNumber: sequenceNumber ?? this.sequenceNumber,
@@ -616,6 +620,7 @@ class Invoice {
       entityType: json['entityType']?.toString(),
       pdfUrl: json['pdfUrl']?.toString(),
       currency: json['currency']?.toString(),
+      documentLanguage: json['documentLanguage']?.toString(),
       registeredAt: parseDate(json['registeredAt'] ?? json['createdAt']),
       status: json['status']?.toString(),
       sequenceNumber: json['sequenceNumber'] is num
@@ -704,6 +709,7 @@ class Invoice {
         if (clientName != null) 'clientName': clientName,
         if (pdfUrl != null) 'pdfUrl': pdfUrl,
         if (currency != null) 'currency': currency,
+        if (documentLanguage != null) 'documentLanguage': documentLanguage,
         if (registeredAt != null)
           'registeredAt': registeredAt!.toIso8601String(),
         if (status != null) 'status': status,
@@ -780,6 +786,8 @@ class Invoice {
       if (pdfUrl != null && pdfUrl!.trim().isNotEmpty) 'pdfUrl': pdfUrl!.trim(),
       if (currency != null && currency!.trim().isNotEmpty)
         'currency': currency!.trim(),
+      if (documentLanguage != null && documentLanguage!.trim().isNotEmpty)
+        'documentLanguage': documentLanguage!.trim(),
       if (registeredAt != null)
         'registeredAt': registeredAt!.toUtc().toIso8601String(),
       if (status != null) 'status': status,

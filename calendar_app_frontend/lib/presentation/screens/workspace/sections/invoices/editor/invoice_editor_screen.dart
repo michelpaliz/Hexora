@@ -189,6 +189,93 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
     _closeNow();
   }
 
+  Future<void> _openInvoiceLanguageDialog() async {
+    if (_c.editingIssued) return;
+    try {
+      await _c.prepareInvoiceLanguageOptions(context);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(error.toString().replaceFirst('Exception: ', '')),
+      ));
+      return;
+    }
+    if (!mounted) return;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    var selected = _c.usesBusinessDefaultLanguage
+        ? 'default'
+        : (_c.documentLanguage ?? 'default');
+    final result = await showHexoraDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isEs ? 'Idioma de la factura' : 'Invoice language'),
+          content: SizedBox(
+            width: 430,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RadioListTile<String>(
+                  value: 'default',
+                  groupValue: selected,
+                  title: Text(isEs
+                      ? 'Predeterminado de la empresa'
+                      : 'Business default'),
+                  subtitle: Text(
+                    _c.businessDefaultInvoiceLanguage == 'en'
+                        ? 'English'
+                        : 'Español',
+                  ),
+                  onChanged: (value) => setDialogState(() => selected = value!),
+                ),
+                RadioListTile<String>(
+                  value: 'es',
+                  groupValue: selected,
+                  title: const Text('Español'),
+                  onChanged: (value) => setDialogState(() => selected = value!),
+                ),
+                RadioListTile<String>(
+                  value: 'en',
+                  groupValue: selected,
+                  title: const Text('English'),
+                  onChanged: (value) => setDialogState(() => selected = value!),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    isEs
+                        ? 'Este cambio solo afecta a esta factura.'
+                        : 'This change only affects this invoice.',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(selected),
+              child: Text(isEs ? 'Aplicar' : 'Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || result == null) return;
+    try {
+      await _c.changeDocumentLanguage(context, result);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(error.toString().replaceFirst('Exception: ', '')),
+      ));
+    }
+  }
+
   void _handleTabChange() {
     _c.setCurrentStepIndex(_tabController.index);
     final shouldExpandLineMethods = _tabController.index == 2;

@@ -904,8 +904,9 @@ class InvoicesApi {
 
   /// GET /invoices/:id/pdf/preview  (inline PDF for drafts/issued)
   Future<http.Response> previewPdf(String id) async {
+    final uri = _u('/$id/pdf/preview');
     final r = await AuthenticatedHttpClient.get(
-      _u('/$id/pdf/preview'),
+      uri,
       headers: _headers(),
     );
     if (r.statusCode >= 200 && r.statusCode < 300) return r;

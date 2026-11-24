@@ -31,6 +31,7 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
     if (_clientId == null) {
       throw Exception(l.selectClientFirst);
     }
+    await _ensureInvoiceLanguage(context);
     // A newly created or unchanged draft already has the backend default
     // payment state. Do not make a second payment-endpoint request unless the
     // user actually changed payment details; that request used to turn an
@@ -128,6 +129,7 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
                 : null,
         blocks: sanitizedBlocks,
         lines: draftLines,
+        documentLanguage: _documentLanguage,
       );
 
       final payload = invoice.toCreatePayload();

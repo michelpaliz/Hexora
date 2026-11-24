@@ -15,6 +15,8 @@ import 'package:hexora/presentation/screens/settings/widgets/preferences_section
 import 'package:hexora/presentation/screens/settings/widgets/nav_tile.dart';
 import 'package:hexora/presentation/screens/settings/widgets/section_card.dart';
 import 'package:hexora/presentation/screens/preferences/user_preferences_screen.dart';
+import 'package:hexora/presentation/screens/settings/screens/billing_settings_screen.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/state/locale_provider.dart';
 import 'package:hexora/theme/theme_provider.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -262,6 +264,42 @@ class _SettingsState extends State<Settings> {
                             result.current, result.newPass, result.confirm);
                       },
                       onLogout: _confirmLogout,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SectionHeader(
+                    title: Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Empresa'
+                        : 'Business',
+                    textStyle: typography.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  SectionCard(
+                    child: NavTile(
+                      leading: Icon(Icons.receipt_long_outlined,
+                          color: cs.primary, size: 20),
+                      iconBgColor: cs.primary.withValues(alpha: 0.12),
+                      title: Localizations.localeOf(context).languageCode == 'es'
+                          ? 'Facturación'
+                          : 'Billing',
+                      subtitle:
+                          Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Idioma predeterminado de las facturas'
+                              : 'Default invoice language',
+                      onTap: () {
+                        final group = context.read<GroupDomain?>()?.currentGroup;
+                        if (group == null) {
+                          _snack(Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Selecciona una empresa primero.'
+                              : 'Select a business first.');
+                          return;
+                        }
+                        Navigator.of(context).push(MaterialPageRoute<void>(
+                          builder: (_) => BillingSettingsScreen(groupId: group.id),
+                        ));
+                      },
                     ),
                   ),
                   const SizedBox(height: 20),

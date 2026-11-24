@@ -27,6 +27,8 @@ class AuthenticatedHttpClient {
     _preferredLanguage = languageCode == 'en' ? 'en' : 'es';
   }
 
+  static String get preferredLanguageCode => _preferredLanguage;
+
   static Future<Map<String, String>> authorizedHeaders({
     Map<String, String>? extra,
     bool includeJsonContentType = true,

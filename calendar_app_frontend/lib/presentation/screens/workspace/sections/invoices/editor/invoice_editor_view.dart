@@ -75,6 +75,9 @@ class _InvoiceEditorView extends StatelessWidget {
                       ? l.saveChanges
                       : l.invoiceSaveDraftCta,
                   onSaveDraft: () => state._c.handleSaveDraft(context),
+                  onLanguageSettings: state._c.editingIssued
+                      ? null
+                      : state._openInvoiceLanguageDialog,
                   showClose: state.widget.embedded,
                   onClose: state.widget.embedded ? state._requestClose : null,
                 ),
@@ -1100,6 +1103,9 @@ class _InvoiceEditorView extends StatelessWidget {
                                         state._selectLineInputMode,
                                     onToggleSections: state._toggleLineMethods,
                                     onCollapse: state._toggleWizardRail,
+                                    onLanguageSettings: state._c.editingIssued
+                                        ? null
+                                        : state._openInvoiceLanguageDialog,
                                   ),
                                 SizedBox(
                                   width: wizardConstraints.maxWidth < 1200
@@ -1764,6 +1770,7 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
     required this.onSectionSelected,
     required this.onToggleSections,
     required this.onCollapse,
+    this.onLanguageSettings,
   });
 
   final String title;
@@ -1777,6 +1784,7 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
   final ValueChanged<String> onSectionSelected;
   final VoidCallback onToggleSections;
   final VoidCallback onCollapse;
+  final VoidCallback? onLanguageSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -1833,6 +1841,31 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (onLanguageSettings != null)
+                    PopupMenuButton<String>(
+                      tooltip: isEs ? 'Opciones' : 'Options',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                        width: 32,
+                        height: 28,
+                      ),
+                      onSelected: (value) {
+                        if (value == 'language') onLanguageSettings!();
+                      },
+                      itemBuilder: (_) => [
+                        PopupMenuItem<String>(
+                          value: 'language',
+                          child: Row(children: [
+                            const Icon(Icons.translate_rounded, size: 18),
+                            const SizedBox(width: 10),
+                            Text(isEs
+                                ? 'Idioma de la factura'
+                                : 'Invoice language'),
+                          ]),
+                        ),
+                      ],
+                      icon: const Icon(Icons.more_vert_rounded, size: 18),
+                    ),
                   IconButton(
                     key: const ValueKey('invoice-wizard-rail-toggle'),
                     tooltip:

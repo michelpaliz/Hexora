@@ -10,6 +10,7 @@ class InvoiceEditorAppBar extends StatelessWidget
   final VoidCallback onSaveDraft;
   final bool showClose;
   final VoidCallback? onClose;
+  final VoidCallback? onLanguageSettings;
 
   const InvoiceEditorAppBar({
     super.key,
@@ -19,6 +20,7 @@ class InvoiceEditorAppBar extends StatelessWidget
     required this.onSaveDraft,
     this.showClose = false,
     this.onClose,
+    this.onLanguageSettings,
   });
 
   @override
@@ -39,6 +41,25 @@ class InvoiceEditorAppBar extends StatelessWidget
             )
           : null,
       actions: [
+        if (onLanguageSettings != null)
+          PopupMenuButton<String>(
+            tooltip: l.localeName.startsWith('es') ? 'Opciones' : 'Options',
+            onSelected: (value) {
+              if (value == 'language') onLanguageSettings!();
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem<String>(
+                value: 'language',
+                child: Row(children: [
+                  const Icon(Icons.translate_rounded, size: 18),
+                  const SizedBox(width: 10),
+                  Text(l.localeName.startsWith('es')
+                      ? 'Idioma de la factura'
+                      : 'Invoice language'),
+                ]),
+              ),
+            ],
+          ),
         HexoraButton(
           onPressed: onSaveDraft,
           label: saveLabel ?? l.invoiceSaveDraftCta,

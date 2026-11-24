@@ -664,6 +664,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
         ).toIso8601String(),
       if (notes.text.trim().isNotEmpty) 'notes': notes.text.trim(),
       if (currency.text.trim().isNotEmpty) 'currency': currency.text.trim(),
+      if (_documentLanguage != null) 'documentLanguage': _documentLanguage,
       ...buildDiscountPayload(),
       'blocks': blocks.map((b) => b.toJson()).toList(),
       if (!_useBlocks && draftLines.isNotEmpty) ...{
