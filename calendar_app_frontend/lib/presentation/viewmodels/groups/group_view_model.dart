@@ -301,6 +301,10 @@ class GroupEditorViewModel extends ChangeNotifier {
     } catch (e) {
       status = GroupEditorStatus.error;
       notifyListeners();
+      if (GroupMembershipErrorMapper.isOwnedGroupLimitError(e)) {
+        await ui.showOwnedBusinessLimit(3);
+        return;
+      }
       if (GroupMembershipErrorMapper.isManagedGroupLimitError(e)) {
         await ui.showManagedGroupLimit(
           GroupMembershipErrorContext.createGroup,

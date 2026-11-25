@@ -12,10 +12,14 @@ enum GroupMembershipErrorContext {
 
 const String _premiumRequiredMultiGroupCode = 'PREMIUM_REQUIRED_MULTI_GROUP';
 const String _managedGroupLimitCode = 'MANAGED_GROUP_LIMIT_REACHED';
+const String _ownedGroupLimitCode = 'OWNED_GROUP_LIMIT_REACHED';
 
 class GroupMembershipErrorMapper {
   static bool isManagedGroupLimitError(Object error) =>
       _matchesCode(error, _managedGroupLimitCode);
+
+  static bool isOwnedGroupLimitError(Object error) =>
+      _matchesCode(error, _ownedGroupLimitCode);
 
   static bool isPremiumMultiGroupError(Object error) {
     return _matchesCode(error, _premiumRequiredMultiGroupCode);

@@ -32,6 +32,9 @@ class NoopUiMessenger implements UiMessenger {
   @override
   Future<void> showManagedGroupLimit(
       GroupMembershipErrorContext errorContext) async {}
+
+  @override
+  Future<void> showOwnedBusinessLimit(int limit) async {}
 }
 
 final List<SingleChildWidget> editorProviders = [

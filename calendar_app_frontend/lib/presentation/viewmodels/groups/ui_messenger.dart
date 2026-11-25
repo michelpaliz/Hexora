@@ -9,6 +9,7 @@ abstract class UiMessenger {
   Future<void> showError(String message);
   Future<void> showPremiumRequired(GroupMembershipErrorContext errorContext);
   Future<void> showManagedGroupLimit(GroupMembershipErrorContext errorContext);
+  Future<void> showOwnedBusinessLimit(int limit);
   void pop(); // for simple back/close
 }
 
@@ -61,6 +62,16 @@ class MaterialUiMessenger implements UiMessenger {
     await showError(
       GroupMembershipErrorMapper.managedLimitMessageFor(l, errorContext),
     );
+  }
+
+  @override
+  Future<void> showOwnedBusinessLimit(int limit) async {
+    if (!context.mounted) return;
+    final isSpanish =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+    await showError(isSpanish
+        ? 'Puedes tener un máximo de $limit negocios propios.'
+        : 'You can own a maximum of $limit businesses.');
   }
 
   @override

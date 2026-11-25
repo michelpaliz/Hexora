@@ -166,6 +166,7 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
 
     final activosCount = all.where((g) => g.hasCalendar).length;
     final favCount = all.where((g) => _favorites.contains(g.id)).length;
+    final ownedCount = all.where((g) => g.ownerId == user.id).length;
 
     Iterable<Group> filtered = all;
     if (_query.isNotEmpty) {
@@ -186,7 +187,7 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _toolbar(all.length, activosCount, favCount),
+        _toolbar(all.length, activosCount, favCount, ownedCount),
         const SizedBox(height: 16),
         if (groups.isEmpty)
           Padding(
@@ -288,8 +289,15 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
   }
 
   // ── Toolbar (search · filters · create) ────────────────────────────────────
-  Widget _toolbar(int totalCount, int activosCount, int favCount) {
+  Widget _toolbar(
+    int totalCount,
+    int activosCount,
+    int favCount,
+    int ownedCount,
+  ) {
     final cs = Theme.of(context).colorScheme;
+    const ownedLimit = 3;
+    final reachedOwnedLimit = ownedCount >= ownedLimit;
 
     final search = ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 220, maxWidth: 420),
@@ -353,13 +361,28 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
       ],
     );
 
-    final createBtn = FilledButton.icon(
-      onPressed: _openCreateGroup,
-      icon: const Icon(Icons.add_rounded, size: 18),
-      label: Text(_isSpanish ? 'Crear negocio' : 'Create business'),
-      style: FilledButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    final createBtn = Tooltip(
+      message: reachedOwnedLimit
+          ? (_isSpanish
+              ? 'Has alcanzado el límite de $ownedLimit negocios propios.'
+              : 'You have reached the limit of $ownedLimit owned businesses.')
+          : (_isSpanish
+              ? '$ownedCount de $ownedLimit negocios propios'
+              : '$ownedCount of $ownedLimit owned businesses'),
+      child: FilledButton.icon(
+        onPressed: reachedOwnedLimit ? null : _openCreateGroup,
+        icon: Icon(
+          reachedOwnedLimit ? Icons.lock_outline_rounded : Icons.add_rounded,
+          size: 18,
+        ),
+        label: Text(reachedOwnedLimit
+            ? (_isSpanish ? 'Límite 3/3' : 'Limit 3/3')
+            : (_isSpanish ? 'Crear negocio' : 'Create business')),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       ),
     );
 
