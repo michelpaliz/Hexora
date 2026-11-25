@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
@@ -31,6 +32,7 @@ class NotificationDetailsPanel extends StatefulWidget {
     required this.onDelete,
     this.onMarkRead,
     this.onClose,
+    this.onOpenRecurrence,
   });
 
   final NotificationUser? notification;
@@ -42,6 +44,10 @@ class NotificationDetailsPanel extends StatefulWidget {
   final VoidCallback? onMarkRead;
   final VoidCallback? onDelete;
   final VoidCallback? onClose;
+
+  /// Opens the recurrence that generated a document, when navigation and
+  /// permissions allow it. Null hides the link.
+  final VoidCallback? onOpenRecurrence;
 
   @override
   State<NotificationDetailsPanel> createState() =>
@@ -288,393 +294,427 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
 
     final dim = cs.onSurface.withValues(alpha: 0.55);
 
+    final title = isEvent && args.eventTitle != null
+        ? args.eventTitle!
+        : n.getLocalizedTitle(l);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: SingleChildScrollView(
-            padding: NotifDensity.detailsPadding,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: meta.color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                      child: Icon(meta.icon, size: 18, color: meta.color),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isEvent && args.eventTitle != null
-                                ? args.eventTitle!
-                                : n.getLocalizedTitle(l),
-                            style: t.bodyMedium.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: ThemeColors.textPrimary(context),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            formatTimeDifference(n.timestamp, context),
-                            style:
-                                t.caption.copyWith(color: cs.onSurfaceVariant),
-                          ),
-                          const SizedBox(height: 4),
-                          Wrap(
-                            spacing: 4,
-                            runSpacing: 4,
-                            children: [
-                              if (!n.isRead)
-                                _Pill(
-                                  label: isEs ? 'No leída' : 'Unread',
-                                  color: meta.color,
-                                ),
-                              if (args.action != null)
-                                _Pill(
-                                  label: actionLabel(args.action, isEs: isEs),
-                                  color:
-                                      resolveActionMeta(args.action, cs).color,
-                                ),
-                              if (args.isDone == true)
-                                _Pill(
-                                  label: isEs ? 'Hecho' : 'Done',
-                                  color: Colors.green.shade600,
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (widget.onClose != null)
-                      IconButton(
-                        tooltip: MaterialLocalizations.of(context)
-                            .closeButtonTooltip,
-                        onPressed: widget.onClose,
-                        icon: const Icon(Icons.close_rounded, size: 18),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  n.getLocalizedMessage(l),
-                  style: t.bodyMedium.copyWith(
-                    color: ThemeColors.textSecondary(context),
-                    height: 1.35,
-                  ),
-                ),
-                if (isDocument)
-                  _DocumentDetails(
-                      notification: n,
-                      clientName: _resolvedClientName ?? args.clientName,
-                      creatorName: args.createdByName ??
-                          args.senderName ??
-                          args.ownerName ??
-                          _resolvedOwnerName),
-                if (!isDocument) ...[
-                  // ── Event section (always for event notifications) ────────────
-                  if (isBankExpenseNotification &&
-                      bankExpenseRows.isNotEmpty) ...[
-                    _SectionDivider(
-                      label: isEs ? 'Gastos detectados' : 'Detected expenses',
-                      cs: cs,
-                      t: t,
-                    ),
-                    _BankExpenseRowsSection(
-                      rows: bankExpenseRows,
-                      args: n.args,
-                      isEs: isEs,
-                    ),
-                  ] else if (isBankExpenseNotification) ...[
-                    _BankExpenseFallbackSummary(args: n.args, isEs: isEs),
-                  ],
-                  if (isEvent) ...[
-                    _SectionDivider(
-                        label: isEs ? 'Evento' : 'Event', cs: cs, t: t),
-                    if (args.eventTitle != null)
-                      _IconDetailRow(
-                        icon: Icons.event_rounded,
-                        label: isEs ? 'Nombre' : 'Name',
-                        value: args.eventTitle!,
-                        color: meta.color,
-                      ),
-                    _IconDetailRow(
-                      icon: Icons.person_add_rounded,
-                      label: isEs ? 'Creado por' : 'Created by',
-                      value: args.createdByName ??
-                          args.senderName ??
-                          args.ownerName ??
-                          _resolvedOwnerName ??
-                          _fallbackActorLabel(
-                            isEs: isEs,
-                            actorId: args.senderId ?? n.senderId,
-                          ),
-                      color: dim,
-                    ),
-                    if (args.eventId != null)
-                      _IconDetailRow(
-                        icon: Icons.tag_rounded,
-                        label: 'ID',
-                        value: args.eventId!,
-                        color: dim,
-                      ),
-                    if (args.eventType != null)
-                      _IconDetailRow(
-                        icon: resolveEventTypeMeta(args.eventType, cs).icon,
-                        label: isEs ? 'Tipo' : 'Type',
-                        value: eventTypeLabel(args.eventType, isEs: isEs),
-                        color: resolveEventTypeMeta(args.eventType, cs).color,
-                      ),
-                    if (args.status != null)
-                      _IconDetailRow(
-                        icon: resolveStatusMeta(args.status, cs).icon,
-                        label: isEs ? 'Estado' : 'Status',
-                        value: statusLabel(args.status, isEs: isEs),
-                        color: resolveStatusMeta(args.status, cs).color,
-                      ),
-                    if (args.isDone == true)
-                      _IconDetailRow(
-                        icon: Icons.task_alt_rounded,
-                        label: isEs ? 'Completado' : 'Completed',
-                        value: isEs ? 'Sí' : 'Yes',
-                        color: Colors.green.shade600,
-                      ),
-                    if (args.recurrenceRuleId != null)
-                      _IconDetailRow(
-                        icon: Icons.repeat_rounded,
-                        label: isEs ? 'Recurrencia' : 'Recurrence',
-                        value: args.recurrenceRuleId!,
-                        color: dim,
-                      ),
-                    if (args.categoryId != null)
-                      _IconDetailRow(
-                        icon: Icons.label_rounded,
-                        label: isEs ? 'Categoría' : 'Category',
-                        value: args.subcategoryId != null
-                            ? '${args.categoryId!} › ${args.subcategoryId!}'
-                            : args.categoryId!,
-                        color: dim,
-                      ),
-                  ],
-
-                  // ── Schedule ──────────────────────────────────────────────────────
-                  if (isEvent &&
-                      (args.startDate != null ||
-                          args.endDate != null ||
-                          args.allDay != null ||
-                          args.reminderTime != null)) ...[
-                    _SectionDivider(
-                        label: isEs ? 'Horario' : 'Schedule', cs: cs, t: t),
-                    if (args.allDay == true)
-                      _IconDetailRow(
-                        icon: Icons.wb_sunny_rounded,
-                        label: isEs ? 'Todo el día' : 'All day',
-                        value: isEs ? 'Sí' : 'Yes',
-                        color: Colors.amber.shade600,
-                      ),
-                    if (args.formattedStartDate(locale) != null)
-                      _IconDetailRow(
-                        icon: Icons.play_arrow_rounded,
-                        label: isEs ? 'Inicio' : 'Start',
-                        value: args.formattedStartDate(locale)!,
-                        trailing: relTime != null
-                            ? _Pill(label: relTime, color: meta.color)
-                            : null,
-                        color: meta.color,
-                      ),
-                    if (args.formattedEndDate(locale) != null)
-                      _IconDetailRow(
-                        icon: Icons.stop_rounded,
-                        label: isEs ? 'Fin' : 'End',
-                        value: args.formattedEndDate(locale)!,
-                        color: dim,
-                      ),
-                    if (args.formattedReminderTime(isEs: isEs) != null)
-                      _IconDetailRow(
-                        icon: Icons.alarm_rounded,
-                        label: isEs ? 'Recordatorio' : 'Reminder',
-                        value: args.formattedReminderTime(isEs: isEs)!,
-                        color: const Color(0xFFFF8F00),
-                      ),
-                  ],
-
-                  // ── Content ───────────────────────────────────────────────────────
-                  if (args.location != null ||
-                      args.localization != null ||
-                      args.description != null ||
-                      args.note != null) ...[
-                    _SectionDivider(
-                        label: isEs ? 'Contenido' : 'Content', cs: cs, t: t),
-                    if (args.location != null || args.localization != null)
-                      _IconDetailRow(
-                        icon: Icons.location_on_rounded,
-                        label: isEs ? 'Ubicación' : 'Location',
-                        value: args.location ?? args.localization!,
-                        color: dim,
-                      ),
-                    if (args.description != null)
-                      _IconDetailRow(
-                        icon: Icons.description_rounded,
-                        label: isEs ? 'Descripción' : 'Description',
-                        value: args.description!,
-                        color: dim,
-                      ),
-                    if (args.note != null)
-                      _IconDetailRow(
-                        icon: Icons.sticky_note_2_rounded,
-                        label: isEs ? 'Nota' : 'Note',
-                        value: args.note!,
-                        color: dim,
-                      ),
-                  ],
-
-                  // ── Work visit ────────────────────────────────────────────────────
-                  if (args.clientId != null ||
-                      args.clientName != null ||
-                      args.primaryServiceId != null ||
-                      args.stopId != null) ...[
-                    _SectionDivider(
-                        label: isEs ? 'Visita de trabajo' : 'Work visit',
-                        cs: cs,
-                        t: t),
-                    if (args.clientName != null || args.clientId != null)
-                      _IconDetailRow(
-                        icon: Icons.person_outline_rounded,
-                        label: isEs ? 'Cliente' : 'Client',
-                        value: _bestResolvedLabel(
-                              resolvedName: _resolvedClientName,
-                              payloadName: args.clientName,
-                              fallbackId: args.clientId,
-                            ) ??
-                            args.clientId!,
-                        color: dim,
-                      ),
-                    if (args.primaryServiceId != null ||
-                        _resolvedServiceName != null)
-                      _IconDetailRow(
-                        icon: Icons.home_repair_service_rounded,
-                        label: isEs ? 'Servicio' : 'Service',
-                        value: _bestResolvedLabel(
-                              resolvedName: _resolvedServiceName,
-                              payloadName: null,
-                              fallbackId: args.primaryServiceId,
-                            ) ??
-                            args.primaryServiceId!,
-                        color: dim,
-                      ),
-                    if (args.stopId != null)
-                      _IconDetailRow(
-                        icon: Icons.place_rounded,
-                        label: isEs ? 'Parada' : 'Stop',
-                        value: args.stopId!,
-                        color: dim,
-                      ),
-                  ],
-
-                  // ── Context ───────────────────────────────────────────────────────
-                  ExpansionTile(
-                    expansionAnimationStyle:
-                        HexoraMotion.expansionStyle(context),
-                    tilePadding: EdgeInsets.zero,
-                    childrenPadding: EdgeInsets.zero,
-                    title: Text(
-                      isEs ? 'Ver detalles' : 'View details',
-                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
-                    ),
+          // Both panels stay put; only the changing details fade in.
+          child: HexoraMenuContentTransition(
+            key: const ValueKey('notification-details-fade'),
+            transitionKey: n.id,
+            duration: NotifDensity.transition,
+            curve: HexoraMotion.enter,
+            initialOpacity: 0.55,
+            child: SingleChildScrollView(
+              key: ValueKey('notification-details-scroll-${n.id}'),
+              padding: NotifDensity.detailsPadding,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header: icon, title, timestamp and read status grouped, with
+                  // the close button aligned to the title line.
+                  Row(
+                    key: const ValueKey('notification-details-header'),
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: meta.color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Icon(meta.icon, size: 18, color: meta.color),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _IconDetailRow(
-                              icon: Icons.group_rounded,
-                              label: l.groupSectionTitle,
-                              value: widget.groupName,
-                              color: dim,
-                            ),
-                            if (args.ownerName != null || args.ownerId != null)
-                              _IconDetailRow(
-                                icon: Icons.manage_accounts_rounded,
-                                label: isEs ? 'Responsable' : 'Owner',
-                                value: _bestResolvedLabel(
-                                      resolvedName: _resolvedOwnerName,
-                                      payloadName: args.ownerName,
-                                      fallbackId: args.ownerId,
-                                    ) ??
-                                    args.ownerId!,
-                                color: dim,
+                            Text(
+                              title,
+                              key: const ValueKey('notification-details-title'),
+                              style: t.bodyMedium.copyWith(
+                                fontSize: 15.5,
+                                height: 1.3,
+                                fontWeight: FontWeight.w700,
+                                color: ThemeColors.textPrimary(context),
                               ),
-                            _IconDetailRow(
-                              icon: Icons.send_rounded,
-                              label: isEs ? 'Enviado por' : 'Sent by',
-                              value: args.senderName ??
-                                  args.ownerName ??
-                                  _fallbackActorLabel(
-                                    isEs: isEs,
-                                    actorId: args.senderId ?? n.senderId,
+                            ),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  formatTimeDifference(n.timestamp, context),
+                                  style: t.caption.copyWith(
+                                      color: NotifDensity.timestampColor(cs)),
+                                ),
+                                if (!n.isRead)
+                                  _Pill(
+                                    label: isEs ? 'No leída' : 'Unread',
+                                    color: cs.primary,
                                   ),
-                              color: dim,
-                            ),
-                            _IconDetailRow(
-                              icon: Icons.notifications_rounded,
-                              label: l.notifications,
-                              value: _localizedCategory(n.category, l),
-                              color: dim,
-                            ),
-                            _IconDetailRow(
-                              icon: Icons.access_time_rounded,
-                              label: isEs ? 'Recibida' : 'Received',
-                              value: formatTimeDifference(n.timestamp, context),
-                              color: dim,
-                            ),
-                            // Priority — always visible
-                            _IconDetailRow(
-                              icon: Icons.flag_rounded,
-                              label: isEs ? 'Prioridad' : 'Priority',
-                              value: switch (n.priority) {
-                                PriorityLevel.high => isEs ? 'Alta' : 'High',
-                                PriorityLevel.low => isEs ? 'Baja' : 'Low',
-                                PriorityLevel.medium =>
-                                  isEs ? 'Media' : 'Medium',
-                              },
-                              color: switch (n.priority) {
-                                PriorityLevel.high => Colors.red.shade600,
-                                PriorityLevel.low => Colors.grey.shade500,
-                                PriorityLevel.medium => dim,
-                              },
-                            ),
-                            // Notification type
-                            _IconDetailRow(
-                              icon: Icons.category_rounded,
-                              label: isEs ? 'Tipo de notif.' : 'Notif. type',
-                              value: switch (n.type) {
-                                NotificationType.alert =>
-                                  isEs ? 'Alerta' : 'Alert',
-                                NotificationType.reminder =>
-                                  isEs ? 'Recordatorio' : 'Reminder',
-                                NotificationType.message =>
-                                  isEs ? 'Mensaje' : 'Message',
-                                NotificationType.update =>
-                                  isEs ? 'Actualización' : 'Update',
-                              },
-                              color: dim,
+                                if (args.action != null)
+                                  _Pill(
+                                    label: actionLabel(args.action, isEs: isEs),
+                                    color: resolveActionMeta(args.action, cs)
+                                        .color,
+                                  ),
+                                if (args.isDone == true)
+                                  _Pill(
+                                    label: isEs ? 'Hecho' : 'Done',
+                                    color: Colors.green.shade600,
+                                  ),
+                              ],
                             ),
                           ],
                         ),
                       ),
+                      if (widget.onClose != null)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: IconButton(
+                            key: const ValueKey('notification-details-close'),
+                            tooltip: MaterialLocalizations.of(context)
+                                .closeButtonTooltip,
+                            onPressed: widget.onClose,
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            constraints: const BoxConstraints.tightFor(
+                                width: 30, height: 30),
+                            padding: EdgeInsets.zero,
+                            style: IconButton.styleFrom(
+                              foregroundColor: cs.onSurfaceVariant,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  Text(
+                    n.getLocalizedMessage(l),
+                    key: const ValueKey('notification-details-message'),
+                    style: t.bodyMedium.copyWith(
+                      color: ThemeColors.textSecondary(context),
+                      height: 1.4,
+                    ),
+                  ),
+                  if (isDocument)
+                    _DocumentDetails(
+                        notification: n,
+                        onOpenRecurrence: widget.onOpenRecurrence,
+                        clientName: _resolvedClientName ?? args.clientName,
+                        creatorName: args.createdByName ??
+                            args.senderName ??
+                            args.ownerName ??
+                            _resolvedOwnerName),
+                  if (!isDocument) ...[
+                    // ── Event section (always for event notifications) ────────────
+                    if (isBankExpenseNotification &&
+                        bankExpenseRows.isNotEmpty) ...[
+                      _SectionDivider(
+                        label: isEs ? 'Gastos detectados' : 'Detected expenses',
+                        cs: cs,
+                        t: t,
+                      ),
+                      _BankExpenseRowsSection(
+                        rows: bankExpenseRows,
+                        args: n.args,
+                        isEs: isEs,
+                      ),
+                    ] else if (isBankExpenseNotification) ...[
+                      _BankExpenseFallbackSummary(args: n.args, isEs: isEs),
+                    ],
+                    if (isEvent) ...[
+                      _SectionDivider(
+                          label: isEs ? 'Evento' : 'Event', cs: cs, t: t),
+                      // The event name is already the header title.
+                      if (args.eventTitle != null && args.eventTitle != title)
+                        _IconDetailRow(
+                          icon: Icons.event_rounded,
+                          label: isEs ? 'Nombre' : 'Name',
+                          value: args.eventTitle!,
+                          color: meta.color,
+                        ),
+                      _IconDetailRow(
+                        icon: Icons.person_add_rounded,
+                        label: isEs ? 'Creado por' : 'Created by',
+                        value: args.createdByName ??
+                            args.senderName ??
+                            args.ownerName ??
+                            _resolvedOwnerName ??
+                            _fallbackActorLabel(
+                              isEs: isEs,
+                              actorId: args.senderId ?? n.senderId,
+                            ),
+                        color: dim,
+                      ),
+                      if (args.eventId != null)
+                        _IconDetailRow(
+                          icon: Icons.tag_rounded,
+                          label: 'ID',
+                          value: args.eventId!,
+                          color: dim,
+                        ),
+                      if (args.eventType != null)
+                        _IconDetailRow(
+                          icon: resolveEventTypeMeta(args.eventType, cs).icon,
+                          label: isEs ? 'Tipo' : 'Type',
+                          value: eventTypeLabel(args.eventType, isEs: isEs),
+                          color: resolveEventTypeMeta(args.eventType, cs).color,
+                        ),
+                      if (args.status != null)
+                        _IconDetailRow(
+                          icon: resolveStatusMeta(args.status, cs).icon,
+                          label: isEs ? 'Estado' : 'Status',
+                          value: statusLabel(args.status, isEs: isEs),
+                          color: resolveStatusMeta(args.status, cs).color,
+                        ),
+                      if (args.isDone == true)
+                        _IconDetailRow(
+                          icon: Icons.task_alt_rounded,
+                          label: isEs ? 'Completado' : 'Completed',
+                          value: isEs ? 'Sí' : 'Yes',
+                          color: Colors.green.shade600,
+                        ),
+                      if (args.recurrenceRuleId != null)
+                        _IconDetailRow(
+                          icon: Icons.repeat_rounded,
+                          label: isEs ? 'Recurrencia' : 'Recurrence',
+                          value: args.recurrenceRuleId!,
+                          color: dim,
+                        ),
+                      if (args.categoryId != null)
+                        _IconDetailRow(
+                          icon: Icons.label_rounded,
+                          label: isEs ? 'Categoría' : 'Category',
+                          value: args.subcategoryId != null
+                              ? '${args.categoryId!} › ${args.subcategoryId!}'
+                              : args.categoryId!,
+                          color: dim,
+                        ),
+                    ],
+
+                    // ── Schedule ──────────────────────────────────────────────────────
+                    if (isEvent &&
+                        (args.startDate != null ||
+                            args.endDate != null ||
+                            args.allDay != null ||
+                            args.reminderTime != null)) ...[
+                      _SectionDivider(
+                          label: isEs ? 'Horario' : 'Schedule', cs: cs, t: t),
+                      if (args.allDay == true)
+                        _IconDetailRow(
+                          icon: Icons.wb_sunny_rounded,
+                          label: isEs ? 'Todo el día' : 'All day',
+                          value: isEs ? 'Sí' : 'Yes',
+                          color: Colors.amber.shade600,
+                        ),
+                      if (args.formattedStartDate(locale) != null)
+                        _IconDetailRow(
+                          icon: Icons.play_arrow_rounded,
+                          label: isEs ? 'Inicio' : 'Start',
+                          value: args.formattedStartDate(locale)!,
+                          trailing: relTime != null
+                              ? _Pill(label: relTime, color: meta.color)
+                              : null,
+                          color: meta.color,
+                        ),
+                      if (args.formattedEndDate(locale) != null)
+                        _IconDetailRow(
+                          icon: Icons.stop_rounded,
+                          label: isEs ? 'Fin' : 'End',
+                          value: args.formattedEndDate(locale)!,
+                          color: dim,
+                        ),
+                      if (args.formattedReminderTime(isEs: isEs) != null)
+                        _IconDetailRow(
+                          icon: Icons.alarm_rounded,
+                          label: isEs ? 'Recordatorio' : 'Reminder',
+                          value: args.formattedReminderTime(isEs: isEs)!,
+                          color: const Color(0xFFFF8F00),
+                        ),
+                    ],
+
+                    // ── Content ───────────────────────────────────────────────────────
+                    if (args.location != null ||
+                        args.localization != null ||
+                        args.description != null ||
+                        args.note != null) ...[
+                      _SectionDivider(
+                          label: isEs ? 'Contenido' : 'Content', cs: cs, t: t),
+                      if (args.location != null || args.localization != null)
+                        _IconDetailRow(
+                          icon: Icons.location_on_rounded,
+                          label: isEs ? 'Ubicación' : 'Location',
+                          value: args.location ?? args.localization!,
+                          color: dim,
+                        ),
+                      if (args.description != null)
+                        _IconDetailRow(
+                          icon: Icons.description_rounded,
+                          label: isEs ? 'Descripción' : 'Description',
+                          value: args.description!,
+                          color: dim,
+                        ),
+                      if (args.note != null)
+                        _IconDetailRow(
+                          icon: Icons.sticky_note_2_rounded,
+                          label: isEs ? 'Nota' : 'Note',
+                          value: args.note!,
+                          color: dim,
+                        ),
+                    ],
+
+                    // ── Work visit ────────────────────────────────────────────────────
+                    if (args.clientId != null ||
+                        args.clientName != null ||
+                        args.primaryServiceId != null ||
+                        args.stopId != null) ...[
+                      _SectionDivider(
+                          label: isEs ? 'Visita de trabajo' : 'Work visit',
+                          cs: cs,
+                          t: t),
+                      if (args.clientName != null || args.clientId != null)
+                        _IconDetailRow(
+                          icon: Icons.person_outline_rounded,
+                          label: isEs ? 'Cliente' : 'Client',
+                          value: _bestResolvedLabel(
+                                resolvedName: _resolvedClientName,
+                                payloadName: args.clientName,
+                                fallbackId: args.clientId,
+                              ) ??
+                              args.clientId!,
+                          color: dim,
+                        ),
+                      if (args.primaryServiceId != null ||
+                          _resolvedServiceName != null)
+                        _IconDetailRow(
+                          icon: Icons.home_repair_service_rounded,
+                          label: isEs ? 'Servicio' : 'Service',
+                          value: _bestResolvedLabel(
+                                resolvedName: _resolvedServiceName,
+                                payloadName: null,
+                                fallbackId: args.primaryServiceId,
+                              ) ??
+                              args.primaryServiceId!,
+                          color: dim,
+                        ),
+                      if (args.stopId != null)
+                        _IconDetailRow(
+                          icon: Icons.place_rounded,
+                          label: isEs ? 'Parada' : 'Stop',
+                          value: args.stopId!,
+                          color: dim,
+                        ),
+                    ],
+
+                    // ── Context ───────────────────────────────────────────────────────
+                    ExpansionTile(
+                      expansionAnimationStyle:
+                          HexoraMotion.expansionStyle(context),
+                      tilePadding: EdgeInsets.zero,
+                      childrenPadding: EdgeInsets.zero,
+                      title: Text(
+                        isEs ? 'Ver detalles' : 'View details',
+                        style:
+                            t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Column(
+                            children: [
+                              _IconDetailRow(
+                                icon: Icons.group_rounded,
+                                label: l.groupSectionTitle,
+                                value: widget.groupName,
+                                color: dim,
+                              ),
+                              if (args.ownerName != null ||
+                                  args.ownerId != null)
+                                _IconDetailRow(
+                                  icon: Icons.manage_accounts_rounded,
+                                  label: isEs ? 'Responsable' : 'Owner',
+                                  value: _bestResolvedLabel(
+                                        resolvedName: _resolvedOwnerName,
+                                        payloadName: args.ownerName,
+                                        fallbackId: args.ownerId,
+                                      ) ??
+                                      args.ownerId!,
+                                  color: dim,
+                                ),
+                              _IconDetailRow(
+                                icon: Icons.send_rounded,
+                                label: isEs ? 'Enviado por' : 'Sent by',
+                                value: args.senderName ??
+                                    args.ownerName ??
+                                    _fallbackActorLabel(
+                                      isEs: isEs,
+                                      actorId: args.senderId ?? n.senderId,
+                                    ),
+                                color: dim,
+                              ),
+                              _IconDetailRow(
+                                icon: Icons.notifications_rounded,
+                                label: l.notifications,
+                                value: _localizedCategory(n.category, l),
+                                color: dim,
+                              ),
+                              _IconDetailRow(
+                                icon: Icons.access_time_rounded,
+                                label: isEs ? 'Recibida' : 'Received',
+                                value:
+                                    formatTimeDifference(n.timestamp, context),
+                                color: dim,
+                              ),
+                              // Priority — always visible
+                              _IconDetailRow(
+                                icon: Icons.flag_rounded,
+                                label: isEs ? 'Prioridad' : 'Priority',
+                                value: switch (n.priority) {
+                                  PriorityLevel.high => isEs ? 'Alta' : 'High',
+                                  PriorityLevel.low => isEs ? 'Baja' : 'Low',
+                                  PriorityLevel.medium =>
+                                    isEs ? 'Media' : 'Medium',
+                                },
+                                color: switch (n.priority) {
+                                  PriorityLevel.high => Colors.red.shade600,
+                                  PriorityLevel.low => Colors.grey.shade500,
+                                  PriorityLevel.medium => dim,
+                                },
+                              ),
+                              // Notification type
+                              _IconDetailRow(
+                                icon: Icons.category_rounded,
+                                label: isEs ? 'Tipo de notif.' : 'Notif. type',
+                                value: switch (n.type) {
+                                  NotificationType.alert =>
+                                    isEs ? 'Alerta' : 'Alert',
+                                  NotificationType.reminder =>
+                                    isEs ? 'Recordatorio' : 'Reminder',
+                                  NotificationType.message =>
+                                    isEs ? 'Mensaje' : 'Message',
+                                  NotificationType.update =>
+                                    isEs ? 'Actualización' : 'Update',
+                                },
+                                color: dim,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -724,43 +764,81 @@ class _NotificationDetailsFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    const buttonSize = Size(0, 34);
+    final buttonShape =
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8));
+    final filled = FilledButton.styleFrom(
+      minimumSize: buttonSize,
+      fixedSize: const Size.fromHeight(34),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      shape: buttonShape,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+    );
+    final outlined = OutlinedButton.styleFrom(
+      minimumSize: buttonSize,
+      fixedSize: const Size.fromHeight(34),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      shape: buttonShape,
+      foregroundColor: cs.primary,
+      side: BorderSide(color: cs.primary.withValues(alpha: 0.4)),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+    );
+    final buttons = <Widget>[
+      if (hasActions) ...[
+        OutlinedButton(
+          onPressed: onNegate,
+          style: outlined,
+          child: Text(isEs ? 'Cancelar' : 'Cancel'),
+        ),
+        FilledButton(
+          onPressed: onConfirm,
+          style: filled,
+          child: Text(isEs ? 'Confirmar' : 'Confirm'),
+        ),
+      ] else ...[
+        // Secondary first, primary last: actions read right-to-left by
+        // importance.
+        if (onMarkRead != null)
+          OutlinedButton.icon(
+            key: const ValueKey('notification-mark-read'),
+            onPressed: onMarkRead,
+            style: outlined,
+            icon: const Icon(Icons.mark_email_read_outlined, size: 16),
+            label: Text(isEs ? 'Marcar como leída' : 'Mark as read'),
+          ),
+        if (onOpen != null)
+          FilledButton.icon(
+            key: const ValueKey('notification-open'),
+            onPressed: onOpen,
+            style: filled,
+            icon: const Icon(Icons.open_in_new_rounded, size: 16),
+            label: Text(openLabel ?? (isEs ? 'Abrir' : 'Open')),
+          ),
+      ],
+    ];
+    // Transparent so the panel's light-blue canvas runs underneath; only a
+    // hairline separates the fixed action bar from the scrolling details.
     return Container(
+      key: const ValueKey('notification-details-footer'),
       padding: NotifDensity.footerPadding,
       decoration: BoxDecoration(
-        color: cs.surface,
         border: Border(
-          top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
+          top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
         ),
       ),
       child: Row(
         children: [
-          if (hasActions) ...[
-            OutlinedButton(
-              onPressed: onNegate,
-              child: Text(isEs ? 'Cancelar' : 'Cancel'),
+          Expanded(
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: buttons,
             ),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: onConfirm,
-              child: Text(isEs ? 'Confirmar' : 'Confirm'),
-            ),
-          ] else ...[
-            if (onOpen != null)
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: onOpen,
-                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                  label: Text(openLabel ?? (isEs ? 'Abrir' : 'Open')),
-                ),
-              ),
-            if (onOpen != null && onMarkRead != null) const SizedBox(width: 8),
-            if (onMarkRead != null)
-              OutlinedButton.icon(
-                onPressed: onMarkRead,
-                icon: const Icon(Icons.mark_email_read_outlined, size: 16),
-                label: Text(isEs ? 'Marcar como leída' : 'Mark as read'),
-              ),
-          ],
+          ),
           const SizedBox(width: 4),
           PopupMenuButton<String>(
             tooltip: isEs ? 'Más acciones' : 'More actions',
@@ -782,7 +860,8 @@ class _NotificationDetailsFooter extends StatelessWidget {
                 ),
               ),
             ],
-            icon: const Icon(Icons.more_horiz_rounded),
+            icon: Icon(Icons.more_horiz_rounded,
+                size: 20, color: cs.onSurfaceVariant),
           ),
         ],
       ),
@@ -1130,6 +1209,7 @@ class _IconDetailRow extends StatelessWidget {
     required this.value,
     required this.color,
     this.trailing,
+    this.emphasis = false,
   });
 
   final IconData icon;
@@ -1137,6 +1217,12 @@ class _IconDetailRow extends StatelessWidget {
   final String value;
   final Color color;
   final Widget? trailing;
+
+  /// Slightly stronger value for key facts such as client and amount.
+  final bool emphasis;
+
+  /// Fixed label column so every value starts on the same vertical line.
+  static const double labelWidth = 118;
 
   @override
   Widget build(BuildContext context) {
@@ -1147,17 +1233,29 @@ class _IconDetailRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(icon, size: 14, color: color),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: labelWidth,
+            child: Text(label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: t.caption.copyWith(color: cs.onSurfaceVariant)),
+          ),
+          const SizedBox(width: 8),
           Expanded(
-              flex: 2,
-              child: Text(label,
-                  style: t.caption.copyWith(color: cs.onSurfaceVariant))),
-          const SizedBox(width: 12),
-          Expanded(
-              flex: 3,
-              child: Text(value,
-                  style: t.bodySmall.copyWith(color: cs.onSurface))),
+            child: Text(
+              value,
+              style: t.bodySmall.copyWith(
+                color: cs.onSurface,
+                fontSize: emphasis ? 13.5 : null,
+                fontWeight: emphasis ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ),
           if (trailing != null) ...[
             const SizedBox(width: 6),
             trailing!,
@@ -1208,17 +1306,24 @@ class _SectionDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Label only — no decorative rule — matching the compact list headings.
+    // A hairline opens each metadata group, followed by its small label.
     return Padding(
-      padding: const EdgeInsets.only(top: 12, bottom: 5),
-      child: Text(
-        label.toUpperCase(),
-        style: t.caption.copyWith(
-          fontWeight: FontWeight.w700,
-          color: NotifDensity.sectionLabelColor(cs),
-          letterSpacing: NotifDensity.sectionLabelSpacing,
-          fontSize: NotifDensity.sectionLabelSize,
-        ),
+      padding: const EdgeInsets.only(top: 12, bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.55)),
+          const SizedBox(height: 10),
+          Text(
+            label.toUpperCase(),
+            style: t.caption.copyWith(
+              fontWeight: FontWeight.w700,
+              color: NotifDensity.sectionLabelColor(cs),
+              letterSpacing: NotifDensity.sectionLabelSpacing,
+              fontSize: NotifDensity.sectionLabelSize,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1234,17 +1339,52 @@ String _localizedCategory(Category category, AppLocalizations loc) {
   }
 }
 
+/// User-facing label for raw document / payment status values.
+String documentStatusLabel(String raw, {required bool isEs}) {
+  final key = raw.trim().toLowerCase().replaceAll(RegExp(r'[\s-]+'), '_');
+  final label = switch (key) {
+    'draft' => isEs ? 'Borrador' : 'Draft',
+    'issued' || 'emitted' => isEs ? 'Emitida' : 'Issued',
+    'sent' => isEs ? 'Enviada' : 'Sent',
+    'paid' => isEs ? 'Pagada' : 'Paid',
+    'partially_paid' ||
+    'partial' =>
+      isEs ? 'Pagada parcialmente' : 'Partially paid',
+    'unpaid' => isEs ? 'Pendiente de pago' : 'Unpaid',
+    'pending' => isEs ? 'Pendiente' : 'Pending',
+    'overdue' => isEs ? 'Vencida' : 'Overdue',
+    'cancelled' ||
+    'canceled' ||
+    'void' ||
+    'voided' =>
+      isEs ? 'Anulada' : 'Cancelled',
+    'rectified' => isEs ? 'Rectificada' : 'Rectified',
+    'confirmed' => isEs ? 'Confirmado' : 'Confirmed',
+    'completed' => isEs ? 'Completado' : 'Completed',
+    _ => null,
+  };
+  if (label != null) return label;
+  final text = raw.trim().replaceAll('_', ' ');
+  return text.isEmpty ? text : '${text[0].toUpperCase()}${text.substring(1)}';
+}
+
 class _DocumentDetails extends StatelessWidget {
-  const _DocumentDetails(
-      {required this.notification, this.clientName, this.creatorName});
+  const _DocumentDetails({
+    required this.notification,
+    this.clientName,
+    this.creatorName,
+    this.onOpenRecurrence,
+  });
   final NotificationUser notification;
   final String? clientName;
   final String? creatorName;
+  final VoidCallback? onOpenRecurrence;
 
   @override
   Widget build(BuildContext context) {
     final es = Localizations.localeOf(context).languageCode == 'es';
     final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
     final n = notification;
     String? value(List<String> keys) {
       for (final key in keys) {
@@ -1259,11 +1399,22 @@ class _DocumentDetails extends StatelessWidget {
       return null;
     }
 
-    Widget row(IconData icon, String label, String? text) => _IconDetailRow(
-        icon: icon,
-        label: label,
-        value: text ?? '—',
-        color: cs.onSurfaceVariant);
+    String? clean(String? text) =>
+        text == null || text.trim().isEmpty ? null : text.trim();
+
+    // Optional fields render only when they carry a value; the event title is
+    // not repeated because it is already the panel header.
+    Widget? row(IconData icon, String label, String? text,
+            {bool emphasis = false}) =>
+        clean(text) == null
+            ? null
+            : _IconDetailRow(
+                icon: icon,
+                label: label,
+                value: clean(text)!,
+                color: cs.onSurfaceVariant,
+                emphasis: emphasis,
+              );
     final rawAmount = value(['amount', 'totalAmount', 'amountTotal', 'total']);
     final amount = num.tryParse(rawAmount ?? '');
     final currency = value(['currency']) ?? 'EUR';
@@ -1281,58 +1432,139 @@ class _DocumentDetails extends StatelessWidget {
     final receipt = RegExp('receipt|recibo')
         .hasMatch('${n.titleKey} ${n.fallbackTitle}'.toLowerCase());
     final locale = Localizations.localeOf(context).toString();
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8),
-          child: Divider(height: 1)),
-      row(Icons.info_outline, es ? 'Evento' : 'Event',
-          n.getLocalizedTitle(AppLocalizations.of(context)!)),
-      row(Icons.person_add_outlined, es ? 'Creado por' : 'Created by',
-          creatorName),
-      row(Icons.person_outline, es ? 'Cliente' : 'Client', clientName),
-      row(
-          Icons.payments_outlined,
-          es ? 'Importe' : 'Amount',
-          amount == null
-              ? rawAmount
-              : NumberFormat.simpleCurrency(locale: locale, name: currency)
-                  .format(amount)),
-      row(Icons.calendar_today_outlined, es ? 'Fecha de emisión' : 'Issue date',
-          date == null ? rawDate : DateFormat.yMMMd(locale).format(date)),
-      row(Icons.credit_card_outlined, es ? 'Método de pago' : 'Payment method',
-          value(['paymentMethodName', 'paymentMethod'])),
-      row(Icons.check_circle_outline, es ? 'Estado' : 'Status',
-          value(['paymentStatus', 'status'])),
-      const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8),
-          child: Divider(height: 1)),
-      row(Icons.notes_outlined, es ? 'Notas' : 'Notes', value(['notes'])),
-      row(Icons.receipt_long_outlined, es ? 'Referencia' : 'Reference',
-          reference),
-      row(Icons.description_outlined, es ? 'Tipo' : 'Type',
-          receipt ? (es ? 'Recibo' : 'Receipt') : (es ? 'Factura' : 'Invoice')),
-      if (value(['relatedInvoiceNumber', 'relatedDocumentNumber']) != null)
+    final rawStatus = value(['paymentStatus', 'status']);
+
+    final summary = <Widget>[
+      for (final w in [
+        row(Icons.person_outline, es ? 'Cliente' : 'Client', clientName,
+            emphasis: true),
+        row(
+            Icons.payments_outlined,
+            es ? 'Importe' : 'Amount',
+            amount == null
+                ? rawAmount
+                : NumberFormat.simpleCurrency(locale: locale, name: currency)
+                    .format(amount),
+            emphasis: true),
+        row(
+            Icons.calendar_today_outlined,
+            es ? 'Fecha de emisión' : 'Issue date',
+            date == null ? rawDate : DateFormat.yMMMd(locale).format(date)),
+        row(
+            Icons.check_circle_outline,
+            es ? 'Estado' : 'Status',
+            rawStatus == null
+                ? null
+                : documentStatusLabel(rawStatus, isEs: es)),
+        row(
+            Icons.credit_card_outlined,
+            es ? 'Método de pago' : 'Payment method',
+            value(['paymentMethodName', 'paymentMethod'])),
+      ])
+        if (w != null) w,
+    ];
+    final details = <Widget>[
+      for (final w in [
+        row(
+            Icons.description_outlined,
+            es ? 'Tipo' : 'Type',
+            receipt
+                ? (es ? 'Recibo' : 'Receipt')
+                : (es ? 'Factura' : 'Invoice')),
+        row(Icons.receipt_long_outlined, es ? 'Referencia' : 'Reference',
+            reference),
         row(Icons.link, es ? 'Relacionado con' : 'Related to',
             value(['relatedInvoiceNumber', 'relatedDocumentNumber'])),
+        row(Icons.person_add_outlined, es ? 'Creado por' : 'Created by',
+            creatorName),
+        row(Icons.notes_outlined, es ? 'Notas' : 'Notes', value(['notes'])),
+      ])
+        if (w != null) w,
+    ];
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (recurring != null)
-        Container(
-            margin: const EdgeInsets.only(top: 16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-                color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(10)),
-            child: Row(children: [
-              Icon(Icons.info_outline, size: 18, color: cs.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                  child: Text(
-                      es
-                          ? 'Documento de la recurrencia: $recurring'
-                          : 'Recurring document: $recurring',
-                      style: AppTypography.of(context)
-                          .bodySmall
-                          .copyWith(color: cs.onPrimaryContainer)))
-            ])),
+        _RecurrenceBanner(
+          name: recurring,
+          isEs: es,
+          onOpen: onOpenRecurrence,
+        ),
+      if (summary.isNotEmpty) ...[
+        _SectionDivider(label: es ? 'Documento' : 'Document', cs: cs, t: t),
+        ...summary,
+      ],
+      if (details.isNotEmpty) ...[
+        _SectionDivider(label: es ? 'Detalles' : 'Details', cs: cs, t: t),
+        ...details,
+      ],
     ]);
+  }
+}
+
+class _RecurrenceBanner extends StatelessWidget {
+  const _RecurrenceBanner({
+    required this.name,
+    required this.isEs,
+    this.onOpen,
+  });
+
+  final String name;
+  final bool isEs;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    return Container(
+      key: const ValueKey('notification-recurrence-banner'),
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
+      decoration: BoxDecoration(
+        color: cs.primary
+            .withValues(alpha: cs.brightness == Brightness.dark ? 0.14 : 0.07),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.14)),
+      ),
+      child: Row(children: [
+        Icon(Icons.info_outline_rounded, size: 16, color: cs.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isEs ? 'Documento de la recurrencia' : 'Recurring document',
+                style: t.caption.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                name,
+                key: const ValueKey('notification-recurrence-name'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (onOpen != null)
+          TextButton(
+            key: const ValueKey('notification-open-recurrence'),
+            onPressed: onOpen,
+            style: TextButton.styleFrom(
+              minimumSize: const Size(0, 30),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              textStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+            ),
+            child: Text(isEs ? 'Ver recurrencia' : 'View recurrence'),
+          ),
+      ]),
+    );
   }
 }

@@ -35,6 +35,7 @@ import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.d
 import 'package:hexora/presentation/shared/widgets/dialogs/premium_upgrade_dialog.dart';
 import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/presentation/viewmodels/notifications/notification_view_model.dart';
 import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -561,6 +562,17 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
     };
   }
 
+  /// Opens the invoices workspace on the recurrences list (receipts or
+  /// invoices). Only offered when the notification already has an allowed
+  /// destination in this group, so it follows the same permission gate.
+  void _openRecurrences(NotificationUser notification) {
+    final isReceipt = RegExp('receipt|recibo').hasMatch(
+        '${notification.titleKey} ${notification.fallbackTitle}'.toLowerCase());
+    context.read<GroupDashboardState>().openInvoicesWorkspace(
+          initialMenu: isReceipt ? 'recurring_receipts' : 'recurring',
+        );
+  }
+
   Future<void> _openNotification(NotificationUser notification) async {
     final destination = _openDestination(notification);
     if (destination == null) return;
@@ -845,6 +857,9 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
     final l = AppLocalizations.of(context)!;
     final t = Theme.of(context).textTheme;
     final isWide = MediaQuery.sizeOf(context).width >= 1180;
+    final notificationCanvas = Theme.of(context).brightness == Brightness.light
+        ? AppColors.workspaceCanvas
+        : Theme.of(context).colorScheme.surface;
 
     Widget body;
     if (_loading) {
@@ -1079,6 +1094,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                                 showBorder: false,
                                 showToolbarDivider: false,
                                 contentTopPadding: inlineHeaderActions ? 6 : 8,
+                                backgroundColor: notificationCanvas,
                                 actions: inlineHeaderActions
                                     ? const []
                                     : [
@@ -1089,14 +1105,32 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                                 child: listWithFilter,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            // Same 12 px gap as before (widths unchanged),
+                            // with a hairline instead of a white seam.
+                            SizedBox(
+                              key: const ValueKey(
+                                  'notifications-panels-divider'),
+                              width: 12,
+                              child: Center(
+                                child: Container(
+                                  width: 1,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .outlineVariant
+                                      .withValues(alpha: 0.6),
+                                ),
+                              ),
+                            ),
                             Expanded(
                               flex: 2,
                               child: FolderPanel(
+                                key: const ValueKey(
+                                    'notification-details-folder'),
                                 title: null,
                                 showTab: false,
                                 showBorder: false,
                                 contentTopPadding: 0,
+                                backgroundColor: notificationCanvas,
                                 actions: [
                                   if (!_downloadsMode &&
                                       !_ocrJobsMode &&
@@ -1165,6 +1199,11 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                                                 ? null
                                                 : () => setState(() =>
                                                     _detailsClosed = true),
+                                            onOpenRecurrence:
+                                                selectedDestination == null
+                                                    ? null
+                                                    : () => _openRecurrences(
+                                                        effectiveSelected!),
                                           ),
                               ),
                             ),
@@ -1183,6 +1222,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                   showBorder: false,
                   showToolbarDivider: false,
                   contentTopPadding: inlineHeaderActions ? 6 : 44,
+                  backgroundColor: notificationCanvas,
                   actions: inlineHeaderActions
                       ? const []
                       : [

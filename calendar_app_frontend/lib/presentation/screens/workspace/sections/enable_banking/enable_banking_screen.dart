@@ -4,11 +4,13 @@ import 'package:hexora/presentation/screens/workspace/premium/premium_feature_ac
 import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:provider/provider.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 
 import 'enable_banking_controller.dart';
 import 'enable_banking_left_nav.dart';
@@ -538,15 +540,20 @@ class _EnableBankingViewState extends State<_EnableBankingView>
       child: LayoutBuilder(
         builder: (context, constraints) {
           final autoCollapse = constraints.maxWidth < 1100;
-          final collapsed = _sidebarCollapsedManual ?? autoCollapse;
+          final forceIconOnly =
+              context.watch<UserPreferencesProvider>().navigationDisplayMode ==
+                  NavigationDisplayMode.iconsOnly;
+          final collapsed =
+              forceIconOnly || (_sidebarCollapsedManual ?? autoCollapse);
           return Row(
             children: [
               EnableBankingLeftNav(
                 selected: _selectedMenu,
                 onSelect: (menu) => setState(() => _selectedMenu = menu),
                 collapsed: collapsed,
-                onToggleCollapse: () =>
-                    setState(() => _sidebarCollapsedManual = !collapsed),
+                onToggleCollapse: () => forceIconOnly
+                    ? null
+                    : setState(() => _sidebarCollapsedManual = !collapsed),
               ),
               Expanded(
                 child: WorkspaceMainContent(

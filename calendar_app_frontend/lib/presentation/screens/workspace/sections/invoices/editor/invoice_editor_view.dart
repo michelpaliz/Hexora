@@ -1119,7 +1119,10 @@ class _InvoiceEditorView extends StatelessWidget {
                         ),
                       ),
                       HexoraDocumentFooter(
-                        compact: true,
+                        // Keep the creation actions in the fixed editor footer;
+                        // the step content above remains independently scrollable.
+                        compact: false,
+                        showStatusWhenNarrow: true,
                         status: _InvoiceDraftStatusChip(
                           controller: state._c,
                           t: t,

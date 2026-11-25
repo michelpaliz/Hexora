@@ -50,7 +50,13 @@ void main() {
       expect(find.text('Visita de trabajo'), findsNothing);
       await tester.ensureVisible(find.text('Marcar como leída'));
       await tester.tap(find.text('Marcar como leída'));
+      // Delete lives in the "more actions" menu and asks for confirmation.
+      await tester.tap(find.byTooltip('Más acciones'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Eliminar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Eliminar'));
+      await tester.pumpAndSettle();
       expect(read, 1);
       expect(deleted, 1);
       expect(tester.takeException(), isNull);

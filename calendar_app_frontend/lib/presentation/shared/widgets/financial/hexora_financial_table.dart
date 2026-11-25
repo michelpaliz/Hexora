@@ -376,6 +376,7 @@ class _HexoraMultiSelectFilterState extends State<HexoraMultiSelectFilter> {
 
   @override
   Widget build(BuildContext context) {
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
     final normalizedQuery = _normalized(_query);
     final visibleValues = normalizedQuery.isEmpty
         ? widget.values
@@ -437,7 +438,40 @@ class _HexoraMultiSelectFilterState extends State<HexoraMultiSelectFilter> {
               ),
               onChanged: (value) => setState(() => _query = value),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: visibleValues.isEmpty
+                      ? null
+                      : () {
+                          setState(() => _selected.addAll(visibleValues));
+                          widget.onChanged(Set.of(_selected));
+                        },
+                  icon: const Icon(Icons.select_all_rounded, size: 15),
+                  label: Text(isEs ? 'Seleccionar todos' : 'Select all'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: _selected.isEmpty
+                      ? null
+                      : () {
+                          setState(_selected.clear);
+                          widget.onChanged(<String>{});
+                        },
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                  ),
+                  child: Text(isEs ? 'Limpiar' : 'Clear'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
             list,
             const SizedBox(height: 4),
             Text(

@@ -7,7 +7,9 @@ List<InlineSpan> markdownBoldSpans({
 }) {
   final sanitized = sanitizeModelOutput(text);
   final spans = <InlineSpan>[];
-  final pattern = RegExp(r'\*\*(.+?)\*\*');
+  final pattern = RegExp(
+    r'\*\*(.+?)\*\*|`([^`\n]+)`|([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ&/-]*(?: [\wÁÉÍÓÚÑáéíóúñ&/-]+){0,2}\s*>\s*[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ&/-]*(?: [\wÁÉÍÓÚÑáéíóúñ&/-]+){0,2})',
+  );
   var lastEnd = 0;
 
   for (final match in pattern.allMatches(sanitized)) {
@@ -17,11 +19,27 @@ List<InlineSpan> markdownBoldSpans({
         style: baseStyle,
       ));
     }
-    final boldText = match.group(1) ?? '';
-    if (boldText.isNotEmpty) {
+    final boldText = match.group(1);
+    final inlineCode = match.group(2);
+    final navigationPath = match.group(3);
+    if (boldText?.isNotEmpty ?? false) {
       spans.add(TextSpan(
         text: boldText,
         style: baseStyle.copyWith(fontWeight: FontWeight.w800),
+      ));
+    } else if (inlineCode?.isNotEmpty ?? false) {
+      spans.add(TextSpan(
+        text: inlineCode,
+        style: baseStyle.copyWith(
+          fontFamily: 'monospace',
+          fontWeight: FontWeight.w600,
+          backgroundColor: baseStyle.color?.withValues(alpha: 0.07),
+        ),
+      ));
+    } else if (navigationPath?.isNotEmpty ?? false) {
+      spans.add(TextSpan(
+        text: navigationPath,
+        style: baseStyle.copyWith(fontWeight: FontWeight.w700),
       ));
     }
     lastEnd = match.end;
@@ -38,6 +56,16 @@ List<InlineSpan> markdownBoldSpans({
     spans.add(TextSpan(text: sanitized, style: baseStyle));
   }
   return spans;
+}
+
+/// Improves scanability of conversational assistant prose without changing
+/// its wording. Existing paragraphs and list formatting remain untouched.
+String formatAssistantProse(String input) {
+  final sanitized = sanitizeModelOutput(input);
+  return sanitized.replaceAllMapped(
+    RegExp(r'([.!?])\s+(?=¿)'),
+    (match) => '${match.group(1)}\n\n',
+  );
 }
 
 String sanitizeModelOutput(String input) {

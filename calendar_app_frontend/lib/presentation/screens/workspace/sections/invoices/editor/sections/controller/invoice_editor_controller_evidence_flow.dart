@@ -858,7 +858,14 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
         dismissLabel: l.invoiceDraftSnackDismiss,
       );
     } catch (e) {
-      debugPrint('[InvoicePreview] $e');
+      if (e is InvoicesApiException) {
+        debugPrint(
+          '[InvoiceDraft] ${e.method} ${e.url} failed '
+          '(${e.statusCode}): ${e.message}',
+        );
+      } else {
+        debugPrint('[InvoiceDraft] save failed: $e');
+      }
       if (!context.mounted) return;
       final isEs = Localizations.localeOf(context).languageCode == 'es';
       final issuedMessage = editingIssued && e is InvoicesApiException
@@ -995,7 +1002,9 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
               : _draftLinesPayloadFromBlocks(_sanitizeBlocks(blocks)).length)
           : _useBlocks
               ? _draftLinesPayloadFromBlocks(_sanitizeBlocks(blocks)).length
-              : await _syncLinesForInvoice(inv.id);
+              : (inv.lines.isNotEmpty
+                  ? inv.lines.length
+                  : _billableLineDrafts().length);
       if (count == 0 && !editingIssued) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1003,7 +1012,29 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
         );
         return;
       }
-      final r = await _invoicesApi.previewPdf(inv.id);
+      final invoiceId = inv.id.trim();
+      if (invoiceId.isEmpty) {
+        throw Exception(l.invoicePdfPreviewFailedSnack);
+      }
+      // Draft creation and the PDF projection are eventually consistent on
+      // the server. Give the preview endpoint a brief chance to see the new
+      // draft before surfacing an error to the user.
+      http.Response? previewResponse;
+      Object? previewError;
+      for (var attempt = 0; attempt < 3; attempt++) {
+        try {
+          previewResponse = await _invoicesApi.previewPdf(invoiceId);
+          break;
+        } catch (error) {
+          previewError = error;
+          if (attempt == 2 || !error.toString().contains('404')) rethrow;
+          await Future<void>.delayed(const Duration(milliseconds: 350));
+        }
+      }
+      if (previewResponse == null) {
+        throw previewError ?? Exception('Preview unavailable');
+      }
+      final r = previewResponse;
       final Uint8List bytes = InvoiceEditorPdf.validatePdf(r);
 
       _previewPdfBytes = bytes;
@@ -1098,7 +1129,9 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
       savedInvoice = inv;
       final count = _useBlocks
           ? _draftLinesPayloadFromBlocks(_sanitizeBlocks(blocks)).length
-          : await _syncLinesForInvoice(inv.id);
+          : (inv.lines.isNotEmpty
+              ? inv.lines.length
+              : _billableLineDrafts().length);
       if (count == 0) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

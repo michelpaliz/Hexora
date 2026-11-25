@@ -10,6 +10,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_runtime.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_sheet.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
 import 'package:provider/provider.dart';
 
 class InsightsChatFab extends StatefulWidget {
@@ -159,10 +160,14 @@ class _InsightsChatFabState extends State<InsightsChatFab> {
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => allowed
+      builder: (sheetContext) => allowed
           ? InsightsChatSheet(
               groupId: widget.groupId,
               runtime: _runtime,
+              onOpenNewInvoice: () {
+                Navigator.of(sheetContext).pop();
+                _openNewInvoice(context);
+              },
             )
           : PremiumFeatureRequestScreen(
               group: widget.group,
@@ -170,6 +175,26 @@ class _InsightsChatFabState extends State<InsightsChatFab> {
               embedded: true,
             ),
     );
+  }
+
+  void _openNewInvoice(BuildContext context) {
+    try {
+      context.read<GroupDashboardState>().openInvoicesWorkspace(
+            initialMenu: 'invoice_editor',
+          );
+      return;
+    } catch (_) {
+      final group = widget.group;
+      if (group == null) return;
+      Navigator.pushNamed(
+        context,
+        AppRoutes.groupIncome,
+        arguments: <String, dynamic>{
+          'group': group,
+          'initialMenu': 'invoice_editor',
+        },
+      );
+    }
   }
 }
 
@@ -183,10 +208,14 @@ class InsightsChatPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dashboard = context.read<GroupDashboardState>();
     return InsightsChatSheet(
       groupId: groupId,
       embedded: true,
       runtime: InsightsChatRuntime.instanceFor('panel::$groupId'),
+      onOpenNewInvoice: () => dashboard.openInvoicesWorkspace(
+        initialMenu: 'invoice_editor',
+      ),
     );
   }
 }

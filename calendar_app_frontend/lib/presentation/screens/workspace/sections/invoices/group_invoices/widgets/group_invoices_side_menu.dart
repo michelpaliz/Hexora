@@ -44,6 +44,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
   final String selectedMenu;
   final ValueChanged<String> onMenuChanged;
   final bool collapsed;
+  final bool forceCollapsed;
   final bool compactMode;
   final bool showOperations;
   final VoidCallback onToggleCollapse;
@@ -74,6 +75,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
     required this.selectedMenu,
     required this.onMenuChanged,
     required this.collapsed,
+    this.forceCollapsed = false,
     this.compactMode = false,
     required this.showOperations,
     required this.onToggleCollapse,
@@ -235,7 +237,8 @@ class GroupInvoicesSideMenu extends StatelessWidget {
         width: menuWidth,
         child: SidebarEdgeShell(
           collapsed: true,
-          onToggle: onToggleCollapse,
+          onToggle: forceCollapsed ? null : onToggleCollapse,
+          showHandle: !forceCollapsed,
           child: Column(
             children: [
               Expanded(

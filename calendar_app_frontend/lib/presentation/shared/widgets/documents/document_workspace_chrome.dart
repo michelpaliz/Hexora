@@ -17,6 +17,7 @@ class HexoraDocumentToolbar extends StatefulWidget {
     required this.actions,
     this.searchSemanticLabel,
     this.searchMaxWidth = 320,
+    this.centerSearch = false,
   });
 
   final Widget statusTabs;
@@ -27,6 +28,7 @@ class HexoraDocumentToolbar extends StatefulWidget {
   final Widget actions;
   final String? searchSemanticLabel;
   final double searchMaxWidth;
+  final bool centerSearch;
 
   @override
   State<HexoraDocumentToolbar> createState() => _HexoraDocumentToolbarState();
@@ -59,39 +61,63 @@ class _HexoraDocumentToolbarState extends State<HexoraDocumentToolbar> {
       textField: true,
       label: widget.searchSemanticLabel ?? widget.searchHint,
       child: SizedBox(
-        height: 36,
+        height: widget.centerSearch ? 40 : 36,
         child: TextField(
           controller: _controller,
           onChanged: widget.onSearchChanged,
           textInputAction: TextInputAction.search,
+          textAlignVertical: TextAlignVertical.center,
+          maxLines: 1,
           style:
               Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5),
           decoration: InputDecoration(
+            constraints: widget.centerSearch
+                ? const BoxConstraints.tightFor(height: 40)
+                : null,
             hintText: widget.searchHint,
+            hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 12.5,
+                  color: cs.onSurfaceVariant,
+                ),
             prefixIcon: const Icon(Icons.search_rounded, size: 18),
             suffixIcon: widget.searchValue.isEmpty
                 ? null
                 : IconButton(
-                    tooltip: 'Clear search',
+                    tooltip:
+                        Localizations.localeOf(context).languageCode == 'es'
+                            ? 'Limpiar búsqueda'
+                            : 'Clear search',
                     onPressed: () {
                       _controller.clear();
                       widget.onSearchChanged('');
                     },
                     icon: const Icon(Icons.close_rounded, size: 16),
                   ),
-            prefixIconConstraints: const BoxConstraints(minWidth: 36),
+            prefixIconConstraints: BoxConstraints(
+              minWidth: widget.centerSearch ? 44 : 36,
+              minHeight: widget.centerSearch ? 40 : 36,
+            ),
+            suffixIconConstraints: const BoxConstraints.tightFor(
+              width: 40,
+              height: 36,
+            ),
             isDense: true,
             filled: true,
-            fillColor: cs.surface.withValues(alpha: .55),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            fillColor: widget.centerSearch
+                ? cs.primary.withValues(alpha: .045)
+                : cs.surface.withValues(alpha: .55),
+            contentPadding: widget.centerSearch
+                ? const EdgeInsets.symmetric(horizontal: 14)
+                : const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(9),
               borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(9),
-              borderSide: BorderSide.none,
+              borderSide: widget.centerSearch
+                  ? BorderSide(color: cs.outlineVariant.withValues(alpha: .5))
+                  : BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(9),
@@ -106,69 +132,126 @@ class _HexoraDocumentToolbarState extends State<HexoraDocumentToolbar> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final singleRow = constraints.maxWidth >= 1100 &&
-            MediaQuery.textScalerOf(context).scale(14) <= 18;
-        final content = singleRow
-            ? SizedBox(
-                height: 40,
+        final singleRow =
+            constraints.maxWidth >= (widget.centerSearch ? 1280 : 1100) &&
+                MediaQuery.textScalerOf(context).scale(14) <= 18;
+        final centeredRow = SizedBox(
+          height: 44,
+          child: Row(
+            children: [
+              Expanded(
                 child: Row(
                   children: [
                     Flexible(child: widget.statusTabs),
                     if (widget.viewSwitcher != null) ...[
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       widget.viewSwitcher!,
                     ],
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: ConstrainedBox(
-                        constraints:
-                            BoxConstraints(maxWidth: widget.searchMaxWidth),
-                        child: search,
-                      ),
-                    ),
-                    const Spacer(),
-                    widget.actions,
                   ],
                 ),
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    height: 36,
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: (constraints.maxWidth * .30)
+                    .clamp(320.0, widget.searchMaxWidth),
+                child: search,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: widget.actions,
+                ),
+              ),
+            ],
+          ),
+        );
+        final content = singleRow && widget.centerSearch
+            ? centeredRow
+            : singleRow
+                ? SizedBox(
+                    height: 40,
                     child: Row(
                       children: [
-                        Expanded(
-                          child: ClipRect(
-                            child: Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: widget.statusTabs,
-                            ),
-                          ),
-                        ),
+                        Flexible(child: widget.statusTabs),
+                        if (widget.viewSwitcher != null) ...[
+                          const SizedBox(width: 6),
+                          widget.viewSwitcher!,
+                        ],
                         const SizedBox(width: 6),
                         Flexible(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            reverse: true,
-                            child: widget.actions,
+                          child: ConstrainedBox(
+                            constraints:
+                                BoxConstraints(maxWidth: widget.searchMaxWidth),
+                            child: search,
                           ),
                         ),
+                        const Spacer(),
+                        widget.actions,
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 5),
-                  Row(
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (widget.viewSwitcher != null) ...[
-                        widget.viewSwitcher!,
-                        const SizedBox(width: 6),
-                      ],
-                      Expanded(child: search),
+                      SizedBox(
+                        height: 36,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ClipRect(
+                                child: Align(
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: widget.statusTabs,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                reverse: true,
+                                child: widget.actions,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          if (widget.viewSwitcher != null) ...[
+                            widget.viewSwitcher!,
+                            const SizedBox(width: 6),
+                          ],
+                          Expanded(
+                            child: widget.centerSearch
+                                ? Center(
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        maxWidth: widget.searchMaxWidth,
+                                      ),
+                                      child: search,
+                                    ),
+                                  )
+                                : search,
+                          ),
+                          if (widget.centerSearch &&
+                              widget.viewSwitcher != null)
+                            Visibility(
+                              visible: false,
+                              maintainSize: true,
+                              maintainAnimation: true,
+                              maintainState: true,
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: widget.viewSwitcher!,
+                              ),
+                            ),
+                        ],
+                      ),
                     ],
-                  ),
-                ],
-              );
+                  );
 
         return AnimatedSize(
           duration: HexoraMotion.duration(context, HexoraMotion.standard),

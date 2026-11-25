@@ -32,6 +32,19 @@ class BusinessBillingSettings {
   }
 }
 
+class BusinessBillingSettingsApiException implements Exception {
+  const BusinessBillingSettingsApiException({
+    required this.statusCode,
+    required this.message,
+  });
+
+  final int statusCode;
+  final String message;
+
+  @override
+  String toString() => 'Exception: $message';
+}
+
 class BusinessBillingSettingsApi {
   Uri _uri(String groupId) => Uri.parse(
         '${ApiConstants.baseUrl}/groups/$groupId/billing-settings',
@@ -63,6 +76,9 @@ class BusinessBillingSettingsApi {
     final message = decoded is Map && decoded['message'] != null
         ? decoded['message'].toString()
         : 'Unable to load billing settings ($statusCode)';
-    throw Exception(message);
+    throw BusinessBillingSettingsApiException(
+      statusCode: statusCode,
+      message: message,
+    );
   }
 }

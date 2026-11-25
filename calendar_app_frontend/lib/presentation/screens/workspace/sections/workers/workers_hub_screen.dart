@@ -3,6 +3,7 @@ import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -24,6 +25,7 @@ import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/l10n/build_context_locale.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:provider/provider.dart';
 
 enum _WorkersSection {
@@ -106,6 +108,10 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
             })>
         navItems,
   ) {
+    final forceIconOnly =
+        context.watch<UserPreferencesProvider>().navigationDisplayMode ==
+            NavigationDisplayMode.iconsOnly;
+    final collapsed = forceIconOnly || _sideMenuCollapsed;
     return Row(
       children: [
         Theme(
@@ -113,13 +119,15 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
-            width:
-                _sideMenuCollapsed ? _collapsedMenuWidth : _expandedMenuWidth,
+            width: collapsed ? _collapsedMenuWidth : _expandedMenuWidth,
             child: SidebarEdgeShell(
-              collapsed: _sideMenuCollapsed,
-              onToggle: () => setState(
-                () => _sideMenuCollapsed = !_sideMenuCollapsed,
-              ),
+              collapsed: collapsed,
+              onToggle: forceIconOnly
+                  ? null
+                  : () => setState(
+                        () => _sideMenuCollapsed = !_sideMenuCollapsed,
+                      ),
+              showHandle: !forceIconOnly,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -134,7 +142,7 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
                               icon: item.icon,
                               label: item.label,
                               isSelected: _section == item.section,
-                              collapsed: _sideMenuCollapsed,
+                              collapsed: collapsed,
                               onTap: () => setState(
                                 () => _section = item.section,
                               ),

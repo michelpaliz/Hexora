@@ -361,9 +361,9 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                         : Column(
                             children: [
                               Container(
-                                height: 30,
+                                height: 36,
                                 padding: const EdgeInsetsDirectional.fromSTEB(
-                                    12, 0, 8, 0),
+                                    12, 0, 12, 0),
                                 decoration: BoxDecoration(
                                   color: cs.surfaceContainerLow
                                       .withValues(alpha: .7),
@@ -383,9 +383,9 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                                     final showStatus =
                                         constraints.maxWidth >= 500;
                                     return Row(children: [
-                                      const SizedBox(width: 36),
+                                      const SizedBox(width: 34),
                                       Expanded(
-                                        flex: showType ? 5 : 1,
+                                        flex: showType ? 40 : 1,
                                         child: _SortHeader(
                                           label: isEs ? 'Cliente' : 'Client',
                                           active: !_sortByType,
@@ -427,7 +427,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                                       ),
                                       if (showType)
                                         Expanded(
-                                          flex: 3,
+                                          flex: 25,
                                           child: _SortHeader(
                                             label: isEs ? 'Tipo' : 'Type',
                                             active: _sortByType,
@@ -511,7 +511,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                                         ),
                                       if (showProperty)
                                         Expanded(
-                                          flex: 3,
+                                          flex: 20,
                                           child: _SortHeader(
                                             label:
                                                 isEs ? 'Inmueble' : 'Property',
@@ -590,8 +590,8 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                                           ),
                                         ),
                                       if (showStatus)
-                                        Expanded(
-                                          flex: 2,
+                                        SizedBox(
+                                          width: 100,
                                           child: _SortHeader(
                                             label: isEs ? 'Estado' : 'Status',
                                             active: effectiveStatus != 'all',
@@ -669,9 +669,16 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                                           ),
                                         ),
                                       SizedBox(
-                                        width: widget.onAddClient != null
-                                            ? 110
-                                            : 84,
+                                        width: (showStatus ? 0 : 32) +
+                                            (widget.onAddClient != null
+                                                ? 32
+                                                : 0) +
+                                            (widget.onRefresh != null
+                                                ? 32
+                                                : 0) +
+                                            (widget.onCollapse != null
+                                                ? 32
+                                                : 0),
                                         child: Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.end,
@@ -690,7 +697,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                                                 constraints:
                                                     const BoxConstraints
                                                         .tightFor(
-                                                  width: 26,
+                                                  width: 32,
                                                   height: 26,
                                                 ),
                                               ),
@@ -719,7 +726,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                                                 constraints:
                                                     const BoxConstraints
                                                         .tightFor(
-                                                  width: 26,
+                                                  width: 32,
                                                   height: 26,
                                                 ),
                                               ),
@@ -768,7 +775,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                                                 constraints:
                                                     const BoxConstraints
                                                         .tightFor(
-                                                  width: 26,
+                                                  width: 32,
                                                   height: 26,
                                                 ),
                                               ),
@@ -843,10 +850,25 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                                         client: c,
                                         selected:
                                             widget.selectedClient?.id == c.id,
-                                        showType: constraints.maxWidth >= 390,
+                                        actionsWidth:
+                                            (constraints.maxWidth - 24 >= 500
+                                                    ? 0
+                                                    : 32) +
+                                                (widget.onAddClient != null
+                                                    ? 32
+                                                    : 0) +
+                                                (widget.onRefresh != null
+                                                    ? 32
+                                                    : 0) +
+                                                (widget.onCollapse != null
+                                                    ? 32
+                                                    : 0),
+                                        showType:
+                                            constraints.maxWidth - 24 >= 390,
                                         showProperty:
-                                            constraints.maxWidth >= 560,
-                                        showStatus: constraints.maxWidth >= 500,
+                                            constraints.maxWidth - 24 >= 560,
+                                        showStatus:
+                                            constraints.maxWidth - 24 >= 500,
                                         onTap: () => widget.onSelectClient(c),
                                         onEdit: widget.onEditClient == null
                                             ? null
@@ -1153,6 +1175,7 @@ class _ClientRow extends StatelessWidget {
     required this.showProperty,
     required this.showStatus,
     required this.onTap,
+    this.actionsWidth = 32,
     this.onEdit,
   });
 
@@ -1162,6 +1185,7 @@ class _ClientRow extends StatelessWidget {
   final bool showProperty;
   final bool showStatus;
   final VoidCallback onTap;
+  final double actionsWidth;
   final VoidCallback? onEdit;
 
   @override
@@ -1171,6 +1195,10 @@ class _ClientRow extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final name = client.name.trim();
     final type = _ClientsListPanelState._clientType(client);
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final shortType = type.toLowerCase() == 'comunidad de propietarios'
+        ? (isEs ? 'Com. propietarios' : 'Owners’ assoc.')
+        : type;
     final property = (client.effectivePropertyType ?? '').trim();
     final propertyLabel =
         property.isEmpty ? '' : clientClassificationLabel(property);
@@ -1199,74 +1227,82 @@ class _ClientRow extends StatelessWidget {
           key: ValueKey('client-sidebar-avatar-${client.id}'),
           name: client.name,
           emphasized: selected,
+          size: 28,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Expanded(
-          flex: showType ? 5 : 1,
-          child: Tooltip(
-            message: name,
-            waitDuration: const Duration(milliseconds: 500),
-            child: Text(
-              name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: textTheme.bodySmall?.copyWith(
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color: cs.onSurface,
-              ),
-            ),
-          ),
+          flex: showType ? 40 : 1,
+          child: Padding(
+              padding: const EdgeInsetsDirectional.only(end: 10),
+              child: Tooltip(
+                message: name,
+                waitDuration: const Duration(milliseconds: 500),
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall?.copyWith(
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    color: cs.onSurface,
+                  ),
+                ),
+              )),
         ),
         if (showType)
           Expanded(
-            flex: 3,
-            child: Row(children: [
-              Expanded(
-                child: Tooltip(
-                  message: type,
-                  child: Text(
-                    type,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ),
-            ]),
-          ),
-        if (showProperty)
-          Expanded(
-            flex: 3,
-            child: Row(
-              children: [
-                if (propertyLabel.isNotEmpty && !propertyRepeatsType) ...[
-                  Icon(LucideIcons.house, size: 14, color: cs.onSurfaceVariant),
-                  const SizedBox(width: 5),
-                ],
-                Expanded(
-                  child: Tooltip(
-                    message: propertyLabel,
-                    waitDuration: const Duration(milliseconds: 500),
-                    child: Text(
-                      propertyLabel.isEmpty || propertyRepeatsType
-                          ? '—'
-                          : propertyLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.labelSmall?.copyWith(
-                        color: cs.onSurfaceVariant,
+            flex: 25,
+            child: Padding(
+                padding: const EdgeInsetsDirectional.only(end: 10),
+                child: Row(children: [
+                  Expanded(
+                    child: Tooltip(
+                      message: type,
+                      child: Text(
+                        shortType,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ])),
+          ),
+        if (showProperty)
+          Expanded(
+            flex: 20,
+            child: Padding(
+                padding: const EdgeInsetsDirectional.only(end: 10),
+                child: Row(
+                  children: [
+                    if (propertyLabel.isNotEmpty && !propertyRepeatsType) ...[
+                      Icon(LucideIcons.house,
+                          size: 14, color: cs.onSurfaceVariant),
+                      const SizedBox(width: 5),
+                    ],
+                    Expanded(
+                      child: Tooltip(
+                        message: propertyLabel,
+                        waitDuration: const Duration(milliseconds: 500),
+                        child: Text(
+                          propertyLabel.isEmpty || propertyRepeatsType
+                              ? '—'
+                              : propertyLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )),
           ),
         if (showStatus)
-          Expanded(
-            flex: 2,
+          SizedBox(
+            width: 100,
             child: Row(
               children: [
                 Container(
@@ -1297,7 +1333,7 @@ class _ClientRow extends StatelessWidget {
             ),
           ),
         SizedBox(
-          width: 70,
+          width: actionsWidth,
           child: Align(
             alignment: AlignmentDirectional.centerEnd,
             child: PopupMenuButton<_ClientRowAction>(

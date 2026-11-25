@@ -38,6 +38,7 @@ class BillingAddressForm extends StatelessWidget {
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,
+              comfortable: true,
               label: l.addressStreet,
               prefixIcon: const Icon(Icons.home_outlined),
               isRequired: requireBilling,
@@ -53,7 +54,7 @@ class BillingAddressForm extends StatelessWidget {
             },
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 20),
         Focus(
           onFocusChange: (hasFocus) {
             if (!hasFocus) onFieldBlur('billingExtra');
@@ -63,6 +64,7 @@ class BillingAddressForm extends StatelessWidget {
             style: text.bodyLarge,
             decoration: buildInputDecoration(
               context,
+              comfortable: true,
               label: l.addressExtra,
               prefixIcon: const Icon(Icons.location_city_outlined),
               isFilled: c.billingExtra.text.trim().isNotEmpty,
@@ -70,8 +72,9 @@ class BillingAddressForm extends StatelessWidget {
             onChanged: (_) => onFieldChanged(),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 20),
         ClientFormFields(
+            gap: 20,
             first: Focus(
               onFocusChange: (hasFocus) {
                 if (!hasFocus) onFieldBlur('billingCity');
@@ -82,6 +85,7 @@ class BillingAddressForm extends StatelessWidget {
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 decoration: buildInputDecoration(
                   context,
+                  comfortable: true,
                   label: l.addressCity,
                   prefixIcon: const Icon(Icons.location_city_rounded),
                   isRequired: c.isBillingRequired('billingCity'),
@@ -110,6 +114,7 @@ class BillingAddressForm extends StatelessWidget {
                 style: text.bodyLarge,
                 decoration: buildInputDecoration(
                   context,
+                  comfortable: true,
                   label: l.addressProvince,
                   prefixIcon: const Icon(Icons.map_outlined),
                   isFilled: c.billingProvince.text.trim().isNotEmpty,
@@ -117,8 +122,9 @@ class BillingAddressForm extends StatelessWidget {
                 onChanged: (_) => onFieldChanged(),
               ),
             )),
-        const SizedBox(height: 8),
+        const SizedBox(height: 20),
         ClientFormFields(
+            gap: 20,
             first: Focus(
               onFocusChange: (hasFocus) {
                 if (!hasFocus) onFieldBlur('billingPostal');
@@ -129,6 +135,7 @@ class BillingAddressForm extends StatelessWidget {
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 decoration: buildInputDecoration(
                   context,
+                  comfortable: true,
                   label: l.addressPostalCode,
                   prefixIcon: const Icon(Icons.local_post_office_outlined),
                   isRequired: c.isBillingRequired('billingPostal'),
@@ -162,6 +169,7 @@ class BillingAddressForm extends StatelessWidget {
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 decoration: buildInputDecoration(
                   context,
+                  comfortable: true,
                   label: l.addressCountry,
                   prefixIcon: const Icon(Icons.public),
                   isRequired: c.isBillingRequired('billingCountry'),

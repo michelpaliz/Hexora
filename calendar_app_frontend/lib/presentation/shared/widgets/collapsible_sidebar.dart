@@ -1,7 +1,10 @@
 import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
+import 'package:hexora/models/user/user_preferences.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 
 /// Navigation entry rendered by [CollapsibleSidebar].
@@ -70,9 +73,20 @@ class CollapsibleSidebarShell extends StatelessWidget {
         data: navigationTheme(Theme.of(context)),
         child: Builder(
           builder: (navigationContext) {
+            UserPreferencesProvider? preferences;
+            try {
+              preferences = navigationContext.watch<UserPreferencesProvider>();
+            } on ProviderNotFoundException {
+              // Standalone sidebars (including focused widget tests) do not
+              // always provide workspace preferences.
+            }
+            final forceIconsOnly = !drawer &&
+                preferences?.navigationDisplayMode ==
+                    NavigationDisplayMode.iconsOnly;
+            final effectiveCollapsed = collapsed || forceIconsOnly;
             final width = drawer
                 ? double.infinity
-                : collapsed
+                : effectiveCollapsed
                     ? collapsedWidth
                     : expandedWidth;
             return AnimatedContainer(
@@ -87,8 +101,10 @@ class CollapsibleSidebarShell extends StatelessWidget {
                   final cs = Theme.of(context).colorScheme;
                   return SidebarEdgeShell(
                     collapsed: layoutCollapsed,
-                    onToggle: drawer ? null : onToggleCollapsed,
-                    showHandle: !drawer && !collapsedToggleInRail,
+                    onToggle:
+                        drawer || forceIconsOnly ? null : onToggleCollapsed,
+                    showHandle:
+                        !drawer && !collapsedToggleInRail && !forceIconsOnly,
                     expandTooltip: expandTooltip,
                     collapseTooltip: collapseTooltip,
                     toggleKey: const ValueKey('collapsible-sidebar-toggle'),

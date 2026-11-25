@@ -45,6 +45,8 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
               MediaQuery.textScalerOf(context).scale(14) > 18;
 
           return HexoraDocumentToolbar(
+            centerSearch: true,
+            searchMaxWidth: 500,
             statusTabs: leading ?? const SizedBox.shrink(),
             viewSwitcher: const DocumentLayoutSelector(
               key: ValueKey('invoice-layout-selector'),

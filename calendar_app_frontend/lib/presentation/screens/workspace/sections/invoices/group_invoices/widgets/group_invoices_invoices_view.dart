@@ -151,6 +151,7 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
         valueListenable: _splitModeNotifier,
         builder: (context, mode, child) => DocumentSplitView(
           storageKey: 'invoices',
+          initialListFraction: 0.70,
           modeNotifier: _splitModeNotifier,
           selectionKey: widget.selectedInvoice?.id,
           list: DefaultTabController(

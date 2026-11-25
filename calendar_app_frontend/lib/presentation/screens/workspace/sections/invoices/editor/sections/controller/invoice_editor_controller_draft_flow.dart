@@ -75,17 +75,12 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
         final updated =
             await _invoicesApi.updateDraft(_editingDraftId!, payload);
 
-        var updatedLines = updated.lines;
-        if (hasBillableEntries) {
-          updatedLines = await _replaceLinesForInvoice(_editingDraftId!);
-          if (!_useBlocks) {
-            final drafts = _billableLineDrafts();
-            for (var i = 0; i < drafts.length && i < updatedLines.length; i++) {
-              drafts[i].id = updatedLines[i].id;
-              drafts[i].evidenceBlobName = updatedLines[i].evidenceBlobName;
-            }
-          }
-        }
+        // updateDraft already receives `draftLines` in its payload. Calling the
+        // legacy /lines endpoint again can return 404 on deployments where
+        // line persistence is handled by the draft endpoint itself.
+        final updatedLines = updated.lines.isNotEmpty
+            ? updated.lines
+            : _draftLinesForInvoice(_editingDraftId!);
         _savedInvoice = updated.copyWith(
           lines: updatedLines,
           blocks: blocksPayload,
@@ -136,24 +131,13 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
       debugPrint('[InvoiceDraft] create payload: $payload');
       final created = await _invoicesApi.create(invoice);
       debugPrint('[InvoiceDraft] create response: ${created.toJson()}');
-      try {
-        final fetched = await _invoicesApi.getById(created.id);
-        debugPrint('[InvoiceDraft] fetched response: ${fetched.toJson()}');
-      } catch (e) {
-        debugPrint('[InvoiceDraft] fetch failed: $e');
-      }
-
-      var createdLines = created.lines;
-      if (hasBillableEntries) {
-        createdLines = await _replaceLinesForInvoice(created.id);
-        if (!_useBlocks) {
-          final drafts = _billableLineDrafts();
-          for (var i = 0; i < drafts.length && i < createdLines.length; i++) {
-            drafts[i].id = createdLines[i].id;
-            drafts[i].evidenceBlobName = createdLines[i].evidenceBlobName;
-          }
-        }
-      }
+      // The creation payload includes `draftLines` (or `blocks`). The server
+      // persists them with the draft, so avoid a second legacy /lines request.
+      // Some API versions omit lines from the create response; retain the local
+      // draft lines in that case so the editor stays coherent.
+      final createdLines = created.lines.isNotEmpty
+          ? created.lines
+          : _draftLinesForInvoice(created.id);
       _savedInvoice = created.copyWith(
         lines: createdLines,
         blocks: sanitizedBlocks,

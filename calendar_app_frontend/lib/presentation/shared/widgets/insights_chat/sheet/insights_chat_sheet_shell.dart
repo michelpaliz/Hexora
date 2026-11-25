@@ -1,19 +1,19 @@
-import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:hexora/presentation/shared/widgets/panels/hexora_side_panel.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
+import 'package:hexora/services/insights/insights_api.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/components/hexora_ai_output_tokens.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/theme/themes/theme_variant.dart';
-import 'package:hexora/l10n/app_localizations.dart';
-import 'package:hexora/services/insights/insights_api.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
-import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 
 import '../insights_chat_enums.dart';
 import '../insights_chat_message.dart';
@@ -622,7 +622,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
           backgroundColor: cs.primary.withValues(alpha: 0.08),
         );
 
-    Widget buildOptionsButton() => PopupMenuButton<String>(
+    Widget buildOptionsButton({Widget? child}) => PopupMenuButton<String>(
           tooltip: isEs ? 'Opciones del asistente' : 'Assistant options',
           onSelected: (value) async {
             switch (value) {
@@ -744,17 +744,21 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
               ),
             ),
           ],
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            alignment: Alignment.center,
-            child:
-                Icon(Icons.tune_rounded, size: 17, color: cs.onSurfaceVariant),
-          ),
+          child: child ??
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.tune_rounded,
+                  size: 17,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
         );
 
     Widget buildDateRangeChip() {
@@ -834,10 +838,11 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
         widget.embedded && MediaQuery.of(context).size.width >= 1180;
 
     Widget buildInteractionModeTabs() => Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxWidth < 420;
+              final showAssistantLabel = constraints.maxWidth >= 520;
               final selector = Container(
                 height: 34,
                 decoration: BoxDecoration(
@@ -918,10 +923,9 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                       child: IntrinsicWidth(child: selector),
                     )
                   : IntrinsicWidth(child: selector);
-              return Row(
+              final actions = Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  tabs,
-                  const Spacer(),
                   if (isDesktopEmbedded)
                     PopupMenuButton<int>(
                       tooltip: isEs
@@ -992,7 +996,54 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                       minimumSize: const Size(34, 34),
                     ),
                   ),
-                  buildOptionsButton(),
+                ],
+              );
+              return Row(
+                children: [
+                  if (widget.embedded) ...[
+                    buildOptionsButton(
+                      child: Container(
+                        height: 34,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: showAssistantLabel ? 10 : 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.auto_awesome_rounded,
+                              size: 19,
+                              color: cs.primary,
+                            ),
+                            if (showAssistantLabel) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                isEs ? 'Asistente IA' : 'AI assistant',
+                                style: t.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: cs.onSurface,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.expand_more_rounded,
+                                size: 17,
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                  ],
+                  tabs,
+                  const Spacer(),
+                  actions,
                 ],
               );
             },
@@ -1480,6 +1531,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
             onExportExcel: exportAction == null || exportingMessageKey != null
                 ? null
                 : () => exportMessageToExcel(message),
+            onStructuredTableTap: () => selectAssistantMessage(message),
+            onOpenNewInvoice: widget.onOpenNewInvoice,
             showInlineMenuActions: true,
           );
         },
@@ -1941,12 +1994,84 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        l.insightsChatTitle,
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          color: cs.onSurface,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: PopupMenuButton<String>(
+                          tooltip: isEs
+                              ? 'Opciones del asistente'
+                              : 'Assistant options',
+                          onSelected: (value) {
+                            switch (value) {
+                              case 'context':
+                                showContextDays();
+                              case 'activity':
+                                showActionHistory();
+                              case 'clear':
+                                if (!sending) confirmClearChat();
+                            }
+                          },
+                          itemBuilder: (menuContext) => [
+                            PopupMenuItem<String>(
+                              value: 'context',
+                              child: _assistantHeaderMenuItem(
+                                Icons.tune_rounded,
+                                isEs
+                                    ? 'Contexto del asistente'
+                                    : 'Assistant context',
+                              ),
+                            ),
+                            PopupMenuItem<String>(
+                              value: 'activity',
+                              child: _assistantHeaderMenuItem(
+                                Icons.history_rounded,
+                                isEs
+                                    ? 'Actividad del asistente'
+                                    : 'Assistant activity',
+                              ),
+                            ),
+                            PopupMenuItem<String>(
+                              value: 'clear',
+                              enabled: !sending,
+                              child: _assistantHeaderMenuItem(
+                                Icons.delete_outline_rounded,
+                                isEs
+                                    ? 'Borrar conversación'
+                                    : 'Clear conversation',
+                                destructive: true,
+                              ),
+                            ),
+                          ],
+                          child: Semantics(
+                            button: true,
+                            label: isEs
+                                ? 'Abrir opciones del asistente'
+                                : 'Open assistant options',
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 6,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    l.insightsChatTitle,
+                                    style: t.bodySmall.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
+                                      color: cs.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    size: 18,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -2197,6 +2322,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                     exportAction == null || exportingMessageKey != null
                         ? null
                         : () => exportMessageToExcel(message),
+                onStructuredTableTap: () => selectAssistantMessage(message),
+                onOpenNewInvoice: widget.onOpenNewInvoice,
                 showInlineMenuActions: false,
               );
             },
@@ -2277,6 +2404,11 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                   onToggle: () => setState(() =>
                                       desktopChatPaneCollapsed =
                                           !desktopChatPaneCollapsed),
+                                  // The embedded AI workspace keeps its chat
+                                  // pane available at all times. Its resize
+                                  // divider remains, but the floating compact
+                                  // control is intentionally not shown.
+                                  showHandle: false,
                                   backgroundColor: panelBg,
                                   expandTooltip:
                                       isEs ? 'Mostrar chat' : 'Show chat',
@@ -2784,6 +2916,22 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _assistantHeaderMenuItem(
+    IconData icon,
+    String label, {
+    bool destructive = false,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final color = destructive ? cs.error : cs.onSurfaceVariant;
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 10),
+        Text(label, style: TextStyle(color: destructive ? cs.error : null)),
+      ],
     );
   }
 }

@@ -605,7 +605,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
           ],
           const SizedBox(height: 6),
           CompactDocumentTableHeader(
-            identityLabel: 'Factura',
+            identityLabel:
+                l.localeName.startsWith('es') ? 'Factura' : 'Invoice',
             visibleFinancialColumns: _visibleFinancialColumns,
             showDeliveryColumn: true,
             invoiceColumnOrder: true,

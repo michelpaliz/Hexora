@@ -430,7 +430,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('unified header suppresses the repeated contextual icon',
+  testWidgets('unified header is the only row for a module without children',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
@@ -438,23 +438,23 @@ void main() {
           width: 220,
           height: 320,
           child: SidebarHeaderScope(
-            builder: (_, __) => const SizedBox(
+            builder: (_, __) => const Row(
               key: ValueKey('unified-module-switcher'),
+              children: [
+                Icon(Icons.home_outlined),
+                Text('Inicio'),
+              ],
             ),
             child: const SecondarySidebarTopInsetScope(
               topInset: 0,
               title: 'Inicio',
               icon: Icons.home_outlined,
-              child: SidebarEdgeShell(
+              child: CollapsibleSidebar(
+                title: 'Inicio',
+                headerIcon: Icons.home_outlined,
                 collapsed: false,
-                onToggle: _noop,
-                child: SidebarItem(
-                  icon: Icons.home_outlined,
-                  label: 'Inicio',
-                  isSelected: true,
-                  collapsed: false,
-                  onTap: _noop,
-                ),
+                onToggleCollapsed: _noop,
+                items: [],
               ),
             ),
           ),

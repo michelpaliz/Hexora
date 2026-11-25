@@ -66,12 +66,12 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
         ? '$total movimientos'
         : '$total ${total == 1 ? 'movement' : 'movements'}';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+    return Ink(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
-        color: cs.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.20)),
+        color: cs.primary.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
       ),
       child: Row(
         children: [

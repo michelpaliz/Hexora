@@ -32,11 +32,13 @@ class InsightsChatSheet extends StatefulWidget {
     required this.groupId,
     required this.runtime,
     this.embedded = false,
+    this.onOpenNewInvoice,
   });
 
   final String groupId;
   final InsightsChatRuntime runtime;
   final bool embedded;
+  final VoidCallback? onOpenNewInvoice;
 
   @override
   State<InsightsChatSheet> createState() => _InsightsChatSheetState();

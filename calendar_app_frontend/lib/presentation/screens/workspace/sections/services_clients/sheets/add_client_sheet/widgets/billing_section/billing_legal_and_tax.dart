@@ -82,6 +82,7 @@ class BillingLegalAndTax extends StatelessWidget {
     return Column(
       children: [
         ClientFormFields(
+          gap: 20,
           first: Focus(
             onFocusChange: (hasFocus) {
               if (!hasFocus) onFieldBlur('billingLegalName');
@@ -92,6 +93,7 @@ class BillingLegalAndTax extends StatelessWidget {
               autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: buildInputDecoration(
                 context,
+                comfortable: true,
                 label: isSpanish ? 'Nombre de facturación' : 'Billing name',
                 hintText: isSpanish
                     ? 'Nombre legal del cliente'
@@ -126,6 +128,7 @@ class BillingLegalAndTax extends StatelessWidget {
               autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: buildInputDecoration(
                 context,
+                comfortable: true,
                 label: l.billingTaxId,
                 prefixIcon: const Icon(Icons.numbers),
                 isRequired: c.isBillingRequired('billingTaxId'),
@@ -150,35 +153,35 @@ class BillingLegalAndTax extends StatelessWidget {
         // Subtle label separating "Identidad fiscal" above from the PDF
         // presentation fields below. Pure typography, no card wrapping.
         Padding(
-          padding: const EdgeInsets.fromLTRB(2, 14, 2, 8),
+          padding: const EdgeInsets.fromLTRB(2, 28, 2, 18),
           child: Row(
             children: [
               Icon(
                 Icons.picture_as_pdf_outlined,
-                size: 14,
-                color: cs.onSurfaceVariant,
+                size: 18,
+                color: cs.primary,
               ),
               const SizedBox(width: 6),
               Text(
-                (isSpanish ? 'Presentación en PDF' : 'PDF presentation')
-                    .toUpperCase(),
+                isSpanish ? 'Presentación en PDF' : 'PDF presentation',
                 style: text.labelSmall?.copyWith(
                   color: cs.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                  fontSize: 11,
+                  fontSize: 14,
                 ),
               ),
             ],
           ),
         ),
         ClientFormFields(
+          gap: 20,
           first: TextFormField(
             controller: c.pdfPrefix,
             style: text.bodyLarge,
             inputFormatters: [LengthLimitingTextInputFormatter(60)],
             decoration: buildInputDecoration(
               context,
+              comfortable: true,
               label: isSpanish
                   ? 'Prefijo en PDF (opcional)'
                   : 'PDF prefix (optional)',
@@ -208,6 +211,7 @@ class BillingLegalAndTax extends StatelessWidget {
             inputFormatters: [LengthLimitingTextInputFormatter(120)],
             decoration: buildInputDecoration(
               context,
+              comfortable: true,
               label: isSpanish
                   ? 'Alias para PDF (opcional)'
                   : 'PDF alias (optional)',
@@ -220,7 +224,7 @@ class BillingLegalAndTax extends StatelessWidget {
           ),
         ),
         if (c.embeddedBillingPrefix case final embedded?) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -239,7 +243,7 @@ class BillingLegalAndTax extends StatelessWidget {
           ),
         ],
         if (c.pdfBillingNamePreview.isNotEmpty) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 12),
           // Compact inline preview, immediately below the PDF fields.
           DefaultTextStyle(
             style: text.bodySmall!.copyWith(color: cs.onSurfaceVariant),

@@ -6,6 +6,7 @@ import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:geolocator/geolocator.dart';
@@ -113,8 +114,9 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
   List<WorkerLiveLocation> _workerLocations = const <WorkerLiveLocation>[];
   late _MapSection _section;
   bool _sideMenuCollapsed = false;
-  bool _clientPanelCollapsed = false;
-  double _panelWidth = 360;
+  // The client browser is an on-demand overlay so the map always retains the
+  // complete workspace until the user asks for the list.
+  bool _clientPanelCollapsed = true;
   String _locationFilter = 'all';
 
   bool get _isSpanish =>
@@ -398,7 +400,6 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     if (client == null || location == null) return;
     setState(() {
       _selectedClient = client;
-      _clientPanelCollapsed = false;
       _editing = false;
       _selection = null;
       _resolvedAddress = location.label;
@@ -1065,6 +1066,14 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
 
   Widget _buildActions({required bool canManageLocations}) {
     final cs = Theme.of(context).colorScheme;
+    final secondaryStyle = IconButton.styleFrom(
+      minimumSize: const Size(40, 40),
+      maximumSize: const Size(40, 40),
+      backgroundColor: cs.primary.withValues(alpha: 0.06),
+      foregroundColor: cs.onSurfaceVariant,
+      disabledBackgroundColor: cs.surfaceContainerLow,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    );
     return SizedBox(
       height: 44,
       child: Row(
@@ -1081,12 +1090,14 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             const SizedBox(width: 8),
           ],
           IconButton.filledTonal(
-            tooltip: _isSpanish ? 'Actualizar' : 'Refresh',
+            style: secondaryStyle,
+            tooltip: _isSpanish ? 'Actualizar mapa' : 'Refresh map',
             onPressed: _load,
             icon: const Icon(Icons.refresh_rounded),
           ),
           const SizedBox(width: 8),
           IconButton.filledTonal(
+            style: secondaryStyle,
             tooltip: _isSpanish
                 ? 'Centrar en mi ubicación'
                 : 'Center on my location',
@@ -1123,23 +1134,38 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             child: _mapSurface(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(HexoraDimensions.radius),
-              child: SizedBox(
-                width: (canManageLocations ? 320.0 : 200.0)
-                    .clamp(0.0, constraints.maxWidth - 24),
-                child: Row(children: [
-                  Expanded(
-                      child: _buildActions(
-                          canManageLocations: canManageLocations)),
-                  if (showSidePanel)
-                    IconButton(
-                      tooltip: _isSpanish ? 'Clientes' : 'Clients',
-                      icon: Icon(_clientPanelCollapsed
-                          ? Icons.people_outline
-                          : Icons.view_sidebar_outlined),
-                      onPressed: () => setState(
-                          () => _clientPanelCollapsed = !_clientPanelCollapsed),
-                    ),
-                ]),
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: SizedBox(
+                  width: (canManageLocations ? 350.0 : 150.0)
+                      .clamp(0.0, constraints.maxWidth - 24),
+                  child: Row(children: [
+                    Expanded(
+                        child: _buildActions(
+                            canManageLocations: canManageLocations)),
+                    if (showSidePanel)
+                      IconButton(
+                        style: IconButton.styleFrom(
+                          minimumSize: const Size(40, 40),
+                          foregroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        tooltip: _clientPanelCollapsed
+                            ? (_isSpanish ? 'Mostrar clientes' : 'Show clients')
+                            : (_isSpanish
+                                ? 'Ocultar clientes'
+                                : 'Hide clients'),
+                        icon: Icon(_clientPanelCollapsed
+                            ? Icons.people_outline
+                            : Icons.close_rounded),
+                        onPressed: () => setState(() =>
+                            _clientPanelCollapsed = !_clientPanelCollapsed),
+                      ),
+                  ]),
+                ),
               ),
             ),
           )
@@ -1167,19 +1193,58 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             ),
           );
       if (desktop) {
-        return Row(children: [
-          Expanded(child: map),
-          if (!_clientPanelCollapsed) ...[
-            const SizedBox(width: 4),
-            _PanelResizeHandle(
-              onResize: (delta) => setState(
-                () => _panelWidth = (_panelWidth - delta).clamp(300.0, 560.0),
-              ),
+        final drawerWidth = constraints.maxWidth.clamp(340.0, 400.0).toDouble();
+        return CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.escape): () {
+              if (!_clientPanelCollapsed) {
+                setState(() => _clientPanelCollapsed = true);
+              }
+            },
+          },
+          child: Focus(
+            autofocus: true,
+            child: Stack(
+              children: [
+                Positioned.fill(child: map),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  bottom: 12,
+                  width: drawerWidth,
+                  child: IgnorePointer(
+                    ignoring: _clientPanelCollapsed,
+                    child: AnimatedSlide(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      offset: _clientPanelCollapsed
+                          ? const Offset(1.08, 0)
+                          : Offset.zero,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        opacity: _clientPanelCollapsed ? 0 : 1,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x2A0B1B35),
+                                blurRadius: 20,
+                                offset: Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: panel(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-            SizedBox(width: _panelWidth, child: panel()),
-          ],
-        ]);
+          ),
+        );
       }
       return Stack(children: [
         Positioned.fill(child: map),
@@ -1467,8 +1532,10 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     final cs = Theme.of(panelContext ?? context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(18),
+        color: Theme.of(panelContext ?? context).brightness == Brightness.light
+            ? const Color(0xFFF1F5FB)
+            : cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
       ),
       child: _editing
@@ -1496,12 +1563,14 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.fromLTRB(14, 10, 8, 4),
           child: Row(children: [
             Expanded(
                 child: Text(
                     '${_isSpanish ? 'Clientes' : 'Clients'} · ${_clients.length}',
-                    style: Theme.of(context).textTheme.titleMedium)),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ))),
             DropdownButton<String>(
               value: _locationFilter,
               underline: const SizedBox.shrink(),
@@ -1520,10 +1589,15 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
               onChanged: (value) =>
                   setState(() => _locationFilter = value ?? 'all'),
             ),
+            IconButton(
+              tooltip: _isSpanish ? 'Cerrar clientes' : 'Close clients',
+              onPressed: () => setState(() => _clientPanelCollapsed = true),
+              icon: const Icon(Icons.close_rounded, size: 20),
+            ),
           ]),
         ),
         Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
           child: TextField(
             controller: _clientFilter,
             onChanged: (_) => setState(() {}),
@@ -2159,37 +2233,6 @@ class _ClientPickerDialogState extends State<_ClientPickerDialog> {
           child: Text(widget.isSpanish ? 'Cancelar' : 'Cancel'),
         ),
       ],
-    );
-  }
-}
-
-class _PanelResizeHandle extends StatelessWidget {
-  const _PanelResizeHandle({required this.onResize});
-
-  final ValueChanged<double> onResize;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return MouseRegion(
-      cursor: SystemMouseCursors.resizeColumn,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onHorizontalDragUpdate: (details) => onResize(details.delta.dx),
-        child: SizedBox(
-          width: 12,
-          child: Center(
-            child: Container(
-              width: 4,
-              height: 48,
-              decoration: BoxDecoration(
-                color: cs.outlineVariant.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

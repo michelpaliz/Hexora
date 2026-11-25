@@ -301,6 +301,18 @@ class CompactDocumentTableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    String tr(String es, String en) => isSpanish ? es : en;
+    final localizedClient =
+        clientLabel == 'Cliente' ? tr('Cliente', 'Client') : clientLabel;
+    final localizedConcept =
+        conceptLabel == 'Concepto' ? tr('Concepto', 'Concept') : conceptLabel;
+    final localizedStatus =
+        statusLabel == 'Estado' ? tr('Estado', 'Status') : statusLabel;
+    final localizedPayment =
+        paymentLabel == 'Pago' ? tr('Pago', 'Payment') : paymentLabel;
+    final localizedActions =
+        actionsLabel == 'Acciones' ? tr('Acciones', 'Actions') : actionsLabel;
     final split =
         DocumentWorkspaceScope.maybeOf(context)?.mode == DocumentViewMode.split;
     final hideActions = split && hideActionsInSplitView;
@@ -353,7 +365,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
                         _cell(
                           context,
                           CompactDocumentColumn.client,
-                          clientLabel,
+                          localizedClient,
                           clientWidth,
                         ),
                       ],
@@ -365,27 +377,34 @@ class CompactDocumentTableHeader extends StatelessWidget {
                 _cell(
                   context,
                   CompactDocumentColumn.date,
-                  'Fecha',
+                  tr('Fecha', 'Date'),
                   layout.date,
                 ),
               _cell(
                 context,
                 CompactDocumentColumn.status,
-                statusLabel,
+                localizedStatus,
                 layout.status,
               ),
+              if (showDeliveryColumn)
+                _cell(
+                  context,
+                  CompactDocumentColumn.delivery,
+                  tr('Envío', 'Delivery'),
+                  layout.delivery,
+                ),
               if (layout.columns.contains(HexoraFinancialColumn.payment))
                 _cell(
                   context,
                   CompactDocumentColumn.payment,
-                  paymentLabel,
+                  localizedPayment,
                   layout.payment,
                 ),
               if (layout.columns.contains(HexoraFinancialColumn.total))
                 _cell(
                   context,
                   CompactDocumentColumn.total,
-                  'Total',
+                  tr('Total', 'Total'),
                   layout.total,
                   numeric: true,
                 ),
@@ -397,7 +416,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
                   width: layout.actions,
                   child: Center(
                     child: Text(
-                      actionsLabel,
+                      localizedActions,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -425,52 +444,58 @@ class CompactDocumentTableHeader extends StatelessWidget {
                     identityLabel, layout.invoice)),
             if (invoiceColumnOrder &&
                 layout.columns.contains(HexoraFinancialColumn.date))
-              _cell(context, CompactDocumentColumn.date, 'Fecha', layout.date),
+              _cell(context, CompactDocumentColumn.date, tr('Fecha', 'Date'),
+                  layout.date),
             KeyedSubtree(
                 key: const ValueKey('document-client-header'),
-                child: _cell(context, CompactDocumentColumn.client, clientLabel,
-                    layout.client)),
+                child: _cell(context, CompactDocumentColumn.client,
+                    localizedClient, layout.client)),
           ] else ...[
             const SizedBox(width: 24),
             Expanded(
                 child: HexoraFinancialHeaderCell(
-                    label: '$identityLabel / $clientLabel',
+                    label: '$identityLabel / $localizedClient',
                     width: double.infinity)),
             if (invoiceColumnOrder &&
                 layout.columns.contains(HexoraFinancialColumn.date))
-              _cell(context, CompactDocumentColumn.date, 'Fecha', layout.date),
+              _cell(context, CompactDocumentColumn.date, tr('Fecha', 'Date'),
+                  layout.date),
           ],
           SizedBox(
             width: layout.spacer,
           ),
           SizedBox(
             width: layout.status,
-            child: _cell(context, CompactDocumentColumn.status, statusLabel,
+            child: _cell(context, CompactDocumentColumn.status, localizedStatus,
                 double.infinity),
           ),
           if (showDeliveryColumn)
-            _cell(context, CompactDocumentColumn.delivery, 'Envío',
-                layout.delivery),
+            _cell(context, CompactDocumentColumn.delivery,
+                tr('Envío', 'Delivery'), layout.delivery),
           if (layout.columns.contains(HexoraFinancialColumn.payment))
-            _cell(context, CompactDocumentColumn.payment, paymentLabel,
+            _cell(context, CompactDocumentColumn.payment, localizedPayment,
                 layout.payment),
           if (!invoiceColumnOrder &&
               layout.columns.contains(HexoraFinancialColumn.date))
-            _cell(context, CompactDocumentColumn.date, 'Fecha', layout.date),
+            _cell(context, CompactDocumentColumn.date, tr('Fecha', 'Date'),
+                layout.date),
           if (layout.columns.contains(HexoraFinancialColumn.concept))
             HexoraFinancialHeaderCell(
-                label: conceptLabel, width: layout.concept),
+                label: localizedConcept, width: layout.concept),
           if (layout.columns.contains(HexoraFinancialColumn.notes))
-            _cell(context, CompactDocumentColumn.notes, 'Notas', layout.notes),
+            _cell(context, CompactDocumentColumn.notes, tr('Notas', 'Notes'),
+                layout.notes),
           if (layout.columns.contains(HexoraFinancialColumn.taxableBase))
-            _cell(context, CompactDocumentColumn.taxableBase, 'Base imponible',
-                layout.base,
+            _cell(context, CompactDocumentColumn.taxableBase,
+                tr('Base imponible', 'Taxable base'), layout.base,
                 numeric: true),
           if (layout.columns.contains(HexoraFinancialColumn.vat))
-            _cell(context, CompactDocumentColumn.vat, 'IVA', layout.vat,
+            _cell(context, CompactDocumentColumn.vat, tr('IVA', 'VAT'),
+                layout.vat,
                 numeric: true),
           if (layout.columns.contains(HexoraFinancialColumn.total))
-            _cell(context, CompactDocumentColumn.total, 'Total', layout.total,
+            _cell(context, CompactDocumentColumn.total, tr('Total', 'Total'),
+                layout.total,
                 numeric: true),
           if (!hideActions && layout.totalActionGap > 0)
             SizedBox(width: layout.totalActionGap),
@@ -479,7 +504,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
               key: const ValueKey('document-actions-header'),
               width: layout.actions,
               child: Center(
-                child: Text(actionsLabel,
+                child: Text(localizedActions,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         fontFamily: HexoraTypography.fontFamily,
                         fontSize: 11.5,
@@ -928,11 +953,25 @@ class CompactDocumentRow extends StatelessWidget {
                         const SizedBox(width: 3),
                         dateWarningIcon(),
                       ],
-                      if (!showStatusColumn && status != null) ...[
+                      if (!showStatusColumn && status != null && !stacked) ...[
                         if (secondaryLabel.isNotEmpty) const SizedBox(width: 6),
                         Flexible(child: status!),
                       ],
                     ]),
+                  if (stacked &&
+                      (status != null ||
+                          (showDeliveryColumn && delivery != null)))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          if (status != null) status!,
+                          if (showDeliveryColumn && delivery != null) delivery!,
+                        ],
+                      ),
+                    ),
                   if (stacked && columns.contains(HexoraFinancialColumn.date))
                     Row(children: [
                       Text(
@@ -1088,7 +1127,7 @@ class CompactDocumentRow extends StatelessWidget {
               ),
             );
             final useSingleLineCompactLayout = compactSplitLayout &&
-                (hidePreviewAction || (constraints.maxWidth >= 650 && stacked));
+                (hidePreviewAction || (constraints.maxWidth >= 400 && stacked));
             if (useSingleLineCompactLayout) {
               final compactIdentity = (compactTitle ?? title).trim();
               final showCompactColumns = constraints.maxWidth >= 720;
@@ -1124,24 +1163,25 @@ class CompactDocumentRow extends StatelessWidget {
                         ]),
                         const SizedBox(height: 2),
                         Row(children: [
-                          Expanded(
-                            child: Tooltip(
-                              message: metadata,
-                              child: Text(
-                                metadata,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: text.bodySmall?.copyWith(
-                                  fontFamily: HexoraTypography.fontFamily,
-                                  fontSize: 11,
-                                  color: cs.onSurfaceVariant,
+                          if (metadata.isNotEmpty)
+                            Expanded(
+                              child: Tooltip(
+                                message: metadata,
+                                child: Text(
+                                  metadata,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: text.bodySmall?.copyWith(
+                                    fontFamily: HexoraTypography.fontFamily,
+                                    fontSize: 11,
+                                    color: cs.onSurfaceVariant,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
                           if (!showCompactColumns &&
                               HexoraFinancialFormat.date(date).isNotEmpty) ...[
-                            const SizedBox(width: 6),
+                            if (metadata.isNotEmpty) const SizedBox(width: 6),
                             Text(
                               HexoraFinancialFormat.date(date),
                               maxLines: 1,
@@ -1156,6 +1196,16 @@ class CompactDocumentRow extends StatelessWidget {
                               const SizedBox(width: 3),
                               dateWarningIcon(),
                             ],
+                          ],
+                          if (!showCompactColumns && status != null) ...[
+                            const SizedBox(width: 8),
+                            status!,
+                          ],
+                          if (!showCompactColumns &&
+                              showDeliveryColumn &&
+                              delivery != null) ...[
+                            const SizedBox(width: 8),
+                            delivery!,
                           ],
                         ]),
                       ],
@@ -1182,7 +1232,7 @@ class CompactDocumentRow extends StatelessWidget {
                         ],
                       ),
                     ),
-                  if (status != null) ...[
+                  if (showCompactColumns && status != null) ...[
                     if (showCompactColumns)
                       SizedBox(
                         key: const ValueKey('document-status-column'),
@@ -1198,6 +1248,14 @@ class CompactDocumentRow extends StatelessWidget {
                       ),
                     ],
                   ],
+                  if (showCompactColumns &&
+                      showDeliveryColumn &&
+                      delivery != null)
+                    SizedBox(
+                      key: const ValueKey('document-delivery-column'),
+                      width: layout.delivery,
+                      child: Center(child: delivery!),
+                    ),
                   if (showCompactColumns &&
                       columns.contains(HexoraFinancialColumn.payment))
                     SizedBox(

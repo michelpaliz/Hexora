@@ -7,6 +7,7 @@ import 'package:hexora/presentation/screens/notifications/show-notifications/uti
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_category_meta.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_grouping.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/notifications/widgets/notification_density.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -191,208 +192,199 @@ class _SettingsLikeNotificationRow extends StatelessWidget {
       }
     }
 
-    // Flat, borderless row: transparent by default, a subtle blue fill when
-    // selected and a faint tint while unread. Hierarchy comes from spacing and
-    // weight rather than card borders or shadows.
-    return Material(
-      color: isSelected
-          ? NotifDensity.selectedRowFill(cs)
-          : (!notification.isRead
-              ? NotifDensity.unreadRowFill(cs)
-              : Colors.transparent),
-      borderRadius: BorderRadius.circular(NotifDensity.rowRadius),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(NotifDensity.rowRadius),
-        child: Padding(
-          padding: NotifDensity.rowPadding,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: NotifDensity.iconBox,
-                height: NotifDensity.iconBox,
-                decoration: BoxDecoration(
-                  color: priorityColor.withValues(
-                    alpha: isHighPriority ? 0.15 : 0.11,
+    // Rows sit directly on the workspace canvas. Background communicates
+    // selection only; unread uses a blue dot and a heavier title.
+    final radius = BorderRadius.circular(NotifDensity.rowRadius);
+    return AnimatedContainer(
+      key: ValueKey('notification-row-${notification.id}'),
+      duration: HexoraMotion.duration(context, NotifDensity.transition),
+      curve: HexoraMotion.enter,
+      decoration: BoxDecoration(
+        color: isSelected ? NotifDensity.selectedRowFill(cs) : null,
+        borderRadius: radius,
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          hoverColor:
+              isSelected ? Colors.transparent : NotifDensity.hoverRowFill(cs),
+          highlightColor: Colors.transparent,
+          splashColor: cs.primary.withValues(alpha: 0.06),
+          child: Padding(
+            padding: NotifDensity.rowPadding,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: NotifDensity.iconBox,
+                  height: NotifDensity.iconBox,
+                  decoration: BoxDecoration(
+                    color: priorityColor.withValues(
+                      alpha: isHighPriority ? 0.15 : 0.11,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  borderRadius: BorderRadius.circular(8),
+                  child: Icon(meta.icon,
+                      color: priorityColor, size: NotifDensity.iconGlyph),
                 ),
-                child: Icon(meta.icon,
-                    color: priorityColor, size: NotifDensity.iconGlyph),
-              ),
-              const SizedBox(width: NotifDensity.iconTextGap),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (!notification.isRead)
-                          Container(
-                            width: 6,
-                            height: 6,
-                            margin: const EdgeInsets.only(right: 5),
-                            decoration: BoxDecoration(
-                              color: meta.color,
-                              boxShadow: isHighPriority
-                                  ? [
-                                      BoxShadow(
-                                        color: priorityColor.withValues(
-                                            alpha: 0.3),
-                                        blurRadius: 6,
-                                      ),
-                                    ]
-                                  : null,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        Expanded(
-                          child: Text(
-                            isEvent && args.eventTitle != null
-                                ? args.eventTitle!
-                                : notification.getLocalizedTitle(l),
-                            style: t.bodySmall.copyWith(
-                              fontWeight: notification.isRead
-                                  ? (isHighPriority
-                                      ? FontWeight.w600
-                                      : FontWeight.w500)
-                                  : FontWeight.w800,
-                              color: cs.onSurface,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          formatInlineNotificationTimestamp(
-                              notification.timestamp),
-                          style: t.caption.copyWith(
-                            color: cs.onSurfaceVariant.withValues(alpha: .65),
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      compactNotificationDescription(notification, l),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.caption.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                    if (isEvent && args.formattedStartDate(locale) != null) ...[
-                      const SizedBox(height: 3),
+                const SizedBox(width: NotifDensity.iconTextGap),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Row(
                         children: [
-                          Icon(
-                            Icons.schedule_rounded,
-                            size: 11,
-                            color: cs.onSurface.withValues(alpha: 0.45),
-                          ),
-                          const SizedBox(width: 3),
+                          if (!notification.isRead)
+                            Container(
+                              key: const ValueKey('notification-unread-dot'),
+                              width: 7,
+                              height: 7,
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: BoxDecoration(
+                                color: cs.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
                           Expanded(
                             child: Text(
-                              args.formattedStartDate(locale)!,
-                              style: t.caption.copyWith(
-                                color: cs.onSurface.withValues(alpha: 0.6),
-                                fontSize: 10,
+                              isEvent && args.eventTitle != null
+                                  ? args.eventTitle!
+                                  : notification.getLocalizedTitle(l),
+                              style: t.bodySmall.copyWith(
+                                fontWeight: notification.isRead
+                                    ? FontWeight.w400
+                                    : FontWeight.w600,
+                                color: cs.onSurface,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (relTime != null)
-                            Container(
-                              margin: const EdgeInsets.only(left: 4),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 5,
-                                vertical: 1,
-                              ),
-                              decoration: BoxDecoration(
-                                color: meta.color.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                relTime,
-                                style: t.caption.copyWith(
-                                  color: meta.color,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 10,
-                                ),
-                              ),
+                          const SizedBox(width: 6),
+                          Text(
+                            formatInlineNotificationTimestamp(
+                                notification.timestamp),
+                            key: const ValueKey('notification-row-time'),
+                            style: t.caption.copyWith(
+                              color: NotifDensity.timestampColor(cs),
+                              fontSize: 11,
                             ),
+                          ),
                         ],
                       ),
-                    ],
-                    if (chips.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 3,
-                        runSpacing: 3,
-                        children: chips
-                            .map(
-                              (c) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 5,
-                                  vertical: 1,
+                      const SizedBox(height: 2),
+                      Text(
+                        compactNotificationDescription(notification, l),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.caption.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                      if (isEvent &&
+                          args.formattedStartDate(locale) != null) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.schedule_rounded,
+                              size: 11,
+                              color: cs.onSurface.withValues(alpha: 0.45),
+                            ),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                args.formattedStartDate(locale)!,
+                                style: t.caption.copyWith(
+                                  color: cs.onSurface.withValues(alpha: 0.6),
+                                  fontSize: 10,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: c.color.withValues(alpha: 0.10),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: c.color.withValues(alpha: 0.25),
-                                  ),
-                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (relTime != null)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4),
                                 child: Text(
-                                  c.label,
+                                  relTime,
                                   style: t.caption.copyWith(
-                                    color: c.color,
-                                    fontWeight: FontWeight.w600,
+                                    color: NotifDensity.timestampColor(cs),
                                     fontSize: 10,
                                   ),
                                 ),
                               ),
-                            )
-                            .toList(),
-                      ),
+                          ],
+                        ),
+                      ],
+                      if (chips.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 3,
+                          runSpacing: 3,
+                          children: chips
+                              .map(
+                                (c) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: c.color.withValues(alpha: 0.10),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: c.color.withValues(alpha: 0.25),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    c.label,
+                                    style: t.caption.copyWith(
+                                      color: c.color,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              PopupMenuButton<String>(
-                tooltip: isEs ? 'Acciones' : 'Actions',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 180),
-                onSelected: (value) {
-                  if (value == 'read') onMarkRead?.call();
-                  if (value == 'delete') onDelete();
-                },
-                itemBuilder: (context) => [
-                  if (!notification.isRead && onMarkRead != null)
+                PopupMenuButton<String>(
+                  tooltip: isEs ? 'Acciones' : 'Actions',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 180),
+                  onSelected: (value) {
+                    if (value == 'read') onMarkRead?.call();
+                    if (value == 'delete') onDelete();
+                  },
+                  itemBuilder: (context) => [
+                    if (!notification.isRead && onMarkRead != null)
+                      PopupMenuItem<String>(
+                        value: 'read',
+                        child: Row(children: [
+                          const Icon(Icons.mark_email_read_outlined, size: 17),
+                          const SizedBox(width: 8),
+                          Text(isEs ? 'Marcar como leída' : 'Mark as read'),
+                        ]),
+                      ),
                     PopupMenuItem<String>(
-                      value: 'read',
+                      value: 'delete',
                       child: Row(children: [
-                        const Icon(Icons.mark_email_read_outlined, size: 17),
+                        Icon(Icons.delete_outline_rounded,
+                            size: 17, color: cs.error),
                         const SizedBox(width: 8),
-                        Text(isEs ? 'Marcar como leída' : 'Mark as read'),
+                        Text(l.delete, style: TextStyle(color: cs.error)),
                       ]),
                     ),
-                  PopupMenuItem<String>(
-                    value: 'delete',
-                    child: Row(children: [
-                      Icon(Icons.delete_outline_rounded,
-                          size: 17, color: cs.error),
-                      const SizedBox(width: 8),
-                      Text(l.delete, style: TextStyle(color: cs.error)),
-                    ]),
-                  ),
-                ],
-                icon: Icon(Icons.more_horiz_rounded,
-                    size: 18, color: cs.onSurfaceVariant),
-              ),
-            ],
+                  ],
+                  icon: Icon(Icons.more_horiz_rounded,
+                      size: 18, color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
           ),
         ),
       ),

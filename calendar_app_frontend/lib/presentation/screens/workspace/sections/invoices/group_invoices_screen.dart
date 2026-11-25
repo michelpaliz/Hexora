@@ -17,6 +17,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/models/receipt/receipt.dart';
@@ -85,6 +86,7 @@ import 'package:hexora/navigation/shell/hexora_app_shell.dart'
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 

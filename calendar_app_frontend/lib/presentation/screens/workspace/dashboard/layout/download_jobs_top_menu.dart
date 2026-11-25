@@ -37,7 +37,7 @@ class _DownloadJobsTopMenuState extends State<DownloadJobsTopMenu> {
   @override
   void initState() {
     super.initState();
-    unawaited(_bindJobs());
+    _scheduleBindJobs();
   }
 
   @override
@@ -45,8 +45,19 @@ class _DownloadJobsTopMenuState extends State<DownloadJobsTopMenu> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.groupId != widget.groupId) {
       _menu.close();
-      unawaited(_bindJobs());
+      _scheduleBindJobs();
     }
+  }
+
+  /// Binding a group resets the shared store and notifies its listeners. Do it
+  /// after the current frame so a dashboard rebuild cannot be interrupted by
+  /// that notification (especially when this menu is created alongside an
+  /// inline notifications panel).
+  void _scheduleBindJobs() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_bindJobs());
+    });
   }
 
   Future<void> _bindJobs() async {

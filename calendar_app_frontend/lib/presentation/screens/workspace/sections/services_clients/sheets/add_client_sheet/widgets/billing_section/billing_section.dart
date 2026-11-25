@@ -56,7 +56,7 @@ class _BillingSectionState extends State<BillingSection> {
           onFieldChanged: widget.onFieldChanged,
           onFieldBlur: widget.onFieldBlur,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 20),
         BillingContactForm(
           c: c,
           requireBilling: requireBilling,
@@ -74,7 +74,7 @@ class _BillingGroupLabel extends StatelessWidget {
   const _BillingGroupLabel({
     required this.text,
     required this.icon,
-    this.topGap = 14,
+    this.topGap = 28,
   });
 
   final String text;
@@ -86,18 +86,17 @@ class _BillingGroupLabel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     return Padding(
-      padding: EdgeInsets.fromLTRB(2, topGap, 2, 8),
+      padding: EdgeInsets.fromLTRB(2, topGap, 2, 18),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: cs.onSurfaceVariant),
-          const SizedBox(width: 6),
+          Icon(icon, size: 18, color: cs.primary),
+          const SizedBox(width: 8),
           Text(
-            text.toUpperCase(),
+            text,
             style: t.labelSmall?.copyWith(
-              color: cs.onSurfaceVariant,
+              color: cs.onSurface,
               fontWeight: FontWeight.w700,
-              letterSpacing: 0.6,
-              fontSize: 11,
+              fontSize: 14,
             ),
           ),
         ],

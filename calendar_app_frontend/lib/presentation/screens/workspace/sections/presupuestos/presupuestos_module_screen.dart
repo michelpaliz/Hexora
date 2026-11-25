@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_actions_view.dart';
@@ -17,6 +18,8 @@ import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
+import 'package:provider/provider.dart';
 
 class PresupuestosModuleScreen extends StatefulWidget {
   const PresupuestosModuleScreen({
@@ -86,6 +89,10 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
   @override
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
+    final forceIconOnly =
+        context.watch<UserPreferencesProvider>().navigationDisplayMode ==
+            NavigationDisplayMode.iconsOnly;
+    final sideMenuCollapsed = forceIconOnly || _sideMenuCollapsed;
     final workspaceCanvas = Theme.of(context).brightness == Brightness.dark
         ? Theme.of(context).scaffoldBackgroundColor
         : AppColors.workspaceCanvas;
@@ -125,14 +132,15 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
-                width: _sideMenuCollapsed
+                width: sideMenuCollapsed
                     ? NavigationTokens.railWidth
                     : NavigationTokens.sidebarWidth,
                 child: PresupuestosSideMenu(
                   selected: _menu,
                   onSelected: _selectMenu,
-                  collapsed: _sideMenuCollapsed,
-                  onToggleCollapse: _toggleSideMenuCollapsed,
+                  collapsed: sideMenuCollapsed,
+                  onToggleCollapse:
+                      forceIconOnly ? () {} : _toggleSideMenuCollapsed,
                 ),
               ),
               Expanded(

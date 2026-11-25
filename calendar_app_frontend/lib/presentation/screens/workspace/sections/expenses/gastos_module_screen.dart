@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/services/vat/vat_summary_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
@@ -14,6 +15,8 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/group_in
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'tax/tax_reporting_view.dart';
 import 'package:hexora/services/tax/tax_reporting_api.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
+import 'package:provider/provider.dart';
 
 // ── Module area IDs ───────────────────────────────────────────────────────────
 
@@ -152,6 +155,10 @@ class _GastosModuleScreenState extends State<GastosModuleScreen> {
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
     final title = _isEs ? 'Gastos' : 'Expenses';
+    final forceIconOnly =
+        context.watch<UserPreferencesProvider>().navigationDisplayMode ==
+            NavigationDisplayMode.iconsOnly;
+    final sideRailCollapsed = forceIconOnly || _sideRailCollapsed;
 
     // ── Narrow / mobile ────────────────────────────────────────────────────
     final mobileBody = SafeArea(
@@ -234,7 +241,7 @@ class _GastosModuleScreenState extends State<GastosModuleScreen> {
               ? Duration.zero
               : NavigationTokens.motion,
           curve: Curves.easeOutCubic,
-          width: _sideRailCollapsed
+          width: sideRailCollapsed
               ? NavigationTokens.railWidth
               : NavigationTokens.sidebarWidth,
           child: _GastosUnifiedRail(
@@ -248,9 +255,10 @@ class _GastosModuleScreenState extends State<GastosModuleScreen> {
                 setState(() => _modelosSection = v),
             onTaxSectionSelected: (v) => setState(() => _taxSection = v),
             taxSection: _taxSection,
-            collapsed: _sideRailCollapsed,
-            onToggleCollapsed: () =>
-                setState(() => _sideRailCollapsed = !_sideRailCollapsed),
+            collapsed: sideRailCollapsed,
+            onToggleCollapsed: () => forceIconOnly
+                ? null
+                : setState(() => _sideRailCollapsed = !_sideRailCollapsed),
           ),
         ),
         Expanded(

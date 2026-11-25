@@ -28,6 +28,7 @@ class BillingContactForm extends StatelessWidget {
     final text = Theme.of(context).textTheme;
 
     return ClientFormFields(
+        gap: 20,
         first: Focus(
           onFocusChange: (hasFocus) {
             if (!hasFocus) onFieldBlur('billingEmail');
@@ -39,6 +40,7 @@ class BillingContactForm extends StatelessWidget {
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,
+              comfortable: true,
               label: l.billingEmailLabel,
               prefixIcon: const Icon(Icons.alternate_email_rounded),
               isRequired: c.isBillingRequired('billingEmail'),
@@ -72,6 +74,7 @@ class BillingContactForm extends StatelessWidget {
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,
+              comfortable: true,
               label: l.billingPhoneLabel,
               prefixIcon: const Icon(Icons.phone_in_talk),
               isRequired: c.isBillingRequired('billingPhone'),

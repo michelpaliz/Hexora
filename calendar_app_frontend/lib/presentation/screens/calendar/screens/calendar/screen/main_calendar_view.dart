@@ -8,6 +8,7 @@ import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_c
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/models/weather/day_summary.dart';
 import 'package:hexora/services/groups/event/domain/event_domain.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -38,6 +39,7 @@ import 'package:hexora/presentation/shared/utils/weather/weather_summary_localiz
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/widgets/calendar_workspace_surfaces.dart';
@@ -784,11 +786,14 @@ class _MainCalendarViewState extends State<MainCalendarView> {
         Widget calendarSidebar() {
           final members = _c.buildPresenceFor(currentGroup);
           final es = Localizations.localeOf(context).languageCode == 'es';
+          final forceIconOnly =
+              context.watch<UserPreferencesProvider>().navigationDisplayMode ==
+                  NavigationDisplayMode.iconsOnly;
           return CalendarSideMenu(
             group: currentGroup,
-            collapsed: _leftCollapsed,
+            collapsed: forceIconOnly || _leftCollapsed,
             showCollapseToggle: true,
-            onToggleCollapse: _toggleLeftPanel,
+            onToggleCollapse: forceIconOnly ? () {} : _toggleLeftPanel,
             viewsExpanded: _viewsExpanded,
             eventsExpanded: _eventsExpanded,
             insightsExpanded: _insightsExpanded,

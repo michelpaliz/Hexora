@@ -15,6 +15,9 @@ class _GroupInvoicesView extends StatelessWidget {
         .languageCode
         .toLowerCase()
         .startsWith('es');
+    final forceIconOnly =
+        context.watch<UserPreferencesProvider>().navigationDisplayMode ==
+            NavigationDisplayMode.iconsOnly;
     if (isMobile) return _InvoicesMobileView(state: state);
     final isWide = MediaQuery.of(context).size.width >= 980;
     final showInlineEditor = state._selectedMenu == 'invoice_editor' &&
@@ -293,7 +296,8 @@ class _GroupInvoicesView extends StatelessWidget {
                     if (!canLeave || !state.mounted) return;
                     state._changeInvoicesMenu(m);
                   },
-                  collapsed: state._invoiceSideMenuCollapsed,
+                  collapsed: forceIconOnly || state._invoiceSideMenuCollapsed,
+                  forceCollapsed: forceIconOnly,
                   compactMode: false,
                   showOperations: state.canEditIssuedInvoices(context),
                   onToggleCollapse: state._toggleInvoiceSideMenuCollapsed,

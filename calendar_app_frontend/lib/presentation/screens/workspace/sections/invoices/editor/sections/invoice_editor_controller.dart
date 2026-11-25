@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -454,28 +455,6 @@ class InvoiceEditorController extends ChangeNotifier {
     return lines.where(_isBillableLineDraft).toList(growable: false);
   }
 
-  Future<List<InvoiceLine>> _replaceLinesForInvoice(String invoiceId) async {
-    final draftLines = _draftLinesForInvoice(invoiceId);
-    final existing = await _linesApi.list(invoiceId);
-    for (final line in existing) {
-      final id = line.id;
-      if (id != null && id.isNotEmpty) {
-        await _linesApi.delete(invoiceId, id);
-      }
-    }
-    final savedLines = <InvoiceLine>[];
-    for (final line in draftLines) {
-      savedLines.add(await _linesApi.create(invoiceId, line));
-    }
-    return savedLines;
-  }
-
-  Future<int> _syncLinesForInvoice(String invoiceId) async {
-    await _replaceLinesForInvoice(invoiceId);
-    final verified = await _linesApi.list(invoiceId);
-    return verified.length;
-  }
-
   // --- UI hooks ---
   void notifyUi() {
     // Any form change makes the saved draft stale (there is no update API).
@@ -643,14 +622,35 @@ class InvoiceEditorController extends ChangeNotifier {
   Future<BusinessBillingSettings> _loadBillingSettings() async {
     final cached = _billingSettings;
     if (cached != null) return cached;
-    final loaded = await _billingSettingsApi.load(group.id);
+    BusinessBillingSettings loaded;
+    try {
+      loaded = await _billingSettingsApi.load(group.id);
+    } on BusinessBillingSettingsApiException catch (error) {
+      // Older deployments do not expose billing settings yet. Invoice creation
+      // must remain available there; use the app language until the optional
+      // settings endpoint becomes available.
+      if (error.statusCode != 404) rethrow;
+      final localeLanguage = AuthenticatedHttpClient.preferredLanguageCode;
+      loaded = BusinessBillingSettings(
+        groupId: group.id,
+        defaultInvoiceLanguage: localeLanguage == 'en' ? 'en' : 'es',
+        requiresInitialConfiguration: false,
+        canEdit: false,
+      );
+      debugPrint(
+        '[InvoiceDraft] Billing settings are unavailable (404); '
+        'using ${loaded.defaultInvoiceLanguage} as the invoice language.',
+      );
+    }
     _billingSettings = loaded;
     return loaded;
   }
 
   Future<String> _ensureInvoiceLanguage(BuildContext context) async {
     final current = _documentLanguage;
-    if (current == 'es' || current == 'en') return current;
+    if (current != null && (current == 'es' || current == 'en')) {
+      return current;
+    }
 
     var settings = await _loadBillingSettings();
     var language = settings.defaultInvoiceLanguage;
@@ -711,7 +711,8 @@ class InvoiceEditorController extends ChangeNotifier {
                   isEs
                       ? 'Esta preferencia se guardará para futuras facturas. Podrás modificarla en cualquier momento desde Ajustes → Facturación.'
                       : 'This preference will be saved for future invoices. You can change it at any time in Settings → Billing.',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -735,7 +736,8 @@ class InvoiceEditorController extends ChangeNotifier {
     if (editingIssued) return;
     final settings = await _loadBillingSettings();
     final resolved = selection == 'default'
-        ? settings.defaultInvoiceLanguage ?? await _ensureInvoiceLanguage(context)
+        ? settings.defaultInvoiceLanguage ??
+            await _ensureInvoiceLanguage(context)
         : selection;
     if (resolved != 'es' && resolved != 'en') return;
     _documentLanguage = resolved;
@@ -745,7 +747,9 @@ class InvoiceEditorController extends ChangeNotifier {
     _previewPdfBytes = null;
     notifyListeners();
 
-    if (formKey.currentState?.validate() == true && hasBillableEntries && _clientId != null) {
+    if (formKey.currentState?.validate() == true &&
+        hasBillableEntries &&
+        _clientId != null) {
       await saveDraft(context);
       final invoice = _savedInvoice;
       if (invoice != null) {

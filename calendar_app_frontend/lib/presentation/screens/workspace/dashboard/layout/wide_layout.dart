@@ -1,47 +1,46 @@
-import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
-import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_preview_screen.dart';
-
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/navigation/shell/hexora_app_shell.dart';
 import 'package:hexora/navigation/shell/hexora_global_nav_bar.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/navigation/shell/worker_status_indicator.dart';
-import 'package:hexora/models/groups/group.dart';
-import 'package:hexora/models/user/user.dart';
-import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
-import 'package:hexora/services/groups/domain/group_domain.dart';
-import 'package:hexora/theme/motion/hexora_motion.dart';
-import 'package:hexora/theme/themes/navigation_tokens.dart';
-import 'package:hexora/services/notification/domain/notification_domain.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
+import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
+import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
+import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_preview_screen.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/layout/download_jobs_top_menu.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/layout/group_dashboard_content.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/group_dashboard_right_panel.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/gastos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/presupuestos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/quick_notes/quick_notes_board_screen.dart';
-import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
-import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
-import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
-import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
-import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
-import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
+import 'package:hexora/presentation/shared/utils/weather/weather_summary_localizer.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
-import 'package:hexora/l10n/app_localizations.dart';
-import 'package:hexora/state/user_preferences_provider.dart';
+import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
+import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/weather/weather_service.dart';
-import 'package:hexora/presentation/shared/utils/weather/weather_summary_localizer.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../state/group_dashboard_state.dart';
@@ -111,9 +110,12 @@ class WideLayout extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (unified && !usesContextualSidebar)
-                _UnifiedSingleItemSidebar(
+                _UnifiedModuleHeaderSidebar(
+                  destinations: destinations,
                   destination: activeDestination,
                   fallbackLabel: moduleLabel,
+                  showDestinationItem: activeSection == Sections.chat,
+                  onDestinationSelected: state.openSection,
                 )
               else
                 const SizedBox.shrink(),
@@ -121,7 +123,10 @@ class WideLayout extends StatelessWidget {
             ],
           );
           final content = SidebarHeaderScope(
-            enabled: unified,
+            // Chat already uses the module control in its left navigation.
+            // Mounting this shared header too creates a second selector above
+            // the conversation.
+            enabled: unified && activeSection != Sections.chat,
             builder: (context, collapsed) => _UnifiedModuleSwitcher(
               destinations: destinations,
               activeDestination: activeDestination,
@@ -377,19 +382,22 @@ class _UnifiedModuleSwitcher extends StatelessWidget {
           ),
           if (!collapsed) ...[
             const SizedBox(width: 9),
-            Expanded(
-              child: Text(
-                active?.label ?? (isEs ? 'Módulos' : 'Modules'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: NavigationTokens.label(context).copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurface,
-                ),
-              ),
+            // Expanded(
+            //   child: Text(
+            //     active?.label ?? (isEs ? 'Módulos' : 'Modules'),
+            //     maxLines: 1,
+            //     overflow: TextOverflow.ellipsis,
+            //     style: NavigationTokens.label(context).copyWith(
+            //       fontWeight: FontWeight.w700,
+            //       color: cs.onSurface,
+            //     ),
+            //   ),
+            // ),
+            Icon(
+              Icons.expand_more_rounded,
+              size: 17,
+              color: cs.onSurfaceVariant,
             ),
-            Icon(Icons.expand_more_rounded,
-                size: 17, color: cs.onSurfaceVariant),
           ],
         ],
       ),
@@ -684,21 +692,31 @@ class _GroupedModuleMenuItem extends StatelessWidget {
   }
 }
 
-class _UnifiedSingleItemSidebar extends StatefulWidget {
-  const _UnifiedSingleItemSidebar({
+/// Keeps the unified navigation surface for modules without contextual child
+/// destinations. The active module already lives in [SidebarHeaderScope], so
+/// adding it again as a selected row would duplicate the same destination.
+class _UnifiedModuleHeaderSidebar extends StatefulWidget {
+  const _UnifiedModuleHeaderSidebar({
+    required this.destinations,
     required this.destination,
     required this.fallbackLabel,
+    required this.showDestinationItem,
+    required this.onDestinationSelected,
   });
 
+  final List<HexoraNavDestination> destinations;
   final HexoraNavDestination? destination;
   final String? fallbackLabel;
+  final bool showDestinationItem;
+  final ValueChanged<String> onDestinationSelected;
 
   @override
-  State<_UnifiedSingleItemSidebar> createState() =>
-      _UnifiedSingleItemSidebarState();
+  State<_UnifiedModuleHeaderSidebar> createState() =>
+      _UnifiedModuleHeaderSidebarState();
 }
 
-class _UnifiedSingleItemSidebarState extends State<_UnifiedSingleItemSidebar> {
+class _UnifiedModuleHeaderSidebarState
+    extends State<_UnifiedModuleHeaderSidebar> {
   bool _collapsed = false;
 
   @override
@@ -710,6 +728,25 @@ class _UnifiedSingleItemSidebarState extends State<_UnifiedSingleItemSidebar> {
         (isEs ? 'Módulo' : 'Module');
     final icon = destination?.icon ?? Icons.apps_rounded;
 
+    if (widget.showDestinationItem) {
+      return CollapsibleSidebarShell(
+        title: label,
+        collapsed: _collapsed,
+        onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
+        expandTooltip: isEs ? 'Expandir menú' : 'Expand menu',
+        collapseTooltip: isEs ? 'Contraer menú' : 'Collapse menu',
+        builder: (context, layoutCollapsed) => Align(
+          alignment: AlignmentDirectional.topCenter,
+          child: _UnifiedModuleSwitcher(
+            destinations: widget.destinations,
+            activeDestination: destination,
+            collapsed: layoutCollapsed,
+            onSelected: widget.onDestinationSelected,
+          ),
+        ),
+      );
+    }
+
     return CollapsibleSidebar(
       title: label,
       headerIcon: icon,
@@ -717,14 +754,7 @@ class _UnifiedSingleItemSidebarState extends State<_UnifiedSingleItemSidebar> {
       onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
       expandTooltip: isEs ? 'Expandir menú' : 'Expand menu',
       collapseTooltip: isEs ? 'Contraer menú' : 'Collapse menu',
-      items: [
-        CollapsibleSidebarItem(
-          icon: icon,
-          label: label,
-          selected: true,
-          onTap: () {},
-        ),
-      ],
+      items: const [],
     );
   }
 }

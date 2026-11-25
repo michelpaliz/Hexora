@@ -27,13 +27,17 @@ InputDecoration buildInputDecoration(
   Widget? prefixIcon,
   bool isFilled = false,
   bool isRequired = false,
+  bool comfortable = false,
 }) {
   final cs = Theme.of(context).colorScheme;
   final isLight = Theme.of(context).brightness == Brightness.light;
 
   return InputDecoration(
     isDense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    contentPadding: EdgeInsets.symmetric(
+      horizontal: comfortable ? 14 : 10,
+      vertical: comfortable ? 17 : 10,
+    ),
     labelText: isRequired ? '$label *' : label,
     floatingLabelBehavior: FloatingLabelBehavior.always,
     hintText: hintText,

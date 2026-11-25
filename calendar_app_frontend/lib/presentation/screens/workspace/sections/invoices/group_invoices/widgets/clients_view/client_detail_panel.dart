@@ -11,6 +11,10 @@ import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 import 'package:hexora/services/clients/client_contracts_api.dart';
 import 'package:hexora/services/receipts/receipts_api.dart';
+import 'package:hexora/services/presupuestos/presupuestos_api.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/widgets/presupuesto_pdf_preview_dialog.dart';
+import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:intl/intl.dart';
 import '../invoice_row_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/date_range_filter_card.dart';
@@ -103,7 +107,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
 
   /// Active document tab, kept when another client is selected so switching
   /// clients from the list doesn't bounce the user back to Facturas.
-  late int _tabIndex = widget.initialTabIndex.clamp(0, 3);
+  late int _tabIndex = widget.initialTabIndex.clamp(0, 4);
 
   String _classificationLabel(String value) =>
       {
@@ -155,7 +159,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
   void didUpdateWidget(covariant ClientDetailPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialTabIndex != widget.initialTabIndex) {
-      _tabIndex = widget.initialTabIndex.clamp(0, 3);
+      _tabIndex = widget.initialTabIndex.clamp(0, 4);
     }
     if (oldWidget.selectedClient?.id != widget.selectedClient?.id) {
       _selectedInvoice = null;
@@ -271,7 +275,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
               key: ValueKey(
                 'client-detail-${widget.selectedClient!.id}-${widget.initialTabIndex}',
               ),
-              length: 4,
+              length: 5,
               initialIndex: _tabIndex,
               animationDuration: HexoraMotion.duration(
                 context,
@@ -281,69 +285,92 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                 children: [
                   Padding(
                     key: const ValueKey('client-detail-compact-header'),
-                    padding: const EdgeInsets.fromLTRB(12, 6, 8, 4),
-                    child: Row(children: [
-                      // Same initial avatar and blue accent as the selected
-                      // row in the client list; a saved photo still wins.
-                      if (widget.selectedClient!.imageVersion != null)
-                        ClientPropertyImage(
-                          client: widget.selectedClient!,
-                          width: 32,
-                          height: 32,
-                        )
-                      else
-                        ClientInitialAvatar(
-                          key: const ValueKey('client-detail-avatar'),
-                          name: widget.selectedClient!.name,
-                          size: 32,
-                          emphasized: true,
-                        ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Tooltip(
-                              message: widget.selectedClient!.name,
-                              waitDuration: const Duration(milliseconds: 500),
-                              child: Text(
-                                widget.selectedClient!.name,
-                                key: const ValueKey('client-detail-name'),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: t.bodyLarge.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: cs.onSurface,
-                                ),
-                              ),
-                            ),
-                            if (selectedClientMetadata.isNotEmpty)
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                    child: LayoutBuilder(builder: (context, constraints) {
+                      final compact = constraints.maxWidth < 560;
+                      return Row(children: [
+                        // Same initial avatar and blue accent as the selected
+                        // row in the client list; a saved photo still wins.
+                        if (widget.selectedClient!.imageVersion != null)
+                          ClientPropertyImage(
+                            client: widget.selectedClient!,
+                            width: 32,
+                            height: 32,
+                          )
+                        else
+                          ClientInitialAvatar(
+                            key: const ValueKey('client-detail-avatar'),
+                            name: widget.selectedClient!.name,
+                            size: 32,
+                            emphasized: true,
+                          ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Tooltip(
-                                message: selectedClientMetadata,
+                                message: widget.selectedClient!.name,
+                                waitDuration: const Duration(milliseconds: 500),
                                 child: Text(
-                                  selectedClientMetadata,
+                                  widget.selectedClient!.name,
+                                  key: const ValueKey('client-detail-name'),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: t.bodySmall.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                    fontSize: 11,
+                                  style: t.bodyLarge.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: cs.onSurface,
                                   ),
                                 ),
                               ),
-                          ],
+                              if (selectedClientMetadata.isNotEmpty)
+                                Tooltip(
+                                  message: selectedClientMetadata,
+                                  child: Text(
+                                    selectedClientMetadata,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: t.bodySmall.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
-                      IconButton(
-                          onPressed: widget.onEditSelectedClient,
-                          tooltip: l.editClient,
-                          icon: const Icon(LucideIcons.pencil, size: 17),
-                          visualDensity: VisualDensity.compact,
-                          constraints: const BoxConstraints.tightFor(
-                            width: 32,
-                            height: 32,
-                          )),
-                    ]),
+                        const SizedBox(width: 12),
+                        _ClientInvoiceToolbar(
+                          compact: compact,
+                          controller: _invoiceFilters,
+                          invoices: widget.issuedInvoices,
+                          onDownloadVisibleInvoices:
+                              widget.onDownloadVisibleInvoices,
+                        ),
+                        Container(
+                          width: 1,
+                          height: 20,
+                          color: cs.outlineVariant.withValues(alpha: 0.45),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                            onPressed: widget.onEditSelectedClient,
+                            tooltip: l.editClient,
+                            icon: const Icon(LucideIcons.pencil, size: 17),
+                            style: IconButton.styleFrom(
+                              foregroundColor: cs.onSurfaceVariant,
+                              hoverColor: cs.primary.withValues(alpha: 0.08),
+                              padding: EdgeInsets.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 32,
+                              height: 32,
+                            )),
+                      ]);
+                    }),
                   ),
                   Container(
                     key: const ValueKey('client-detail-tabs-row'),
@@ -356,19 +383,21 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                         ),
                       ),
                     ),
-                    child: _ClientTabNavigationRow(
-                      onIndexChanged: (index) => _tabIndex = index,
-                      tabs: _ClientTabs(
-                        invoicesCount: widget.issuedInvoices.length,
-                        contractsCount: _contractsCount,
-                        receiptsCount: _receiptsCount,
-                      ),
-                      invoiceActions: _ClientInvoiceToolbar(
-                        controller: _invoiceFilters,
-                        invoices: widget.issuedInvoices,
-                        onDownloadVisibleInvoices:
-                            widget.onDownloadVisibleInvoices,
-                      ),
+                    child: Builder(
+                      builder: (tabContext) {
+                        final controller = DefaultTabController.of(tabContext);
+                        return AnimatedBuilder(
+                          animation: controller,
+                          builder: (context, _) {
+                            _tabIndex = controller.index;
+                            return _ClientTabs(
+                              invoicesCount: widget.issuedInvoices.length,
+                              contractsCount: _contractsCount,
+                              receiptsCount: _receiptsCount,
+                            );
+                          },
+                        );
+                      },
                     ),
                   ),
                   Expanded(
@@ -421,6 +450,10 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                           compact: true,
                           onCountChanged: (count) =>
                               setState(() => _contractsCount = count),
+                        ),
+                        _ClientPresupuestosTab(
+                          groupId: widget.groupId,
+                          clientId: widget.selectedClient!.id,
                         ),
                         ClientInvoiceStatsCard(
                           key: ValueKey(
@@ -543,43 +576,16 @@ class _ClientInvoiceFilterController extends ChangeNotifier {
   }
 }
 
-class _ClientTabNavigationRow extends StatelessWidget {
-  const _ClientTabNavigationRow({
-    required this.tabs,
-    required this.invoiceActions,
-    this.onIndexChanged,
-  });
-
-  final Widget tabs;
-  final Widget invoiceActions;
-  final ValueChanged<int>? onIndexChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = DefaultTabController.of(context);
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        onIndexChanged?.call(controller.index);
-        return Row(
-          children: [
-            Expanded(child: tabs),
-            if (controller.index == 0) invoiceActions,
-          ],
-        );
-      },
-    );
-  }
-}
-
 class _ClientInvoiceToolbar extends StatelessWidget {
   const _ClientInvoiceToolbar({
+    this.compact = false,
     required this.controller,
     required this.invoices,
     required this.onDownloadVisibleInvoices,
   });
 
   final _ClientInvoiceFilterController controller;
+  final bool compact;
   final List<Invoice> invoices;
   final Future<void> Function(List<Invoice>) onDownloadVisibleInvoices;
 
@@ -613,6 +619,7 @@ class _ClientInvoiceToolbar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               _ClientPeriodMenu(
+                compact: compact,
                 selected: controller.quickRange,
                 hasFilter: controller.hasFilter,
                 isSpanish: isSpanish,
@@ -628,32 +635,53 @@ class _ClientInvoiceToolbar extends StatelessWidget {
                   }
                 },
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 8),
               Tooltip(
                 message: filtered.isEmpty
                     ? l.noInvoicesYet
                     : isSpanish
                         ? 'Descargar las facturas visibles (${filtered.length})'
                         : 'Download visible invoices (${filtered.length})',
-                child: TextButton.icon(
-                  key: const ValueKey('client-invoice-zip-download'),
-                  onPressed: filtered.isEmpty || controller.downloading
-                      ? null
-                      : _downloadVisible,
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(0, 32),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    padding: const EdgeInsets.symmetric(horizontal: 7),
-                    foregroundColor: cs.onSurfaceVariant,
-                  ),
-                  icon: controller.downloading
-                      ? const SizedBox.square(
-                          dimension: 13,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(LucideIcons.folderArchive, size: 14),
-                  label: Text('ZIP (${filtered.length})', style: t.bodySmall),
-                ),
+                child: compact
+                    ? IconButton(
+                        key: const ValueKey('client-invoice-zip-download'),
+                        onPressed: filtered.isEmpty || controller.downloading
+                            ? null
+                            : _downloadVisible,
+                        icon: controller.downloading
+                            ? const SizedBox.square(
+                                dimension: 14,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
+                            : const Icon(LucideIcons.folderArchive, size: 16),
+                        style: IconButton.styleFrom(
+                          fixedSize: const Size(32, 32),
+                          padding: EdgeInsets.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          foregroundColor: cs.onSurfaceVariant,
+                        ),
+                      )
+                    : TextButton.icon(
+                        key: const ValueKey('client-invoice-zip-download'),
+                        onPressed: filtered.isEmpty || controller.downloading
+                            ? null
+                            : _downloadVisible,
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(0, 32),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(horizontal: 7),
+                          foregroundColor: cs.onSurfaceVariant,
+                        ),
+                        icon: controller.downloading
+                            ? const SizedBox.square(
+                                dimension: 13,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(LucideIcons.folderArchive, size: 14),
+                        label: Text('ZIP (${filtered.length})',
+                            style: t.bodySmall),
+                      ),
               ),
             ],
           ),
@@ -739,10 +767,139 @@ class _ClientTabs extends StatelessWidget {
           count: contractsCount,
         ),
         tab(
+          icon: LucideIcons.fileText,
+          label: isSpanish ? 'Presupuestos' : 'Proposals',
+        ),
+        tab(
           icon: LucideIcons.chartNoAxesCombined,
           label: isSpanish ? 'Gráfico' : 'Chart',
         ),
       ],
+    );
+  }
+}
+
+class _ClientPresupuestosTab extends StatefulWidget {
+  const _ClientPresupuestosTab({required this.groupId, required this.clientId});
+
+  final String groupId;
+  final String clientId;
+
+  @override
+  State<_ClientPresupuestosTab> createState() => _ClientPresupuestosTabState();
+}
+
+class _ClientPresupuestosTabState extends State<_ClientPresupuestosTab> {
+  late Future<List<Map<String, dynamic>>> _future;
+  final _api = PresupuestosApi();
+  String? _previewingId;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = PresupuestosApi().listByGroup(
+      groupId: widget.groupId,
+      clientId: widget.clientId,
+      limit: 100,
+    );
+  }
+
+  Future<void> _preview(Map<String, dynamic> row) async {
+    final id = (row['id'] ?? row['presupuestoId'] ?? row['_id'] ?? '')
+        .toString()
+        .trim();
+    if (id.isEmpty || _previewingId != null) return;
+    setState(() => _previewingId = id);
+    try {
+      final response = await _api.previewPdf(id);
+      if (!mounted) return;
+      final number = (row['presupuestoNumber'] ??
+              row['budgetNumber'] ??
+              row['number'] ??
+              id)
+          .toString()
+          .replaceAll('/', '-');
+      await PresupuestoPdfPreviewDialog.show(
+        context,
+        bytes: response.bodyBytes,
+        onDownload: () => launchFileDownload(
+          response.bodyBytes,
+          fileName: 'presupuesto-$number.pdf',
+          mimeType: 'application/pdf',
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        showErrorSnack(
+            context, error.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _previewingId = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+                isEs
+                    ? 'No se pudieron cargar los presupuestos.'
+                    : 'Proposals could not be loaded.',
+                style: TextStyle(color: cs.onSurfaceVariant)),
+          );
+        }
+        final rows = snapshot.data ?? const <Map<String, dynamic>>[];
+        if (rows.isEmpty) {
+          return Center(
+            child: Text(
+                isEs
+                    ? 'No hay presupuestos para este cliente.'
+                    : 'No proposals for this client.',
+                style: TextStyle(color: cs.onSurfaceVariant)),
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(12),
+          itemCount: rows.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 6),
+          itemBuilder: (context, index) {
+            final row = rows[index];
+            final number = (row['presupuestoNumber'] ??
+                    row['budgetNumber'] ??
+                    row['number'] ??
+                    'Presupuesto')
+                .toString();
+            final status =
+                (row['statusLabel'] ?? row['status'] ?? '').toString();
+            final id = (row['id'] ?? row['presupuestoId'] ?? row['_id'] ?? '')
+                .toString();
+            return ListTile(
+              onTap: id.trim().isEmpty ? null : () => _preview(row),
+              dense: true,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              tileColor: cs.surfaceContainerLow,
+              leading: _previewingId == id
+                  ? const SizedBox.square(
+                      dimension: 19,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(LucideIcons.fileText, color: cs.primary, size: 19),
+              title: Text(number,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: status.isEmpty ? null : Text(status),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -985,6 +1142,7 @@ class _ClientCustomDateRange extends StatelessWidget {
 
 class _ClientPeriodMenu extends StatelessWidget {
   const _ClientPeriodMenu({
+    this.compact = false,
     required this.selected,
     required this.hasFilter,
     required this.isSpanish,
@@ -992,6 +1150,7 @@ class _ClientPeriodMenu extends StatelessWidget {
   });
 
   final DateQuickRange selected;
+  final bool compact;
   final bool hasFilter;
   final bool isSpanish;
   final ValueChanged<DateQuickRange?> onSelected;
@@ -1000,7 +1159,7 @@ class _ClientPeriodMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final narrow = MediaQuery.sizeOf(context).width < 500;
+    final narrow = compact || MediaQuery.sizeOf(context).width < 500;
     final label = switch (selected) {
       DateQuickRange.month => isSpanish ? '30 días' : '30 days',
       DateQuickRange.quarter => isSpanish ? '3 meses' : '3 months',
@@ -1010,7 +1169,7 @@ class _ClientPeriodMenu extends StatelessWidget {
 
     return PopupMenuButton<String>(
       key: const ValueKey('client-document-period-menu'),
-      tooltip: isSpanish ? 'Seleccionar periodo' : 'Select period',
+      tooltip: '${isSpanish ? 'Seleccionar periodo' : 'Select period'}: $label',
       onSelected: (value) => onSelected(switch (value) {
         'month' => DateQuickRange.month,
         'quarter' => DateQuickRange.quarter,

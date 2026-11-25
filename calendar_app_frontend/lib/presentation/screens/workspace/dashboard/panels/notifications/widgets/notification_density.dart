@@ -5,8 +5,9 @@ import 'package:flutter/material.dart';
 /// and compact. Prefer these tokens over ad-hoc values in the widgets below.
 abstract final class NotifDensity {
   // ── List rows ──────────────────────────────────────────────────────────────
-  /// Gap between consecutive notification rows (spec target: 2–4 px).
-  static const double rowGap = 3;
+  /// Gap between consecutive notification rows: rows sit on the canvas, so a
+  /// hairline gap is enough to separate them.
+  static const double rowGap = 1;
   static const EdgeInsets rowPadding = EdgeInsets.fromLTRB(8, 6, 4, 6);
   static const double rowRadius = 8;
   static const double iconBox = 30;
@@ -33,13 +34,21 @@ abstract final class NotifDensity {
   static const double tableColumnSpacing = 14;
   static const double tableDividerThickness = 0.6;
 
-  /// Subtle fill behind the selected notification row.
-  static Color selectedRowFill(ColorScheme cs) =>
-      cs.primary.withValues(alpha: 0.08);
+  /// The only prominent row fill: the selected notification. Unread status is
+  /// carried by a blue dot and title weight, never by a background.
+  static Color selectedRowFill(ColorScheme cs) => cs.primary
+      .withValues(alpha: cs.brightness == Brightness.dark ? 0.20 : 0.11);
 
-  /// Faint tint marking an unread (but unselected) row.
-  static Color unreadRowFill(ColorScheme cs) =>
-      cs.primary.withValues(alpha: 0.035);
+  /// Transient hover tint, clearly lighter than the selected fill.
+  static Color hoverRowFill(ColorScheme cs) =>
+      cs.primary.withValues(alpha: 0.045);
+
+  /// Muted, uniform timestamp colour (no pill/background).
+  static Color timestampColor(ColorScheme cs) =>
+      cs.onSurfaceVariant.withValues(alpha: 0.8);
+
+  /// Duration for selection/hover colour changes and the details fade.
+  static const Duration transition = Duration(milliseconds: 150);
 
   /// Muted color shared by uppercase section labels.
   static Color sectionLabelColor(ColorScheme cs) =>
