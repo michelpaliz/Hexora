@@ -76,6 +76,150 @@ void main() {
     expect(manager.activeIdentity, const WorkspaceTabIdentity('calendar'));
   });
 
+  test('tabs can be reordered without changing the active tab', () {
+    final manager = WorkspaceTabManager(businessId: 'business-1');
+    manager.openOrActivateTab(_tab('home'));
+    manager.openOrActivateTab(_tab('invoices'));
+    manager.openOrActivateTab(_tab('chat'));
+    manager.activateTab(const WorkspaceTabIdentity('invoices'));
+
+    manager.reorderTab(const WorkspaceTabIdentity('chat'), 0);
+
+    expect(
+      manager.tabs.map((tab) => tab.identity.value),
+      ['chat', 'home', 'invoices'],
+    );
+    expect(manager.activeIdentity, const WorkspaceTabIdentity('invoices'));
+  });
+
+  test('tab reordering safely clamps the destination index', () {
+    final manager = WorkspaceTabManager(businessId: 'business-1');
+    manager.openOrActivateTab(_tab('home'));
+    manager.openOrActivateTab(_tab('invoices'));
+    manager.openOrActivateTab(_tab('chat'));
+
+    manager.reorderTab(const WorkspaceTabIdentity('home'), 99);
+
+    expect(
+      manager.tabs.map((tab) => tab.identity.value),
+      ['invoices', 'chat', 'home'],
+    );
+  });
+
+  test('reordered tabs restore in the saved visual order', () async {
+    final manager = WorkspaceTabManager(businessId: 'business-1');
+    await manager.configureSession('user-1');
+    manager.openOrActivateTab(_tab('home'));
+    manager.openOrActivateTab(_tab('invoices'));
+    manager.openOrActivateTab(_tab('chat'));
+    manager.reorderTab(const WorkspaceTabIdentity('chat'), 0);
+    await Future<void>.delayed(Duration.zero);
+
+    final restored = WorkspaceTabManager(businessId: 'business-1');
+    await restored.configureSession('user-1');
+    expect(
+      await restored.restore(
+        resolver: (snapshot) => _tab(snapshot.identity),
+      ),
+      isTrue,
+    );
+    expect(
+      restored.tabs.map((tab) => tab.identity.value),
+      ['chat', 'home', 'invoices'],
+    );
+  });
+
+  testWidgets('dragging a Chrome tab reorders the shared workspace strip',
+      (tester) async {
+    final manager = WorkspaceTabManager(businessId: 'business-1');
+    manager.openOrActivateTab(_tab('home'));
+    manager.openOrActivateTab(_tab('invoices'));
+    manager.openOrActivateTab(_tab('chat'));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 620,
+              child: AnimatedBuilder(
+                animation: manager,
+                builder: (context, _) => WorkspaceTabBar(
+                  manager: manager,
+                  onClose: (tab) async => manager.closeTab(tab.identity),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final chat = find.byKey(const ValueKey('workspace-tab-chat'));
+    final home = find.byKey(const ValueKey('workspace-tab-home'));
+    final gesture = await tester.startGesture(tester.getCenter(chat));
+    await gesture.moveBy(const Offset(-20, 0));
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.moveTo(tester.getCenter(home));
+    await tester.pump(const Duration(milliseconds: 300));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(
+      manager.tabs.map((tab) => tab.identity.value),
+      ['chat', 'home', 'invoices'],
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('reselecting a section scrolls its active Chrome tab into view',
+      (tester) async {
+    final manager = WorkspaceTabManager(businessId: 'business-1');
+    for (final id in ['home', 'invoices', 'calendar', 'chat', 'notes']) {
+      manager.openOrActivateTab(_tab(id));
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 360,
+              child: AnimatedBuilder(
+                animation: manager,
+                builder: (context, _) => WorkspaceTabBar(
+                  manager: manager,
+                  onClose: (tab) async => manager.closeTab(tab.identity),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tabList = tester.widget<ReorderableListView>(
+      find.byType(ReorderableListView),
+    );
+    final controller = tabList.scrollController!;
+    expect(controller.position.maxScrollExtent, greaterThan(0));
+    expect(controller.offset, 0);
+
+    manager.activateTab(const WorkspaceTabIdentity('notes'));
+    await tester.pumpAndSettle();
+
+    expect(controller.offset, greaterThan(0));
+    expect(
+      manager.activeIdentity,
+      const WorkspaceTabIdentity('notes'),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   test('title updates do not change tab identity or create a duplicate', () {
     final manager = WorkspaceTabManager(businessId: 'business-1');
     manager.openOrActivateTab(_tab('invoice:new'));

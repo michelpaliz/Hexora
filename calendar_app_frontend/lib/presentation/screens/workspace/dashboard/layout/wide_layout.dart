@@ -239,7 +239,9 @@ class WideLayout extends StatelessWidget {
     }
 
     if (showQuickNotesInline) {
-      return QuickNotesBoardScreen(group: state.group, embedded: true);
+      return WorkspaceMainContent(
+        child: QuickNotesBoardScreen(group: state.group, embedded: true),
+      );
     }
 
     return Row(
@@ -327,11 +329,13 @@ class WideLayout extends StatelessWidget {
       onOpenNotifications: () => state.openSection('notifications'),
       onOpenSettings: () => state.openSection('settings'),
     );
+    if (section == Sections.businessChat) {
+      return WorkspaceMainContent(child: panel);
+    }
     if (section == Sections.settings ||
         section == Sections.workers ||
         section == Sections.notifications ||
-        section == Sections.chat ||
-        section == Sections.businessChat) {
+        section == Sections.chat) {
       return panel;
     }
     return WorkspaceMainContent(child: panel);

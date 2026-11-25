@@ -26,13 +26,14 @@ class CompactChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // Light mode follows the shared chat palette: restrained blue for sent
-    // messages and a neutral slate surface for received messages.
+    // Derive both sides from the selected appearance. This keeps neutral
+    // light, blue light and dark chat surfaces consistent with the workspace.
     final Color background = mine
-        ? (isDark ? const Color(0xFF1E3A5F) : const Color(0xFFDBEAFE))
-        : (isDark ? cs.surfaceContainerHigh : const Color(0xFFF1F5F9));
+        ? Color.alphaBlend(
+            cs.primary.withValues(alpha: .14),
+            cs.surface,
+          )
+        : cs.surfaceContainerLow;
     const double big = 16;
     const double small = 5;
     // Flatten the corner on the side that connects to the sender's other
@@ -49,6 +50,7 @@ class CompactChatBubble extends StatelessWidget {
       child: GestureDetector(
         onLongPress: onLongPress,
         child: Container(
+          key: const ValueKey('business-chat-bubble-surface'),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: background,

@@ -25,8 +25,7 @@ class WorkspaceTabBar extends StatefulWidget {
 class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
   final ScrollController _scrollController = ScrollController();
   final MenuController _allTabsMenu = MenuController();
-  final Map<WorkspaceTabIdentity, GlobalKey> _tabKeys = {};
-  WorkspaceTabIdentity? _lastActive;
+  int _lastActivationRevision = -1;
   bool _hasOverflow = false;
   bool _canScrollBack = false;
   bool _canScrollForward = false;
@@ -100,21 +99,72 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
     _scrollController.jumpTo(target);
   }
 
-  void _keepActiveVisible(WorkspaceTabIdentity? active) {
-    if (active == null || active == _lastActive) return;
-    _lastActive = active;
+  void _keepActiveVisible(
+    WorkspaceTabIdentity? active,
+    int activationRevision,
+  ) {
+    if (active == null || activationRevision == _lastActivationRevision) {
+      return;
+    }
+    _lastActivationRevision = activationRevision;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final context = _tabKeys[active]?.currentContext;
-      if (context != null) {
-        Scrollable.ensureVisible(
-          context,
-          duration: HexoraMotion.duration(context, HexoraMotion.tabNavigation),
-          curve: HexoraMotion.enter,
-          alignment: 0.5,
-        );
-      }
+      if (_revealTab(active)) return;
+      // ReorderableListView can publish its final scroll extent one frame
+      // after first layout. Retry once so a newly opened distant tab is also
+      // revealed, not only tabs selected after the strip has settled.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _revealTab(active);
+      });
     });
+  }
+
+  bool _revealTab(WorkspaceTabIdentity active) {
+    // Lazy horizontal lists do not reliably expose a BuildContext for a
+    // distant item, so reveal it using the strip's exact tab geometry.
+    if (!_scrollController.hasClients) return false;
+    final tabs = widget.manager.tabs;
+    final activeIndex = tabs.indexWhere((tab) => tab.identity == active);
+    if (activeIndex < 0) return true;
+    final leading = tabs
+        .take(activeIndex)
+        .fold<double>(0, (width, tab) => width + _tabWidth(context, tab));
+    final width = _tabWidth(context, tabs[activeIndex]);
+    final position = _scrollController.position;
+    final trailing = leading + width;
+    if (position.maxScrollExtent <= 0.5 &&
+        trailing > position.viewportDimension) {
+      return false;
+    }
+    final visibleLeading = position.pixels;
+    final visibleTrailing = visibleLeading + position.viewportDimension;
+    if (leading >= visibleLeading && trailing <= visibleTrailing) return true;
+    final target = (leading < visibleLeading
+            ? leading
+            : trailing - position.viewportDimension)
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    _scrollController.animateTo(
+      target,
+      duration: HexoraMotion.duration(context, HexoraMotion.tabNavigation),
+      curve: HexoraMotion.enter,
+    );
+    return true;
+  }
+
+  double _tabWidth(BuildContext context, WorkspaceTab tab) {
+    final labelPainter = TextPainter(
+      text: TextSpan(
+        text: tab.title,
+        style: NavigationTokens.label(context, selected: true),
+      ),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final width = (labelPainter.width + 62).clamp(140.0, 165.0).toDouble();
+    labelPainter.dispose();
+    return width;
   }
 
   @override
@@ -122,10 +172,8 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
     final manager = widget.manager;
     final tabs = manager.tabs;
     final active = manager.activeIdentity;
-    _keepActiveVisible(active);
+    _keepActiveVisible(active, manager.activationRevision);
     _scheduleScrollStateSync();
-    _tabKeys.removeWhere(
-        (identity, _) => !tabs.any((tab) => tab.identity == identity));
 
     final locale = Localizations.localeOf(context).languageCode;
     return LayoutBuilder(
@@ -203,50 +251,65 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
                         },
                         child: ScrollConfiguration(
                           behavior: const _WorkspaceTabScrollBehavior(),
-                          child: ListView.separated(
+                          child: ReorderableListView.builder(
                             key: const PageStorageKey<String>(
                               'workspace-tab-strip-scroll',
                             ),
-                            controller: _scrollController,
+                            scrollController: _scrollController,
                             scrollDirection: Axis.horizontal,
                             physics: const ClampingScrollPhysics(),
                             padding: EdgeInsets.zero,
+                            buildDefaultDragHandles: false,
+                            proxyDecorator: (child, _, animation) =>
+                                AnimatedBuilder(
+                              animation: animation,
+                              child: child,
+                              builder: (context, child) => Transform.scale(
+                                scale: 1 + (animation.value * 0.015),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  elevation: 0,
+                                  child: child,
+                                ),
+                              ),
+                            ),
+                            onReorder: (oldIndex, newIndex) {
+                              // ReorderableListView reports the insertion point
+                              // before removing the dragged item.
+                              if (newIndex > oldIndex) newIndex -= 1;
+                              manager.reorderTab(
+                                tabs[oldIndex].identity,
+                                newIndex,
+                              );
+                            },
                             itemCount: tabs.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox.shrink(),
                             itemBuilder: (context, index) {
                               final tab = tabs[index];
-                              final labelPainter = TextPainter(
-                                text: TextSpan(
-                                  text: tab.title,
-                                  style: NavigationTokens.label(context,
-                                      selected: true),
-                                ),
-                                textDirection: Directionality.of(context),
-                                textScaler: MediaQuery.textScalerOf(context),
-                                maxLines: 1,
-                              )..layout();
                               // Preserve readable names as tabs accumulate;
                               // the existing strip scrolls instead of squeezing.
                               // Icon (18), close target (24), compact gaps and
                               // the curved shoulders. Keep ordinary tabs dense;
                               // longer titles truncate rather than stretching
                               // the whole strip.
-                              final tabWidth = (labelPainter.width + 62)
-                                  .clamp(140.0, 165.0)
-                                  .toDouble();
-                              labelPainter.dispose();
+                              final tabWidth = _tabWidth(context, tab);
                               return KeyedSubtree(
-                                key: _tabKeys.putIfAbsent(
-                                    tab.identity, GlobalKey.new),
-                                child: _WorkspaceTabButton(
-                                  tab: tab,
-                                  active: active == tab.identity,
-                                  dirty: manager.isDirty(tab.identity),
-                                  width: tabWidth,
-                                  onActivate: () =>
-                                      manager.activateTab(tab.identity),
-                                  onClose: () => widget.onClose(tab),
+                                key: ValueKey(
+                                  'workspace-tab-item-${tab.identity.value}',
+                                ),
+                                child: ReorderableDragStartListener(
+                                  index: index,
+                                  child: _WorkspaceTabButton(
+                                    key: ValueKey(
+                                      'workspace-tab-${tab.identity.value}',
+                                    ),
+                                    tab: tab,
+                                    active: active == tab.identity,
+                                    dirty: manager.isDirty(tab.identity),
+                                    width: tabWidth,
+                                    onActivate: () =>
+                                        manager.activateTab(tab.identity),
+                                    onClose: () => widget.onClose(tab),
+                                  ),
                                 ),
                               );
                             },
@@ -322,6 +385,7 @@ class _TabScrollButton extends StatelessWidget {
 
 class _WorkspaceTabButton extends StatefulWidget {
   const _WorkspaceTabButton({
+    super.key,
     required this.tab,
     required this.active,
     required this.dirty,
@@ -375,6 +439,7 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
     return Listener(
       onPointerDown: _handlePointerDown,
       child: MouseRegion(
+        cursor: SystemMouseCursors.grab,
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: Focus(

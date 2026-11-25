@@ -15,8 +15,6 @@ import 'package:hexora/presentation/screens/workspace/sections/enable_banking/en
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/workers_hub_screen.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
-import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/state/user_preferences_provider.dart';
@@ -48,6 +46,10 @@ bool resolveBusinessChatConversationPaneCollapsed({
   return manuallyCollapsed ||
       (embedded && displayMode == NavigationDisplayMode.iconsOnly);
 }
+
+@visibleForTesting
+Color resolveBusinessChatCanvas(ThemeData theme) =>
+    theme.scaffoldBackgroundColor;
 
 class BusinessChatScreen extends StatefulWidget {
   const BusinessChatScreen(
@@ -2468,11 +2470,14 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
           value: value,
           enabled: enabled,
           height: 40,
-          textStyle:
-              destructive ? const TextStyle(color: Color(0xFFDC2626)) : null,
+          textStyle: destructive
+              ? TextStyle(color: Theme.of(context).colorScheme.error)
+              : null,
           child: Row(children: [
             Icon(icon,
-                size: 18, color: destructive ? const Color(0xFFDC2626) : null),
+                size: 18,
+                color:
+                    destructive ? Theme.of(context).colorScheme.error : null),
             const SizedBox(width: 10),
             Text(label),
           ]),
@@ -2529,7 +2534,9 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       menuPadding: const EdgeInsets.symmetric(vertical: 6),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant,
+        ),
       ),
       onSelected: (value) {
         if (value == 'refresh') _refresh();
@@ -2784,7 +2791,8 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     UserPreferencesProvider? preferences;
     try {
       preferences = context.watch<UserPreferencesProvider>();
@@ -2795,10 +2803,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     final embedded = widget.onExit == null;
     final forceIconsOnly = embedded &&
         preferences?.navigationDisplayMode == NavigationDisplayMode.iconsOnly;
-    final workspaceCanvas = Theme.of(context).brightness == Brightness.dark
-        ? Theme.of(context).scaffoldBackgroundColor
-        : AppColors.workspaceCanvas;
-    final workspaceChrome = WorkspaceTabChromeScope.maybeOf(context);
+    final workspaceCanvas = resolveBusinessChatCanvas(theme);
     final isNarrowViewport = MediaQuery.sizeOf(context).width < 700;
     final query = _conversationSearch.text.trim().toLowerCase();
     final visibleConversations = query.isEmpty
@@ -3061,8 +3066,6 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                       (narrow && _reviewPanel != null))
                     Expanded(
                         child: Column(children: [
-                      if (!narrow && workspaceChrome?.active == true)
-                        workspaceChrome!.tabBarBuilder(context),
                       Expanded(
                           child: Row(children: [
                         if (narrow && _reviewPanel != null)
@@ -3311,9 +3314,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
               // Keep the overlay panel mounted while collapsed to preserve its
               // state; Offstage hides it without disposing.
               Padding(
-                padding: EdgeInsets.only(
-                  top: workspaceChrome?.active == true ? 36 : 0,
-                ),
+                padding: EdgeInsets.zero,
                 child: Offstage(
                   offstage: _reviewCollapsed,
                   child: Align(
@@ -3341,9 +3342,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
               ),
               if (_reviewCollapsed)
                 Padding(
-                  padding: EdgeInsets.only(
-                    top: workspaceChrome?.active == true ? 36 : 0,
-                  ),
+                  padding: EdgeInsets.zero,
                   child: Align(
                     alignment: Alignment.centerRight,
                     child: SizedBox(

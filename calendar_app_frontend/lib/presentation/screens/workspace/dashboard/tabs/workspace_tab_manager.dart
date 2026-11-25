@@ -23,6 +23,7 @@ class WorkspaceTabManager extends ChangeNotifier {
       <WorkspaceTabIdentity, WorkspaceTabSaveHandler>{};
 
   WorkspaceTabIdentity? _activeIdentity;
+  int _activationRevision = 0;
   String? _userId;
   int _persistenceRevision = 0;
   bool _persistScheduled = false;
@@ -30,6 +31,7 @@ class WorkspaceTabManager extends ChangeNotifier {
   List<WorkspaceTab> get tabs => List.unmodifiable(_tabs);
   WorkspaceTabIdentity? get activeIdentity => _activeIdentity;
   WorkspaceTab? get activeTab => _find(_activeIdentity);
+  int get activationRevision => _activationRevision;
 
   WorkspaceTab openOrActivateTab(WorkspaceTab tab) {
     final existing = _find(tab.identity);
@@ -51,8 +53,28 @@ class WorkspaceTabManager extends ChangeNotifier {
   }
 
   void activateTab(WorkspaceTabIdentity identity) {
-    if (_activeIdentity == identity || _find(identity) == null) return;
+    if (_find(identity) == null) return;
+    if (_activeIdentity == identity) {
+      // A repeated navigation selection should still bring its Chrome tab
+      // back into view when the user has horizontally scrolled the strip.
+      _signalActivation();
+      notifyListeners();
+      return;
+    }
     _activate(identity);
+    _changed();
+  }
+
+  /// Moves an open tab to [newIndex] without changing the active tab or the
+  /// recently-used order. The new visual order is persisted with the session.
+  void reorderTab(WorkspaceTabIdentity identity, int newIndex) {
+    final oldIndex = _tabs.indexWhere((tab) => tab.identity == identity);
+    if (oldIndex < 0 || _tabs.length < 2) return;
+    final targetIndex = newIndex.clamp(0, _tabs.length - 1);
+    if (oldIndex == targetIndex) return;
+
+    final tab = _tabs.removeAt(oldIndex);
+    _tabs.insert(targetIndex, tab);
     _changed();
   }
 
@@ -76,7 +98,10 @@ class WorkspaceTabManager extends ChangeNotifier {
           ? null
           : _tabs[index.clamp(0, _tabs.length - 1)].identity;
       final active = _activeIdentity;
-      if (active != null) _touch(active);
+      if (active != null) {
+        _touch(active);
+        _signalActivation();
+      }
     }
     _changed();
   }
@@ -91,6 +116,7 @@ class WorkspaceTabManager extends ChangeNotifier {
     _dirtyTabs.removeWhere((candidate) => candidate != identity);
     _saveHandlers.removeWhere((candidate, _) => candidate != identity);
     _activeIdentity = identity;
+    _signalActivation();
     _changed();
   }
 
@@ -181,6 +207,7 @@ class WorkspaceTabManager extends ChangeNotifier {
           ? requested
           : restored.last.identity;
       _touch(_activeIdentity!);
+      _signalActivation();
       notifyListeners();
       return true;
     } catch (_) {
@@ -199,7 +226,10 @@ class WorkspaceTabManager extends ChangeNotifier {
   void _activate(WorkspaceTabIdentity identity) {
     _activeIdentity = identity;
     _touch(identity);
+    _signalActivation();
   }
+
+  void _signalActivation() => ++_activationRevision;
 
   void _touch(WorkspaceTabIdentity identity) {
     _recentlyUsed
