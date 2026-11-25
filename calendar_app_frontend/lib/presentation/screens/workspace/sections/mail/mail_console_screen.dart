@@ -43,6 +43,7 @@ part 'console/mail_console_utils.dart';
 part 'console/mail_console_view.dart';
 part 'console/mail_console_footer_manager.dart';
 part 'console/mail_console_templates_manager.dart';
+part 'console/mail_account_setup.dart';
 
 VoidCallback _asyncCallback(Future<void> Function() action) {
   return () {
@@ -106,6 +107,12 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   bool _showCompose = false;
   bool _showFooterManager = false;
   bool _showTemplateManager = false;
+  bool _mailAccountLoading = true;
+  bool _mailAccountConfigured = false;
+  bool _showMailAccountSetup = false;
+  String? _mailAccountError;
+  Map<String, dynamic>? _mailAccount;
+  String? _mailAccountGroupId;
 
   GroupClient? _client;
 
@@ -171,10 +178,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       if (currentQuery.isNotEmpty) {
         _threadSearchCtrl?.text = currentQuery;
       }
-      _loadThreads(refresh: true);
-      if (_selectedThreadKey != null) {
-        _selectThread(_selectedThreadKey!);
-      }
+      _loadMailAccount();
     });
   }
 
@@ -190,7 +194,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       final before = domain.scopeGroupId;
       final current = _currentGroupId();
       domain.setGroupScope(current);
-      if (before != domain.scopeGroupId) _loadThreads(refresh: true);
+      if (before != domain.scopeGroupId) _loadMailAccount();
     });
   }
 
@@ -1079,6 +1083,82 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     Navigator.of(context).pushReplacementNamed(next);
   }
 
+  Uri _mailAccountUri(String groupId, [String suffix = '']) {
+    final base = ApiConstants.baseUrl.endsWith('/api')
+        ? '${ApiConstants.baseUrl}/mail'
+        : '${ApiConstants.baseUrl}/api/mail';
+    return Uri.parse('$base/account$suffix')
+        .replace(queryParameters: {'groupId': groupId});
+  }
+
+  Future<void> _loadMailAccount() async {
+    final groupId = _currentGroupId()?.trim() ?? '';
+    if (groupId.isEmpty) {
+      update(() {
+        _mailAccountLoading = false;
+        _mailAccountConfigured = false;
+        _mailAccountError = 'Select a business to configure its email.';
+      });
+      return;
+    }
+    update(() {
+      _mailAccountLoading = true;
+      _mailAccountGroupId = groupId;
+      _mailAccountError = null;
+      _showMailAccountSetup = false;
+    });
+    try {
+      final response = await AuthenticatedHttpClient.get(
+        _mailAccountUri(groupId),
+        client: _http(),
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(response.body.isNotEmpty
+            ? response.body
+            : response.reasonPhrase ?? 'Unable to load email settings');
+      }
+      final decoded = jsonDecode(response.body);
+      final account = decoded is Map<String, dynamic>
+          ? decoded
+          : (decoded as Map).cast<String, dynamic>();
+      final configured = account['configured'] == true;
+      if (!mounted || _mailAccountGroupId != groupId || _currentGroupId() != groupId) return;
+      update(() {
+        _mailAccount = configured ? account : null;
+        _mailAccountConfigured = configured;
+        _mailAccountLoading = false;
+      });
+      if (configured) {
+        await _loadThreads(refresh: true);
+        if (_selectedThreadKey != null) {
+          await _selectThread(_selectedThreadKey!);
+        }
+      }
+    } catch (error) {
+      if (!mounted || _mailAccountGroupId != groupId || _currentGroupId() != groupId) return;
+      update(() {
+        _mailAccountLoading = false;
+        _mailAccountConfigured = false;
+        _mailAccountError = error.toString();
+      });
+    }
+  }
+
+  Future<void> _syncMailAccount() async {
+    final groupId = _currentGroupId()?.trim() ?? '';
+    if (groupId.isEmpty) return;
+    try {
+      await AuthenticatedHttpClient.post(
+        _mailAccountUri(groupId, '/sync'),
+        client: _http(),
+        body: jsonEncode({'groupId': groupId}),
+      );
+    } catch (_) {
+      // The inbox remains usable when the provider is temporarily unavailable.
+    }
+    if (mounted) await _loadThreads(refresh: true);
+  }
+
   String? _currentGroupId() {
     try {
       return context.read<GroupDashboardState>().group.id;
@@ -1108,6 +1188,29 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_mailAccountLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (!_mailAccountConfigured || _showMailAccountSetup) {
+      return _MailAccountSetup(
+        key: ValueKey('mail-account-${_currentGroupId()}'),
+        groupId: _currentGroupId(),
+        initialAccount: _mailAccount,
+        error: _mailAccountError,
+        canCancel: _mailAccountConfigured,
+        canManage: context.read<GroupDashboardState>().canSeeAdmin,
+        onCancel: () => update(() => _showMailAccountSetup = false),
+        onSaved: (account) {
+          update(() {
+            _mailAccount = account;
+            _mailAccountConfigured = true;
+            _showMailAccountSetup = false;
+            _mailAccountError = null;
+          });
+          unawaited(_syncMailAccount());
+        },
+      );
+    }
     return _MailConsoleView(state: this);
   }
 

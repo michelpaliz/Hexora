@@ -8,6 +8,7 @@ import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
 import 'package:hexora/presentation/screens/home/home_page/home_page.dart';
 import 'package:hexora/presentation/screens/settings/dialogs/change_password_dialog.dart';
 import 'package:hexora/presentation/screens/auth/register/ui/form/button_style_helper.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/shared/widgets/text_fields/text_field_widget.dart';
 import 'package:hexora/presentation/screens/auth/shared_utilities/auth_shared_widgets.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -40,6 +41,10 @@ class _LoginFormState extends State<LoginForm> {
     unawaited(EmailVerificationState.clearPersisted());
     _email.addListener(_recomputeCanSubmit);
     _password.addListener(_recomputeCanSubmit);
+    final routeUri = Uri.base.fragment.startsWith('/')
+        ? Uri.tryParse(Uri.base.fragment)
+        : Uri.base;
+    _email.text = routeUri?.queryParameters['email']?.trim() ?? '';
     _recomputeCanSubmit();
   }
 
@@ -119,7 +124,13 @@ class _LoginFormState extends State<LoginForm> {
     setState(() => _isResending = true);
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.resendVerificationEmail(email: email);
+      final routeUri = Uri.base.fragment.startsWith('/')
+          ? Uri.tryParse(Uri.base.fragment)
+          : Uri.base;
+      await authService.resendVerificationEmail(
+        email: email,
+        invitationToken: routeUri?.queryParameters['invitationToken'],
+      );
       if (!mounted) return;
       _showSnack(l10n.resendVerificationSent(email));
     } catch (e) {
@@ -313,13 +324,33 @@ class _LoginFormState extends State<LoginForm> {
                       final password = _password.text;
                       setState(() => _isSubmitting = true);
                       try {
-                        await authService.logIn(
+                        final loggedInUser = await authService.logIn(
                             email: email, password: password);
                         if (!context.mounted) return;
-
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(builder: (_) => const HomePage()),
-                        );
+                        final routeUri = Uri.base.fragment.startsWith('/')
+                            ? Uri.tryParse(Uri.base.fragment)
+                            : Uri.base;
+                        final next = routeUri?.queryParameters['next'];
+                        final invitationToken =
+                            routeUri?.queryParameters['invitationToken'];
+                        if (next == AppRoutes.invitation &&
+                            invitationToken != null &&
+                            invitationToken.isNotEmpty) {
+                          Navigator.of(context).pushReplacementNamed(
+                            AppRoutes.invitation,
+                            arguments: invitationToken,
+                          );
+                        } else if (next == AppRoutes.showNotifications &&
+                            loggedInUser != null) {
+                          Navigator.of(context).pushReplacementNamed(
+                            AppRoutes.showNotifications,
+                            arguments: loggedInUser,
+                          );
+                        } else {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(builder: (_) => const HomePage()),
+                          );
+                        }
                       } catch (e) {
                         if (!context.mounted) return;
 

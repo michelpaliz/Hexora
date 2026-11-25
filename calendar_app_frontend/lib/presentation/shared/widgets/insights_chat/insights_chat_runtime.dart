@@ -229,6 +229,8 @@ class InsightsChatRuntime extends ChangeNotifier {
     return separator < 0 ? null : scopeKey.substring(separator + 2);
   }
 
+  String? get historyGroupId => _historyGroupId;
+
   String get _remoteScopeKey => '$scopeKey::${_interactionMode.name}';
 
   Future<List<Map<String, dynamic>>> loadConversationHistory() async {

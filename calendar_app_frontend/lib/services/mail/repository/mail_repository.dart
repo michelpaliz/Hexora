@@ -146,7 +146,9 @@ class MailRepository implements IMailRepository {
   @override
   Future<void> sendMessage(MailSendRequest request) async {
     final token = await _requireToken();
-    await _api.sendMessage(payload: request.toJson(), token: token);
+    final payload = request.toJson();
+    if (_scopeGroupId != null) payload['groupId'] = _scopeGroupId;
+    await _api.sendMessage(payload: payload, token: token);
   }
 
   @override
@@ -158,6 +160,8 @@ class MailRepository implements IMailRepository {
   @override
   Future<void> forward(String id, MailForwardRequest request) async {
     final token = await _requireToken();
-    await _api.forward(id: id, payload: request.toJson(), token: token);
+    final payload = request.toJson();
+    if (_scopeGroupId != null) payload['groupId'] = _scopeGroupId;
+    await _api.forward(id: id, payload: payload, token: token);
   }
 }

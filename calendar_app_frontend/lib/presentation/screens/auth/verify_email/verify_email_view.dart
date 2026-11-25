@@ -19,6 +19,7 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
   bool _isVerifying = false;
   bool _isResending = false;
   String? _token;
+  String? _invitationToken;
 
   @override
   void initState() {
@@ -44,11 +45,13 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
       final mapArgs = args.cast<String, dynamic>();
       emailArg = mapArgs['email'] as String?;
       tokenArg = mapArgs['token'] as String?;
+      _invitationToken = mapArgs['invitationToken'] as String?;
     }
 
     // 2. Parse arguments from URL (Deep link support)
     final tokenFromUrl = Uri.base.queryParameters['token'];
     final emailFromUrl = Uri.base.queryParameters['email'];
+    _invitationToken ??= Uri.base.queryParameters['invitationToken'];
 
     // 3. Determine final values
     _token = (tokenFromUrl?.isNotEmpty ?? false)
@@ -112,7 +115,10 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
     setState(() => _isResending = true);
     try {
       final authService = context.read<AuthService>();
-      await authService.resendVerificationEmail(email: email);
+      await authService.resendVerificationEmail(
+        email: email,
+        invitationToken: _invitationToken,
+      );
       if (!mounted) return;
       _showSnack(l10n.resendVerificationSent(email));
     } catch (e) {

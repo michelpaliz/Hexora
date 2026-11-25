@@ -2135,7 +2135,7 @@
   "statementsConfirmSuccess": "Importación confirmada.",
   "statementsStepDisabledHint": "Completa el paso anterior para continuar.",
   "autoStatementImportTitle": "Habilitar datos automáticos",
-  "autoStatementImportHelper": "Cuando está activado, importaremos automáticamente tu extracto diario de Caixa en tu cuenta.",
+  "autoStatementImportHelper": "Al activarlo, Hexora importa el extracto diario de Caixa en las cuentas configuradas. Solicita abajo la configuración para este negocio.",
   "autoStatementImportUpdateFailed": "No se pudo actualizar la configuración de datos automáticos.",
   "statementsDragDropTitle": "Sube tu extracto",
   "statementsDragDropHint": "Arrastra tu archivo aquí o haz clic para seleccionar",

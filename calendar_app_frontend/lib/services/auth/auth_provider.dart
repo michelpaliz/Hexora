@@ -60,12 +60,14 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
     required String userName,
     required String email,
     required String password,
+    String? invitationToken,
   }) async {
     final res = await _authApi.register(
       name: name,
       userName: userName,
       email: email,
       password: password,
+      invitationToken: invitationToken,
     );
     final status = res['_status'] as int? ?? 201;
     if (status == 201) return 'User created successfully';
@@ -431,9 +433,14 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
   }
 
   @override
-  Future<void> resendVerificationEmail({required String email}) async {
-    final res =
-        await _authApi.resendVerification(email: email.trim().toLowerCase());
+  Future<void> resendVerificationEmail({
+    required String email,
+    String? invitationToken,
+  }) async {
+    final res = await _authApi.resendVerification(
+      email: email.trim().toLowerCase(),
+      invitationToken: invitationToken,
+    );
     final status = res['_status'] as int? ?? 200;
     if (status != 200) {
       final msg =

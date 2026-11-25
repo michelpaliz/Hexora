@@ -10,10 +10,14 @@ abstract class AuthRepository {
     required String userName,
     required String email,
     required String password,
+    String? invitationToken,
   });
   Future<void> logOut();
   Future<void> sendEmailVerification();
-  Future<void> resendVerificationEmail({required String email});
+  Future<void> resendVerificationEmail({
+    required String email,
+    String? invitationToken,
+  });
   Future<VerificationResult> verifyEmailToken({required String token});
   Future<void> initialize();
   Future<User?> getCurrentUserModel();

@@ -21,12 +21,10 @@ import 'package:hexora/presentation/screens/calendar/screens/event/screen/events
 import 'package:hexora/presentation/screens/calendar/screens/event/screen/events_in_calendar/widgets/event_content_builder.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/add_screen/screen/add_event_screen.dart';
 import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
-import 'package:hexora/presentation/utils/location/location_service.dart';
 import 'package:hexora/services/weather/weather_service.dart';
 import 'package:provider/provider.dart';
 
 class CalendarScreenCoordinator {
-  static const String _defaultWeatherLocation = 'Denia';
   // Open-Meteo supports forecasts up to 16 days.
   static const int _calendarWeatherForecastDays = 16;
   final BuildContext context;
@@ -51,7 +49,6 @@ class CalendarScreenCoordinator {
   EventActionManager? _eventActionManager;
   ValueChanged<Event>? _inlineEditHandler;
   final WeatherService _weatherService = WeatherService();
-  final LocationService _locationService = LocationService();
   String? _lastWeatherLocation;
   bool _isDisposed = false;
 
@@ -275,11 +272,9 @@ class CalendarScreenCoordinator {
     if (_isDisposed) return;
     String? location = storedLocation?.trim();
     if (location == null || location.isEmpty) {
-      location = await _locationService.getCurrentCityName();
-      if (_isDisposed) return;
-    }
-    if (location == null || location.isEmpty) {
-      location = _defaultWeatherLocation;
+      calendarUI?.setWeatherForecast(const {});
+      _lastWeatherLocation = null;
+      return;
     }
 
     if (_lastWeatherLocation == location) {

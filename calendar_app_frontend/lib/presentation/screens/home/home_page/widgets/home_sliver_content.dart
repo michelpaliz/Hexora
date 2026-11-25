@@ -559,9 +559,10 @@ class _WelcomeHeroState extends State<_WelcomeHero> {
   final _weatherService = WeatherService();
   late Future<WeatherBundle> _weather;
 
-  String get _location => widget.user.location?.trim().isNotEmpty == true
-      ? widget.user.location!.trim()
-      : 'Denia';
+  String? get _location {
+    final value = widget.user.location?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
 
   @override
   void initState() {
@@ -571,7 +572,10 @@ class _WelcomeHeroState extends State<_WelcomeHero> {
 
   void _loadWeather() {
     // Two days so the hero can show a "Hoy / Mañana" outlook.
-    _weather = _weatherService.fetchWeatherBundle(location: _location, days: 2);
+    final location = _location;
+    _weather = location == null
+        ? Future.value(const WeatherBundle(today: null, forecast: []))
+        : _weatherService.fetchWeatherBundle(location: location, days: 2);
   }
 
   @override
@@ -861,7 +865,7 @@ class _HeroWeather extends StatelessWidget {
   });
 
   final Future<WeatherBundle> future;
-  final String location;
+  final String? location;
   final VoidCallback onRefresh;
 
   /// Whether to render the trailing "Hoy / Mañana" day columns. Disabled on
@@ -890,12 +894,16 @@ class _HeroWeather extends StatelessWidget {
                 ? Icons.wb_sunny_outlined
                 : Icons.nightlight_outlined;
 
-        final condition = loading
+        final condition = location == null
+            ? (es ? 'Configura tu ubicación' : 'Set your location')
+            : loading
             ? (es ? 'Cargando…' : 'Loading…')
             : weather == null
                 ? (es ? 'No disponible' : 'Unavailable')
                 : localizeWeatherSummary(l, weather.summary.summary);
-        final city = weather?.cityName ?? location;
+        final city = weather?.cityName ??
+            location ??
+            (es ? 'Perfil → Ubicación' : 'Profile → Location');
         final temp =
             weather == null ? null : '${weather.tempMax.toStringAsFixed(0)}°';
 

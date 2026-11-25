@@ -63,8 +63,16 @@ class VerifyEmailSuccessView extends StatelessWidget {
                       height: 52, 
                       child: FilledButton(
                         onPressed: () {
+                          final next = Uri.base.queryParameters['next'];
+                          final invitationToken =
+                              Uri.base.queryParameters['invitationToken'];
+                          final loginRoute = next == AppRoutes.invitation &&
+                                  invitationToken != null &&
+                                  invitationToken.isNotEmpty
+                              ? '${AppRoutes.loginRoute}?next=${Uri.encodeQueryComponent(AppRoutes.invitation)}&invitationToken=${Uri.encodeQueryComponent(invitationToken)}'
+                              : AppRoutes.loginRoute;
                           Navigator.of(context).pushNamedAndRemoveUntil(
-                            AppRoutes.loginRoute,
+                            loginRoute,
                             (route) => false,
                           );
                         },

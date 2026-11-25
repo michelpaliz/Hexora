@@ -18,6 +18,7 @@ class AuthApiClientImpl implements IAuthApiClient {
     required String userName,
     required String email,
     required String password,
+    String? invitationToken,
   }) async {
     final res = await http.post(
       Uri.parse('$_base/auth/register'),
@@ -27,6 +28,8 @@ class AuthApiClientImpl implements IAuthApiClient {
         'userName': userName,
         'email': email,
         'password': password,
+        if (invitationToken != null && invitationToken.isNotEmpty)
+          'invitationToken': invitationToken,
       }),
     );
     return _decode(res);
@@ -132,11 +135,15 @@ class AuthApiClientImpl implements IAuthApiClient {
 
   @override
   Future<Map<String, dynamic>> resendVerification(
-      {required String email}) async {
+      {required String email, String? invitationToken}) async {
     final res = await http.post(
       Uri.parse('$_base/auth/resend-verification'),
       headers: _headers(),
-      body: jsonEncode({'email': email}),
+      body: jsonEncode({
+        'email': email,
+        if (invitationToken != null && invitationToken.isNotEmpty)
+          'invitationToken': invitationToken,
+      }),
     );
     return _decode(res);
   }

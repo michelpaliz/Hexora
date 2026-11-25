@@ -14,6 +14,8 @@ class GroupDataBody extends StatelessWidget {
   /// If you want to push changes into your VM live
   final ValueChanged<String>? onNameChanged;
   final ValueChanged<String>? onDescChanged;
+  final ValueChanged<String?>? onBusinessTypeChanged;
+  final String? initialBusinessType;
 
   /// Image picked callback
   final ValueChanged<XFile>? onPicked;
@@ -37,6 +39,8 @@ class GroupDataBody extends StatelessWidget {
     required this.descController,
     this.onNameChanged,
     this.onDescChanged,
+    this.onBusinessTypeChanged,
+    this.initialBusinessType,
     this.onPicked,
     this.initialImageUrl,
     this.bottomSection,
@@ -114,6 +118,30 @@ class GroupDataBody extends StatelessWidget {
 
           const SizedBox(height: 12),
 
+          if (onBusinessTypeChanged != null) ...[
+            DropdownButtonFormField<String>(
+              value: _businessTypeValues.contains(initialBusinessType)
+                  ? initialBusinessType
+                  : null,
+              decoration: InputDecoration(
+                labelText: Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Tipo de negocio'
+                    : 'Business type',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              items: _businessTypeValues
+                  .map((value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(_businessTypeLabel(context, value)),
+                      ))
+                  .toList(),
+              onChanged: onBusinessTypeChanged,
+            ),
+            const SizedBox(height: 12),
+          ],
+
           // Description card
           ThemedCard(
             radius: 14,
@@ -145,5 +173,38 @@ class GroupDataBody extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static const _businessTypeValues = [
+    'gardening',
+    'maintenance',
+    'cleaning',
+    'construction',
+    'professional_services',
+    'retail',
+    'hospitality',
+    'education',
+    'health',
+    'technology',
+    'other',
+  ];
+
+  String _businessTypeLabel(BuildContext context, String value) {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    const labels = {
+      'gardening': ('Jardinería y piscinas', 'Gardening and pools'),
+      'maintenance': ('Mantenimiento', 'Maintenance'),
+      'cleaning': ('Limpieza', 'Cleaning'),
+      'construction': ('Construcción', 'Construction'),
+      'professional_services': ('Servicios profesionales', 'Professional services'),
+      'retail': ('Comercio', 'Retail'),
+      'hospitality': ('Hostelería', 'Hospitality'),
+      'education': ('Educación', 'Education'),
+      'health': ('Salud', 'Healthcare'),
+      'technology': ('Tecnología', 'Technology'),
+      'other': ('Otro', 'Other'),
+    };
+    final label = labels[value];
+    return label == null ? value : (es ? label.$1 : label.$2);
   }
 }

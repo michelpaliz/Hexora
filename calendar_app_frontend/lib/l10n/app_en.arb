@@ -2178,7 +2178,7 @@
   "statementsConfirmSuccess": "Import confirmed.",
   "statementsStepDisabledHint": "Complete the previous step to continue.",
   "autoStatementImportTitle": "Enable automatic data",
-  "autoStatementImportHelper": "When on, we'll automatically import your daily Caixa statement into your account.",
+  "autoStatementImportHelper": "When on, Hexora imports the daily Caixa statement for accounts with automatic import configured. Request setup for this business below.",
   "autoStatementImportUpdateFailed": "Unable to update automatic data setting.",
   "statementsDragDropTitle": "Upload your statement",
   "statementsDragDropHint": "Drag your file here or click to select",

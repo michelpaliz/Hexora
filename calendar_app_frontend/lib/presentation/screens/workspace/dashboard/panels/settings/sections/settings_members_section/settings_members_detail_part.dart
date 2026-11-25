@@ -582,6 +582,23 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
   Widget _buildInvitationCard(BuildContext context, Invitation inv) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final canManage = inv.status == InvitationStatus.pending ||
+        inv.status == InvitationStatus.expired;
+    final actionInProgress = _invitationActionId == inv.id;
+    final deliveryStatus = inv.meta['deliveryStatus']?.toString();
+    final currentUserId = context.read<UserDomain?>()?.user?.id ?? '';
+    final actorRole = GroupRole.fromWire(
+      currentUserId == widget.group.ownerId
+          ? GroupRole.owner.wire
+          : widget.group.userRoles[currentUserId],
+    );
+    final canChangeInvitationRole = inv.status == InvitationStatus.pending &&
+        (actorRole.wire == GroupRole.owner.wire ||
+            inv.role.rank < actorRole.rank);
+    final canShareInvitation = inv.status == InvitationStatus.pending &&
+        (actorRole.wire == GroupRole.owner.wire ||
+            inv.role.rank < actorRole.rank);
 
     return Container(
       width: double.infinity,
@@ -605,7 +622,7 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
               ),
               const SizedBox(width: 6),
               Text(
-                'Invitación',
+                es ? 'Invitación' : 'Invitation',
                 style: t.caption.copyWith(
                   fontWeight: FontWeight.w700,
                   color: cs.primary,
@@ -614,11 +631,38 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
             ],
           ),
           const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(inv.role.icon, size: 12, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(
+                '${es ? 'Rol' : 'Role'}: ${roleLabelOf(context, inv.role)}',
+                style: t.caption.copyWith(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           _buildTimelineRow(
             context,
             icon: Icons.send_rounded,
-            label: 'Enviada',
+            label: es ? 'Enviada' : 'Sent',
             date: inv.sendingDate,
+          ),
+          if (inv.invitedByName?.isNotEmpty == true)
+            _buildCompactInfoRow(
+              context,
+              icon: Icons.person_outline_rounded,
+              value:
+                  '${es ? 'Invitó' : 'Invited by'}: ${inv.invitedByName}',
+            ),
+          _buildDeliveryStatusRow(
+            context,
+            deliveryStatus?.isNotEmpty == true ? deliveryStatus! : 'unknown',
+            es,
           ),
           if (inv.respondedAt != null)
             _buildTimelineRow(
@@ -627,32 +671,228 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
                   ? Icons.check_circle_outline_rounded
                   : Icons.cancel_outlined,
               label: inv.status == InvitationStatus.accepted
-                  ? 'Aceptada'
+                  ? (es ? 'Aceptada' : 'Accepted')
                   : inv.status == InvitationStatus.declined
-                      ? 'Rechazada'
-                      : 'Respondida',
+                      ? (es ? 'Rechazada' : 'Declined')
+                      : (es ? 'Respondida' : 'Answered'),
               date: inv.respondedAt!,
             ),
-          if (inv.expiresAt != null && inv.status == InvitationStatus.pending)
+          if (inv.expiresAt != null &&
+              (inv.status == InvitationStatus.pending ||
+                  inv.status == InvitationStatus.expired)) ...[
             _buildTimelineRow(
               context,
               icon: Icons.timer_outlined,
-              label: 'Expira',
+              label: inv.status == InvitationStatus.expired
+                  ? (es ? 'Caducó' : 'Expired')
+                  : (es ? 'Expira' : 'Expires'),
               date: inv.expiresAt!,
             ),
-          if (inv.attempts > 1)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(left: 18, bottom: 4),
               child: Text(
-                '${inv.attempts} intentos de envío',
+                _formatExactDate(context, inv.expiresAt!),
                 style: t.caption.copyWith(
                   fontSize: 10,
                   color: cs.onSurfaceVariant,
                 ),
               ),
             ),
+          ],
+          if (inv.attempts > 1)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                es
+                    ? '${inv.attempts} intentos de envío'
+                    : '${inv.attempts} delivery attempts',
+                style: t.caption.copyWith(
+                  fontSize: 10,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+          if (canManage) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed:
+                      actionInProgress ? null : () => _resendInvitation(inv),
+                  icon: actionInProgress
+                      ? const SizedBox.square(
+                          dimension: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh_rounded, size: 16),
+                  label: Text(es ? 'Reenviar' : 'Resend'),
+                ),
+                if (canChangeInvitationRole)
+                  OutlinedButton.icon(
+                    onPressed: actionInProgress
+                        ? null
+                        : () => _changeInvitationRole(inv),
+                    icon: const Icon(Icons.manage_accounts_outlined, size: 16),
+                    label: Text(es ? 'Cambiar rol' : 'Change role'),
+                  ),
+                if (canShareInvitation)
+                  OutlinedButton.icon(
+                    onPressed: actionInProgress
+                        ? null
+                        : () => _createInvitationShareLink(inv),
+                    icon: const Icon(Icons.link_rounded, size: 16),
+                    label: Text(es ? 'Compartir enlace' : 'Share link'),
+                  ),
+                OutlinedButton.icon(
+                  onPressed:
+                      actionInProgress ? null : () => _revokeInvitation(inv),
+                  icon: const Icon(Icons.block_rounded, size: 16),
+                  label: Text(es ? 'Revocar' : 'Revoke'),
+                ),
+              ],
+            ),
+          ],
+          if (_invitationAuditFuture != null) ...[
+            const SizedBox(height: 12),
+            _buildInvitationAudit(context),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildDeliveryStatusRow(
+    BuildContext context,
+    String status,
+    bool es,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final normalized = status.toLowerCase();
+    final (icon, color, label) = switch (normalized) {
+      'sent' => (
+          Icons.mark_email_read_outlined,
+          Colors.green,
+          es ? 'Correo enviado' : 'Email sent'
+        ),
+      'in_app_only' => (
+          Icons.notifications_active_outlined,
+          cs.primary,
+          es ? 'Solo notificación en la app' : 'In-app notification only'
+        ),
+      'unknown' => (
+          Icons.help_outline_rounded,
+          cs.onSurfaceVariant,
+          es ? 'Estado de entrega no registrado' : 'Delivery status not recorded'
+        ),
+      _ => (
+          Icons.error_outline_rounded,
+          cs.error,
+          es ? 'No se pudo enviar el correo' : 'Email delivery failed'
+        ),
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: t.caption.copyWith(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInvitationAudit(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _invitationAuditFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const LinearProgressIndicator(minHeight: 2);
+        }
+        final events = snapshot.data ?? const <Map<String, dynamic>>[];
+        if (events.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Divider(color: cs.outlineVariant.withValues(alpha: 0.3)),
+            Text(
+              es ? 'Historial de la invitación' : 'Invitation history',
+              style: t.caption.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            ...events.map((event) {
+              final action = event['action']?.toString() ?? '';
+              final actor = event['actorId'];
+              final actorMap = actor is Map
+                  ? Map<String, dynamic>.from(actor)
+                  : const <String, dynamic>{};
+              final actorName = actorMap['name']?.toString().trim().isNotEmpty == true
+                  ? actorMap['name'].toString()
+                  : actorMap['userName']?.toString() ?? '';
+              final date = DateTime.tryParse(event['createdAt']?.toString() ?? '');
+              final rawMetadata = event['metadata'];
+              final metadata = rawMetadata is Map
+                  ? Map<String, dynamic>.from(rawMetadata)
+                  : const <String, dynamic>{};
+              final previousRole = metadata['previousRole']?.toString();
+              final nextRole = metadata['nextRole']?.toString();
+              final label = switch (action) {
+                'created' => es ? 'Creada' : 'Created',
+                'resent' => es ? 'Reenviada' : 'Resent',
+                'reminded' => es ? 'Recordatorio enviado' : 'Reminder sent',
+                'role_changed' when previousRole != null && nextRole != null =>
+                  '${es ? 'Rol cambiado' : 'Role changed'}: '
+                      '${roleLabelOf(context, GroupRole.fromWire(previousRole))} → '
+                      '${roleLabelOf(context, GroupRole.fromWire(nextRole))}',
+                'role_changed' => es ? 'Rol cambiado' : 'Role changed',
+                'share_link_generated' => es
+                    ? 'Enlace para compartir creado'
+                    : 'Share link created',
+                'accepted' => es ? 'Aceptada' : 'Accepted',
+                'declined' => es ? 'Rechazada' : 'Declined',
+                'revoked' => es ? 'Revocada' : 'Revoked',
+                'expired' => es ? 'Caducada' : 'Expired',
+                _ => action,
+              };
+              return Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.history_rounded,
+                        size: 12, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        actorName.isEmpty ? label : '$label · $actorName',
+                        style: t.caption.copyWith(fontSize: 10),
+                      ),
+                    ),
+                    if (date != null)
+                      Text(
+                        _formatDate(context, date),
+                        style: t.caption.copyWith(fontSize: 10),
+                      ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        );
+      },
     );
   }
 
@@ -681,7 +921,7 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
           ),
           const Spacer(),
           Text(
-            _formatDate(date),
+            _formatDate(context, date),
             style: t.caption.copyWith(
               fontSize: 10,
               color: cs.onSurface,
@@ -864,6 +1104,7 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
 
         final cs = Theme.of(context).colorScheme;
         final t = AppTypography.of(context);
+        final es = Localizations.localeOf(context).languageCode == 'es';
 
         // Newest first
         final sorted = [...entries]
@@ -896,7 +1137,7 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Historial de roles',
+                      es ? 'Historial de roles' : 'Role history',
                       style: t.caption.copyWith(
                         fontWeight: FontWeight.w800,
                         color: cs.onSurfaceVariant,
@@ -921,6 +1162,7 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
   }) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
+    final es = Localizations.localeOf(context).languageCode == 'es';
     final role = GroupRole.fromWire(entry.role);
     final color = isLatest ? role.roleChipColor(cs) : cs.onSurfaceVariant;
 
@@ -934,7 +1176,7 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
         ),
         const SizedBox(width: 6),
         Text(
-          '${roleLabelOf(context, role)} · desde ${_formatDate(entry.assignedAt)}',
+          '${roleLabelOf(context, role)} · ${es ? 'desde' : 'since'} ${_formatDate(context, entry.assignedAt)}',
           style: t.caption.copyWith(
             fontWeight: isLatest ? FontWeight.w800 : FontWeight.w600,
             color: color,
@@ -945,30 +1187,54 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(BuildContext context, DateTime date) {
+    final es = Localizations.localeOf(context).languageCode == 'es';
     final now = DateTime.now();
     final diff = now.difference(date);
 
     if (diff.isNegative) {
       // Future date (e.g. expiration)
       final absDiff = date.difference(now);
-      if (absDiff.inDays > 0) return 'en ${absDiff.inDays}d';
-      if (absDiff.inHours > 0) return 'en ${absDiff.inHours}h';
-      return 'en ${absDiff.inMinutes}min';
+      if (absDiff.inDays > 0) {
+        return es ? 'en ${absDiff.inDays}d' : 'in ${absDiff.inDays}d';
+      }
+      if (absDiff.inHours > 0) {
+        return es ? 'en ${absDiff.inHours}h' : 'in ${absDiff.inHours}h';
+      }
+      return es
+          ? 'en ${absDiff.inMinutes}min'
+          : 'in ${absDiff.inMinutes}min';
     }
 
     if (diff.inDays == 0) {
-      if (diff.inHours > 0) return 'hace ${diff.inHours}h';
-      if (diff.inMinutes > 0) return 'hace ${diff.inMinutes}min';
-      return 'ahora';
+      if (diff.inHours > 0) {
+        return es ? 'hace ${diff.inHours}h' : '${diff.inHours}h ago';
+      }
+      if (diff.inMinutes > 0) {
+        return es ? 'hace ${diff.inMinutes}min' : '${diff.inMinutes}min ago';
+      }
+      return es ? 'ahora' : 'now';
     }
-    if (diff.inDays == 1) return 'ayer';
-    if (diff.inDays < 7) return 'hace ${diff.inDays}d';
-    if (diff.inDays < 30) return 'hace ${(diff.inDays / 7).floor()} sem';
+    if (diff.inDays == 1) return es ? 'ayer' : 'yesterday';
+    if (diff.inDays < 7) {
+      return es ? 'hace ${diff.inDays}d' : '${diff.inDays}d ago';
+    }
+    if (diff.inDays < 30) {
+      final weeks = (diff.inDays / 7).floor();
+      return es ? 'hace $weeks sem' : '${weeks}w ago';
+    }
 
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     final year = date.year;
     return '$day/$month/$year';
+  }
+
+  String _formatExactDate(BuildContext context, DateTime date) {
+    final localDate = date.toLocal();
+    final material = MaterialLocalizations.of(context);
+    final day = material.formatFullDate(localDate);
+    final time = material.formatTimeOfDay(TimeOfDay.fromDateTime(localDate));
+    return '$day · $time';
   }
 }

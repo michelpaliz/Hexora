@@ -30,6 +30,9 @@ class TrueLayerApiException implements Exception {
 }
 
 class TrueLayerApi {
+  TrueLayerApi({required this.groupId});
+
+  final String groupId;
   // ApiConstants.baseUrl already includes a trailing `/api` in most envs.
   // TrueLayer endpoints are rooted at `/api/truelayer/...`, so avoid `/api/api/...`.
   final String _base = ApiConstants.baseUrl.endsWith('/api')
@@ -66,7 +69,7 @@ class TrueLayerApi {
   }
 
   Future<Map<String, dynamic>> connect() async {
-    final uri = _u('/connect');
+    final uri = _u('/connect', {'groupId': groupId});
     final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
     return _decode<Map<String, dynamic>>(
       r,
@@ -78,7 +81,7 @@ class TrueLayerApi {
   }
 
   Future<Map<String, dynamic>> accounts() async {
-    final uri = _u('/accounts');
+    final uri = _u('/accounts', {'groupId': groupId});
     final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
     return _decode<Map<String, dynamic>>(
       r,
@@ -98,6 +101,7 @@ class TrueLayerApi {
   }) async {
     final uri = _u('/transactions', {
       'accountId': accountId,
+      'groupId': groupId,
       'from': from,
       'to': to,
     });

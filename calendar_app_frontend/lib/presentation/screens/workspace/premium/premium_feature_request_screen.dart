@@ -8,7 +8,7 @@ import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:provider/provider.dart';
 
-enum PremiumFeatureRequest { email, banking, aiChat, teamChat }
+enum PremiumFeatureRequest { email, banking, bankAutomation, aiChat, teamChat }
 
 class PremiumFeatureGate extends StatelessWidget {
   const PremiumFeatureGate({
@@ -32,6 +32,7 @@ class PremiumFeatureGate extends StatelessWidget {
     final policyFeature = switch (feature) {
       PremiumFeatureRequest.email => PremiumFeature.email,
       PremiumFeatureRequest.banking => PremiumFeature.banking,
+      PremiumFeatureRequest.bankAutomation => PremiumFeature.banking,
       PremiumFeatureRequest.aiChat => PremiumFeature.aiChat,
       PremiumFeatureRequest.teamChat => PremiumFeature.teamChat,
     };
@@ -113,20 +114,34 @@ class _PremiumFeatureRequestScreenState
   @override
   Widget build(BuildContext context) {
     final isEs = Localizations.localeOf(context).languageCode == 'es';
-    final isBanking = widget.feature == PremiumFeatureRequest.banking;
-    final title = isEs ? 'Función premium' : 'Premium feature';
+    final isBanking = widget.feature == PremiumFeatureRequest.banking ||
+        widget.feature == PremiumFeatureRequest.bankAutomation;
+    final isBankAutomation =
+        widget.feature == PremiumFeatureRequest.bankAutomation;
+    final title = isBankAutomation
+        ? (isEs ? 'Solicitar automatización' : 'Request automation')
+        : isEs
+            ? 'Función premium'
+            : 'Premium feature';
     final featureLabel = switch (widget.feature) {
       PremiumFeatureRequest.banking =>
         isEs ? 'Banca y movimientos' : 'Banking and transactions',
+      PremiumFeatureRequest.bankAutomation => isEs
+          ? 'Importación bancaria automática'
+          : 'Automatic bank import',
       PremiumFeatureRequest.email =>
         isEs ? 'Envío de correos' : 'Email sending',
       PremiumFeatureRequest.aiChat => isEs ? 'Chat con IA' : 'AI chat',
       PremiumFeatureRequest.teamChat =>
         isEs ? 'Chat cooperativo' : 'Cooperative chat',
     };
-    final description = isEs
-        ? 'Solicita acceso para activar esta función en tu empresa.'
-        : 'Request access to enable this feature for your company.';
+    final description = isBankAutomation
+        ? (isEs
+            ? 'Solicita a Hexora que configure la importación automática de extractos para este negocio.'
+            : 'Ask Hexora to set up automatic statement imports for this business.')
+        : isEs
+            ? 'Solicita acceso para activar esta función en tu empresa.'
+            : 'Request access to enable this feature for your company.';
     final colors = Theme.of(context).colorScheme;
     final icon = isBanking
         ? Icons.account_balance_rounded
@@ -265,6 +280,25 @@ class _PremiumFeatureRequestScreenState
                   ),
               ],
             ),
+            if (!_sent && widget.feature == PremiumFeatureRequest.banking) ...[
+              const SizedBox(height: 6),
+              TextButton.icon(
+                onPressed: widget.group == null
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => PremiumFeatureRequestScreen(
+                              feature: PremiumFeatureRequest.bankAutomation,
+                              group: widget.group,
+                            ),
+                          ),
+                        ),
+                icon: const Icon(Icons.sync_rounded, size: 18),
+                label: Text(isEs
+                    ? 'Solicitar configuración de importación automática'
+                    : 'Request automatic import setup'),
+              ),
+            ],
           ],
         ),
       ),

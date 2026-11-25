@@ -58,6 +58,17 @@ class _MailConsoleView extends StatelessWidget {
           ),
       ],
       secondaryItems: [
+        if (context.read<GroupDashboardState>().canSeeAdmin)
+          CollapsibleSidebarItem(
+            key: const ValueKey('mail-account-settings-action'),
+            icon: Icons.settings_outlined,
+            label: Localizations.localeOf(context).languageCode == 'es'
+                ? 'Cuenta de correo'
+                : 'Email account',
+            onTap: () => invoke(
+              () => state.update(() => state._showMailAccountSetup = true),
+            ),
+          ),
         CollapsibleSidebarItem(
           key: const ValueKey('mail-footer-action'),
           icon: Icons.description_outlined,

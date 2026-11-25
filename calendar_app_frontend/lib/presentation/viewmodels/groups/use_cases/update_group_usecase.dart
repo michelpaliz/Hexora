@@ -13,6 +13,7 @@ class UpdateGroupUseCase {
     required Group original,
     required String name,
     required String description,
+    String? businessType,
     String? photoUrl,
     String? photoBlobName,
   }) async {
@@ -20,6 +21,7 @@ class UpdateGroupUseCase {
     final updated = original.copyWith(
       name: name,
       description: description,
+      businessType: businessType ?? original.businessType,
       photoUrl: photoUrl ?? original.photoUrl,
       photoBlobName: photoBlobName ?? original.photoBlobName,
       // keep ownerId, userIds, userRoles, createdTime, etc.

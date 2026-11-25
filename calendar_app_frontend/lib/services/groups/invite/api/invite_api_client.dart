@@ -25,6 +25,15 @@ class InvitationApiClient {
 
   Invitation _actionInvitation(http.Response res) {
     final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final delivery = body['delivery'];
+    if (delivery is Map && delivery['sent'] == false) {
+      throw BackendApiException(
+        statusCode: res.statusCode,
+        code: 'INVITATION_EMAIL_DELIVERY_FAILED',
+        message: 'The invitation was saved, but its email could not be sent.',
+        rawBody: res.body,
+      );
+    }
     final invitation = body['invitation'];
     return Invitation.fromJson(
       invitation is Map<String, dynamic> ? invitation : body,
@@ -54,7 +63,17 @@ class InvitationApiClient {
       body: jsonEncode(payload),
     );
     if (res.statusCode == 200 || res.statusCode == 201) {
-      return Invitation.fromJson(jsonDecode(res.body));
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final delivery = body['delivery'];
+      if (delivery is Map && delivery['sent'] == false) {
+        throw BackendApiException(
+          statusCode: res.statusCode,
+          code: 'INVITATION_EMAIL_DELIVERY_FAILED',
+          message: 'The invitation was saved, but its email could not be sent.',
+          rawBody: res.body,
+        );
+      }
+      return Invitation.fromJson(body);
     }
     _throwApiError(res, 'Failed to create invitation');
   }
@@ -86,6 +105,39 @@ class InvitationApiClient {
     _throwApiError(res, 'Failed to fetch my invitations');
   }
 
+  Future<Map<String, dynamic>> resolveToken(
+    String invitationToken, {
+    required String token,
+  }) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/resolve/${Uri.encodeComponent(invitationToken)}'),
+      headers: _headers(token: token),
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    _throwApiError(res, 'Failed to open invitation');
+  }
+
+  Future<List<Map<String, dynamic>>> listAudit(
+    String groupId, {
+    required String invitationId,
+    required String token,
+  }) async {
+    final uri = Uri.parse('$baseUrl/group/$groupId/audit').replace(
+      queryParameters: {'invitationId': invitationId, 'limit': '100'},
+    );
+    final res = await http.get(uri, headers: _headers(token: token));
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as List<dynamic>;
+      return data
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(growable: false);
+    }
+    _throwApiError(res, 'Failed to fetch invitation history');
+  }
+
   Future<Invitation> accept(String invitationId, {required String token, String? note}) async {
     final res = await http.post(
       Uri.parse('$baseUrl/$invitationId/accept'),
@@ -114,6 +166,35 @@ class InvitationApiClient {
     );
     if (res.statusCode == 200) return _actionInvitation(res);
     _throwApiError(res, 'Failed to resend invitation');
+  }
+
+  Future<Invitation> updateRole(
+    String invitationId, {
+    required String role,
+    required String token,
+  }) async {
+    final res = await http.patch(
+      Uri.parse('$baseUrl/$invitationId/role'),
+      headers: _headers(token: token),
+      body: jsonEncode({'role': role}),
+    );
+    if (res.statusCode == 200) return _actionInvitation(res);
+    _throwApiError(res, 'Failed to update invitation role');
+  }
+
+  Future<Map<String, dynamic>> createShareLink(
+    String invitationId, {
+    required String token,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/$invitationId/share-link'),
+      headers: _headers(token: token),
+      body: jsonEncode({}),
+    );
+    if (res.statusCode == 201) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+    _throwApiError(res, 'Failed to create invitation share link');
   }
 
   Future<Invitation> revoke(String invitationId, {required String token, String? reason}) async {

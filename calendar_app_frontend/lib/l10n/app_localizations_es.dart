@@ -4585,7 +4585,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get autoStatementImportHelper =>
-      'Cuando está activado, importaremos automáticamente tu extracto diario de Caixa en tu cuenta.';
+      'Al activarlo, Hexora importa el extracto diario de Caixa en las cuentas configuradas. Solicita abajo la configuración para este negocio.';
 
   @override
   String get autoStatementImportUpdateFailed =>

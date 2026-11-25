@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'statements/statements_controller.dart';
@@ -104,6 +106,16 @@ class _StatementsTabState extends State<StatementsTab>
     }
   }
 
+  void _requestAutomaticImport() {
+    final group = context.read<GroupDomain?>()?.currentGroup;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => PremiumFeatureRequestScreen(
+        feature: PremiumFeatureRequest.bankAutomation,
+        group: group,
+      ),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -151,28 +163,46 @@ class _StatementsTabState extends State<StatementsTab>
       final enabled = auth.currentUser?.autoStatementImportEnabled ?? false;
       return Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        child: SwitchListTile.adaptive(
-          dense: true,
-          visualDensity: VisualDensity.compact,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-          title: Text(
-            l.autoStatementImportTitle,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SwitchListTile.adaptive(
+              dense: true,
+              visualDensity: VisualDensity.compact,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+              title: Text(
+                l.autoStatementImportTitle,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              subtitle: Text(
+                l.autoStatementImportHelper,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: cs.onSurfaceVariant,
+                    ),
+              ),
+              value: enabled,
+              onChanged: _autoStatementImportLoading
+                  ? null
+                  : (value) => _toggleAutoStatementImport(value),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12, bottom: 8),
+                child: TextButton.icon(
+                  onPressed: _requestAutomaticImport,
+                  icon: const Icon(Icons.support_agent_outlined, size: 18),
+                  label: Text(Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Solicitar configuración automática'
+                      : 'Request automatic setup'),
                 ),
-          ),
-          subtitle: Text(
-            l.autoStatementImportHelper,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontSize: 11,
-                  color: cs.onSurfaceVariant,
-                ),
-          ),
-          value: enabled,
-          onChanged: _autoStatementImportLoading
-              ? null
-              : (value) => _toggleAutoStatementImport(value),
+              ),
+            ),
+          ],
         ),
       );
     }

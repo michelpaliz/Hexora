@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/models/weather/day_summary.dart';
-import 'package:hexora/presentation/utils/location/location_service.dart';
 import 'package:hexora/presentation/shared/widgets/weather/weather_greeting_card.dart';
 import 'package:hexora/services/weather/weather_service.dart';
 
@@ -27,9 +26,7 @@ class GreetingCard extends StatefulWidget {
 }
 
 class _GreetingCardState extends State<GreetingCard> {
-  static const String _defaultWeatherLocation = 'Denia';
   final WeatherService _weatherService = WeatherService();
-  final LocationService _locationService = LocationService();
 
   WeatherSnapshot? _snapshot;
   List<WeatherForecastDayView> _forecastDays = const [];
@@ -64,27 +61,14 @@ class _GreetingCardState extends State<GreetingCard> {
       return;
     }
 
-    debugPrint(
-        '[GreetingCard] No stored user.location. Attempting GPS-based lookup...');
-    final gpsCity = await _locationService.getCurrentCityName();
     if (!mounted) return;
-
-    if (gpsCity == null) {
-      debugPrint(
-          '[GreetingCard] Could not determine location from GPS. Using default weather location.');
-      _resolvedLocation = _defaultWeatherLocation;
-      await _fetchWeather(_defaultWeatherLocation);
-      setState(() {
-        if (_snapshot == null) {
-          _resolvedLocation = _defaultWeatherLocation;
-        }
-      });
-      return;
-    }
-
-    debugPrint('[GreetingCard] Auto-detected city: "$gpsCity"');
-    _resolvedLocation = gpsCity;
-    await _fetchWeather(gpsCity);
+    setState(() {
+      _resolvedLocation = null;
+      _snapshot = null;
+      _forecastDays = const [];
+      _forecastLoading = false;
+      _forecastError = 'Set your location in your profile.';
+    });
   }
 
   Future<void> _fetchWeather(String location) async {

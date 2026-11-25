@@ -4,7 +4,8 @@ import 'package:hexora/services/enable_banking/enable_banking_api.dart';
 import 'enable_banking_link_store.dart';
 
 class EnableBankingController extends ChangeNotifier {
-  EnableBankingController({EnableBankingApi? api}) : _api = api ?? EnableBankingApi() {
+  EnableBankingController({required String groupId, EnableBankingApi? api})
+      : _api = api ?? EnableBankingApi(groupId: groupId) {
     refreshLinkStatus();
   }
 

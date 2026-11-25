@@ -25,6 +25,7 @@ class Invitation {
       status; // Pending | Accepted | Declined | Expired | Revoked
 
   final String invitedBy; // userId who sent it
+  final String? invitedByName;
 
   final int attempts;
   final DateTime sendingDate;
@@ -47,6 +48,7 @@ class Invitation {
     required this.role,
     required this.status,
     required this.invitedBy,
+    this.invitedByName,
     required this.attempts,
     required this.sendingDate,
     this.userId,
@@ -67,6 +69,7 @@ class Invitation {
         role: GroupRole.fromWire(json['role']?.toString()),
         status: InvitationStatusX.from(json['status']?.toString()),
         invitedBy: (json['invitedBy'] ?? '').toString(),
+        invitedByName: json['invitedByName']?.toString(),
         attempts:
             (json['attempts'] is num) ? (json['attempts'] as num).toInt() : 0,
         sendingDate: _parseDate(json['sendingDate']) ??
@@ -90,6 +93,7 @@ class Invitation {
         'role': role.wire,
         'status': status.wire,
         'invitedBy': invitedBy,
+        if (invitedByName != null) 'invitedByName': invitedByName,
         'attempts': attempts,
         'sendingDate': sendingDate.toIso8601String(),
         if (respondedAt != null) 'respondedAt': respondedAt!.toIso8601String(),
@@ -119,6 +123,7 @@ class Invitation {
     GroupRole? role,
     InvitationStatus? status,
     String? invitedBy,
+    String? invitedByName,
     int? attempts,
     DateTime? sendingDate,
     DateTime? respondedAt,
@@ -136,6 +141,7 @@ class Invitation {
         role: role ?? this.role,
         status: status ?? this.status,
         invitedBy: invitedBy ?? this.invitedBy,
+        invitedByName: invitedByName ?? this.invitedByName,
         attempts: attempts ?? this.attempts,
         sendingDate: sendingDate ?? this.sendingDate,
         respondedAt: respondedAt ?? this.respondedAt,

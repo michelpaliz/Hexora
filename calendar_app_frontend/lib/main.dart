@@ -126,12 +126,16 @@ class _AppShell extends StatelessWidget {
 
 String _browserInitialRoute() {
   final uri = Uri.base;
-  var path = uri.path;
+  final fragmentUri = uri.fragment.startsWith('/')
+      ? Uri.tryParse(uri.fragment)
+      : null;
+  var path = fragmentUri?.path ?? uri.path;
   if (path == '/hexora' || path == '/hexora/') path = '/';
   if (path.startsWith('/hexora/')) {
     path = path.substring('/hexora'.length);
   }
   if (path.isEmpty) path = '/';
-  final query = uri.hasQuery ? '?${uri.query}' : '';
+  final routeUri = fragmentUri ?? uri;
+  final query = routeUri.hasQuery ? '?${routeUri.query}' : '';
   return '$path$query';
 }

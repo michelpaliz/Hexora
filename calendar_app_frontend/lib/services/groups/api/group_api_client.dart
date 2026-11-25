@@ -128,6 +128,16 @@ class HttpGroupApiClient implements IGroupApiClient {
     if (res.statusCode != 200 && res.statusCode != 201) {
       throw HttpFailure(res.statusCode, res.body);
     }
+    final body = jsonDecode(res.body);
+    if (body is Map &&
+        body['delivery'] is Map &&
+        (body['delivery'] as Map)['sent'] == false) {
+      throw const BackendApiException(
+        statusCode: 201,
+        code: 'INVITATION_EMAIL_DELIVERY_FAILED',
+        message: 'The invitation was saved, but its email could not be sent.',
+      );
+    }
   }
 
   @override

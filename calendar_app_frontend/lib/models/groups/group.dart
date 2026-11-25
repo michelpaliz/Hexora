@@ -22,6 +22,11 @@ class Group {
   List<String> userIds;
   DateTime createdTime;
   String description;
+  String? businessType;
+  String? defaultInvoiceLanguage;
+  final Map<String, dynamic>? creationBillingProfile;
+  final List<Map<String, dynamic>>? creationInvitations;
+  final Map<String, dynamic>? invitationSummary;
 
   // ---------- Media ----------
   String? photoUrl; // CDN/public URL if AVATARS_PUBLIC
@@ -62,6 +67,11 @@ class Group {
     required this.userIds,
     required this.createdTime,
     required this.description,
+    this.businessType,
+    this.defaultInvoiceLanguage,
+    this.creationBillingProfile,
+    this.creationInvitations,
+    this.invitationSummary,
     this.photoUrl,
     this.photoBlobName,
     this.computedPhotoUrl,
@@ -152,6 +162,11 @@ class Group {
       userIds: normalizeIdList(json['userIds']),
       createdTime: _parseDate(json['createdTime']) ?? DateTime.now(),
       description: (json['description'] ?? '').toString(),
+      businessType: json['businessType']?.toString(),
+      defaultInvoiceLanguage: json['defaultInvoiceLanguage']?.toString(),
+      invitationSummary: json['invitationSummary'] is Map
+          ? Map<String, dynamic>.from(json['invitationSummary'] as Map)
+          : null,
       photoUrl: json['photoUrl']?.toString(),
       photoBlobName: json['photoBlobName']?.toString(),
       computedPhotoUrl: json['computedPhotoUrl']?.toString(),
@@ -171,6 +186,9 @@ class Group {
     return {
       'name': name,
       'description': description,
+      if (businessType != null) 'businessType': businessType,
+      if (defaultInvoiceLanguage != null)
+        'defaultInvoiceLanguage': defaultInvoiceLanguage,
       if (photoUrl != null) 'photoUrl': photoUrl,
       if (photoBlobName != null) 'photoBlobName': photoBlobName,
       'userRoles': userRoles, // userId -> role
@@ -189,6 +207,13 @@ class Group {
       'userRoles': userRoles, // userId -> role
       'userIds': userIds,
       'description': description,
+      if (businessType != null) 'businessType': businessType,
+      if (defaultInvoiceLanguage != null)
+        'defaultInvoiceLanguage': defaultInvoiceLanguage,
+      if (creationBillingProfile != null)
+        'billingProfile': creationBillingProfile,
+      if (creationInvitations != null && creationInvitations!.isNotEmpty)
+        'invitations': creationInvitations,
       'createdTime': createdTime.toIso8601String(),
       if (photoUrl != null) 'photoUrl': photoUrl,
       if (photoBlobName != null) 'photoBlobName': photoBlobName,
@@ -207,6 +232,11 @@ class Group {
     List<String>? userIds,
     DateTime? createdTime,
     String? description,
+    String? businessType,
+    String? defaultInvoiceLanguage,
+    Map<String, dynamic>? creationBillingProfile,
+    List<Map<String, dynamic>>? creationInvitations,
+    Map<String, dynamic>? invitationSummary,
     String? photoUrl,
     String? photoBlobName,
     String? computedPhotoUrl,
@@ -227,6 +257,14 @@ class Group {
       userIds: userIds ?? List<String>.from(this.userIds),
       createdTime: createdTime ?? this.createdTime,
       description: description ?? this.description,
+      businessType: businessType ?? this.businessType,
+      defaultInvoiceLanguage:
+          defaultInvoiceLanguage ?? this.defaultInvoiceLanguage,
+      creationBillingProfile:
+          creationBillingProfile ?? this.creationBillingProfile,
+      creationInvitations:
+          creationInvitations ?? this.creationInvitations,
+      invitationSummary: invitationSummary ?? this.invitationSummary,
       photoUrl: photoUrl ?? this.photoUrl,
       photoBlobName: photoBlobName ?? this.photoBlobName,
       computedPhotoUrl: computedPhotoUrl ?? this.computedPhotoUrl,
@@ -267,6 +305,7 @@ class Group {
   String toString() {
     return 'Group{id: $id, name: $name, ownerId: $ownerId, '
         'userRoles: $userRoles, userIds: $userIds, description: $description, '
+        'businessType: $businessType, defaultInvoiceLanguage: $defaultInvoiceLanguage, '
         'photoUrl: $photoUrl, photoBlobName: $photoBlobName, '
         'computedPhotoUrl: $computedPhotoUrl, inviteCount: $inviteCount, lastInviteAt: $lastInviteAt, '
         'defaultCalendarId: $defaultCalendarId, defaultCalendar: $defaultCalendar, '

@@ -2,7 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:hexora/services/truelayer/truelayer_api.dart';
 
 class TrueLayerController extends ChangeNotifier {
-  TrueLayerController({TrueLayerApi? api}) : _api = api ?? TrueLayerApi();
+  TrueLayerController({required String groupId, TrueLayerApi? api})
+      : _api = api ?? TrueLayerApi(groupId: groupId);
 
   final TrueLayerApi _api;
 
@@ -88,4 +89,3 @@ class TrueLayerController extends ChangeNotifier {
     }
   }
 }
-

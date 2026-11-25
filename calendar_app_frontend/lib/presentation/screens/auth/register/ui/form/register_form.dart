@@ -38,6 +38,10 @@ class _RegisterFormState extends State<RegisterForm> {
   void initState() {
     super.initState();
     controller = RegisterController();
+    final routeUri = Uri.base.fragment.startsWith('/')
+        ? Uri.tryParse(Uri.base.fragment)
+        : Uri.base;
+    controller.email.text = routeUri?.queryParameters['email']?.trim() ?? '';
 
     controller.name.addListener(_recomputeCanSubmit);
     controller.userName.addListener(_recomputeCanSubmit);
@@ -241,6 +245,11 @@ class _RegisterFormState extends State<RegisterForm> {
                       final userName = controller.userName.text.trim();
                       final email = controller.email.text.trim();
                       final password = controller.password.text;
+                      final routeUri = Uri.base.fragment.startsWith('/')
+                          ? Uri.tryParse(Uri.base.fragment)
+                          : Uri.base;
+                      final invitationToken =
+                          routeUri?.queryParameters['invitationToken'];
 
                       try {
                         await authService.createUser(
@@ -248,6 +257,7 @@ class _RegisterFormState extends State<RegisterForm> {
                           userName: userName,
                           email: email,
                           password: password,
+                          invitationToken: invitationToken,
                         );
 
                         if (!context.mounted) return;
@@ -258,7 +268,11 @@ class _RegisterFormState extends State<RegisterForm> {
                         );
                         Navigator.of(context).pushNamed(
                           AppRoutes.verifyEmailRoute,
-                          arguments: {'email': email},
+                          arguments: {
+                            'email': email,
+                            if (invitationToken != null)
+                              'invitationToken': invitationToken,
+                          },
                         );
                       } on UsernameAlreadyUseAuthException {
                         if (!context.mounted) return;

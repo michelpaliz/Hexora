@@ -53,12 +53,14 @@ class AuthService with ChangeNotifier implements AuthRepository {
     required String userName,
     required String email,
     required String password,
+    String? invitationToken,
   }) =>
       _repo.createUser(
         name: name,
         userName: userName,
         email: email,
         password: password,
+        invitationToken: invitationToken,
       );
 
   @override
@@ -91,8 +93,14 @@ class AuthService with ChangeNotifier implements AuthRepository {
   }
 
   @override
-  Future<void> resendVerificationEmail({required String email}) =>
-      _repo.resendVerificationEmail(email: email);
+  Future<void> resendVerificationEmail({
+    required String email,
+    String? invitationToken,
+  }) =>
+      _repo.resendVerificationEmail(
+        email: email,
+        invitationToken: invitationToken,
+      );
 
   @override
   Future<VerificationResult> verifyEmailToken({required String token}) =>

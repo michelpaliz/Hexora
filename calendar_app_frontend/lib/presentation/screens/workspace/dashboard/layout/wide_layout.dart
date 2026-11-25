@@ -1253,9 +1253,9 @@ class _TopWeatherChipState extends State<_TopWeatherChip> {
   final WeatherService _weatherService = WeatherService();
   late Future<WeatherBundle> _weather;
 
-  String get _location {
+  String? get _location {
     final value = widget.location?.trim();
-    return value == null || value.isEmpty ? 'Denia' : value;
+    return value == null || value.isEmpty ? null : value;
   }
 
   @override
@@ -1273,10 +1273,10 @@ class _TopWeatherChipState extends State<_TopWeatherChip> {
   }
 
   void _loadWeather() {
-    _weather = _weatherService.fetchWeatherBundle(
-      location: _location,
-      days: 1,
-    );
+    final location = _location;
+    _weather = location == null
+        ? Future.value(const WeatherBundle(today: null, forecast: []))
+        : _weatherService.fetchWeatherBundle(location: location, days: 1);
   }
 
   @override
@@ -1298,6 +1298,7 @@ class _TopWeatherChipState extends State<_TopWeatherChip> {
     if (MediaQuery.sizeOf(context).width < 1050) {
       return const SizedBox.shrink();
     }
+    if (_location == null) return const SizedBox.shrink();
 
     final foreground = HexoraGlobalNavColors.foregroundFor(context);
     final l = AppLocalizations.of(context)!;
@@ -1326,7 +1327,7 @@ class _TopWeatherChipState extends State<_TopWeatherChip> {
         final condition = localizeWeatherSummary(l, weather.summary.summary);
         final place = weather.cityName?.trim().isNotEmpty == true
             ? weather.cityName!.trim()
-            : _location;
+            : _location!;
         final temperature = '${weather.tempMax.round()}\u00b0C';
 
         return Tooltip(

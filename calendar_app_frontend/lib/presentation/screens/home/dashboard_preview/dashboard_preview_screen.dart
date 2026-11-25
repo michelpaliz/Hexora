@@ -228,10 +228,10 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
     super.didChangeDependencies();
     if (widget.embedded || _weather != null) return;
     final user = context.read<AuthService>().currentUser;
-    final location = (user?.location?.trim().isNotEmpty ?? false)
-        ? user!.location!.trim()
-        : 'Denia';
-    _weather = _weatherService.fetchWeatherBundle(location: location, days: 1);
+    final location = user?.location?.trim();
+    _weather = location == null || location.isEmpty
+        ? Future.value(const WeatherBundle(today: null, forecast: []))
+        : _weatherService.fetchWeatherBundle(location: location, days: 1);
   }
 
   Future<_DashData> _load() async {
@@ -830,8 +830,10 @@ class _WeatherChip extends StatelessWidget {
       builder: (context, snap) {
         final today = snap.data?.today;
         final temp = today?.tempMax;
-        final city = today?.cityName ?? (isEs ? 'Dénia' : 'Denia');
-        final desc = today?.summary.summary ?? (isEs ? 'Nublado' : 'Cloudy');
+        final city = today?.cityName ??
+            (isEs ? 'Configura tu ubicación' : 'Set your location');
+        final desc = today?.summary.summary ??
+            (isEs ? 'Perfil → Ubicación' : 'Profile → Location');
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(

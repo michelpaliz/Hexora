@@ -69,6 +69,8 @@ class _EditGroupDataState extends State<EditGroupData> {
       initialImageUrl: widget.group.photoUrl,
       onNameChanged: vm.setName,
       onDescChanged: vm.setDescription,
+      initialBusinessType: widget.group.businessType ?? 'other',
+      onBusinessTypeChanged: vm.setBusinessType,
       onPicked: vm.setImage,
       bottomSection: const SizedBox.shrink(),
     );

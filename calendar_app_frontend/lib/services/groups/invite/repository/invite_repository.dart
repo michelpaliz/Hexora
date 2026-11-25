@@ -11,9 +11,13 @@ abstract class InvitationRepository {
   Future<RepoResult<Invitation>> create({required String groupId, String? email, String? userId, String? role, String? message, required String token, Map<String, dynamic>? extra});
   Future<RepoResult<List<Invitation>>> listGroupInvitations(String groupId, {required String token});
   Future<RepoResult<List<Invitation>>> listMyInvitations({required String token, String? userId, String? email});
+  Future<RepoResult<Map<String, dynamic>>> resolveToken(String invitationToken, {required String token});
+  Future<RepoResult<List<Map<String, dynamic>>>> listAudit(String groupId, {required String invitationId, required String token});
   Future<RepoResult<Invitation>> accept(String invitationId, {required String token, String? note});
   Future<RepoResult<Invitation>> decline(String invitationId, {required String token, String? reason});
   Future<RepoResult<Invitation>> resend(String invitationId, {required String token});
+  Future<RepoResult<Invitation>> updateRole(String invitationId, {required String role, required String token});
+  Future<RepoResult<Map<String, dynamic>>> createShareLink(String invitationId, {required String token});
   Future<RepoResult<Invitation>> revoke(String invitationId, {required String token, String? reason});
 }
 
@@ -42,6 +46,32 @@ class HttpInvitationRepository implements InvitationRepository {
   }
 
   @override
+  Future<RepoResult<Map<String, dynamic>>> resolveToken(
+      String invitationToken, {required String token}) async {
+    try {
+      return RepoSuccess(
+        await _api.resolveToken(invitationToken, token: token),
+      );
+    } catch (e, st) {
+      return RepoFailure(e, st);
+    }
+  }
+
+  @override
+  Future<RepoResult<List<Map<String, dynamic>>>> listAudit(
+      String groupId, {required String invitationId, required String token}) async {
+    try {
+      return RepoSuccess(await _api.listAudit(
+        groupId,
+        invitationId: invitationId,
+        token: token,
+      ));
+    } catch (e, st) {
+      return RepoFailure(e, st);
+    }
+  }
+
+  @override
   Future<RepoResult<Invitation>> accept(String invitationId, {required String token, String? note}) async {
     try { return RepoSuccess(await _api.accept(invitationId, token: token, note: note)); }
     catch (e, st) { return RepoFailure(e, st); }
@@ -60,9 +90,20 @@ class HttpInvitationRepository implements InvitationRepository {
   }
 
   @override
+  Future<RepoResult<Invitation>> updateRole(String invitationId, {required String role, required String token}) async {
+    try { return RepoSuccess(await _api.updateRole(invitationId, role: role, token: token)); }
+    catch (e, st) { return RepoFailure(e, st); }
+  }
+
+  @override
+  Future<RepoResult<Map<String, dynamic>>> createShareLink(String invitationId, {required String token}) async {
+    try { return RepoSuccess(await _api.createShareLink(invitationId, token: token)); }
+    catch (e, st) { return RepoFailure(e, st); }
+  }
+
+  @override
   Future<RepoResult<Invitation>> revoke(String invitationId, {required String token, String? reason}) async {
     try { return RepoSuccess(await _api.revoke(invitationId, token: token, reason: reason)); }
     catch (e, st) { return RepoFailure(e, st); }
   }
 }
-

@@ -71,6 +71,36 @@ class InvitationDomain with ChangeNotifier {
     return null;
   }
 
+  /// Create an invitation while preserving backend delivery and validation
+  /// errors for administrator-facing flows.
+  Future<Invitation> sendInvitationOrThrow({
+    required String groupId,
+    String? userId,
+    String? email,
+    String role = 'member',
+    String? message,
+  }) async {
+    final token = await _requireToken();
+    final res = await _repo.create(
+      groupId: groupId,
+      userId: userId,
+      email: email,
+      role: role,
+      message: message,
+      token: token,
+    );
+    if (res is RepoSuccess<Invitation>) {
+      final current = _byGroup[groupId] ?? const <Invitation>[];
+      _byGroup[groupId] = [
+        res.data,
+        ...current.where((item) => item.id != res.data.id),
+      ];
+      notifyListeners();
+      return res.data;
+    }
+    throw (res as RepoFailure<Invitation>).error;
+  }
+
   Future<List<Invitation>> listGroupInvitations(
     String groupId, {
     bool force = false,
@@ -118,6 +148,27 @@ class InvitationDomain with ChangeNotifier {
       devtools.log('❌ listMyInvitations error: $e');
     }
     return _myInvites ?? const <Invitation>[];
+  }
+
+  Future<Map<String, dynamic>> resolveToken(String invitationToken) async {
+    final token = await _requireToken();
+    final result = await _repo.resolveToken(invitationToken, token: token);
+    if (result is RepoSuccess<Map<String, dynamic>>) return result.data;
+    throw (result as RepoFailure<Map<String, dynamic>>).error;
+  }
+
+  Future<List<Map<String, dynamic>>> listAudit(
+    String groupId,
+    String invitationId,
+  ) async {
+    final token = await _requireToken();
+    final result = await _repo.listAudit(
+      groupId,
+      invitationId: invitationId,
+      token: token,
+    );
+    if (result is RepoSuccess<List<Map<String, dynamic>>>) return result.data;
+    throw (result as RepoFailure<List<Map<String, dynamic>>>).error;
   }
 
   // -----------------------------------------------------------------------------
@@ -201,6 +252,43 @@ class InvitationDomain with ChangeNotifier {
       devtools.log('❌ resend error: $e');
     }
     return null;
+  }
+
+  /// Resend an invitation while preserving backend errors for the UI.
+  Future<Invitation> resendOrThrow(String invitationId) async {
+    final token = await _requireToken();
+    final res = await _repo.resend(invitationId, token: token);
+    if (res is RepoSuccess<Invitation>) {
+      _patchCaches(res.data);
+      return res.data;
+    }
+    throw (res as RepoFailure<Invitation>).error;
+  }
+
+  Future<Invitation> updateRoleOrThrow(
+    String invitationId,
+    String role,
+  ) async {
+    final token = await _requireToken();
+    final res = await _repo.updateRole(
+      invitationId,
+      role: role,
+      token: token,
+    );
+    if (res is RepoSuccess<Invitation>) {
+      _patchCaches(res.data);
+      return res.data;
+    }
+    throw (res as RepoFailure<Invitation>).error;
+  }
+
+  Future<Map<String, dynamic>> createShareLinkOrThrow(
+    String invitationId,
+  ) async {
+    final token = await _requireToken();
+    final res = await _repo.createShareLink(invitationId, token: token);
+    if (res is RepoSuccess<Map<String, dynamic>>) return res.data;
+    throw (res as RepoFailure<Map<String, dynamic>>).error;
   }
 
   Future<Invitation?> revoke(String invitationId, {String? reason}) async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -8,7 +9,9 @@ import 'package:hexora/models/groups/permissions/group_permissions_response.dart
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/enums/invitation/invitation_status.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/groups/invite/domain/invite_domain.dart';
 import 'package:hexora/services/errors/error_classes/error_classes.dart';
+import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/add_user_controller.dart';
@@ -65,8 +68,9 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
   late Future<List<GroupRole>> _rolesFuture;
   Future<GroupPermissionsResponse>? _permissionsFuture;
   Future<List<RoleHistoryEntry>>? _roleHistoryFuture;
+  Future<List<Map<String, dynamic>>>? _invitationAuditFuture;
   int _selectedTab =
-      0; // 0=accepted, 1=pending, 2=notAccepted, 3=addUser, 4=roles
+      0; // 0=accepted, 1=pending, 2=notAccepted, 3=addUser, 4=all invitations
   MemberRef? _selectedMember;
   User? _selectedUser;
   Invitation? _selectedInvitation;
@@ -74,12 +78,25 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
   final Map<String, String> _confirmedRoleOverrides = {};
   bool _loadingUser = false;
   bool _sendingInvitations = false;
+  String? _invitationActionId;
   bool _activityExpanded = false;
+  final TextEditingController _invitationSearchController =
+      TextEditingController();
+  String _invitationQuery = '';
+  String _invitationStatusFilter = 'all';
+  String _invitationDeliveryFilter = 'all';
+  String _invitationRoleFilter = 'all';
 
   @override
   void initState() {
     super.initState();
     _rolesFuture = Future.value(<GroupRole>[]);
+  }
+
+  @override
+  void dispose() {
+    _invitationSearchController.dispose();
+    super.dispose();
   }
 
   Future<void> _seedVmFromGroupOnce(BuildContext context) async {
@@ -114,6 +131,16 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
       0 => widget.membersVM.accepted,
       1 => widget.membersVM.pending,
       2 => widget.membersVM.notAccepted,
+      4 => _filteredInvitations
+          .map(
+            (invitation) => MemberRef(
+              username: invitation.email ?? invitation.userId ?? 'unknown',
+              role: invitation.role.wire,
+              statusToken: invitation.status.wire,
+              ownerId: widget.group.ownerId,
+            ),
+          )
+          .toList(growable: false),
       _ => <MemberRef>[],
     };
 
@@ -127,6 +154,40 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
           ),
         )
         .toList(growable: false);
+  }
+
+  List<Invitation> get _filteredInvitations {
+    final query = _invitationQuery.trim().toLowerCase();
+    return widget.membersVM.invitations.where((invitation) {
+      final recipient = '${invitation.email ?? ''} '
+              '${invitation.userId ?? ''} '
+              '${invitation.invitedByName ?? ''}'
+          .toLowerCase();
+      final delivery =
+          invitation.meta['deliveryStatus']?.toString().toLowerCase() ??
+              'unknown';
+      return (query.isEmpty || recipient.contains(query)) &&
+          (_invitationStatusFilter == 'all' ||
+              invitation.status.wire.toLowerCase() ==
+                  _invitationStatusFilter) &&
+          (_invitationDeliveryFilter == 'all' ||
+              delivery == _invitationDeliveryFilter) &&
+          (_invitationRoleFilter == 'all' ||
+              invitation.role.wire == _invitationRoleFilter);
+    }).toList(growable: false);
+  }
+
+  void _resetInvitationFilters() {
+    _invitationSearchController.clear();
+    _updateUi(() {
+      _invitationQuery = '';
+      _invitationStatusFilter = 'all';
+      _invitationDeliveryFilter = 'all';
+      _invitationRoleFilter = 'all';
+      _selectedMember = null;
+      _selectedUser = null;
+      _selectedInvitation = null;
+    });
   }
 
   Future<void> _selectMember(MemberRef ref) async {
@@ -144,6 +205,7 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
       _pendingRole = null;
       _loadingUser = true;
       _roleHistoryFuture = null; // reset for new member
+      _invitationAuditFuture = null;
     });
 
     // Look up matching invitation by userId or email
@@ -155,6 +217,9 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
               i.email?.trim().toLowerCase() == normalizedRef,
           orElse: () => null,
         );
+    final auditFuture = inv == null
+        ? null
+        : context.read<InvitationDomain>().listAudit(widget.group.id, inv.id);
 
     // Email-only invitations do not have an account to resolve yet. Their
     // invitation record is the source of truth for the detail pane.
@@ -162,6 +227,7 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
       if (mounted) {
         setState(() {
           _selectedInvitation = inv;
+          _invitationAuditFuture = auditFuture;
           _loadingUser = false;
         });
       }
@@ -176,6 +242,7 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
         setState(() {
           _selectedUser = user;
           _selectedInvitation = inv;
+          _invitationAuditFuture = auditFuture;
           _loadingUser = false;
           _roleHistoryFuture = groupRepo.getMemberRoleHistory(
             widget.group.id,
@@ -187,6 +254,7 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
       if (mounted) {
         setState(() {
           _selectedInvitation = inv;
+          _invitationAuditFuture = auditFuture;
           _loadingUser = false;
         });
       }
@@ -241,8 +309,13 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
               maxHeight: 400,
               child: _buildAddMembersTab(context),
             )
-          else
+          else ...[
+            if (_selectedTab == 4) ...[
+              _buildInvitationFilters(context),
+              const SizedBox(height: 12),
+            ],
             _buildSplitPanel(context),
+          ],
         ],
       ),
     );

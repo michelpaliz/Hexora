@@ -36,6 +36,7 @@ class _FakeAuthRepository implements AuthRepository {
     required String userName,
     required String email,
     required String password,
+    String? invitationToken,
   }) async =>
       'ok';
 
@@ -64,7 +65,10 @@ class _FakeAuthRepository implements AuthRepository {
   Future<void> logOut() async {}
 
   @override
-  Future<void> resendVerificationEmail({required String email}) async {}
+  Future<void> resendVerificationEmail({
+    required String email,
+    String? invitationToken,
+  }) async {}
 
   @override
   Future<void> resetPassword({

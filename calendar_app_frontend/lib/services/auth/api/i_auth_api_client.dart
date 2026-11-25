@@ -6,6 +6,7 @@ abstract class IAuthApiClient {
     required String userName,
     required String email,
     required String password,
+    String? invitationToken,
   });
 
   Future<Map<String, dynamic>> login({
@@ -38,5 +39,8 @@ abstract class IAuthApiClient {
 
   Future<Map<String, dynamic>> verifyEmail({required String token});
 
-  Future<Map<String, dynamic>> resendVerification({required String email});
+  Future<Map<String, dynamic>> resendVerification({
+    required String email,
+    String? invitationToken,
+  });
 }

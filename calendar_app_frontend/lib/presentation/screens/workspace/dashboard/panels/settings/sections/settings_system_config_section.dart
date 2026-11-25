@@ -301,8 +301,8 @@ class _SettingsSystemConfigSectionState
                                         context)
                                     .languageCode ==
                                 'es'
-                            ? 'Importar diariamente el extracto bancario de Caixa'
-                            : 'Import the Caixa bank statement daily',
+                            ? 'Importa automáticamente el extracto diario si este negocio está configurado. Solicita abajo la configuración.'
+                            : 'Imports the daily statement automatically if this business is configured. Request setup below.',
                       ),
                     ],
                   ),

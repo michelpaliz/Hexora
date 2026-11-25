@@ -14,9 +14,10 @@ class WeatherSummaryCard extends StatefulWidget {
 class _WeatherSummaryCardState extends State<WeatherSummaryCard> {
   final _service = WeatherService();
   late Future<WeatherBundle> _weather;
-  String get _location => widget.location?.trim().isNotEmpty == true
-      ? widget.location!.trim()
-      : 'Denia';
+  String? get _location {
+    final value = widget.location?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
 
   @override
   void initState() {
@@ -25,7 +26,10 @@ class _WeatherSummaryCardState extends State<WeatherSummaryCard> {
   }
 
   void _load() {
-    _weather = _service.fetchWeatherBundle(location: _location, days: 1);
+    final location = _location;
+    _weather = location == null
+        ? Future.value(const WeatherBundle(today: null, forecast: []))
+        : _service.fetchWeatherBundle(location: location, days: 1);
   }
 
   @override
@@ -45,6 +49,7 @@ class _WeatherSummaryCardState extends State<WeatherSummaryCard> {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final es = l.localeName.startsWith('es');
+    final location = _location;
     return FutureBuilder<WeatherBundle>(
       future: _weather,
       builder: (context, snapshot) {
@@ -69,13 +74,19 @@ class _WeatherSummaryCardState extends State<WeatherSummaryCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                     Text(
-                        '${es ? 'Tiempo' : 'Weather'} · ${weather?.cityName ?? _location}',
+                        location == null
+                            ? (es ? 'Configura el tiempo' : 'Set up weather')
+                            : '${es ? 'Tiempo' : 'Weather'} · ${weather?.cityName ?? location}',
                         style: Theme.of(context).textTheme.labelLarge),
                     const SizedBox(height: 3),
                     Text(
                         loading
                             ? (es ? 'Cargando previsión…' : 'Loading forecast…')
-                            : weather == null
+                            : location == null
+                                ? (es
+                                    ? 'Añade tu ubicación en el perfil'
+                                    : 'Add your location in your profile')
+                                : weather == null
                                 ? (es
                                     ? 'Previsión no disponible'
                                     : 'Forecast unavailable')
@@ -89,7 +100,7 @@ class _WeatherSummaryCardState extends State<WeatherSummaryCard> {
                 const SizedBox.square(
                     dimension: 18,
                     child: CircularProgressIndicator(strokeWidth: 2))
-              else
+              else if (location != null)
                 IconButton(
                     tooltip: l.refresh,
                     onPressed: () => setState(_load),

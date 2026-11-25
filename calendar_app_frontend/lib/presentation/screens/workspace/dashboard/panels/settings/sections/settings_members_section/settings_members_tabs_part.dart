@@ -29,6 +29,12 @@ extension _SettingsMembersTabsPart on _SettingsMembersSectionState {
         icon: Icons.cancel_outlined,
         tabIndex: 2,
       ),
+      _TabDef(
+        label: l.groupSettingsInvitationsTitle,
+        count: widget.membersVM.invitations.length,
+        icon: Icons.mark_email_unread_outlined,
+        tabIndex: 4,
+      ),
     ];
 
     return Row(

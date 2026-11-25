@@ -4537,7 +4537,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get autoStatementImportHelper =>
-      'When on, we\'ll automatically import your daily Caixa statement into your account.';
+      'When on, Hexora imports the daily Caixa statement for accounts with automatic import configured. Request setup for this business below.';
 
   @override
   String get autoStatementImportUpdateFailed =>

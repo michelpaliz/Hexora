@@ -43,6 +43,7 @@ import 'package:hexora/presentation/screens/auth/register/ui/register_view.dart'
 import 'package:hexora/presentation/screens/auth/verify_email/verify_email_view.dart';
 import 'package:hexora/presentation/screens/auth/verify_email/verify_success_view.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/show_notifications.dart';
+import 'package:hexora/presentation/screens/invitations/invitation_link_screen.dart';
 import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
 import 'package:hexora/presentation/screens/profile/edit/profile_edit_screen.dart';
 import 'package:hexora/presentation/screens/profile/view/profile_view_screen.dart';
@@ -56,6 +57,7 @@ final Map<String, WidgetBuilder> routes = {
   AppRoutes.dashboardPreview: (context) => const DashboardPreviewScreen(),
   AppRoutes.loginRoute: (context) => const LoginView(),
   AppRoutes.registerRoute: (context) => const RegisterView(),
+  AppRoutes.invitation: (context) => InvitationLinkScreen.fromRoute(context),
   AppRoutes.forgotPasswordRoute: (context) => const ForgotPasswordScreen(),
   AppRoutes.resetPasswordRoute: (context) => ResetPasswordScreen(
         initialToken: _routeToken(context),
@@ -78,10 +80,22 @@ final Map<String, WidgetBuilder> routes = {
       const EnableBankingCallbackScreen(),
   AppRoutes.statementsAnalytics: (context) => const StatementsAnalyticsScreen(),
   AppRoutes.groupDashboard: (context) {
-    final group = ModalRoute.of(context)?.settings.arguments as Group?;
+    final arguments = ModalRoute.of(context)?.settings.arguments;
+    final mappedGroup = arguments is Map ? arguments['group'] : null;
+    final group = arguments is Group
+        ? arguments
+        : mappedGroup is Group
+            ? mappedGroup
+            : null;
+    final onboardingRole = arguments is Map
+        ? arguments['invitationOnboardingRole']?.toString()
+        : null;
     if (group == null)
       return const GroupRouteRecovery(routeName: AppRoutes.groupDashboard);
-    return GroupDashboard(group: group);
+    return GroupDashboard(
+      group: group,
+      invitationOnboardingRole: onboardingRole,
+    );
   },
 
   AppRoutes.groupInsights: (context) {

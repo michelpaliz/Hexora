@@ -5,6 +5,7 @@ import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
 import 'package:hexora/services/groups/event/string_utils.dart';
 import 'package:hexora/services/groups/errors/group_limit_exception.dart';
+import 'package:hexora/services/invoicing/billing_profile_api.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/presentation/viewmodels/groups/ui_messenger.dart';
 import 'package:hexora/presentation/viewmodels/groups/group_editor_state.dart';
@@ -39,6 +40,22 @@ class GroupEditorViewModel extends ChangeNotifier {
 
   Group? _editingGroup;
   String? _editingGroupId;
+  final BillingProfileApi _billingProfileApi = BillingProfileApi();
+
+  String _businessType = '';
+  String _legalName = '';
+  String _taxId = '';
+  String _addressStreet = '';
+  String _addressCity = '';
+  String _addressProvince = '';
+  String _addressPostalCode = '';
+  String _addressCountry = '';
+  String _businessEmail = '';
+  String _website = '';
+  String _currency = 'EUR';
+  num _vatRate = 21;
+  String _invoiceLanguage = 'es';
+  List<Map<String, dynamic>> _creationInvitations = const [];
 
   GroupEditorViewModel({
     required this.currentUser,
@@ -65,13 +82,63 @@ class GroupEditorViewModel extends ChangeNotifier {
   void setDescription(String v) =>
       _update(_state.copyWith(description: v.trim()));
   void setImage(XFile? f) => _update(_state.copyWith(image: f));
+  void setBusinessType(String? value) {
+    _businessType = value?.trim() ?? '';
+    notifyListeners();
+  }
+
+  void configureBusinessSetup({
+    required String businessType,
+    required String legalName,
+    required String taxId,
+    required String addressStreet,
+    required String addressCity,
+    required String addressProvince,
+    required String addressPostalCode,
+    required String addressCountry,
+    required String businessEmail,
+    required String website,
+    required String currency,
+    required num vatRate,
+    required String invoiceLanguage,
+  }) {
+    _businessType = businessType.trim();
+    _legalName = legalName.trim();
+    _taxId = taxId.trim();
+    _addressStreet = addressStreet.trim();
+    _addressCity = addressCity.trim();
+    _addressProvince = addressProvince.trim();
+    _addressPostalCode = addressPostalCode.trim();
+    _addressCountry = addressCountry.trim();
+    _businessEmail = businessEmail.trim();
+    _website = website.trim();
+    _currency = currency.trim().toUpperCase();
+    _vatRate = vatRate;
+    _invoiceLanguage = invoiceLanguage == 'en' ? 'en' : 'es';
+  }
+
+  void configureTeamInvitations(List<Map<String, dynamic>> invitations) {
+    _creationInvitations = invitations
+        .map((item) => {
+              'email': String(item['email'] ?? '').trim().toLowerCase(),
+              'role': String(item['role'] ?? 'member'),
+            })
+        .where((item) => (item['email'] ?? '').isNotEmpty)
+        .toList(growable: false);
+  }
 
   bool get isEditing => _editingGroup != null;
 
   bool get isSubmitting => status == GroupEditorStatus.loading;
   bool get canSubmit =>
       _state.name.trim().isNotEmpty &&
-      _state.description.trim().isNotEmpty &&
+      _businessType.isNotEmpty &&
+      _legalName.isNotEmpty &&
+      _taxId.isNotEmpty &&
+      _addressStreet.isNotEmpty &&
+      _addressCity.isNotEmpty &&
+      _addressPostalCode.isNotEmpty &&
+      _addressCountry.isNotEmpty &&
       !isSubmitting;
 
   bool canEditRole(String userId) {
@@ -88,6 +155,9 @@ class GroupEditorViewModel extends ChangeNotifier {
   void enterEditFrom(Group g) {
     _editingGroup = g; // ← keep the original
     _editingGroupId = g.id;
+    _businessType = (g.businessType?.trim().isNotEmpty ?? false)
+        ? g.businessType!.trim()
+        : 'other';
     _update(_state.copyWith(
       name: g.name,
       description: g.description,
@@ -142,8 +212,8 @@ class GroupEditorViewModel extends ChangeNotifier {
 
   Future<void> submit() async {
     if (status == GroupEditorStatus.loading) return;
-    if (_state.name.isEmpty || _state.description.isEmpty) {
-      await ui.showError('Name and description are required');
+    if (!canSubmit && !isEditing) {
+      await ui.showError('Complete the required business details');
       return;
     }
     status = GroupEditorStatus.loading;
@@ -156,6 +226,7 @@ class GroupEditorViewModel extends ChangeNotifier {
               _editingGroup!, // or pass original Group if that’s your UC signature
           name: _state.name,
           description: _state.description,
+          businessType: _businessType,
         );
 
         if (_state.image != null) {
@@ -173,6 +244,20 @@ class GroupEditorViewModel extends ChangeNotifier {
       final created = await createGroup(
         name: _state.name,
         description: _state.description,
+        businessType: _businessType,
+        invoiceLanguage: _invoiceLanguage,
+        legalName: _legalName,
+        taxId: _taxId,
+        addressStreet: _addressStreet,
+        addressCity: _addressCity,
+        addressProvince: _addressProvince,
+        addressPostalCode: _addressPostalCode,
+        addressCountry: _addressCountry,
+        businessEmail: _businessEmail,
+        website: _website,
+        currency: _currency,
+        vatRate: _vatRate,
+        invitations: _creationInvitations,
         owner: currentUser,
       );
 
@@ -185,11 +270,29 @@ class GroupEditorViewModel extends ChangeNotifier {
 
       if (_state.image != null) {
         await uploadPhoto(groupId: created.id, file: _state.image!);
+        await _billingProfileApi.uploadLogo(
+          groupId: created.id,
+          filename: _state.image!.name,
+          bytes: await _state.image!.readAsBytes(),
+        );
       }
 
       status = GroupEditorStatus.success;
       notifyListeners();
-      ui.showSnack('Group created!');
+      final summary = created.invitationSummary;
+      final requested = (summary?['requested'] as num?)?.toInt() ?? 0;
+      final createdCount = (summary?['created'] as num?)?.toInt() ?? 0;
+      final emailSent = (summary?['emailSent'] as num?)?.toInt() ?? 0;
+      if (requested == 0) {
+        ui.showSnack('Business created!');
+      } else if (createdCount == requested && emailSent == requested) {
+        ui.showSnack('Business created and all invitations sent!');
+      } else {
+        ui.showSnack(
+          'Business created. $createdCount of $requested invitations were created; '
+          '$emailSent emails were sent.',
+        );
+      }
       ui.pop();
     } on GroupLimitException catch (e) {
       status = GroupEditorStatus.error;

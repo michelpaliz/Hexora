@@ -51,19 +51,26 @@ class EnableBankingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activeGroup = group ?? context.read<GroupDomain?>()?.currentGroup;
+    final groupId = activeGroup?.id ?? '';
     return MultiProvider(
+      key: ValueKey('business-banking-$groupId'),
       providers: [
-        ChangeNotifierProvider(create: (_) => EnableBankingController()),
-        ChangeNotifierProvider(create: (_) => TrueLayerController()),
         ChangeNotifierProvider(
-          create: (_) => StatementsController(groupId: group?.id),
+          create: (_) => EnableBankingController(groupId: groupId),
         ),
         ChangeNotifierProvider(
-          create: (_) => StatementsAnalyticsController(groupId: group?.id),
+          create: (_) => TrueLayerController(groupId: groupId),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => StatementsController(groupId: activeGroup?.id),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => StatementsAnalyticsController(groupId: activeGroup?.id),
         ),
       ],
       child: _EnableBankingView(
-          group: group,
+          group: activeGroup,
           embedded: embedded,
           initialEntry: initialEntry,
           initialReviewLink: initialReviewLink),

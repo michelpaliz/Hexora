@@ -40,6 +40,7 @@ class AppRoutes {
 
   static const showGroups = '/show-groups';
   static const showNotifications = '/show-notifications';
+  static const invitation = '/invitation';
   static const groupNotifications = '/group-notifications';
   static const expenseOcrReprocessResults = '/expense-ocr-reprocess-results';
 

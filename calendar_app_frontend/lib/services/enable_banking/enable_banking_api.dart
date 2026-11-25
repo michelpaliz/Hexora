@@ -33,6 +33,9 @@ class EnableBankingApiException implements Exception {
 }
 
 class EnableBankingApi {
+  EnableBankingApi({required this.groupId});
+
+  final String groupId;
   final String _base = '${ApiConstants.baseUrl}/enablebanking';
   bool _loggedAuthSummary = false;
   String? _lastJwtSummary;
@@ -199,7 +202,7 @@ class EnableBankingApi {
 
   Future<List<Map<String, dynamic>>> listBanks(
       {required String country}) async {
-    final uri = _u('/aspsps', {'country': country});
+    final uri = _u('/aspsps', {'country': country, 'groupId': groupId});
     final r = await AuthenticatedHttpClient.get(
       uri,
       headers: await _headers(),
@@ -264,7 +267,7 @@ class EnableBankingApi {
     required String country,
     String? aspspName,
   }) async {
-    final query = <String, String>{'country': country};
+    final query = <String, String>{'country': country, 'groupId': groupId};
     if (aspspName != null && aspspName.trim().isNotEmpty) {
       query['aspsp_name'] = aspspName.trim();
     }
@@ -286,7 +289,7 @@ class EnableBankingApi {
 
   /// GET /enablebanking/accounts -> accounts list (post-consent)
   Future<List<Map<String, dynamic>>> listAccounts() async {
-    final uri = _u('/accounts');
+    final uri = _u('/accounts', {'groupId': groupId});
     final r = await AuthenticatedHttpClient.get(
       uri,
       headers: await _headers(),
@@ -319,6 +322,7 @@ class EnableBankingApi {
 
     final uri = _u('/transactions', {
       'accountId': accountId,
+      'groupId': groupId,
       'date_from': ymd(dateFrom),
       'date_to': ymd(dateTo),
     });
