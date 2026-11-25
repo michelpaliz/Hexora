@@ -100,7 +100,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
         builder: (context) => IconButton(
               tooltip: tooltip,
               onPressed: onPressed,
-              icon: Icon(icon, size: 17),
+              icon: Icon(icon, size: 18),
               padding: EdgeInsets.zero,
               style: ThemedButtons.iconAction(context, color: activeColor),
             ));
@@ -949,7 +949,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                         ),
                                         icon: const Icon(
                                           Icons.more_horiz_rounded,
-                                          size: 17,
+                                          size: 18,
                                         ),
                                         itemBuilder: (_) => rowMenuItems(),
                                         onSelected: handleRowMenuSelection,
@@ -1000,7 +1000,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                         ),
                                         icon: const Icon(
                                             Icons.more_horiz_rounded,
-                                            size: 17),
+                                            size: 18),
                                         itemBuilder: (_) => rowMenuItems(),
                                         onSelected: handleRowMenuSelection,
                                       ),

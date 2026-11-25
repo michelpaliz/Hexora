@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:typed_data';
+
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/screens/calendar/screens/group/create_edit/widgets/images/group_image.dart';
 import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
 import 'package:hexora/presentation/viewmodels/groups/ui_messenger.dart';
 import 'package:hexora/presentation/viewmodels/groups/use_cases/create_group_usecase.dart';
@@ -38,6 +39,12 @@ class _CreateGroupDataState extends State<CreateGroupData> {
   final _email = TextEditingController();
   final _website = TextEditingController();
 
+  final _formKey = GlobalKey<FormState>();
+  final _scroll = ScrollController();
+  AutovalidateMode _validation = AutovalidateMode.disabled;
+  XFile? _logo;
+  Uint8List? _logoBytes;
+  bool _pickingLogo = false;
   int _step = 0;
   String? _businessType;
   String _invoiceLanguage = 'es';
@@ -80,65 +87,80 @@ class _CreateGroupDataState extends State<CreateGroupData> {
     for (final invite in _invites) {
       invite.email.dispose();
     }
+    _scroll.dispose();
     super.dispose();
   }
 
   String _t(String es, String en) => _isSpanish ? es : en;
 
-  bool _canContinue() {
-    if (_step == 0) {
-      return _name.text.trim().isNotEmpty && _businessType != null;
-    }
-    if (_step == 1) {
-      return [
-        _legalName,
-        _taxId,
-        _street,
-        _city,
-        _postalCode,
-        _country,
-      ].every((controller) => controller.text.trim().isNotEmpty);
-    }
-    if (_step == 3) {
-      final emails = _invites
-          .map((invite) => invite.email.text.trim().toLowerCase())
-          .where((email) => email.isNotEmpty)
-          .toList();
-      return emails.every(_isValidEmail) && emails.toSet().length == emails.length;
-    }
-    return true;
-  }
-
   bool _isValidEmail(String value) =>
       RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
 
-  void _next() {
-    if (!_canContinue()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_t(
-            'Completa los campos obligatorios.',
-            'Complete the required fields.',
-          )),
-        ),
-      );
-      return;
+  bool _validate() {
+    setState(() => _validation = AutovalidateMode.onUserInteraction);
+    final valid = _formKey.currentState?.validate() ?? false;
+    if (!valid) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        FormFieldState<dynamic>? firstInvalid;
+        void visit(Element element) {
+          if (element is StatefulElement && element.state is FormFieldState) {
+            final field = element.state as FormFieldState<dynamic>;
+            if (field.hasError) firstInvalid ??= field;
+          }
+          element.visitChildren(visit);
+        }
+
+        _formKey.currentContext?.visitChildElements(visit);
+        if (firstInvalid != null) {
+          Scrollable.ensureVisible(firstInvalid!.context,
+              duration: const Duration(milliseconds: 250), alignment: 0.15);
+        }
+      });
     }
-    setState(() => _step += 1);
+    return valid;
+  }
+
+  void _goTo(int step) {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _step = step;
+      _validation = AutovalidateMode.disabled;
+    });
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+  }
+
+  void _next() {
+    if (_validate()) _goTo(_step + 1);
+  }
+
+  Future<void> _pickLogo() async {
+    setState(() => _pickingLogo = true);
+    try {
+      final file = await ImagePicker().pickImage(
+          source: ImageSource.gallery, imageQuality: 85, maxWidth: 1600);
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (mounted) {
+        setState(() {
+          _logo = file;
+          _logoBytes = bytes;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(_t('No se pudo abrir la imagen. Inténtalo de nuevo.',
+                'Could not open the image. Please try again.'))));
+      }
+    } finally {
+      if (mounted) setState(() => _pickingLogo = false);
+    }
   }
 
   Future<void> _create(GroupEditorViewModel vm) async {
-    if (!_canContinue()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_t(
-            'Revisa los correos. No pueden estar repetidos.',
-            'Check the email addresses. Duplicates are not allowed.',
-          )),
-        ),
-      );
-      return;
-    }
+    if (!_validate()) return;
+    vm.setImage(_logo);
     vm
       ..setName(_name.text)
       ..setDescription(_description.text)
@@ -190,19 +212,18 @@ class _CreateGroupDataState extends State<CreateGroupData> {
         builder: (context) {
           final vm = context.watch<GroupEditorViewModel>();
           final content = _wizard(context, vm);
-          final isWide = kIsWeb || MediaQuery.of(context).size.width >= 900;
+          final isWide = MediaQuery.sizeOf(context).width >= 700;
           if (!isWide) {
             return Scaffold(
-              appBar:
-                  AppBar(title: Text(_t('Crear negocio', 'Create business'))),
-              body: content,
+              body: SafeArea(child: content),
             );
           }
           return Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760, maxHeight: 820),
+              constraints: const BoxConstraints(maxWidth: 880, maxHeight: 880),
               child: Card(
-                margin: const EdgeInsets.symmetric(vertical: 24),
+                margin:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                 clipBehavior: Clip.antiAlias,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -230,11 +251,19 @@ class _CreateGroupDataState extends State<CreateGroupData> {
                 children: [
                   Icon(Icons.domain_add_outlined, color: cs.primary),
                   const SizedBox(width: 10),
-                  Text(
+                  Expanded(
+                      child: Text(
                     _t('Crear negocio', 'Create business'),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
+                  )),
+                  IconButton(
+                    tooltip: _t('Cerrar', 'Close'),
+                    onPressed: vm.isSubmitting
+                        ? null
+                        : () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.close_rounded),
                   ),
                 ],
               ),
@@ -244,18 +273,23 @@ class _CreateGroupDataState extends State<CreateGroupData> {
           ),
         ),
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(22),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              child: KeyedSubtree(
-                key: ValueKey(_step),
-                child: [
-                  _identityStep(vm),
-                  _legalStep(),
-                  _invoiceStep(),
-                  _teamStep(),
-                ][_step],
+          child: AbsorbPointer(
+            absorbing: vm.isSubmitting,
+            child: SingleChildScrollView(
+              controller: _scroll,
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                autovalidateMode: _validation,
+                child: KeyedSubtree(
+                  key: ValueKey(_step),
+                  child: switch (_step) {
+                    0 => _identityStep(vm),
+                    1 => _legalStep(),
+                    2 => _invoiceStep(),
+                    _ => _teamStep(),
+                  },
+                ),
               ),
             ),
           ),
@@ -265,17 +299,18 @@ class _CreateGroupDataState extends State<CreateGroupData> {
           decoration: BoxDecoration(
             border: Border(top: BorderSide(color: cs.outlineVariant)),
           ),
-          child: Row(
+          child: OverflowBar(
+            alignment: MainAxisAlignment.end,
+            overflowAlignment: OverflowBarAlignment.end,
+            spacing: 12,
+            overflowSpacing: 8,
             children: [
               if (_step > 0)
                 OutlinedButton.icon(
-                  onPressed: vm.isSubmitting
-                      ? null
-                      : () => setState(() => _step -= 1),
+                  onPressed: vm.isSubmitting ? null : () => _goTo(_step - 1),
                   icon: const Icon(Icons.arrow_back_rounded),
                   label: Text(_t('Atrás', 'Back')),
                 ),
-              const Spacer(),
               FilledButton.icon(
                 onPressed: vm.isSubmitting
                     ? null
@@ -293,10 +328,13 @@ class _CreateGroupDataState extends State<CreateGroupData> {
                             ? Icons.arrow_forward_rounded
                             : Icons.check_rounded,
                       ),
+                style: FilledButton.styleFrom(minimumSize: const Size(140, 48)),
                 label: Text(
-                  _step < 3
-                      ? _t('Continuar', 'Continue')
-                      : _t('Crear negocio', 'Create business'),
+                  vm.isSubmitting
+                      ? _t('Creando…', 'Creating…')
+                      : _step < 3
+                          ? _t('Continuar', 'Continue')
+                          : _t('Crear negocio', 'Create business'),
                 ),
               ),
             ],
@@ -311,44 +349,58 @@ class _CreateGroupDataState extends State<CreateGroupData> {
         ? ['Identidad', 'Datos fiscales', 'Facturación', 'Equipo']
         : ['Identity', 'Legal details', 'Invoicing', 'Team'];
     final cs = Theme.of(context).colorScheme;
-    return Row(
-      children: List.generate(labels.length, (index) {
-        final active = index <= _step;
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth < 560) {
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(
+              '${_t('Paso ${_step + 1} de 4', 'Step ${_step + 1} of 4')} · ${labels[_step]}',
+              style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 12),
+          LinearProgressIndicator(
+              value: (_step + 1) / 4,
+              minHeight: 5,
+              borderRadius: BorderRadius.circular(8)),
+        ]);
+      }
+      return Row(
+          children: List.generate(labels.length, (index) {
+        final active = index == _step;
+        final complete = index < _step;
         return Expanded(
-          child: Row(
-            children: [
-              CircleAvatar(
+            child: TextButton(
+          onPressed:
+              complete && !context.read<GroupEditorViewModel>().isSubmitting
+                  ? () => _goTo(index)
+                  : null,
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+            backgroundColor: active ? cs.primaryContainer : Colors.transparent,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: Row(children: [
+            CircleAvatar(
                 radius: 14,
                 backgroundColor:
-                    active ? cs.primary : cs.surfaceContainerHigh,
+                    active || complete ? cs.primary : cs.surfaceContainerHigh,
                 foregroundColor:
-                    active ? cs.onPrimary : cs.onSurfaceVariant,
-                child:
-                    Text('${index + 1}', style: const TextStyle(fontSize: 12)),
-              ),
-              const SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  labels[index],
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-              ),
-              if (index < labels.length - 1)
-                Container(
-                  width: 18,
-                  height: 1,
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  color: active ? cs.primary : cs.outlineVariant,
-                ),
-            ],
-          ),
-        );
-      }),
-    );
+                    active || complete ? cs.onPrimary : cs.onSurfaceVariant,
+                child: complete
+                    ? const Icon(Icons.check_rounded, size: 16)
+                    : Text('${index + 1}',
+                        style: const TextStyle(fontSize: 12))),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Text(labels[index],
+                    style: TextStyle(
+                        color: active ? cs.onPrimaryContainer : cs.onSurface,
+                        fontSize: 12,
+                        fontWeight:
+                            active ? FontWeight.w700 : FontWeight.w500))),
+          ]),
+        ));
+      }));
+    });
   }
 
   Widget _identityStep(GroupEditorViewModel vm) {
@@ -362,29 +414,56 @@ class _CreateGroupDataState extends State<CreateGroupData> {
             'Add the information used to identify your workspace.',
           ),
         ),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          decoration: BoxDecoration(
-            color:
-                Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            children: [
-              GroupImage(onPicked: vm.setImage),
-              const SizedBox(height: 8),
-              Text(
-                _t(
-                  'Logo opcional · también aparecerá en tus facturas',
-                  'Optional logo · it will also appear on invoices',
-                ),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
+        _section(
+          child: Row(children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: _logoBytes == null
+                  ? Container(
+                      width: 72,
+                      height: 72,
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      child: Icon(Icons.storefront_outlined,
+                          size: 32,
+                          color:
+                              Theme.of(context).colorScheme.onPrimaryContainer))
+                  : Image.memory(_logoBytes!,
+                      width: 72, height: 72, fit: BoxFit.cover),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(_t('Logo del negocio', 'Business logo'),
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 4),
+                  Text(
+                      _t('Opcional · visible en tus facturas',
+                          'Optional · shown on your invoices'),
+                      style: Theme.of(context).textTheme.bodySmall),
+                  Wrap(spacing: 8, children: [
+                    TextButton.icon(
+                        onPressed: _pickingLogo ? null : _pickLogo,
+                        icon: const Icon(Icons.add_photo_alternate_outlined,
+                            size: 18),
+                        label: Text(_pickingLogo
+                            ? _t('Abriendo…', 'Opening…')
+                            : _logo == null
+                                ? _t('Añadir logo', 'Add logo')
+                                : _t('Cambiar', 'Change'))),
+                    if (_logo != null)
+                      TextButton(
+                          onPressed: () => setState(() {
+                                _logo = null;
+                                _logoBytes = null;
+                              }),
+                          child: Text(_t('Eliminar', 'Remove'))),
+                  ]),
+                ])),
+          ]),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 24),
         _field(
           _name,
           _t('Nombre del negocio', 'Business name'),
@@ -392,7 +471,11 @@ class _CreateGroupDataState extends State<CreateGroupData> {
         ),
         const SizedBox(height: 14),
         DropdownButtonFormField<String>(
-          value: _businessType,
+          initialValue: _businessType,
+          isExpanded: true,
+          validator: (value) => value == null
+              ? _t('Selecciona un tipo de negocio.', 'Choose a business type.')
+              : null,
           decoration: _decoration(_t('Tipo de negocio *', 'Business type *')),
           items: _businessTypes
               .map(
@@ -430,6 +513,15 @@ class _CreateGroupDataState extends State<CreateGroupData> {
           _t('Razón social', 'Legal name'),
           required: true,
         ),
+        Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () =>
+                  setState(() => _legalName.text = _name.text.trim()),
+              icon: const Icon(Icons.copy_outlined, size: 16),
+              label:
+                  Text(_t('Usar el nombre del negocio', 'Use business name')),
+            )),
         const SizedBox(height: 14),
         _field(
           _taxId,
@@ -443,67 +535,43 @@ class _CreateGroupDataState extends State<CreateGroupData> {
           required: true,
         ),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _field(
-                _city,
-                _t('Ciudad', 'City'),
-                required: true,
-              ),
+        _paired(
+            _field(
+              _city,
+              _t('Ciudad', 'City'),
+              required: true,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _field(
-                _postalCode,
-                _t('Código postal', 'Postal code'),
-                required: true,
-              ),
-            ),
-          ],
-        ),
+            _field(
+              _postalCode,
+              _t('Código postal', 'Postal code'),
+              required: true,
+            )),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _field(
-                _province,
-                _t('Provincia (opcional)', 'Region (optional)'),
-              ),
+        _paired(
+            _field(
+              _province,
+              _t('Provincia (opcional)', 'Region (optional)'),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _field(
-                _country,
-                _t('País', 'Country'),
-                required: true,
-              ),
-            ),
-          ],
-        ),
+            _field(
+              _country,
+              _t('País', 'Country'),
+              required: true,
+            )),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _field(
-                _email,
-                _t(
-                  'Correo del negocio (opcional)',
-                  'Business email (optional)',
-                ),
-                keyboardType: TextInputType.emailAddress,
+        _paired(
+            _field(
+              _email,
+              _t(
+                'Correo del negocio (opcional)',
+                'Business email (optional)',
               ),
+              keyboardType: TextInputType.emailAddress,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _field(
-                _website,
-                _t('Página web (opcional)', 'Website (optional)'),
-                keyboardType: TextInputType.url,
-              ),
-            ),
-          ],
-        ),
+            _field(
+              _website,
+              _t('Página web (opcional)', 'Website (optional)'),
+              keyboardType: TextInputType.url,
+            )),
       ],
     );
   }
@@ -517,11 +585,12 @@ class _CreateGroupDataState extends State<CreateGroupData> {
           _t('Preferencias de facturación', 'Invoice preferences'),
           _t(
             'Elige los valores iniciales para los documentos de este negocio.',
-            'Choose the initial defaults for this business documents.',
+            "Choose the default settings for your business documents.",
           ),
         ),
         DropdownButtonFormField<String>(
-          value: _invoiceLanguage,
+          isExpanded: true,
+          initialValue: _invoiceLanguage,
           decoration:
               _decoration(_t('Idioma de las facturas', 'Invoice language')),
           items: const [
@@ -532,42 +601,31 @@ class _CreateGroupDataState extends State<CreateGroupData> {
               setState(() => _invoiceLanguage = value ?? 'es'),
         ),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _currency,
-                decoration: _decoration(_t('Moneda', 'Currency')),
-                items: const ['EUR', 'USD', 'GBP']
-                    .map(
-                      (value) =>
-                          DropdownMenuItem(value: value, child: Text(value)),
-                    )
-                    .toList(),
-                onChanged: (value) =>
-                    setState(() => _currency = value ?? 'EUR'),
-              ),
+        _paired(
+            DropdownButtonFormField<String>(
+              initialValue: _currency,
+              decoration: _decoration(_t('Moneda', 'Currency')),
+              items: const ['EUR', 'USD', 'GBP']
+                  .map(
+                    (value) =>
+                        DropdownMenuItem(value: value, child: Text(value)),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() => _currency = value ?? 'EUR'),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: DropdownButtonFormField<double>(
-                value: _vatRate,
-                decoration:
-                    _decoration(_t('IVA predeterminado', 'Default VAT')),
-                items: const [0.0, 4.0, 10.0, 21.0]
-                    .map(
-                      (value) => DropdownMenuItem(
-                        value: value,
-                        child: Text('${value.toInt()}%'),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) =>
-                    setState(() => _vatRate = value ?? 21),
-              ),
-            ),
-          ],
-        ),
+            DropdownButtonFormField<double>(
+              initialValue: _vatRate,
+              decoration: _decoration(_t('IVA predeterminado', 'Default VAT')),
+              items: const [0.0, 4.0, 10.0, 21.0]
+                  .map(
+                    (value) => DropdownMenuItem(
+                      value: value,
+                      child: Text('${value.toInt()}%'),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() => _vatRate = value ?? 21),
+            )),
         const SizedBox(height: 22),
         Container(
           padding: const EdgeInsets.all(16),
@@ -592,14 +650,25 @@ class _CreateGroupDataState extends State<CreateGroupData> {
             ],
           ),
         ),
-        const SizedBox(height: 18),
-        _summaryRow(_t('Negocio', 'Business'), _name.text),
-        _summaryRow(_t('Razón social', 'Legal name'), _legalName.text),
-        _summaryRow(_t('Identificación fiscal', 'Tax ID'), _taxId.text),
-        _summaryRow(
-          _t('Idioma', 'Language'),
-          _invoiceLanguage == 'es' ? 'Español' : 'English',
-        ),
+        const SizedBox(height: 20),
+        _section(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(_t('Ejemplo de cálculo', 'Example calculation'),
+              style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text(
+              _t('Vista orientativa con una base de 100.',
+                  'Illustration using a base amount of 100.'),
+              style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 16),
+          _summaryRow(_t('Base imponible', 'Subtotal'), '100.00 $_currency'),
+          _summaryRow('IVA / VAT (${_vatRate.toInt()}%)',
+              '${_vatRate.toStringAsFixed(2)} $_currency'),
+          const Divider(),
+          _summaryRow(_t('Total', 'Total'),
+              '${(100 + _vatRate).toStringAsFixed(2)} $_currency'),
+        ])),
       ],
     );
   }
@@ -642,55 +711,74 @@ class _CreateGroupDataState extends State<CreateGroupData> {
         ...List.generate(_invites.length, (index) {
           final invite = _invites[index];
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: TextFormField(
-                    controller: invite.email,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: _decoration(_t('Correo electrónico', 'Email address')),
+            key: ObjectKey(invite),
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _section(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Row(children: [
+                    Expanded(
+                        child: Text(
+                            _t('Persona ${index + 1}', 'Person ${index + 1}'),
+                            style: Theme.of(context).textTheme.titleSmall)),
+                    IconButton(
+                        tooltip: _t('Eliminar invitación', 'Remove invitation'),
+                        onPressed: () {
+                          setState(() => _invites.removeAt(index));
+                          // Dispose after the field has unmounted.
+                          WidgetsBinding.instance.addPostFrameCallback(
+                              (_) => invite.email.dispose());
+                        },
+                        icon: const Icon(Icons.close_rounded, size: 20)),
+                  ]),
+                  const SizedBox(height: 8),
+                  _paired(
+                    TextFormField(
+                      controller: invite.email,
+                      keyboardType: TextInputType.emailAddress,
+                      autocorrect: false,
+                      decoration: _decoration(
+                          _t('Correo electrónico', 'Email address')),
+                      validator: (value) {
+                        final email = (value ?? '').trim().toLowerCase();
+                        if (email.isEmpty) return null;
+                        if (!_isValidEmail(email)) {
+                          return _t('Introduce un correo válido.',
+                              'Enter a valid email address.');
+                        }
+                        if (_invites
+                                .where((other) =>
+                                    other.email.text.trim().toLowerCase() ==
+                                    email)
+                                .length >
+                            1) {
+                          return _t('Este correo ya está en la lista.',
+                              'This email is already in the list.');
+                        }
+                        return null;
+                      },
+                    ),
+                    DropdownButtonFormField<String>(
+                      initialValue: invite.role,
+                      isExpanded: true,
+                      decoration: _decoration(_t('Rol', 'Role')),
+                      items: [
+                        DropdownMenuItem(
+                            value: 'member',
+                            child: Text(_t('Miembro', 'Member'))),
+                        DropdownMenuItem(
+                            value: 'co-admin',
+                            child: Text(_t('Co-administrador', 'Co-admin'))),
+                        DropdownMenuItem(
+                            value: 'admin',
+                            child: Text(_t('Administrador', 'Admin'))),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => invite.role = value ?? 'member'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
-                  child: DropdownButtonFormField<String>(
-                    value: invite.role,
-                    decoration: _decoration(_t('Rol', 'Role')),
-                    items: [
-                      DropdownMenuItem(
-                        value: 'member',
-                        child: Text(_t('Miembro', 'Member')),
-                      ),
-                      DropdownMenuItem(
-                        value: 'co-admin',
-                        child: Text(_t('Co-administrador', 'Co-admin')),
-                      ),
-                      DropdownMenuItem(
-                        value: 'admin',
-                        child: Text(_t('Administrador', 'Admin')),
-                      ),
-                    ],
-                    onChanged: (value) =>
-                        setState(() => invite.role = value ?? 'member'),
-                  ),
-                ),
-                if (_invites.length > 1) ...[
-                  const SizedBox(width: 6),
-                  IconButton(
-                    tooltip: _t('Eliminar invitación', 'Remove invitation'),
-                    onPressed: () {
-                      invite.email.dispose();
-                      setState(() => _invites.removeAt(index));
-                    },
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ],
-            ),
+                ])),
           );
         }),
         TextButton.icon(
@@ -708,6 +796,32 @@ class _CreateGroupDataState extends State<CreateGroupData> {
                 color: cs.onSurfaceVariant,
               ),
         ),
+        const SizedBox(height: 24),
+        _section(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(_t('Revisa tu negocio', 'Review your business'),
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 16),
+          _summaryRow(_t('Negocio', 'Business'), _name.text),
+          _summaryRow(_t('Razón social', 'Legal name'), _legalName.text),
+          _summaryRow(_t('NIF / CIF', 'Tax ID'), _taxId.text),
+          _summaryRow(_t('Dirección', 'Address'),
+              '${_street.text}, ${_postalCode.text} ${_city.text}, ${_country.text}'),
+          _summaryRow(_t('Facturación', 'Invoicing'),
+              '$_currency · ${_vatRate.toInt()}% IVA / VAT · ${_invoiceLanguage == 'es' ? 'Español' : 'English'}'),
+          Wrap(spacing: 8, children: [
+            TextButton(
+                onPressed: () => _goTo(0),
+                child: Text(_t('Editar identidad', 'Edit identity'))),
+            TextButton(
+                onPressed: () => _goTo(1),
+                child: Text(_t('Editar datos fiscales', 'Edit legal details'))),
+            TextButton(
+                onPressed: () => _goTo(2),
+                child: Text(_t('Editar facturación', 'Edit invoicing'))),
+          ]),
+        ])),
       ],
     );
   }
@@ -745,14 +859,58 @@ class _CreateGroupDataState extends State<CreateGroupData> {
         controller: controller,
         maxLines: maxLines,
         keyboardType: keyboardType,
+        textInputAction:
+            maxLines > 1 ? TextInputAction.newline : TextInputAction.next,
+        validator: (value) {
+          final text = (value ?? '').trim();
+          if (required && text.isEmpty) {
+            return _t('Completa este campo.', 'This field is required.');
+          }
+          if (keyboardType == TextInputType.emailAddress &&
+              text.isNotEmpty &&
+              !_isValidEmail(text)) {
+            return _t(
+                'Introduce un correo válido.', 'Enter a valid email address.');
+          }
+          return null;
+        },
         decoration: _decoration(required ? '$label *' : label),
       );
 
   InputDecoration _decoration(String label) => InputDecoration(
         labelText: label,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        isDense: false,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        errorMaxLines: 3,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Theme.of(context).colorScheme.surfaceContainerLowest,
+      );
+
+  Widget _section({required Widget child}) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border:
+              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: child,
+      );
+
+  Widget _paired(Widget first, Widget second) => LayoutBuilder(
+        builder: (context, constraints) => constraints.maxWidth < 560
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [first, const SizedBox(height: 16), second])
+            : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: first),
+                const SizedBox(width: 16),
+                Expanded(child: second)
+              ]),
       );
 
   Widget _summaryRow(String label, String value) => Padding(

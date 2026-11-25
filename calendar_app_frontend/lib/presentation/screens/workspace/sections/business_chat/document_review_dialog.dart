@@ -548,7 +548,7 @@ class _DocumentReviewDialogState extends State<DocumentReviewDialog> {
                     IconButton(
                       tooltip: _es ? 'Quitar archivo' : 'Remove file',
                       onPressed: () => setState(() => _file = null),
-                      icon: const Icon(Icons.close, size: 17),
+                      icon: const Icon(Icons.close, size: 18),
                       visualDensity: VisualDensity.compact,
                     ),
                 ],
@@ -1085,7 +1085,7 @@ class _DocumentReviewDialogState extends State<DocumentReviewDialog> {
                                 }
                               },
                               icon: const Icon(Icons.account_balance_outlined,
-                                  size: 17),
+                                  size: 18),
                               label: Text(_es ? 'Abrir Banco' : 'Open Banking'),
                             ),
                         ]),

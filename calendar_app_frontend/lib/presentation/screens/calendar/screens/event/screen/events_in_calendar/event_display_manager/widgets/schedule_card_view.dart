@@ -326,7 +326,7 @@ class ScheduleCardView extends StatelessWidget {
                   else
                     IconButton(
                       icon: Icon(Icons.more_vert,
-                          color: cardColor.withValues(alpha: 0.75), size: 17),
+                          color: cardColor.withValues(alpha: 0.75), size: 18),
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       constraints:
                           const BoxConstraints(minWidth: 36, minHeight: 36),

@@ -87,6 +87,9 @@ class HexoraDocumentStepper extends StatelessWidget {
     this.compactConnectors = false,
     this.vertical = false,
     this.afterStepBuilder,
+    this.numberedIndicators = false,
+    this.verticalConnectorHeight = 16,
+    this.verticalItemMinHeight = 36,
   });
 
   final List<HexoraDocumentStep> steps;
@@ -96,6 +99,9 @@ class HexoraDocumentStepper extends StatelessWidget {
   final bool compactConnectors;
   final bool vertical;
   final Widget? Function(int index)? afterStepBuilder;
+  final bool numberedIndicators;
+  final double verticalConnectorHeight;
+  final double verticalItemMinHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -128,8 +134,13 @@ class HexoraDocumentStepper extends StatelessWidget {
             child: AnimatedContainer(
               duration: duration,
               curve: HexoraMotion.enter,
-              constraints: const BoxConstraints(minHeight: 36),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              constraints: BoxConstraints(
+                minHeight: vertical ? verticalItemMinHeight : 36,
+              ),
+              padding: EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: vertical && verticalItemMinHeight < 36 ? 4 : 6,
+              ),
               decoration: BoxDecoration(
                 color: active ? cs.surface : null,
                 borderRadius: BorderRadius.circular(9),
@@ -148,25 +159,37 @@ class HexoraDocumentStepper extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: active
-                            ? color
-                            : complete
-                                ? color.withValues(alpha: .14)
-                                : cs.surfaceContainerHighest,
-                        border: Border.all(color: color.withValues(alpha: .38)),
+                        color: active && numberedIndicators
+                            ? cs.surface
+                            : active
+                                ? color
+                                : complete
+                                    ? color.withValues(alpha: .14)
+                                    : cs.surfaceContainerHighest,
+                        border: Border.all(
+                          color: active && numberedIndicators
+                              ? cs.primary.withValues(alpha: .48)
+                              : color.withValues(alpha: .38),
+                        ),
                       ),
                       child: complete
                           ? Icon(Icons.check_rounded, size: 14, color: color)
                           : step.hasError
                               ? Icon(Icons.priority_high_rounded,
                                   size: 13, color: active ? cs.onError : color)
-                              : step.icon != null && active
+                              : step.icon != null &&
+                                      active &&
+                                      !numberedIndicators
                                   ? Icon(step.icon,
                                       size: 13, color: cs.onPrimary)
                                   : Text(
                                       '${index + 1}',
                                       style: textTheme.bodySmall?.copyWith(
-                                        color: active ? cs.onPrimary : color,
+                                        color: active
+                                            ? (numberedIndicators
+                                                ? cs.primary
+                                                : cs.onPrimary)
+                                            : color,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w900,
                                       ),
@@ -236,7 +259,7 @@ class HexoraDocumentStepper extends StatelessWidget {
                 alignment: AlignmentDirectional.centerStart,
                 child: Container(
                   width: 2,
-                  height: 16,
+                  height: verticalConnectorHeight,
                   margin: const EdgeInsetsDirectional.only(start: 18),
                   color: index < currentStep
                       ? cs.primary.withValues(alpha: .52)

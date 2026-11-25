@@ -86,6 +86,14 @@ class MobileTheme {
       disabledColor: secondaryText.withValues(alpha: 0.38),
       visualDensity: VisualDensity.standard,
       materialTapTargetSize: MaterialTapTargetSize.padded,
+      iconTheme: IconThemeData(
+        color: secondaryText,
+        size: HexoraIconTokens.standard,
+      ),
+      primaryIconTheme: IconThemeData(
+        color: onPrimary,
+        size: HexoraIconTokens.standard,
+      ),
       textTheme: textTheme.copyWith(
         titleLarge: textTheme.titleLarge
             ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
@@ -129,8 +137,11 @@ class MobileTheme {
         centerTitle: false,
         titleTextStyle: textTheme.titleLarge
             ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
-        iconTheme: IconThemeData(color: text, size: 22),
-        actionsIconTheme: IconThemeData(color: secondaryText, size: 22),
+        iconTheme: IconThemeData(color: text, size: HexoraIconTokens.appBar),
+        actionsIconTheme: IconThemeData(
+          color: secondaryText,
+          size: HexoraIconTokens.appBar,
+        ),
         systemOverlayStyle:
             (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
                 .copyWith(
@@ -179,6 +190,7 @@ class MobileTheme {
           style: IconButton.styleFrom(
         minimumSize: const Size(48, 48),
         foregroundColor: secondaryText,
+        iconSize: HexoraIconTokens.prominent,
       )),
       chipTheme: ChipThemeData(
         backgroundColor: card,

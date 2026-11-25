@@ -55,7 +55,7 @@ class TimeEntryHeaderStrip extends StatelessWidget {
                   ? 'Select the workers and schedule you want to register.'
                   : 'Select the schedule to register for this worker.',
           child: Icon(Icons.info_outline_rounded,
-              size: 17, color: cs.onSurfaceVariant),
+              size: 18, color: cs.onSurfaceVariant),
         ),
         const Spacer(),
         if (currentWorker != null) ...[

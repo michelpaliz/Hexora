@@ -1144,7 +1144,7 @@ class _ClientReceiptStatsBoxState extends State<_ClientReceiptStatsBox> {
                             collapsed
                                 ? Icons.keyboard_arrow_right_rounded
                                 : Icons.keyboard_arrow_down_rounded,
-                            size: 17,
+                            size: 18,
                             color: cs.onSurfaceVariant,
                           ),
                       ],

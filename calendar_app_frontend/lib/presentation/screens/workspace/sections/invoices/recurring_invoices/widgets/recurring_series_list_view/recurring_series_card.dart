@@ -306,7 +306,7 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
                             ),
                             child: Icon(
                               _freqIcon(freq),
-                              size: 17,
+                              size: 18,
                               color: stripe,
                             ),
                           ),

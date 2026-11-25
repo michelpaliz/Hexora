@@ -8101,7 +8101,7 @@ abstract class AppLocalizations {
   /// No description provided for @autoStatementImportHelper.
   ///
   /// In en, this message translates to:
-  /// **'When on, we\'ll automatically import your daily Caixa statement into your account.'**
+  /// **'When on, Hexora imports the daily Caixa statement for accounts with automatic import configured. Request setup for this business below.'**
   String get autoStatementImportHelper;
 
   /// No description provided for @autoStatementImportUpdateFailed.

@@ -842,7 +842,7 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
               children: [
                 Icon(
                   Icons.fact_check_outlined,
-                  size: 17,
+                  size: HexoraIconTokens.standard,
                   color: reviewWarning,
                 ),
                 const SizedBox(width: 8),

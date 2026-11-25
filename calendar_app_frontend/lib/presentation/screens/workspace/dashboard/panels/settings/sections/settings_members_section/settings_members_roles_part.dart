@@ -249,7 +249,7 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
                             child: definition.permissions[permission] == true
                                 ? Icon(
                                     Icons.check_rounded,
-                                    size: 17,
+                                    size: 18,
                                     color: Colors.green.shade700,
                                   )
                                 : Text(

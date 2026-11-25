@@ -21,10 +21,14 @@ class UserPreferencesProvider extends ChangeNotifier {
       'dashboard_top_nav_compact_migration_owner';
   static const _navigationKey = 'navigation_display_mode';
   static const _navigationLayoutKey = 'navigation_layout';
+  static const _globalHeaderPositionKey = 'global_header_position';
   static const _topNavCollapsedKey = 'top_nav_collapsed';
   static const _legacyShowDailyQuoteKey = 'home_show_daily_quote';
   static const _legacyFavoriteBusinessesKey = 'business_favorites';
   static const _homeMigrationOwnerKey = 'home_preferences_migration_owner';
+  static const defaultNavigationDisplayMode = NavigationDisplayMode.iconsOnly;
+  static const defaultNavigationLayout = NavigationLayout.unified;
+  static const defaultGlobalHeaderPosition = GlobalHeaderPosition.bottom;
 
   final UserPreferencesLoader _remoteLoader;
   final UserPreferencesUpdater _remoteUpdater;
@@ -32,9 +36,9 @@ class UserPreferencesProvider extends ChangeNotifier {
   String? _userId;
   int _loadVersion = 0;
   bool _loaded = false;
-  NavigationDisplayMode _navigationDisplayMode =
-      NavigationDisplayMode.automatic;
-  NavigationLayout _navigationLayout = NavigationLayout.split;
+  NavigationDisplayMode _navigationDisplayMode = defaultNavigationDisplayMode;
+  NavigationLayout _navigationLayout = defaultNavigationLayout;
+  GlobalHeaderPosition _globalHeaderPosition = defaultGlobalHeaderPosition;
   // Visibility of the global top navigation. Independent from the display mode
   // above: a user can collapse the bar in any Automatic/Icons/Text mode.
   bool _topNavCollapsed = false;
@@ -45,6 +49,7 @@ class UserPreferencesProvider extends ChangeNotifier {
   String? get userId => _userId;
   NavigationDisplayMode get navigationDisplayMode => _navigationDisplayMode;
   NavigationLayout get navigationLayout => _navigationLayout;
+  GlobalHeaderPosition get globalHeaderPosition => _globalHeaderPosition;
   bool get topNavCollapsed => _topNavCollapsed;
   bool get showDailyQuote => _showDailyQuote;
   Set<String> get favoriteBusinessIds => Set.unmodifiable(_favoriteBusinessIds);
@@ -57,8 +62,9 @@ class UserPreferencesProvider extends ChangeNotifier {
 
     _userId = nextUserId;
     _loaded = nextUserId == null;
-    _navigationDisplayMode = NavigationDisplayMode.automatic;
-    _navigationLayout = NavigationLayout.split;
+    _navigationDisplayMode = defaultNavigationDisplayMode;
+    _navigationLayout = defaultNavigationLayout;
+    _globalHeaderPosition = defaultGlobalHeaderPosition;
     _topNavCollapsed = false;
     _showDailyQuote = true;
     _favoriteBusinessIds = <String>{};
@@ -73,14 +79,15 @@ class UserPreferencesProvider extends ChangeNotifier {
       if (stored != null) {
         _navigationDisplayMode = _modeFromStorage(stored);
       } else {
-        // Claim the old device-wide value once. New users always get Automatic.
+        // Claim the old device-wide value once. New users use the product
+        // defaults without inheriting another account's device preference.
         final migrationOwner = preferences.getString(_legacyMigrationOwnerKey);
         final canMigrate = migrationOwner == null &&
             preferences.containsKey(_legacyCompactKey);
         final wasCompact = preferences.getBool(_legacyCompactKey) ?? false;
         _navigationDisplayMode = canMigrate && wasCompact
             ? NavigationDisplayMode.iconsOnly
-            : NavigationDisplayMode.automatic;
+            : defaultNavigationDisplayMode;
         await preferences.setString(
           _keyFor(nextUserId),
           _modeToStorage(_navigationDisplayMode),
@@ -93,7 +100,11 @@ class UserPreferencesProvider extends ChangeNotifier {
           preferences.getBool(_collapsedKeyFor(nextUserId)) ?? false;
       _navigationLayout = _layoutFromStorage(
         preferences.getString(_layoutKeyFor(nextUserId)) ??
-            NavigationLayout.split.name,
+            defaultNavigationLayout.name,
+      );
+      _globalHeaderPosition = _headerPositionFromStorage(
+        preferences.getString(_headerPositionKeyFor(nextUserId)) ??
+            defaultGlobalHeaderPosition.name,
       );
       final homeMigrationOwner = preferences.getString(_homeMigrationOwnerKey);
       final canMigrateHome = homeMigrationOwner == null;
@@ -127,6 +138,7 @@ class UserPreferencesProvider extends ChangeNotifier {
         if (version != _loadVersion) return;
         final remoteMode = remote['navigationDisplayMode'];
         final remoteLayout = remote['navigationLayout'];
+        final remoteHeaderPosition = remote['globalHeaderPosition'];
         final remoteCollapsed = remote['topNavCollapsed'];
         final remoteShowDailyQuote = remote['showDailyQuote'];
         final remoteFavoriteBusinesses = remote['favoriteBusinessIds'];
@@ -142,6 +154,14 @@ class UserPreferencesProvider extends ChangeNotifier {
           await preferences.setString(
             _layoutKeyFor(nextUserId),
             _navigationLayout.name,
+          );
+        }
+        if (remoteHeaderPosition is String) {
+          _globalHeaderPosition =
+              _headerPositionFromStorage(remoteHeaderPosition);
+          await preferences.setString(
+            _headerPositionKeyFor(nextUserId),
+            _globalHeaderPosition.name,
           );
         }
         if (remoteCollapsed is bool) {
@@ -170,6 +190,7 @@ class UserPreferencesProvider extends ChangeNotifier {
         }
         if (remoteMode == null ||
             remoteLayout == null ||
+            remoteHeaderPosition == null ||
             remoteCollapsed == null ||
             remoteShowDailyQuote == null ||
             remoteFavoriteBusinesses == null) {
@@ -178,6 +199,8 @@ class UserPreferencesProvider extends ChangeNotifier {
               'navigationDisplayMode': _modeToStorage(_navigationDisplayMode),
             if (remoteLayout == null)
               'navigationLayout': _navigationLayout.name,
+            if (remoteHeaderPosition == null)
+              'globalHeaderPosition': _globalHeaderPosition.name,
             if (remoteCollapsed == null) 'topNavCollapsed': _topNavCollapsed,
             if (remoteShowDailyQuote == null) 'showDailyQuote': _showDailyQuote,
             if (remoteFavoriteBusinesses == null)
@@ -189,8 +212,9 @@ class UserPreferencesProvider extends ChangeNotifier {
       }
     } catch (error) {
       debugPrint('[UserPreferencesProvider] load failed: $error');
-      _navigationDisplayMode = NavigationDisplayMode.automatic;
-      _navigationLayout = NavigationLayout.split;
+      _navigationDisplayMode = defaultNavigationDisplayMode;
+      _navigationLayout = defaultNavigationLayout;
+      _globalHeaderPosition = defaultGlobalHeaderPosition;
       _topNavCollapsed = false;
       _showDailyQuote = true;
       _favoriteBusinessIds = <String>{};
@@ -263,6 +287,27 @@ class UserPreferencesProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> setGlobalHeaderPosition(GlobalHeaderPosition position) async {
+    if (_globalHeaderPosition == position) return;
+    _globalHeaderPosition = position;
+    notifyListeners();
+
+    final currentUserId = _userId;
+    if (currentUserId == null) return;
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      if (_userId != currentUserId) return;
+      await preferences.setString(
+        _headerPositionKeyFor(currentUserId),
+        position.name,
+      );
+      await _remoteUpdater({'globalHeaderPosition': position.name});
+    } catch (error) {
+      debugPrint(
+          '[UserPreferencesProvider] header position save failed: $error');
+    }
+  }
+
   Future<void> setShowDailyQuote(bool value) async {
     if (_showDailyQuote == value) return;
     _showDailyQuote = value;
@@ -311,6 +356,9 @@ class UserPreferencesProvider extends ChangeNotifier {
   static String _layoutKeyFor(String userId) =>
       'hexora.user.$userId.$_navigationLayoutKey';
 
+  static String _headerPositionKeyFor(String userId) =>
+      'hexora.user.$userId.$_globalHeaderPositionKey';
+
   static String _quoteKeyFor(String userId) =>
       'hexora.user.$userId.show_daily_quote';
 
@@ -322,14 +370,21 @@ class UserPreferencesProvider extends ChangeNotifier {
   static NavigationDisplayMode _modeFromStorage(String value) {
     return NavigationDisplayMode.values.firstWhere(
       (mode) => mode.name == value,
-      orElse: () => NavigationDisplayMode.automatic,
+      orElse: () => defaultNavigationDisplayMode,
     );
   }
 
   static NavigationLayout _layoutFromStorage(String value) {
     return NavigationLayout.values.firstWhere(
       (layout) => layout.name == value,
-      orElse: () => NavigationLayout.split,
+      orElse: () => defaultNavigationLayout,
+    );
+  }
+
+  static GlobalHeaderPosition _headerPositionFromStorage(String value) {
+    return GlobalHeaderPosition.values.firstWhere(
+      (position) => position.name == value,
+      orElse: () => defaultGlobalHeaderPosition,
     );
   }
 }

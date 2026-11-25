@@ -71,7 +71,7 @@ class _TelegramForumTopicListWidgetState
               ),
               child: const Icon(
                 Icons.forum_rounded,
-                size: 17,
+                size: 18,
                 color: _kTelegramBlue,
               ),
             ),

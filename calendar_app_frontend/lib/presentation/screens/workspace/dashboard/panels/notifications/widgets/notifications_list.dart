@@ -365,7 +365,7 @@ class _SettingsLikeNotificationRow extends StatelessWidget {
                       PopupMenuItem<String>(
                         value: 'read',
                         child: Row(children: [
-                          const Icon(Icons.mark_email_read_outlined, size: 17),
+                          const Icon(Icons.mark_email_read_outlined, size: 18),
                           const SizedBox(width: 8),
                           Text(isEs ? 'Marcar como leída' : 'Mark as read'),
                         ]),
@@ -374,7 +374,7 @@ class _SettingsLikeNotificationRow extends StatelessWidget {
                       value: 'delete',
                       child: Row(children: [
                         Icon(Icons.delete_outline_rounded,
-                            size: 17, color: cs.error),
+                            size: 18, color: cs.error),
                         const SizedBox(width: 8),
                         Text(l.delete, style: TextStyle(color: cs.error)),
                       ]),

@@ -31,7 +31,7 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
                 const SizedBox(width: 6),
                 TextButton.icon(
                   onPressed: _newTemplate,
-                  icon: const Icon(Icons.add_rounded, size: 17),
+                  icon: const Icon(Icons.add_rounded, size: 18),
                   label: const Text('En blanco'),
                 ),
               ],
@@ -175,7 +175,7 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
                     )
                   : Icon(
                       selected ? Icons.check_rounded : Icons.add_rounded,
-                      size: 17,
+                      size: 18,
                     ),
               label: Text(
                 creating

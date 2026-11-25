@@ -5,13 +5,17 @@ import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/theme/theme_provider.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 import 'package:provider/provider.dart';
 
 class _UserDomain extends ChangeNotifier implements UserDomain {
-  _UserDomain(this._user);
+  _UserDomain(this._user) : currentUserNotifier = ValueNotifier(_user);
 
   final User _user;
+
+  @override
+  final ValueNotifier<User?> currentUserNotifier;
 
   @override
   User? get user => _user;
@@ -77,9 +81,68 @@ void main() {
     await tester.tap(find.text('Michel'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Preferencias'), findsOneWidget);
     expect(find.text('Configuración'), findsOneWidget);
     expect(find.text('Cerrar sesión'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('bottom-bar profile popup opens above its anchor',
+      (tester) async {
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final user = User(
+      id: 'user-1',
+      name: 'Michel',
+      displayName: 'Michel',
+      email: 'michel@example.com',
+      userName: 'michel',
+      groupIds: const ['group-1'],
+      emailVerified: true,
+    );
+    final userDomain = _UserDomain(user);
+    final themeMode = ThemeModeProvider();
+    addTearDown(userDomain.dispose);
+    addTearDown(themeMode.dispose);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<UserDomain>.value(value: userDomain),
+          ChangeNotifierProvider<ThemeModeProvider>.value(value: themeMode),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.fromBrightness(Brightness.light),
+          locale: const Locale('es'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.bottomRight,
+              child: SizedBox(
+                key: const ValueKey('bottom-profile-anchor'),
+                width: 48,
+                height: 40,
+                child: UserProfilePopup(user: user),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(UserProfilePopup));
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final anchorTop = tester
+        .getTopLeft(find.byKey(const ValueKey('bottom-profile-anchor')))
+        .dy;
+    final popupBottom = tester
+        .getBottomLeft(find.byKey(const ValueKey('user-profile-popup-card')))
+        .dy;
+    expect(popupBottom, lessThan(anchorTop));
     expect(tester.takeException(), isNull);
   });
 }

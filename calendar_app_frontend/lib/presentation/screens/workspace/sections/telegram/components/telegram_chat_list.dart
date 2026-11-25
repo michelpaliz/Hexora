@@ -380,7 +380,7 @@ class _ArchiveSectionHeader extends StatelessWidget {
             children: [
               Icon(
                 Icons.archive_outlined,
-                size: 17,
+                size: 18,
                 color: cs.onSurface.withValues(alpha: 0.65),
               ),
               const SizedBox(width: 8),

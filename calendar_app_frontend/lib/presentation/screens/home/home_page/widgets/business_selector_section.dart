@@ -154,7 +154,7 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
             : 'Businesses could not be loaded.'),
         TextButton.icon(
           onPressed: () => groupDomain.refreshGroupsForCurrentUser(userDomain),
-          icon: const Icon(Icons.refresh_rounded, size: 17),
+          icon: const Icon(Icons.refresh_rounded, size: 18),
           label: Text(_isSpanish ? 'Reintentar' : 'Retry'),
         ),
       ],

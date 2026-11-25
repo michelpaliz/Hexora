@@ -255,7 +255,7 @@ class _InsightsInlinePanelState extends State<InsightsInlinePanel> {
                           color: tone.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(icon, size: 17, color: tone),
+                        child: Icon(icon, size: 18, color: tone),
                       ),
                       const SizedBox(width: 11),
                       Expanded(

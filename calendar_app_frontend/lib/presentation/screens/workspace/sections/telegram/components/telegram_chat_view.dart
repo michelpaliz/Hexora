@@ -1437,7 +1437,7 @@ class TelegramChatComposer extends StatelessWidget {
                 childrenPadding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
                 shape: const RoundedRectangleBorder(),
                 collapsedShape: const RoundedRectangleBorder(),
-                leading: const Icon(Icons.attach_file_rounded, size: 17),
+                leading: const Icon(Icons.attach_file_rounded, size: 18),
                 title: Text(
                   attachmentCountLabel,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -1677,7 +1677,7 @@ class TelegramChatComposer extends StatelessWidget {
                                     color: cs.onPrimary,
                                   ),
                                 )
-                              : const Icon(Icons.send_rounded, size: 17),
+                              : const Icon(Icons.send_rounded, size: 18),
                           style: IconButton.styleFrom(
                             fixedSize: const Size(36, 36),
                             minimumSize: const Size(36, 36),
@@ -1903,7 +1903,7 @@ class TelegramAttachmentComposerPreview extends StatelessWidget {
                   : attachment.isPdf
                       ? Icons.picture_as_pdf_outlined
                       : Icons.insert_drive_file_outlined,
-              size: 17,
+              size: 18,
               color: cs.onTertiaryContainer,
             ),
             const SizedBox(width: 8),
@@ -2050,7 +2050,7 @@ class TelegramMessageItem extends StatelessWidget {
             onPressed: onReplyRequested,
             icon: Icon(
               Icons.reply_rounded,
-              size: 17,
+              size: 18,
               color: replying ? cs.primary : cs.onSurfaceVariant,
             ),
             constraints: const BoxConstraints.tightFor(width: 30, height: 28),

@@ -302,7 +302,7 @@ class _MonthArrowButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       tooltip: tooltip,
-      icon: Icon(icon, size: 17),
+      icon: Icon(icon, size: 18),
       onPressed: onPressed,
       visualDensity: VisualDensity.compact,
       style: IconButton.styleFrom(

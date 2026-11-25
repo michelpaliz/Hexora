@@ -9,8 +9,10 @@ class ThemeModeProvider with ChangeNotifier {
   static const _key = 'theme_mode'; // 'system' | 'light' | 'dark'
   static const _lightVariantKey = 'light_theme_variant';
   static const _migrationOwnerKey = 'theme_preferences_migration_owner';
-  ThemeMode _mode = ThemeMode.system;
-  LightThemeVariant _lightVariant = LightThemeVariant.neutral;
+  static const defaultMode = ThemeMode.light;
+  static const defaultLightVariant = LightThemeVariant.neutral;
+  ThemeMode _mode = defaultMode;
+  LightThemeVariant _lightVariant = defaultLightVariant;
   bool _loaded = false;
   String? _userId;
   int _loadVersion = 0;
@@ -26,9 +28,8 @@ class ThemeModeProvider with ChangeNotifier {
 
   Future<void> bindUser(String? userId) async {
     final normalized = userId?.trim();
-    final nextUserId = normalized == null || normalized.isEmpty
-        ? null
-        : normalized;
+    final nextUserId =
+        normalized == null || normalized.isEmpty ? null : normalized;
     if (_userId == nextUserId) return;
     _userId = nextUserId;
     final version = ++_loadVersion;
@@ -48,7 +49,7 @@ class ThemeModeProvider with ChangeNotifier {
         _mode = remoteMode;
       } else {
         _mode = _stringToMode(prefs.getString(_keyFor(nextUserId))) ??
-            (canMigrate ? _mode : ThemeMode.system);
+            (canMigrate ? _mode : defaultMode);
       }
       if (remoteVariant != null) {
         _lightVariant = remoteVariant;
@@ -56,7 +57,7 @@ class ThemeModeProvider with ChangeNotifier {
         _lightVariant = _stringToLightVariant(
               prefs.getString(_variantKeyFor(nextUserId)),
             ) ??
-            (canMigrate ? _lightVariant : LightThemeVariant.neutral);
+            (canMigrate ? _lightVariant : defaultLightVariant);
       }
       await prefs.setString(_keyFor(nextUserId), _modeToString(_mode));
       await prefs.setString(
@@ -83,14 +84,14 @@ class ThemeModeProvider with ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_key);
-      _mode = _stringToMode(raw) ?? ThemeMode.system;
+      _mode = _stringToMode(raw) ?? defaultMode;
       _lightVariant = _stringToLightVariant(
             prefs.getString(_lightVariantKey),
           ) ??
-          LightThemeVariant.neutral;
+          defaultLightVariant;
     } catch (e) {
       // Web localStorage can be corrupted; fall back to defaults.
-      _mode = ThemeMode.system;
+      _mode = defaultMode;
       debugPrint('[ThemeModeProvider] prefs init failed: $e');
     } finally {
       _loaded = true;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
@@ -886,7 +887,7 @@ class _DialogClientSelect extends StatelessWidget {
               prefixIcon: const Icon(Icons.search, size: 18),
               suffixIcon: Icon(
                 Icons.unfold_more_rounded,
-                size: 17,
+                size: HexoraIconTokens.standard,
                 color: cs.onSurfaceVariant,
               ),
               contentPadding:

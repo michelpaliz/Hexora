@@ -32,7 +32,7 @@ extension _TemplateDocumentPreview on _PresupuestoTemplateEditorScreenState {
                     height: 14,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.visibility_outlined, size: 17),
+                : const Icon(Icons.visibility_outlined, size: 18),
             label: const Text('Previsualizar'),
             style: TextButton.styleFrom(
               minimumSize: const Size(0, 34),
@@ -50,7 +50,7 @@ extension _TemplateDocumentPreview on _PresupuestoTemplateEditorScreenState {
                     height: 14,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.download_rounded, size: 17),
+                : const Icon(Icons.download_rounded, size: 18),
             label: const Text('Descargar PDF'),
             style: FilledButton.styleFrom(
               minimumSize: const Size(0, 34),

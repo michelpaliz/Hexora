@@ -13,17 +13,21 @@ class CollapsibleSidebarItem {
     this.key,
     required this.icon,
     required this.label,
-    required this.onTap,
+    this.onTap,
     this.selected = false,
     this.count,
+    this.subtitle,
+    this.trailing,
   });
 
   final Key? key;
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool selected;
   final int? count;
+  final String? subtitle;
+  final Widget? trailing;
 }
 
 typedef CollapsibleSidebarBuilder = Widget Function(
@@ -288,6 +292,8 @@ class CollapsibleSidebar extends StatelessWidget {
         collapsed: isCollapsed,
         onTap: item.onTap,
         count: item.count,
+        subtitle: item.subtitle,
+        trailing: item.trailing,
         textStyle: item.selected
             ? selectedItemTextStyle ?? itemTextStyle
             : itemTextStyle,
@@ -308,6 +314,8 @@ class CollapsibleSidebar extends StatelessWidget {
         collapsed: isCollapsed,
         onTap: item.onTap,
         count: item.count,
+        subtitle: item.subtitle,
+        trailing: item.trailing,
         primaryAction: true);
   }
 }

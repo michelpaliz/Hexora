@@ -13,3 +13,9 @@ enum NavigationLayout {
   /// a module switcher in its header.
   unified,
 }
+
+/// Placement of Hexora's global application controls around the workspace.
+enum GlobalHeaderPosition {
+  top,
+  bottom,
+}

@@ -24,8 +24,8 @@ import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-/// Circular avatar button.  Tap → shows a profile card popup anchored
-/// to the top-right of the screen (near the nav bar).
+/// Circular avatar button. Tap → shows a profile card popup anchored to the
+/// navigation bar, opening toward the side with available viewport space.
 enum UserProfilePopupPlacement { topBar, sidebar, sidebarTop }
 
 class UserProfilePopup extends StatefulWidget {
@@ -96,6 +96,7 @@ class _UserProfilePopupState extends State<UserProfilePopup>
     final anchorSize = renderBox?.size ?? Size.zero;
     final overlay = Overlay.of(context, rootOverlay: true);
     final viewport = MediaQuery.sizeOf(context);
+    final opensUpward = anchor.dy + anchorSize.height / 2 > viewport.height / 2;
     final sidebarBottom =
         (viewport.height - anchor.dy - anchorSize.height).clamp(8.0, 48.0);
     final desiredSidebarLeft = anchor.dx + anchorSize.width + 8;
@@ -136,7 +137,8 @@ class _UserProfilePopupState extends State<UserProfilePopup>
           );
         }
         return PositionedDirectional(
-          top: anchor.dy + anchorSize.height + 8,
+          top: opensUpward ? null : anchor.dy + anchorSize.height + 8,
+          bottom: opensUpward ? viewport.height - anchor.dy + 8 : null,
           end: 16,
           child: popup,
         );
@@ -968,6 +970,7 @@ extension _CompactProfileCard on _UserProfileCardState {
         ? _user.displayName!.trim()
         : _user.name;
     return Container(
+      key: const ValueKey('user-profile-popup-card'),
       width: 304,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

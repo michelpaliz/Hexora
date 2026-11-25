@@ -32,7 +32,7 @@ class _MailReadingEmptyState extends StatelessWidget {
                   top: 8,
                   child: Icon(
                     Icons.auto_awesome_rounded,
-                    size: 17,
+                    size: 18,
                     color: cs.primary.withValues(alpha: 0.38),
                   ),
                 ),

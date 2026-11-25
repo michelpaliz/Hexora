@@ -154,7 +154,7 @@ class _InvoicePublicLinkCardState extends State<InvoicePublicLinkCard> {
                                     content: Text('Enlace copiado')));
                           }
                         },
-                  icon: const Icon(Icons.copy_outlined, size: 17),
+                  icon: const Icon(Icons.copy_outlined, size: 18),
                   label: const Text('Copiar enlace')),
               TextButton(
                   onPressed: _busy ? null : () => _change(revoke: true),

@@ -128,7 +128,7 @@ class ExpenseDocumentDiscountFields extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Icon(
                   Icons.info_outline_rounded,
-                  size: 17,
+                  size: 18,
                   color: cs.onSurfaceVariant,
                 ),
               ),

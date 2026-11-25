@@ -106,7 +106,7 @@ class SecondarySidebarHeader extends StatelessWidget {
                     isSpanish ? 'Contraer barra lateral' : 'Collapse sidebar',
                 onPressed: onCollapse,
                 icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
-                iconSize: 16,
+                iconSize: HexoraIconTokens.compact,
                 padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
                 constraints:

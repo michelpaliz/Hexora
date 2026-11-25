@@ -174,7 +174,7 @@ class _ExpenseProviderPickerState extends State<ExpenseProviderPicker> {
       filled: true,
       fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.18),
       prefixIcon:
-          Icon(Icons.search_rounded, size: 17, color: cs.onSurfaceVariant),
+          Icon(Icons.search_rounded, size: 18, color: cs.onSurfaceVariant),
       prefixIconConstraints: const BoxConstraints(minWidth: 38, minHeight: 38),
       suffixIcon: widget.loading
           ? const Padding(

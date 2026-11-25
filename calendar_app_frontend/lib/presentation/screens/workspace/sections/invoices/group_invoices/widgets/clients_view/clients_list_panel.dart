@@ -1356,7 +1356,7 @@ class _ClientRow extends StatelessWidget {
                   value: _ClientRowAction.edit,
                   enabled: onEdit != null,
                   child: Row(children: [
-                    const Icon(LucideIcons.pencil, size: 17),
+                    const Icon(LucideIcons.pencil, size: 18),
                     const SizedBox(width: 8),
                     Text(l.editClient),
                   ]),

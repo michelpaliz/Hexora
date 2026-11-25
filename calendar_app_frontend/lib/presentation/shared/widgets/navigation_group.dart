@@ -181,7 +181,7 @@ class _NavigationGroupState extends State<NavigationGroup> {
                           child: Center(
                             child: Icon(
                               widget.icon,
-                              size: 17,
+                              size: NavigationTokens.iconSize,
                               color: colors.groupForeground,
                             ),
                           ),
@@ -197,8 +197,11 @@ class _NavigationGroupState extends State<NavigationGroup> {
                         ),
                         child: Row(
                           children: [
-                            Icon(widget.icon,
-                                size: 17, color: colors.groupForeground),
+                            Icon(
+                              widget.icon,
+                              size: NavigationTokens.iconSize,
+                              color: colors.groupForeground,
+                            ),
                             const SizedBox(width: 9),
                             Expanded(
                               child: Tooltip(
@@ -218,8 +221,11 @@ class _NavigationGroupState extends State<NavigationGroup> {
                             AnimatedRotation(
                               turns: _isExpanded ? .5 : 0,
                               duration: duration,
-                              child: Icon(Icons.keyboard_arrow_down_rounded,
-                                  size: 17, color: colors.foreground),
+                              child: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: NavigationTokens.iconSize,
+                                color: colors.foreground,
+                              ),
                             ),
                           ],
                         ),

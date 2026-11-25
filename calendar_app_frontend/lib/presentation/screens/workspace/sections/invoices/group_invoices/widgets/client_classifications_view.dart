@@ -1080,7 +1080,7 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
           if (widget.showCreateAction)
             FilledButton.icon(
               onPressed: _busy ? null : _manage,
-              icon: const Icon(Icons.tune_rounded, size: 17),
+              icon: const Icon(Icons.tune_rounded, size: 18),
               label: Text(tr('Gestionar categorías', 'Manage categories')),
             ),
         ]),
@@ -1277,7 +1277,7 @@ class _ClassificationSearchFieldState
               ? null
               : IconButton(
                   tooltip: widget.clearLabel,
-                  icon: const Icon(Icons.close_rounded, size: 17),
+                  icon: const Icon(Icons.close_rounded, size: 18),
                   onPressed: () {
                     _controller.clear();
                     setState(() {});

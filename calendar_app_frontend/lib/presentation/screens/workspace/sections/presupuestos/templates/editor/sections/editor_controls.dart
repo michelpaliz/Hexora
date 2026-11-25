@@ -255,7 +255,7 @@ extension _TemplateEditorControls on _PresupuestoTemplateEditorScreenState {
     return IconButton(
       tooltip: tooltip,
       onPressed: onPressed,
-      icon: Icon(icon, size: 17),
+      icon: Icon(icon, size: 18),
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
       constraints: const BoxConstraints.tightFor(width: 28, height: 28),

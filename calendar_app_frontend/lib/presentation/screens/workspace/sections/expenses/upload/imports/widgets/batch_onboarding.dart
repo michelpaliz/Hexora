@@ -347,7 +347,7 @@ class _BatchLimitItem extends StatelessWidget {
                 color: cs.outlineVariant.withValues(alpha: 0.5),
               ),
             ),
-            child: Icon(icon, size: 17, color: cs.primary),
+            child: Icon(icon, size: 18, color: cs.primary),
           ),
           const SizedBox(width: 9),
           Column(

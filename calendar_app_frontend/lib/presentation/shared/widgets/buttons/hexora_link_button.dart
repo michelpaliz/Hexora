@@ -23,7 +23,7 @@ class HexoraLinkButton extends StatelessWidget {
   final bool showIcon;
   final bool loading;
 
-  static const double _iconSize = 18;
+  static const double _iconSize = HexoraIconTokens.standard;
 
   Color _background(BuildContext context, bool enabled) {
     final cs = Theme.of(context).colorScheme;

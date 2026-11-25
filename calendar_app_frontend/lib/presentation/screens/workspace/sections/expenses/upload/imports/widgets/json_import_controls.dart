@@ -163,7 +163,7 @@ class _CompactIconActionButton extends StatelessWidget {
       message: tooltip,
       child: IconButton.outlined(
         onPressed: onPressed,
-        icon: Icon(icon, size: 17),
+        icon: Icon(icon, size: 18),
         visualDensity: VisualDensity.compact,
         style: IconButton.styleFrom(
           minimumSize: const Size(36, 36),

@@ -566,7 +566,7 @@ class StatementsInvoiceSuggestDialog {
                                           : null,
                                       icon: const Icon(
                                         Icons.visibility_outlined,
-                                        size: 17,
+                                        size: 18,
                                       ),
                                       label: Text(l.preview),
                                     ),
@@ -730,7 +730,7 @@ class StatementsInvoiceSuggestDialog {
                                                   }
                                                 : null,
                                             icon: const Icon(Icons.link,
-                                                size: 17),
+                                                size: 18),
                                             label: Text(l.statementsActionLink),
                                           ),
                                   ],

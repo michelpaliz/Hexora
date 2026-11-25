@@ -103,7 +103,7 @@ class _DownloadRow extends StatelessWidget {
                       )
                     : Icon(
                         DownloadJobDisplay.icon(item),
-                        size: 17,
+                        size: 18,
                         color: statusColor,
                       ),
               ),

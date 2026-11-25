@@ -32,6 +32,14 @@ ThemeData compactComponentTheme(ThemeData base) {
     iconSize: const WidgetStatePropertyAll(HexoraDimensions.buttonIconSize),
   );
   return base.copyWith(
+    iconTheme: base.iconTheme.copyWith(
+      size: HexoraIconTokens.standard,
+      color: base.colorScheme.onSurfaceVariant,
+    ),
+    primaryIconTheme: base.primaryIconTheme.copyWith(
+      size: HexoraIconTokens.standard,
+      color: base.colorScheme.onPrimary,
+    ),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
         TargetPlatform.android: HexoraPageTransitionsBuilder(),
@@ -57,6 +65,7 @@ ThemeData compactComponentTheme(ThemeData base) {
     ),
     listTileTheme: base.listTileTheme.copyWith(
       minTileHeight: HexoraTableTokens.rowMinHeight,
+      iconColor: base.colorScheme.onSurfaceVariant,
       titleTextStyle: text.bodyMedium,
       subtitleTextStyle: text.bodySmall,
       contentPadding:
@@ -119,8 +128,18 @@ ThemeData compactComponentTheme(ThemeData base) {
         style: base.outlinedButtonTheme.style?.merge(button) ?? button),
     textButtonTheme: TextButtonThemeData(
         style: base.textButtonTheme.style?.merge(button) ?? button),
-    appBarTheme:
-        base.appBarTheme.copyWith(toolbarHeight: HexoraDimensions.toolbar),
+    appBarTheme: base.appBarTheme.copyWith(
+      toolbarHeight: HexoraDimensions.toolbar,
+      iconTheme: (base.appBarTheme.iconTheme ?? base.iconTheme).copyWith(
+        size: HexoraIconTokens.appBar,
+      ),
+      actionsIconTheme: (base.appBarTheme.actionsIconTheme ??
+              base.appBarTheme.iconTheme ??
+              base.iconTheme)
+          .copyWith(
+        size: HexoraIconTokens.appBar,
+      ),
+    ),
     inputDecorationTheme: base.inputDecorationTheme.copyWith(
         filled: true,
         fillColor: isLight

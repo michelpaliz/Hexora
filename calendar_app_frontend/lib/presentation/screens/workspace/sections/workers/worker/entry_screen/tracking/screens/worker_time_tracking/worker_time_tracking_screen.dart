@@ -661,7 +661,7 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
                             ? 'Selecciona el horario que quieres registrar para este trabajador.'
                             : 'Select the schedule to register for this worker.',
                         child: Icon(Icons.info_outline_rounded,
-                            size: 17,
+                            size: 18,
                             color:
                                 Theme.of(context).colorScheme.onSurfaceVariant),
                       ),

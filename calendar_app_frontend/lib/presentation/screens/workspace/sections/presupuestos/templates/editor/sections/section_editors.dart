@@ -147,7 +147,7 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
                         dimension: 32,
                         child: Icon(
                           Icons.lock_outline_rounded,
-                          size: 17,
+                          size: 18,
                           color: muted,
                         ),
                       ),

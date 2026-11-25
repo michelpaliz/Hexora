@@ -273,7 +273,7 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
             : OutlinedButton.icon(
                 onPressed: () =>
                     controller.isOpen ? controller.close() : controller.open(),
-                icon: const Icon(Icons.tune_rounded, size: 17),
+                icon: const Icon(Icons.tune_rounded, size: 18),
                 label: Text(isEs ? 'Opciones' : 'Options'),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(0, 36),

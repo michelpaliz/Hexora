@@ -10,6 +10,28 @@ abstract final class HexoraTypography {
   static const double caption = 11;
 }
 
+/// App-wide semantic icon scale.
+///
+/// Feature widgets should use the semantic role that matches their context
+/// instead of introducing one-off sizes. State colors (success, warning,
+/// destructive, selected) remain the responsibility of the widget/theme.
+abstract final class HexoraIconTokens {
+  /// Dense controls, button glyphs and inline metadata.
+  static const double compact = 16;
+
+  /// Default application, navigation, table and document icon.
+  static const double standard = 18;
+
+  /// Prominent actions that still sit inside a normal control.
+  static const double prominent = 20;
+
+  /// App-bar navigation and actions.
+  static const double appBar = 22;
+
+  /// Standalone visual icons, before entering illustration/empty-state scale.
+  static const double large = 24;
+}
+
 abstract final class HexoraDimensions {
   static const double space = 4;
   static const double toolbar = 52;
@@ -23,7 +45,7 @@ abstract final class HexoraDimensions {
   static const double buttonLarge = 38;
 
   /// Icon size inside buttons.
-  static const double buttonIconSize = 16;
+  static const double buttonIconSize = HexoraIconTokens.compact;
 
   /// Gap between a button icon and its label.
   static const double buttonIconGap = 6;
@@ -43,7 +65,7 @@ abstract final class HexoraTableTokens {
   static const double cellPadding = 12;
   static const double rowPadding = 4;
   static const double gap = 8;
-  static const double icon = 18;
+  static const double icon = HexoraIconTokens.standard;
   static const double actionColumn = 104;
   static const double searchWidth = 280;
   static const double separatorOpacity = .18;
@@ -56,7 +78,7 @@ abstract final class HexoraDocumentTokens {
   static const double rowHeight = 60;
   static const double statusColumn = 132;
   static const double amountColumn = 144;
-  static const double icon = 17;
+  static const double icon = HexoraIconTokens.standard;
   static const double statusIconSlot = 18;
   static const double monthHeadingHeight = 28;
   static const double tabsHeight = 36;

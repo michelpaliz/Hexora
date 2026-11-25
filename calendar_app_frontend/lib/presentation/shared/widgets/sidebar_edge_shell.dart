@@ -4,6 +4,7 @@ import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/presentation/shared/widgets/secondary_sidebar_header.dart';
 import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/theme/themes/theme_variant.dart';
 
 abstract final class SidebarEdgeGeometry {
@@ -206,8 +207,11 @@ class SidebarEdgeShell extends StatelessWidget {
           !showHeader &&
           contextualTitle != null &&
           contextualTitle.isNotEmpty;
-      final accountHeaderExtent =
-          sidebarHeader == null ? 0.0 : (collapsed ? 48.0 : 52.0);
+      // The module selector and workspace tabs share one navigation-row
+      // height, keeping their top and bottom boundaries aligned.
+      final accountHeaderExtent = sidebarHeader == null
+          ? 0.0
+          : NavigationTokens.workspaceNavigationHeight;
       final headerExtent = globalHeaderExtent +
           accountHeaderExtent +
           secondaryHeaderExtent +
@@ -419,7 +423,7 @@ class _HexoraGlobalNavigationRestoreHeader extends StatelessWidget {
                       const SizedBox(width: 6),
                       Icon(
                         Icons.keyboard_arrow_down_rounded,
-                        size: 17,
+                        size: NavigationTokens.iconSize,
                         color: foreground.withValues(alpha: 0.72),
                       ),
                     ],

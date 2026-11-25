@@ -47,7 +47,7 @@ InputDecoration buildInputDecoration(
     prefixIcon: prefixIcon == null
         ? null
         : IconTheme(
-            data: IconThemeData(size: 17, color: cs.onSurfaceVariant),
+            data: IconThemeData(size: 18, color: cs.onSurfaceVariant),
             child: prefixIcon),
     prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
     filled: true,

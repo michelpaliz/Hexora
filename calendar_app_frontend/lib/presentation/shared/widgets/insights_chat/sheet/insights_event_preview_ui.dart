@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
@@ -32,10 +31,14 @@ mixin InsightsEventPreviewUi on InsightsChatSheetStateBase {
     final missing = stringList(preview?['missing']);
     final missingLabels = missing.map((item) {
       if (item == 'scheduleConflict') {
-        return isEs ? 'Conflicto de horario o traslado' : 'Schedule or travel conflict';
+        return isEs
+            ? 'Conflicto de horario o traslado'
+            : 'Schedule or travel conflict';
       }
       if (item == 'businessHours') {
-        return isEs ? 'Fuera del horario del negocio' : 'Outside business hours';
+        return isEs
+            ? 'Fuera del horario del negocio'
+            : 'Outside business hours';
       }
       return item;
     }).toList();
@@ -47,8 +50,7 @@ mixin InsightsEventPreviewUi on InsightsChatSheetStateBase {
         photoRequirements?['requireBeforeAfterPhotos'] == true;
     final minPhotos =
         int.tryParse(photoRequirements?['minPhotos']?.toString() ?? '') ?? 1;
-    final needsClientAndService =
-        eventShouldPromptForClientAndService(message);
+    final needsClientAndService = eventShouldPromptForClientAndService(message);
 
     Widget infoRow(String label, String value) {
       if (value.trim().isEmpty) return const SizedBox.shrink();
@@ -424,8 +426,7 @@ mixin InsightsEventPreviewUi on InsightsChatSheetStateBase {
                     style: TextStyle(color: cs.error),
                   ),
                 ),
-              if (status == 'ready_to_create' &&
-                  assistant['cancelled'] != true)
+              if (status == 'ready_to_create' && assistant['cancelled'] != true)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: Wrap(
@@ -442,7 +443,10 @@ mixin InsightsEventPreviewUi on InsightsChatSheetStateBase {
                                 child:
                                     CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Icon(Icons.add_task_rounded, size: 17),
+                            : const Icon(
+                                Icons.add_task_rounded,
+                                size: HexoraIconTokens.standard,
+                              ),
                         label: Text(isEs ? 'Crear tarjeta' : 'Create card'),
                       ),
                       TextButton(

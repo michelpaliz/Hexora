@@ -769,7 +769,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline, size: 17, color: colors.error),
+                      Icon(Icons.error_outline, size: 18, color: colors.error),
                       const SizedBox(width: 7),
                       Text(
                         isEs ? 'Error' : 'Error',

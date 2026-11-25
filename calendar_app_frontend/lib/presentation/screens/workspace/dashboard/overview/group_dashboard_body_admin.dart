@@ -220,7 +220,7 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
                       color: color.withValues(alpha: .12),
                       borderRadius: BorderRadius.circular(9),
                     ),
-                    child: Icon(icon, color: color, size: 17),
+                    child: Icon(icon, color: color, size: 18),
                   ),
                   const Spacer(),
                   Text(

@@ -508,7 +508,7 @@ class _InvoiceDetailHistoryCardState extends State<InvoiceDetailHistoryCard> {
             child: Row(
               children: [
                 Icon(Icons.history_rounded,
-                    size: 17, color: cs.onSurfaceVariant),
+                    size: 18, color: cs.onSurfaceVariant),
                 const SizedBox(width: 7),
                 Text(
                   widget.title,

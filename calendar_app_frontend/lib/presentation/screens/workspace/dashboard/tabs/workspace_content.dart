@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 
 import 'workspace_tab.dart';
 import 'workspace_tab_bar.dart';
@@ -256,18 +257,49 @@ class WorkspaceMainContent extends StatelessWidget {
     if (chrome == null) return child;
     return ColoredBox(
       color: Theme.of(context).scaffoldBackgroundColor,
+      child: WorkspaceChromeFrame(
+        tabBar: chrome.active ? chrome.tabBarBuilder(context) : null,
+        child: FadeTransition(
+          opacity: chrome.active
+              ? chrome.contentOpacity
+              : const AlwaysStoppedAnimation<double>(1),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Gives the shared tab strip and its workspace body one horizontal geometry.
+///
+/// Keeping the inset here prevents individual modules from drifting a few
+/// pixels away from the tab strip when sidebars appear, collapse, or switch
+/// between unified and separated navigation.
+class WorkspaceChromeFrame extends StatelessWidget {
+  const WorkspaceChromeFrame({
+    super.key,
+    this.tabBar,
+    this.bodyPadding = EdgeInsets.zero,
+    required this.child,
+  });
+
+  final Widget? tabBar;
+  final EdgeInsetsGeometry bodyPadding;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: NavigationTokens.workspaceNavigationGap,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (chrome.active)
-            chrome.tabBarBuilder(context)
-          else
-            const SizedBox.shrink(),
+          if (tabBar != null) tabBar!,
           Expanded(
-            child: FadeTransition(
-              opacity: chrome.active
-                  ? chrome.contentOpacity
-                  : const AlwaysStoppedAnimation<double>(1),
+            child: Padding(
+              padding: bodyPadding,
               child: child,
             ),
           ),

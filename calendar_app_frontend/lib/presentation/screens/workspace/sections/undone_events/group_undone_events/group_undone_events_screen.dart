@@ -1440,7 +1440,7 @@ class _DesktopHeader extends StatelessWidget {
             child: IconButton(
               icon: Icon(
                 Icons.refresh_rounded,
-                size: 17,
+                size: 18,
                 color: cs.onSurfaceVariant,
               ),
               tooltip: isEs ? 'Actualizar' : 'Refresh',

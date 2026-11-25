@@ -640,7 +640,10 @@ class HexoraColumnVisibilityMenu extends StatelessWidget {
           border: Border.all(color: cs.outlineVariant.withValues(alpha: .55)),
         ),
         child: const Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.view_column_outlined, size: 17),
+          Icon(
+            Icons.view_column_outlined,
+            size: HexoraIconTokens.standard,
+          ),
           SizedBox(width: 6),
           Text('Columnas', style: TextStyle(fontSize: 12)),
         ]),

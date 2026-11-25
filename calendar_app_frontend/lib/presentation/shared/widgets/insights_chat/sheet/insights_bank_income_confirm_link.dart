@@ -336,7 +336,7 @@ mixin InsightsBankIncomeConfirmLink on InsightsChatSheetStateBase {
               ),
               child: Icon(
                 Icons.description_outlined,
-                size: 17,
+                size: HexoraIconTokens.standard,
                 color: cs.primary,
               ),
             ),

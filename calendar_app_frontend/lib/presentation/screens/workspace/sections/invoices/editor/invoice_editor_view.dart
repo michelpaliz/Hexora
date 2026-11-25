@@ -1103,9 +1103,6 @@ class _InvoiceEditorView extends StatelessWidget {
                                         state._selectLineInputMode,
                                     onToggleSections: state._toggleLineMethods,
                                     onCollapse: state._toggleWizardRail,
-                                    onLanguageSettings: state._c.editingIssued
-                                        ? null
-                                        : state._openInvoiceLanguageDialog,
                                   ),
                                 SizedBox(
                                   width: wizardConstraints.maxWidth < 1200
@@ -1773,7 +1770,6 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
     required this.onSectionSelected,
     required this.onToggleSections,
     required this.onCollapse,
-    this.onLanguageSettings,
   });
 
   final String title;
@@ -1787,7 +1783,6 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
   final ValueChanged<String> onSectionSelected;
   final VoidCallback onToggleSections;
   final VoidCallback onCollapse;
-  final VoidCallback? onLanguageSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -1802,13 +1797,14 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
       key: const ValueKey('invoice-wizard-rail'),
       width: 200,
       child: Padding(
-        padding: const EdgeInsets.only(top: 2, right: 10),
+        padding: const EdgeInsets.only(right: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsetsDirectional.only(start: 8, bottom: 4),
+              padding: const EdgeInsetsDirectional.fromSTEB(8, 2, 0, 6),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Tooltip(
@@ -1832,6 +1828,7 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
                                       ? 'Sin cliente seleccionado'
                                       : 'No client selected')
                                   : selectedClientName,
+                              key: const ValueKey('invoice-wizard-client-name'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: textTheme.bodySmall?.copyWith(
@@ -1844,31 +1841,6 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (onLanguageSettings != null)
-                    PopupMenuButton<String>(
-                      tooltip: isEs ? 'Opciones' : 'Options',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(
-                        width: 32,
-                        height: 28,
-                      ),
-                      onSelected: (value) {
-                        if (value == 'language') onLanguageSettings!();
-                      },
-                      itemBuilder: (_) => [
-                        PopupMenuItem<String>(
-                          value: 'language',
-                          child: Row(children: [
-                            const Icon(Icons.translate_rounded, size: 18),
-                            const SizedBox(width: 10),
-                            Text(isEs
-                                ? 'Idioma de la factura'
-                                : 'Invoice language'),
-                          ]),
-                        ),
-                      ],
-                      icon: const Icon(Icons.more_vert_rounded, size: 18),
-                    ),
                   IconButton(
                     key: const ValueKey('invoice-wizard-rail-toggle'),
                     tooltip:
@@ -1876,13 +1848,48 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
                     onPressed: onCollapse,
                     icon: const Icon(
                       Icons.keyboard_double_arrow_left_rounded,
-                      size: 17,
+                      size: 18,
                     ),
                     constraints: const BoxConstraints.tightFor(
                       width: 32,
                       height: 28,
                     ),
                     padding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
+            ),
+            Divider(
+              height: 1,
+              color: cs.outlineVariant.withValues(alpha: .55),
+            ),
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 2, 7),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    isEs
+                        ? 'Paso ${currentStep + 1} de ${steps.length}'
+                        : 'Step ${currentStep + 1} of ${steps.length}',
+                    key: const ValueKey('invoice-wizard-progress-label'),
+                    style: textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      key: const ValueKey('invoice-wizard-progress-bar'),
+                      value:
+                          steps.isEmpty ? 0 : (currentStep + 1) / steps.length,
+                      minHeight: 3,
+                      color: cs.primary,
+                      backgroundColor: cs.outlineVariant.withValues(alpha: .45),
+                    ),
                   ),
                 ],
               ),
@@ -1896,6 +1903,9 @@ class _InvoiceReceiptStyleWizardRail extends StatelessWidget {
               onStepTapped: onStepSelected,
               compactConnectors: true,
               vertical: true,
+              numberedIndicators: true,
+              verticalItemMinHeight: 32,
+              verticalConnectorHeight: 12,
               itemKeyBuilder: (index, _) =>
                   ValueKey('invoice-flow-step-$index'),
               afterStepBuilder: (index) {
@@ -2273,7 +2283,7 @@ class _InvoiceClientStatsBoxState extends State<_InvoiceClientStatsBox>
                             collapsed
                                 ? Icons.keyboard_arrow_right_rounded
                                 : Icons.keyboard_arrow_down_rounded,
-                            size: 17,
+                            size: 18,
                             color: cs.onSurfaceVariant,
                           ),
                       ],

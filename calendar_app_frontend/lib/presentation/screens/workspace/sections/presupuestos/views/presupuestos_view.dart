@@ -4429,7 +4429,7 @@ class _BudgetHistoryDialogState extends State<_BudgetHistoryDialog> {
                                         ? 'Fila modificada'
                                         : 'Modified row',
                                     child: Icon(Icons.change_circle_outlined,
-                                        size: 17, color: cs.secondary),
+                                        size: 18, color: cs.secondary),
                                   ),
                                   const SizedBox(width: 8),
                                 ],

@@ -42,6 +42,9 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
   // capped (not centered) so cards never stretch across the whole screen.
   static const double _settingsContentMaxWidth = 900;
 
+  /// The personal settings dashboard uses two columns, so it gets more room.
+  static const double _personalSettingsMaxWidth = 1240;
+
   String _selectedSection = 'sysconfig';
   bool _menuCollapsed = false;
   late NotificationViewModel _notificationViewModel;
@@ -449,7 +452,11 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
   Widget _frameContent(Widget child) => Align(
         alignment: Alignment.topLeft,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: _settingsContentMaxWidth),
+          constraints: BoxConstraints(
+            maxWidth: _selectedSection == 'sysconfig'
+                ? _personalSettingsMaxWidth
+                : _settingsContentMaxWidth,
+          ),
           child: child,
         ),
       );

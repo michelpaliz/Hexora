@@ -115,7 +115,13 @@ mixin InsightsComposer on InsightsChatSheetStateBase {
                       focusNode: chatComposerFocusNode,
                       enabled: !sending,
                       minLines: 1,
-                      maxLines: 5,
+                      maxLines: MediaQuery.sizeOf(context).height -
+                                  MediaQuery.viewInsetsOf(context).bottom <
+                              320
+                          ? 2
+                          : MediaQuery.sizeOf(context).width < 360
+                              ? 3
+                              : 5,
                       textInputAction: TextInputAction.newline,
                       decoration: InputDecoration(
                         hintText: isEs

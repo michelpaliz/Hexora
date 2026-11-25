@@ -1397,7 +1397,7 @@ class _RecurringDetailActionButton extends StatelessWidget {
                       color: fg,
                     ),
                   )
-                : Icon(icon, size: 17, color: fg),
+                : Icon(icon, size: 18, color: fg),
           ),
         ),
       ),

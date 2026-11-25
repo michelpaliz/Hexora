@@ -55,7 +55,7 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
                               _invitationSearchController.clear();
                               updateFilter(() => _invitationQuery = '');
                             },
-                            icon: const Icon(Icons.close_rounded, size: 17),
+                            icon: const Icon(Icons.close_rounded, size: 18),
                           ),
                   ),
                 ),
@@ -110,7 +110,7 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
               ),
               TextButton.icon(
                 onPressed: _resetInvitationFilters,
-                icon: const Icon(Icons.filter_alt_off_outlined, size: 17),
+                icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
                 label: Text(es ? 'Restablecer' : 'Reset'),
               ),
               Text(
@@ -394,7 +394,7 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
                               message: es ? 'Reenviar' : 'Resend',
                               child: IconButton(
                                 visualDensity: VisualDensity.compact,
-                                iconSize: 17,
+                                iconSize: 18,
                                 onPressed: _invitationActionId != null
                                     ? null
                                     : () => _resendInvitation(invitation!),
@@ -412,7 +412,7 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
                               message: es ? 'Revocar' : 'Revoke',
                               child: IconButton(
                                 visualDensity: VisualDensity.compact,
-                                iconSize: 17,
+                                iconSize: 18,
                                 color: cs.error,
                                 onPressed: _invitationActionId != null
                                     ? null

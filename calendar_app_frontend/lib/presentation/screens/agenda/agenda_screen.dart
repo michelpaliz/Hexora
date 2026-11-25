@@ -522,7 +522,7 @@ class _DesktopTopBar extends StatelessWidget {
           // Refresh
           IconButton(
             tooltip: AppLocalizations.of(context)!.refresh,
-            icon: const Icon(Icons.refresh_rounded, size: 17),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
             onPressed: onRefresh,
             visualDensity: VisualDensity.compact,
             color: cs.onSurfaceVariant,

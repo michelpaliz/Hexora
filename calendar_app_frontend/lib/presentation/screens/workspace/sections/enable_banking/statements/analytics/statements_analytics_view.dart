@@ -328,7 +328,7 @@ class _StatementsAnalyticsViewState extends State<StatementsAnalyticsView>
               children: [
                 Row(
                   children: [
-                    Icon(Icons.tune_rounded, size: 17, color: cs.primary),
+                    Icon(Icons.tune_rounded, size: 18, color: cs.primary),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(

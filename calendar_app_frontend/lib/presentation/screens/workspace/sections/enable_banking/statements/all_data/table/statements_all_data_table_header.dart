@@ -462,7 +462,7 @@ class StatementsAllDataTableHeader extends StatelessWidget {
                   dimension: 28,
                   child: Icon(
                     icon,
-                    size: 17,
+                    size: 18,
                     color: active ? cs.primary : tableTheme.headerText,
                   ),
                 ),

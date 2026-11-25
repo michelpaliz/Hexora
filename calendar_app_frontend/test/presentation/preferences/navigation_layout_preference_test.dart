@@ -59,12 +59,23 @@ void main() {
     expect(find.text('Diseño de navegación'), findsOneWidget);
     expect(find.text('Menús separados'), findsOneWidget);
     expect(find.text('Menú unificado'), findsOneWidget);
-    expect(preferences.navigationLayout, NavigationLayout.split);
+    expect(find.text('Posición de la barra principal'), findsOneWidget);
+    expect(find.text('Superior'), findsOneWidget);
+    expect(find.text('Inferior'), findsOneWidget);
+    expect(preferences.navigationLayout, NavigationLayout.unified);
+    expect(preferences.globalHeaderPosition, GlobalHeaderPosition.bottom);
 
-    await tester.tap(find.text('Menú unificado'));
+    await tester.tap(find.text('Menús separados'));
     await tester.pumpAndSettle();
 
-    expect(preferences.navigationLayout, NavigationLayout.unified);
+    expect(preferences.navigationLayout, NavigationLayout.split);
+
+    await tester.tap(
+      find.byKey(const ValueKey('global-header-position-top')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(preferences.globalHeaderPosition, GlobalHeaderPosition.top);
     expect(tester.takeException(), isNull);
   });
 }

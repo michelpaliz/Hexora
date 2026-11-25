@@ -604,7 +604,7 @@ class _BatchExpensePreviewReviewPanelState
                             height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.file_download_outlined, size: 17),
+                        : const Icon(Icons.file_download_outlined, size: 18),
                     label: Text(
                       widget.exportingIncidents
                           ? 'Generando Excel...'
@@ -623,7 +623,7 @@ class _BatchExpensePreviewReviewPanelState
                           height: 14,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.cloud_done_outlined, size: 17),
+                      : const Icon(Icons.cloud_done_outlined, size: 18),
                   label: Text(ctaLabel),
                 ),
               ],

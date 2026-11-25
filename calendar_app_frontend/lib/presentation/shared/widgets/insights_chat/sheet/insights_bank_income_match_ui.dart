@@ -271,7 +271,7 @@ mixin InsightsBankIncomeMatchUi on InsightsChatSheetStateBase {
     final narrow = MediaQuery.sizeOf(sourceContext).width < 700;
     if (narrow) {
       await showModalBottomSheet<void>(
-      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
+        sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: sourceContext,
         showDragHandle: true,
         isScrollControlled: true,
@@ -445,7 +445,7 @@ mixin InsightsBankIncomeMatchUi on InsightsChatSheetStateBase {
                   expanded
                       ? Icons.keyboard_arrow_up_rounded
                       : Icons.keyboard_arrow_down_rounded,
-                  size: 17,
+                  size: HexoraIconTokens.standard,
                   color: cs.primary,
                 ),
               ],

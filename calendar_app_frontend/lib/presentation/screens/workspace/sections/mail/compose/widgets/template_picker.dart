@@ -159,7 +159,7 @@ class _ComposeTemplatePickerState extends State<_ComposeTemplatePicker> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: TextButton.icon(
                 onPressed: widget.onClear,
-                icon: const Icon(Icons.remove_circle_outline_rounded, size: 17),
+                icon: const Icon(Icons.remove_circle_outline_rounded, size: 18),
                 label: const Text('Continuar sin plantilla'),
                 style: TextButton.styleFrom(
                   foregroundColor: cs.onSurfaceVariant,

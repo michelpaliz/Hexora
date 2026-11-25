@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/secondary_sidebar_header.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 
 class DocumentWizardSection {
   const DocumentWizardSection({
@@ -145,7 +146,7 @@ class DocumentWizardRail extends StatelessWidget {
                         groupExpanded
                             ? Icons.expand_less_rounded
                             : Icons.expand_more_rounded,
-                        size: 17,
+                        size: HexoraIconTokens.standard,
                       ),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints.tightFor(
@@ -228,7 +229,7 @@ class DocumentWizardRail extends StatelessWidget {
                   collapsed
                       ? Icons.keyboard_double_arrow_right_rounded
                       : Icons.keyboard_double_arrow_left_rounded,
-                  size: 17,
+                  size: HexoraIconTokens.standard,
                 ),
                 constraints: const BoxConstraints.tightFor(
                   width: 34,

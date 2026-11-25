@@ -201,7 +201,7 @@ class _BatchLeftControlPanelState extends State<_BatchLeftControlPanel> {
                                       ? null
                                       : widget.onPickDocuments,
                                   icon: const Icon(Icons.upload_file_outlined,
-                                      size: 17),
+                                      size: 18),
                                   label: Text(Localizations.localeOf(context).languageCode == 'es' ? 'Elegir facturas o ZIP' : 'Choose invoices or ZIP'),
                                 ),
                               ],

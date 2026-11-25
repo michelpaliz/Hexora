@@ -81,7 +81,7 @@ class _PanelHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
       child: Row(children: [
-        Icon(LucideIcons.calendarDays, size: 17, color: cs.primary),
+        Icon(LucideIcons.calendarDays, size: 18, color: cs.primary),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -101,7 +101,7 @@ class _PanelHeader extends StatelessWidget {
             key: const ValueKey('calendar-details-close'),
             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
             onPressed: onClose,
-            icon: const Icon(LucideIcons.x, size: 17),
+            icon: const Icon(LucideIcons.x, size: 18),
             style: IconButton.styleFrom(
               fixedSize: const Size(30, 30),
               minimumSize: const Size(30, 30),

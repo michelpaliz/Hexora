@@ -48,6 +48,7 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
   int bulkUnlinkingLinkedIncomeProgress = 0;
   int bulkUnlinkingLinkedIncomeTotal = 0;
   bool desktopChatPaneCollapsed = false;
+  bool assistantNavigationCollapsed = false;
   int desktopWorkspaceLayoutMode = 1;
   double desktopChatPaneRatio = 0.38;
   Widget? inlineSurface;

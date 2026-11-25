@@ -31,11 +31,13 @@ import 'package:hexora/presentation/screens/workspace/sections/quick_notes/quick
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/presentation/shared/utils/weather/weather_summary_localizer.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
+import 'package:hexora/presentation/shared/widgets/notification_preview_popover.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
 import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/weather/weather_service.dart';
 import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
@@ -80,6 +82,7 @@ class WideLayout extends StatelessWidget {
       onRestoreGlobalNavigation: () =>
           context.read<UserPreferencesProvider>().setTopNavCollapsed(false),
       globalNavigationRestoreLabel: state.group.name,
+      globalHeaderPosition: preferences.globalHeaderPosition,
       body: ListenableBuilder(
         listenable: state.workspaceTabs,
         child: workspace,
@@ -123,10 +126,7 @@ class WideLayout extends StatelessWidget {
             ],
           );
           final content = SidebarHeaderScope(
-            // Chat already uses the module control in its left navigation.
-            // Mounting this shared header too creates a second selector above
-            // the conversation.
-            enabled: unified && activeSection != Sections.chat,
+            enabled: unified,
             builder: (context, collapsed) => _UnifiedModuleSwitcher(
               destinations: destinations,
               activeDestination: activeDestination,
@@ -172,6 +172,7 @@ class WideLayout extends StatelessWidget {
     return const {
       Sections.invoices,
       Sections.invoiceClients,
+      Sections.chat,
       Sections.expenses,
       Sections.enableBanking,
       Sections.budgets,
@@ -206,14 +207,16 @@ class WideLayout extends StatelessWidget {
     final showQuickNotesInline = section == Sections.quickNotes;
 
     if (section == Sections.home) {
-      return DashboardPreviewScreen(
-        embedded: true,
-        onOpenSection: state.openSection,
-        onOpenBillingProfile: () =>
-            state.openInvoicesWorkspace(initialMenu: 'billing_profile'),
-        onAskHexora: state.canSeeAdmin ? state.askHexoraFromHome : null,
-        onOpenAssistant:
-            state.canSeeAdmin ? () => state.openSection(Sections.chat) : null,
+      return WorkspaceMainContent(
+        child: DashboardPreviewScreen(
+          embedded: true,
+          onOpenSection: state.openSection,
+          onOpenBillingProfile: () =>
+              state.openInvoicesWorkspace(initialMenu: 'billing_profile'),
+          onAskHexora: state.canSeeAdmin ? state.askHexoraFromHome : null,
+          onOpenAssistant:
+              state.canSeeAdmin ? () => state.openSection(Sections.chat) : null,
+        ),
       );
     }
 
@@ -350,65 +353,70 @@ class _UnifiedModuleSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     final active = activeDestination;
-    final control = Container(
-      height: collapsed ? 36 : 38,
-      margin: EdgeInsetsDirectional.fromSTEB(
-        collapsed ? 8 : 10,
-        collapsed ? 6 : 7,
-        collapsed ? 8 : 12,
-        collapsed ? 6 : 7,
-      ),
-      padding: EdgeInsetsDirectional.symmetric(
-        horizontal: collapsed ? 0 : 10,
-      ),
-      decoration: BoxDecoration(
-        color: Color.alphaBlend(
-          cs.primary.withValues(alpha: .10),
-          cs.surface,
-        ),
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Row(
-        mainAxisAlignment:
-            collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-        children: [
-          Icon(
-            active?.icon ?? Icons.apps_rounded,
-            size: 17,
-            color: cs.primary,
-          ),
-          if (!collapsed) ...[
-            const SizedBox(width: 9),
-            // Expanded(
-            //   child: Text(
-            //     active?.label ?? (isEs ? 'Módulos' : 'Modules'),
-            //     maxLines: 1,
-            //     overflow: TextOverflow.ellipsis,
-            //     style: NavigationTokens.label(context).copyWith(
-            //       fontWeight: FontWeight.w700,
-            //       color: cs.onSurface,
-            //     ),
-            //   ),
-            // ),
-            Icon(
-              Icons.expand_more_rounded,
-              size: 17,
-              color: cs.onSurfaceVariant,
-            ),
-          ],
-        ],
-      ),
-    );
 
     return _GroupedModuleMenu(
       destinations: destinations,
       activeId: active?.id,
       isSpanish: isEs,
       onSelected: onSelected,
-      control: control,
+      controlBuilder: (context, isOpen, onTap) => Padding(
+        padding: EdgeInsetsDirectional.fromSTEB(
+          collapsed ? 4 : 8,
+          0,
+          collapsed ? 4 : 8,
+          0,
+        ),
+        child: AnimatedContainer(
+          duration: HexoraMotion.duration(context, HexoraMotion.fast),
+          curve: HexoraMotion.enter,
+          width: collapsed ? NavigationTokens.workspaceNavigationHeight : null,
+          height: NavigationTokens.workspaceNavigationHeight,
+          decoration: BoxDecoration(
+            color: HexoraGlobalNavColors.background,
+            borderRadius: BorderRadius.circular(NavigationTokens.radius),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: isOpen ? .20 : 0),
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              hoverColor: Colors.white.withValues(alpha: .07),
+              focusColor: Colors.white.withValues(alpha: .10),
+              highlightColor: Colors.white.withValues(alpha: .10),
+              splashColor: Colors.white.withValues(alpha: .14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    LucideIcons.layoutGrid,
+                    size: NavigationTokens.iconSize,
+                    color: Colors.white,
+                  ),
+                  if (!collapsed) ...[
+                    const SizedBox(width: 8),
+                    AnimatedRotation(
+                      turns: isOpen ? .5 : 0,
+                      duration:
+                          HexoraMotion.duration(context, HexoraMotion.fast),
+                      curve: HexoraMotion.enter,
+                      child: Icon(
+                        LucideIcons.chevronDown,
+                        size: NavigationTokens.iconSize,
+                        color: Colors.white.withValues(alpha: .82),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -419,14 +427,18 @@ class _GroupedModuleMenu extends StatefulWidget {
     required this.activeId,
     required this.isSpanish,
     required this.onSelected,
-    required this.control,
+    required this.controlBuilder,
   });
 
   final List<HexoraNavDestination> destinations;
   final String? activeId;
   final bool isSpanish;
   final ValueChanged<String> onSelected;
-  final Widget control;
+  final Widget Function(
+    BuildContext context,
+    bool isOpen,
+    VoidCallback onTap,
+  ) controlBuilder;
 
   @override
   State<_GroupedModuleMenu> createState() => _GroupedModuleMenuState();
@@ -520,15 +532,15 @@ class _GroupedModuleMenuState extends State<_GroupedModuleMenu> {
         ),
       ],
       builder: (context, controller, _) => Tooltip(
-        message: widget.isSpanish ? 'Cambiar módulo' : 'Switch module',
+        message: widget.isSpanish ? 'Cambiar sección' : 'Switch section',
         child: Semantics(
           button: true,
           expanded: controller.isOpen,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(9),
-            onTap: () =>
-                controller.isOpen ? controller.close() : controller.open(),
-            child: widget.control,
+          label: widget.isSpanish ? 'Cambiar sección' : 'Switch section',
+          child: widget.controlBuilder(
+            context,
+            controller.isOpen,
+            () => controller.isOpen ? controller.close() : controller.open(),
           ),
         ),
       ),
@@ -642,12 +654,16 @@ class _GroupedModuleMenuItem extends StatelessWidget {
           onPressed: onPressed,
           leadingIcon: Icon(
             destination.icon,
-            size: 17,
+            size: NavigationTokens.iconSize,
             color: selected ? cs.primary : navigationColors.itemForeground,
           ),
           trailingIcon: selected
-              ? Icon(Icons.check_rounded, size: 17, color: cs.primary)
-              : const SizedBox(width: 17),
+              ? Icon(
+                  Icons.check_rounded,
+                  size: NavigationTokens.iconSize,
+                  color: cs.primary,
+                )
+              : const SizedBox(width: NavigationTokens.iconSize),
           style: ButtonStyle(
             padding: const WidgetStatePropertyAll(
               EdgeInsets.symmetric(horizontal: 10),
@@ -726,7 +742,7 @@ class _UnifiedModuleHeaderSidebarState
     final label = destination?.label ??
         widget.fallbackLabel ??
         (isEs ? 'Módulo' : 'Module');
-    final icon = destination?.icon ?? Icons.apps_rounded;
+    final icon = destination?.icon ?? LucideIcons.layoutGrid;
 
     if (widget.showDestinationItem) {
       return CollapsibleSidebarShell(
@@ -871,7 +887,7 @@ List<HexoraNavDestination> _dashboardDestinations(
       ),
     HexoraNavDestination(
       id: Sections.notifications,
-      icon: Icons.notifications_none_rounded,
+      icon: LucideIcons.bell,
       label: l.notifications,
       placement: HexoraNavPlacement.searchOnly,
     ),
@@ -1001,7 +1017,7 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
 
     final sidebar = CollapsibleSidebar(
       title: es ? 'Módulos' : 'Modules',
-      headerIcon: Icons.apps_rounded,
+      headerIcon: LucideIcons.layoutGrid,
       menuExpandedWidth: 176,
       collapsedToggleInRail: true,
       collapsed: _collapsed,
@@ -1161,11 +1177,12 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
     final l = widget.l;
     final user = widget.user;
     final es = l.localeName.startsWith('es');
-    final unreadNotifications = context
-        .watch<NotificationDomain>()
-        .notifications
-        .where((n) => n.groupId == state.group.id && !n.isRead)
-        .length;
+    final notificationDomain = context.watch<NotificationDomain>();
+    final notifications = notificationDomain.notifications
+        .where((notification) => notification.groupId == state.group.id)
+        .toList(growable: false);
+    final unreadNotifications =
+        notifications.where((notification) => !notification.isRead).length;
     final memberIds = {...state.group.userIds, state.group.ownerId}..remove('');
     final preferences = context.watch<UserPreferencesProvider>();
     final navigationMode = preferences.navigationDisplayMode;
@@ -1198,6 +1215,7 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
               : null,
           workspaceStatus: _TopWeatherChip(location: user?.location),
           navigationDisplayMode: navigationMode,
+          headerPosition: preferences.globalHeaderPosition,
           collapsed: preferences.topNavCollapsed,
           onToggleCollapsed: () {
             final provider = context.read<UserPreferencesProvider>();
@@ -1206,6 +1224,15 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
           notificationCount: unreadNotifications,
           notificationsSelected: activeSection == Sections.notifications,
           onOpenNotifications: () => state.openSection(Sections.notifications),
+          notificationControl: NotificationPreviewPopover(
+            notifications: notifications,
+            unreadCount: unreadNotifications,
+            selected: activeSection == Sections.notifications,
+            onMarkAllRead: () =>
+                context.read<UserDomain>().markAllNotificationsAsRead(),
+            onOpenAll: () => state.openSection(Sections.notifications),
+            onNotificationTap: (_) => state.openSection(Sections.notifications),
+          ),
           downloads: IconTheme(
             data: IconThemeData(
                 color: HexoraGlobalNavColors.foregroundFor(context)),

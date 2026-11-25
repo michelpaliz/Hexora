@@ -451,7 +451,7 @@ class _NavSubItem extends StatelessWidget {
             isSelected: selected,
             collapsed: false,
             rowHeight: 36,
-            iconSize: 17,
+            iconSize: NavigationTokens.iconSize,
             tooltipLabel: tooltipLabel,
             onTap: onTap));
   }

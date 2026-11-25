@@ -5,18 +5,12 @@ import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
-import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/common/section_header.dart';
 import 'package:hexora/presentation/screens/settings/dialogs/change_password_dialog.dart';
 import 'package:hexora/presentation/screens/settings/dialogs/change_username_dialog.dart';
 import 'package:hexora/presentation/screens/settings/widgets/account_section.dart';
-import 'package:hexora/presentation/screens/settings/widgets/language_sheet.dart';
 import 'package:hexora/presentation/screens/profile/edit/profile_edit_dialog.dart';
-import 'package:hexora/presentation/screens/settings/widgets/nav_tile.dart';
-import 'package:hexora/presentation/screens/settings/widgets/preferences_section.dart';
-import 'package:hexora/presentation/screens/preferences/user_preferences_screen.dart';
+import 'package:hexora/presentation/screens/preferences/preference_controls.dart';
 import 'package:hexora/presentation/screens/settings/widgets/section_card.dart';
-import 'package:hexora/state/locale_provider.dart';
-import 'package:hexora/theme/theme_provider.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -98,6 +92,12 @@ class _SettingsSystemConfigSectionState
     return false;
   }
 
+  Future<void> _openChangePassword() async {
+    final result = await showChangePasswordDialog(context);
+    if (!mounted || result == null) return;
+    await _changePassword(result.current, result.newPass, result.confirm);
+  }
+
   Future<String?> _changeUsername(String newUsername) async {
     final loc = AppLocalizations.of(context)!;
     try {
@@ -132,8 +132,6 @@ class _SettingsSystemConfigSectionState
     );
   }
 
-  void _openLanguageSheet() => showLanguageSheet(context);
-
   void _snack(String text) {
     if (!mounted) return;
     final cs = Theme.of(context).colorScheme;
@@ -162,74 +160,44 @@ class _SettingsSystemConfigSectionState
     }
   }
 
-  String _languageName(BuildContext context) {
-    final lp = Provider.of<LocaleProvider>(context, listen: false);
-    return lp.locale.languageCode == 'es' ? 'Español (España)' : 'English';
-  }
-
-  String _sectionDescription(BuildContext context, String section) {
-    final isEs = Localizations.localeOf(context).languageCode == 'es';
-    switch (section) {
-      case 'account':
-        return isEs
-            ? 'Gestiona tu perfil y seguridad.'
-            : 'Manage your profile and security.';
-      case 'preferences':
-        return isEs
-            ? 'Personaliza el comportamiento de la aplicación.'
-            : 'Customize how the app behaves.';
-      case 'security':
-        return isEs
-            ? 'Controla el acceso a tu sesión.'
-            : 'Control access to your session.';
-      default:
-        return '';
-    }
-  }
+  /// Width from which the sections split into two columns. Measured on the
+  /// space this section receives, so it follows every navigation layout.
+  static const double _twoColumnMinWidth = 700;
+  static const double _columnGap = 20;
 
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
-    final typography = AppTypography.of(context);
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final sectionTitleStyle = theme.textTheme.titleMedium!.copyWith(
-      fontWeight: FontWeight.w900,
-      color: cs.onSurface,
-      letterSpacing: -0.2,
-    );
-    final sectionSubtitleStyle = typography.bodySmall.copyWith(
-      color: cs.onSurfaceVariant,
-      height: 1.25,
-      fontWeight: FontWeight.w500,
-    );
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
 
-    return Consumer2<ThemeModeProvider, AuthProvider>(
-      builder: (_, themeModeProv, authProvider, __) => Align(
-        alignment: Alignment.topLeft,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionHeader(
-                  title: loc.accountSectionTitle,
-                  subtitle: _sectionDescription(context, 'account'),
-                  textStyle: sectionTitleStyle,
-                  subtitleStyle: sectionSubtitleStyle,
-                  showDivider: false,
-                  padding: const EdgeInsets.only(bottom: 12),
-                ),
-                SectionCard(
-                  compact: true,
+    return Consumer<AuthProvider>(
+      // Ink needs a Material above it that is not hidden by the canvas colour.
+      builder: (_, authProvider, __) => Material(
+        type: MaterialType.transparency,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              isEs ? 'Configuración personal' : 'Personal settings',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: cs.onSurface,
+              ),
+            ),
+            const SizedBox(height: 10),
+            KeyedSubtree(
+              key: const ValueKey('settings-profile-card'),
+              child: SectionCard(
+                compact: true,
+                child: Material(
+                  type: MaterialType.transparency,
                   child: AccountSection(
                     userName: userName,
                     userSubtitle: authProvider.currentUser?.email,
                     onEditUsername: () async {
-                      final successMessage =
-                          AppLocalizations.of(context)!.successChangingUsername;
+                      final successMessage = loc.successChangingUsername;
                       final newName = await showChangeUsernameDialog(context);
                       if (newName == null) return;
                       final err = await _changeUsername(newName);
@@ -237,125 +205,214 @@ class _SettingsSystemConfigSectionState
                       _snack(err ?? successMessage);
                     },
                     onEditProfile: () => showProfileEditDialog(context),
-                    onChangePassword: () async {
-                      final result = await showChangePasswordDialog(context);
-                      if (result == null) return;
-                      await _changePassword(
-                          result.current, result.newPass, result.confirm);
-                    },
+                    onChangePassword: _openChangePassword,
                     compact: true,
                   ),
                 ),
-                const SizedBox(height: 20),
-                SectionHeader(
-                  title: loc.preferencesSectionTitle,
-                  subtitle: _sectionDescription(context, 'preferences'),
-                  textStyle: sectionTitleStyle,
-                  subtitleStyle: sectionSubtitleStyle,
-                  showDivider: false,
-                  padding: const EdgeInsets.only(bottom: 12),
-                ),
-                SectionCard(
-                  compact: true,
-                  child: Column(
+              ),
+            ),
+            const SizedBox(height: 18),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final navigation = _Section(
+                  key: const ValueKey('settings-navigation-column'),
+                  title: loc.preferencesNavigation,
+                  child: const NavigationPreference(),
+                );
+                final other = _otherPreferences(authProvider, loc, isEs);
+                if (preferenceLayoutWidth(context, constraints.maxWidth) <
+                    _twoColumnMinWidth) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(16, 14, 16, 6),
-                        child: UserPreferencesView(
-                          maxWidth: double.infinity,
-                          padding: EdgeInsets.zero,
-                          scrollable: false,
-                          showLanguage: false,
+                      navigation,
+                      const _SectionDivider(),
+                      other,
+                    ],
+                  );
+                }
+                // Natural heights: neither column stretches to match.
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: navigation),
+                    const SizedBox(width: _columnGap),
+                    Expanded(child: other),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _otherPreferences(
+    AuthProvider authProvider,
+    AppLocalizations loc,
+    bool isEs,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      key: const ValueKey('settings-preferences-column'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Section(
+          title: loc.preferencesAppearance,
+          child: const AppearancePreference(),
+        ),
+        const _SectionDivider(),
+        _Section(
+          title: loc.preferencesLanguage,
+          trailing: const LanguagePreference(shortLabels: true, onCanvas: true),
+        ),
+        const _SectionDivider(),
+        _Section(
+          title: isEs ? 'Importación automática' : 'Automatic import',
+          child: _AutoImportRow(
+            title: isEs ? 'Importar extracto diario' : 'Import daily statement',
+            description: isEs
+                ? 'Solo en los negocios que lo tengan configurado.'
+                : 'Only for businesses where it is configured.',
+            value:
+                authProvider.currentUser?.autoStatementImportEnabled ?? false,
+            onChanged:
+                _autoStatementImportLoading ? null : _toggleAutoStatementImport,
+          ),
+        ),
+        const _SectionDivider(),
+        _Section(
+          title: isEs ? 'Seguridad' : 'Security',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _ActionRow(
+                icon: Icons.lock_outline_rounded,
+                color: cs.primary,
+                title: loc.changePassword,
+                onTap: _openChangePassword,
+              ),
+              _ActionRow(
+                icon: Icons.logout_rounded,
+                color: cs.error,
+                title: loc.logout,
+                titleColor: cs.error,
+                onTap: _confirmLogout,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Heading plus content, drawn directly on the workspace canvas.
+class _Section extends StatelessWidget {
+  const _Section({super.key, required this.title, this.trailing, this.child});
+
+  final String title;
+
+  /// Short control that shares the heading row.
+  final Widget? trailing;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+            if (trailing != null) trailing!,
+          ],
+        ),
+        if (child != null) ...[const SizedBox(height: 8), child!],
+      ],
+    );
+  }
+}
+
+class _SectionDivider extends StatelessWidget {
+  const _SectionDivider();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Divider(
+          height: 1,
+          color: Theme.of(context)
+              .colorScheme
+              .outlineVariant
+              .withValues(alpha: 0.6),
+        ),
+      );
+}
+
+class _AutoImportRow extends StatelessWidget {
+  const _AutoImportRow({
+    required this.title,
+    required this.description,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String description;
+  final bool value;
+
+  /// Null while a change is being saved.
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return MergeSemantics(
+      child: InkWell(
+        key: const ValueKey('settings-auto-import'),
+        onTap: onChanged == null ? null : () => onChanged!(!value),
+        borderRadius: BorderRadius.circular(8),
+        hoverColor: cs.primary.withValues(alpha: 0.045),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w500),
+                      ),
+                      Text(
+                        description,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          height: 1.25,
                         ),
                       ),
-                      Divider(
-                        height: 0,
-                        indent: 16,
-                        color: cs.outlineVariant.withValues(alpha: 0.4),
-                      ),
-                      // Keep the existing application-language control and
-                      // automatic statement import in this same user-scoped
-                      // settings surface.
-                      const _LanguageTile(),
-                      Divider(
-                        height: 0,
-                        indent: 63,
-                        color: cs.outlineVariant.withValues(alpha: 0.4),
-                      ),
-                      PreferencesSection(
-                        isDark: themeModeProv.mode == ThemeMode.dark,
-                        onToggleDark: () => themeModeProv.toggleLightDark(),
-                        languageName: _languageName(context),
-                        onChangeLanguage: _openLanguageSheet,
-                        showDisplayPreferences: false,
-                        autoStatementImportEnabled: authProvider
-                                .currentUser?.autoStatementImportEnabled ??
-                            false,
-                        autoStatementImportBusy: _autoStatementImportLoading,
-                        onToggleAutoStatementImport: _toggleAutoStatementImport,
-                        autoStatementImportTitle:
-                            Localizations.localeOf(context).languageCode == 'es'
-                                ? 'Importación automática'
-                                : 'Automatic import',
-                        autoStatementImportSubtitle: Localizations.localeOf(
-                                        context)
-                                    .languageCode ==
-                                'es'
-                            ? 'Importa automáticamente el extracto diario si este negocio está configurado. Solicita abajo la configuración.'
-                            : 'Imports the daily statement automatically if this business is configured. Request setup below.',
-                      ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                SectionHeader(
-                  title: Localizations.localeOf(context).languageCode == 'es'
-                      ? 'Seguridad'
-                      : 'Security',
-                  subtitle: _sectionDescription(context, 'security'),
-                  textStyle: sectionTitleStyle,
-                  subtitleStyle: sectionSubtitleStyle,
-                  showDivider: false,
-                  padding: const EdgeInsets.only(bottom: 12),
-                ),
-                SectionCard(
-                  compact: true,
-                  child: Column(
-                    children: [
-                      NavTile(
-                        compact: true,
-                        leading: Icon(Icons.lock_outline_rounded,
-                            size: 18, color: cs.primary),
-                        iconBgColor: cs.primary.withValues(alpha: 0.12),
-                        title: loc.changePassword,
-                        onTap: () async {
-                          final result =
-                              await showChangePasswordDialog(context);
-                          if (result == null) return;
-                          await _changePassword(
-                              result.current, result.newPass, result.confirm);
-                        },
-                      ),
-                      Divider(
-                          height: 0,
-                          indent: 63,
-                          color: cs.outlineVariant.withValues(alpha: 0.4)),
-                      NavTile(
-                        compact: true,
-                        leading: Icon(Icons.logout_rounded,
-                            size: 18, color: cs.error),
-                        iconBgColor: cs.error.withValues(alpha: 0.10),
-                        title: loc.logout,
-                        subtitle:
-                            Localizations.localeOf(context).languageCode == 'es'
-                                ? 'Salir de esta cuenta en este dispositivo.'
-                                : 'Sign out of this account on this device.',
-                        onTap: _confirmLogout,
-                        danger: true,
-                      ),
-                    ],
-                  ),
-                ),
+                const SizedBox(width: 8),
+                Switch.adaptive(value: value, onChanged: onChanged),
               ],
             ),
           ),
@@ -365,88 +422,57 @@ class _SettingsSystemConfigSectionState
   }
 }
 
-/// Inline language switch (ES / EN) shown in the Settings preferences card, so
-/// the language can be changed without opening the separate preferences screen.
-class _LanguageTile extends StatelessWidget {
-  const _LanguageTile();
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.onTap,
+    this.titleColor,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final Color? titleColor;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final isEs = Localizations.localeOf(context).languageCode == 'es';
-    final current = isEs ? 'es' : 'en';
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: cs.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(Icons.language_rounded, size: 18, color: cs.primary),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Semantics(
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        hoverColor: color.withValues(alpha: 0.05),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
               children: [
-                Text(
-                  isEs ? 'Idioma' : 'Language',
-                  style: theme.textTheme.bodyMedium!.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurface,
+                Icon(icon, size: 18, color: color),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: titleColor ?? cs.onSurface,
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  isEs ? 'Idioma de la aplicación' : 'Application language',
-                  style: theme.textTheme.bodySmall!
-                      .copyWith(color: cs.onSurfaceVariant),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.6),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'es', label: Text('ES')),
-              ButtonSegment(value: 'en', label: Text('EN')),
-            ],
-            selected: {current},
-            onSelectionChanged: (selection) {
-              final next = selection.first;
-              if (next == current) return;
-              context.read<LocaleProvider>().setLocale(Locale(next));
-              final isSpanish = next == 'es';
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  SnackBar(
-                    behavior: SnackBarBehavior.floating,
-                    content: Text(isSpanish
-                        ? 'Configuración guardada.'
-                        : 'Settings saved.'),
-                  ),
-                );
-            },
-            showSelectedIcon: false,
-            style: const ButtonStyle(
-              visualDensity: VisualDensity.compact,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              padding: WidgetStatePropertyAll(
-                EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

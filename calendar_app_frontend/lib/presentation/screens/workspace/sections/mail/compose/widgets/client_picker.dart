@@ -196,7 +196,7 @@ class _ClientPickerDialogState extends State<_ClientPickerDialog> {
               child: Row(
                 children: [
                   Icon(Icons.person_outline_rounded,
-                      size: 17, color: cs.primary),
+                      size: 18, color: cs.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(

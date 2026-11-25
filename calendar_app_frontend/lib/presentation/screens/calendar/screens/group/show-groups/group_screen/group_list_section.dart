@@ -85,7 +85,7 @@ class _GroupListSectionState extends State<GroupListSection> {
                     TextButton.icon(
                       onPressed: () =>
                           groupDomain.refreshGroupsForCurrentUser(userDomain),
-                      icon: const Icon(Icons.refresh_rounded, size: 17),
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
                       label: Text(
                         loc.localeName.startsWith('es')
                             ? 'Reintentar'

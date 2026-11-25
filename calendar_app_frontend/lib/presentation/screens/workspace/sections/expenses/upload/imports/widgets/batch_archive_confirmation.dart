@@ -92,7 +92,7 @@ class _BatchArchiveConfirmation extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(Icons.folder_zip_outlined,
-                      size: 17, color: cs.primary),
+                      size: 18, color: cs.primary),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -168,7 +168,7 @@ class _BatchArchiveConfirmation extends StatelessWidget {
                   message: 'Eliminar ZIP',
                   child: IconButton(
                     onPressed: busy ? null : onRemove,
-                    icon: const Icon(Icons.delete_outline_rounded, size: 17),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
                     style: IconButton.styleFrom(
                       foregroundColor: cs.error,
                       minimumSize: const Size(32, 32),

@@ -275,7 +275,7 @@ class _SummaryCard extends StatelessWidget {
               color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(meta.icon, size: 17, color: color),
+            child: Icon(meta.icon, size: 18, color: color),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1885,7 +1885,7 @@ class _TaxReportContentState extends State<_TaxReportContent> {
       ),
       child: Row(children: [
         Icon(Icons.info_outline_rounded,
-            size: 17, color: cs.onTertiaryContainer),
+            size: 18, color: cs.onTertiaryContainer),
         const SizedBox(width: 8),
         Expanded(
           child: Text(

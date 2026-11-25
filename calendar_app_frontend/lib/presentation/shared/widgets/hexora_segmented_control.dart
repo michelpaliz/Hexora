@@ -27,12 +27,17 @@ class HexoraSegmentedControl<T> extends StatelessWidget {
     required this.selected,
     required this.onChanged,
     this.height = 34,
+    this.backgroundColor,
   });
 
   final List<HexoraSegment<T>> segments;
   final T selected;
   final ValueChanged<T> onChanged;
   final double height;
+
+  /// Track colour; defaults to the neutral [trackColor]. Use a surface colour
+  /// when the control sits directly on the workspace canvas.
+  final Color? backgroundColor;
 
   static const double trackPadding = 3;
 
@@ -57,7 +62,7 @@ class HexoraSegmentedControl<T> extends StatelessWidget {
         height: height,
         padding: const EdgeInsets.all(trackPadding),
         decoration: BoxDecoration(
-          color: trackColor(cs),
+          color: backgroundColor ?? trackColor(cs),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(

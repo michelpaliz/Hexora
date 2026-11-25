@@ -755,7 +755,7 @@ class _TelegramWorkerHoursImportViewState
                   color: cs.primary.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(Icons.forum_rounded, color: cs.primary, size: 17),
+                child: Icon(Icons.forum_rounded, color: cs.primary, size: 18),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -924,7 +924,7 @@ class _TelegramWorkerHoursImportViewState
                       height: 15,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.travel_explore_rounded, size: 17),
+                  : const Icon(Icons.travel_explore_rounded, size: 18),
               label: Text(isEs ? 'Generar' : 'Generate'),
             ),
           ],
@@ -1647,7 +1647,7 @@ class _TelegramWorkerHoursImportViewState
         children: [
           Row(
             children: [
-              Icon(icon, size: 17, color: cs.primary),
+              Icon(icon, size: 18, color: cs.primary),
               const SizedBox(width: 7),
               Expanded(
                 child: Text(
@@ -1933,7 +1933,7 @@ class _TelegramWorkerHoursImportViewState
                                 ? Icons.error_outline_rounded
                                 : Icons.warning_amber_rounded,
                             color: color,
-                            size: 17,
+                            size: 18,
                           ),
                         ),
                         const SizedBox(width: 10),

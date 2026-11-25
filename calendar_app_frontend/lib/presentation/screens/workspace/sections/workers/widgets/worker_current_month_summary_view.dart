@@ -647,7 +647,7 @@ class _MonthNavBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return IconButton(
-      icon: Icon(icon, size: 17),
+      icon: Icon(icon, size: 18),
       onPressed: onPressed,
       visualDensity: VisualDensity.compact,
       color: cs.onSurfaceVariant,

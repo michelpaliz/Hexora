@@ -134,18 +134,19 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
         final tabSurface = lightTheme
             ? AppColors.inputBackground
             : HexoraGlobalNavColors.background;
-        final navBackground = HexoraGlobalNavColors.backgroundFor(context);
         return Material(
-          color: navBackground,
+          key: const ValueKey('workspace-tab-bar-background'),
+          // Match the surface behind the rounded outer clip so its corner
+          // cut-outs cannot reveal the darker navigation canvas.
+          color: tabSurface,
           child: ClipRRect(
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(12),
               topRight: Radius.circular(12),
             ),
             child: Container(
-              // Desktop tabs occupy 36px; a little headroom is retained only
-              // when the platform text scale needs it.
-              height: MediaQuery.textScalerOf(context).scale(1) > 1.2 ? 42 : 36,
+              key: const ValueKey('workspace-tab-bar-surface'),
+              height: NavigationTokens.workspaceNavigationHeight,
               decoration: BoxDecoration(
                 color: tabSurface,
                 border: Border(
@@ -209,7 +210,7 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
                             controller: _scrollController,
                             scrollDirection: Axis.horizontal,
                             physics: const ClampingScrollPhysics(),
-                            padding: const EdgeInsets.only(top: 2),
+                            padding: EdgeInsets.zero,
                             itemCount: tabs.length,
                             separatorBuilder: (_, __) =>
                                 const SizedBox.shrink(),
@@ -227,7 +228,7 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
                               )..layout();
                               // Preserve readable names as tabs accumulate;
                               // the existing strip scrolls instead of squeezing.
-                              // Icon (16), close target (24), compact gaps and
+                              // Icon (18), close target (24), compact gaps and
                               // the curved shoulders. Keep ordinary tabs dense;
                               // longer titles truncate rather than stretching
                               // the whole strip.
@@ -308,7 +309,7 @@ class _TabScrollButton extends StatelessWidget {
       message: tooltip,
       child: IconButton(
         onPressed: enabled ? onPressed : null,
-        icon: Icon(icon, size: 17),
+        icon: Icon(icon, size: NavigationTokens.iconSize),
         color: cs.onSurfaceVariant,
         disabledColor: cs.onSurfaceVariant.withValues(alpha: 0.35),
         splashRadius: 14,
@@ -404,7 +405,7 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
                               children: [
                                 Icon(
                                   widget.tab.icon,
-                                  size: 16,
+                                  size: NavigationTokens.iconSize,
                                   color: widget.active
                                       ? AppColors.primary
                                       : tabForeground,
@@ -793,7 +794,10 @@ class _AllTabsMenuState extends State<_AllTabsMenu> {
                 style: Theme.of(context).textTheme.bodySmall,
                 decoration: InputDecoration(
                   hintText: es ? 'Buscar pestaña...' : 'Search tabs...',
-                  prefixIcon: const Icon(Icons.search_rounded, size: 17),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    size: NavigationTokens.iconSize,
+                  ),
                   prefixIconConstraints:
                       const BoxConstraints.tightFor(width: 34),
                   suffixIcon: _query.isEmpty
@@ -883,11 +887,16 @@ class _AllTabsMenuState extends State<_AllTabsMenu> {
                           color: selected ? cs.primary : cs.onSurfaceVariant,
                         ),
                         trailingIcon: selected
-                            ? Icon(Icons.check_rounded,
-                                size: 17, color: cs.primary)
+                            ? Icon(
+                                Icons.check_rounded,
+                                size: NavigationTokens.iconSize,
+                                color: cs.primary,
+                              )
                             : widget.isDirty(tab.identity)
                                 ? Icon(Icons.circle, size: 7, color: cs.primary)
-                                : const SizedBox(width: 17),
+                                : const SizedBox(
+                                    width: NavigationTokens.iconSize,
+                                  ),
                         child: Text(
                           tab.title,
                           maxLines: 1,

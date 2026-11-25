@@ -8,7 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class LocaleProvider extends ChangeNotifier {
   static const _localeKey = 'preferred_locale';
-  Locale _locale = const Locale('es');
+  static const _migrationOwnerKey = 'locale_preferences_migration_owner';
+  static const defaultLocale = Locale('es');
+  Locale _locale = defaultLocale;
   String? _userId;
   int _loadVersion = 0;
   late final Future<void> _initialLoad;
@@ -45,10 +47,26 @@ class LocaleProvider extends ChangeNotifier {
       final remote = await UserPreferencesApi.load();
       if (version != _loadVersion) return;
       final languageCode = remote['locale'];
+      final preferences = await SharedPreferences.getInstance();
       if (languageCode == 'en' || languageCode == 'es') {
         _applyLocale(Locale(languageCode as String));
-        final preferences = await SharedPreferences.getInstance();
-        await preferences.setString(_localeKey, languageCode);
+        await preferences.setString(_keyFor(nextUserId), languageCode);
+      } else {
+        final migrationOwner = preferences.getString(_migrationOwnerKey);
+        final canMigrate = migrationOwner == null;
+        final stored = preferences.getString(_keyFor(nextUserId));
+        final legacy = canMigrate ? preferences.getString(_localeKey) : null;
+        final selected = _isSupportedCode(stored)
+            ? stored!
+            : _isSupportedCode(legacy)
+                ? legacy!
+                : defaultLocale.languageCode;
+        _applyLocale(Locale(selected));
+        await preferences.setString(_keyFor(nextUserId), selected);
+        if (canMigrate) {
+          await preferences.setString(_migrationOwnerKey, nextUserId);
+        }
+        await UserPreferencesApi.update({'locale': selected});
       }
     } catch (error) {
       debugPrint('[LocaleProvider] remote load failed: $error');
@@ -70,7 +88,11 @@ class LocaleProvider extends ChangeNotifier {
   Future<void> _persistLocale(String languageCode) async {
     try {
       final preferences = await SharedPreferences.getInstance();
-      await preferences.setString(_localeKey, languageCode);
+      final currentUserId = _userId;
+      await preferences.setString(
+        currentUserId == null ? _localeKey : _keyFor(currentUserId),
+        languageCode,
+      );
       if (_userId != null) {
         await UserPreferencesApi.update({'locale': languageCode});
       }
@@ -82,6 +104,10 @@ class LocaleProvider extends ChangeNotifier {
   void clearLocale() {
     _userId = null;
     _loadVersion++;
-    _applyLocale(const Locale('es'));
+    _applyLocale(defaultLocale);
   }
+
+  static bool _isSupportedCode(String? value) => value == 'en' || value == 'es';
+
+  static String _keyFor(String userId) => 'hexora.user.$userId.$_localeKey';
 }

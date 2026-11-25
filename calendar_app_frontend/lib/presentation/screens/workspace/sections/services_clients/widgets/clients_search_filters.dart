@@ -442,7 +442,7 @@ class _ClassificationSelect extends StatelessWidget {
               isDense: true,
               borderRadius: BorderRadius.circular(8),
               dropdownColor: cs.surface,
-              icon: const Icon(Icons.expand_more_rounded, size: 17),
+              icon: const Icon(Icons.expand_more_rounded, size: 18),
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: cs.onSurface,
                   ),

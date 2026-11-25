@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/navigation/shell/global_navigation_collapse_scope.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
@@ -17,6 +18,7 @@ class HexoraAppShell extends StatefulWidget {
     this.globalNavigationCollapsed = false,
     this.onRestoreGlobalNavigation,
     this.globalNavigationRestoreLabel,
+    this.globalHeaderPosition = GlobalHeaderPosition.top,
   });
 
   final Widget globalNav;
@@ -26,6 +28,7 @@ class HexoraAppShell extends StatefulWidget {
   final bool globalNavigationCollapsed;
   final VoidCallback? onRestoreGlobalNavigation;
   final String? globalNavigationRestoreLabel;
+  final GlobalHeaderPosition globalHeaderPosition;
 
   @override
   State<HexoraAppShell> createState() => _HexoraAppShellState();
@@ -96,30 +99,36 @@ class _HexoraAppShellState extends State<HexoraAppShell>
                 restoreLabel: widget.globalNavigationRestoreLabel,
                 child: workspace!,
               );
-        final navHeight = NavigationTokens.globalBarHeight * expansion;
+        final headerAtBottom =
+            widget.globalHeaderPosition == GlobalHeaderPosition.bottom;
+        final expandedNavHeight = headerAtBottom
+            ? NavigationTokens.bottomGlobalBarHeight
+            : NavigationTokens.globalBarHeight;
+        final navHeight = expandedNavHeight * expansion;
         // Keep the workspace constraints stable while the navigation moves.
         // A Column with an animated first-child height forces every mounted
         // workspace tab (including inactive IndexedStack children) through a
         // full layout on every frame. Translating the workspace is handled by
         // the compositor; its height changes only once after expansion ends.
-        final workspaceBottomInset = !widget.globalNavigationCollapsed &&
+        final workspaceHeaderInset = !widget.globalNavigationCollapsed &&
                 _navigationController.status == AnimationStatus.completed
-            ? NavigationTokens.globalBarHeight
+            ? expandedNavHeight
             : 0.0;
         return Stack(
           fit: StackFit.expand,
           clipBehavior: Clip.hardEdge,
           children: [
             Positioned.fill(
-              bottom: workspaceBottomInset,
+              bottom: workspaceHeaderInset,
               child: Transform.translate(
-                offset: Offset(0, navHeight),
+                offset: headerAtBottom ? Offset.zero : Offset(0, navHeight),
                 transformHitTests: true,
                 child: scopedWorkspace,
               ),
             ),
             Positioned(
-              top: 0,
+              top: headerAtBottom ? null : 0,
+              bottom: headerAtBottom ? 0 : null,
               left: 0,
               right: 0,
               height: navHeight,
@@ -127,9 +136,11 @@ class _HexoraAppShellState extends State<HexoraAppShell>
                 key: const ValueKey('global-navigation-viewport'),
                 child: ClipRect(
                   child: OverflowBox(
-                    alignment: Alignment.topCenter,
-                    minHeight: NavigationTokens.globalBarHeight,
-                    maxHeight: NavigationTokens.globalBarHeight,
+                    alignment: headerAtBottom
+                        ? Alignment.bottomCenter
+                        : Alignment.topCenter,
+                    minHeight: expandedNavHeight,
+                    maxHeight: expandedNavHeight,
                     child: FadeTransition(
                       opacity: _navigationController,
                       child: IgnorePointer(

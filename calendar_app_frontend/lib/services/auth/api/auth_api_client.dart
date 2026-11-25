@@ -28,6 +28,7 @@ class AuthApiClientImpl implements IAuthApiClient {
         'userName': userName,
         'email': email,
         'password': password,
+        'autoStatementImportEnabled': true,
         if (invitationToken != null && invitationToken.isNotEmpty)
           'invitationToken': invitationToken,
       }),

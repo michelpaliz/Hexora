@@ -278,7 +278,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           : materialL.nextPageTooltip,
       child: IconButton(
         onPressed: enabled ? onPressed : null,
-        icon: Icon(icon, size: 17),
+        icon: Icon(icon, size: 18),
         visualDensity: VisualDensity.compact,
         color: cs.onSurfaceVariant,
         disabledColor: cs.onSurfaceVariant.withValues(alpha: 0.22),
@@ -2155,7 +2155,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                 IconButton(
                   tooltip: isSpanish ? 'Cerrar filtros' : 'Close filters',
                   onPressed: () => setState(() => _advancedFiltersOpen = false),
-                  icon: const Icon(Icons.close_rounded, size: 17),
+                  icon: const Icon(Icons.close_rounded, size: 18),
                   visualDensity: VisualDensity.compact,
                 ),
               ],
@@ -2819,7 +2819,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           PopupMenuItem<String>(
             value: 'review',
             child: Row(children: [
-              Icon(Icons.fact_check_outlined, size: 17, color: cs.primary),
+              Icon(Icons.fact_check_outlined, size: 18, color: cs.primary),
               const SizedBox(width: 8),
               Text(isSpanish ? 'Revisar cambios' : 'Review changes'),
             ]),
@@ -5801,7 +5801,7 @@ class _ResultCompactTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 17),
+          Icon(icon, color: color, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

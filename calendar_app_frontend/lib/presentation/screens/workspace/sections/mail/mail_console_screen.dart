@@ -1122,20 +1122,24 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
           ? decoded
           : (decoded as Map).cast<String, dynamic>();
       final configured = account['configured'] == true;
-      if (!mounted || _mailAccountGroupId != groupId || _currentGroupId() != groupId) return;
+      if (!mounted ||
+          _mailAccountGroupId != groupId ||
+          _currentGroupId() != groupId) return;
       update(() {
         _mailAccount = configured ? account : null;
         _mailAccountConfigured = configured;
         _mailAccountLoading = false;
       });
       if (configured) {
-        await _loadThreads(refresh: true);
+        _loadThreads(refresh: true);
         if (_selectedThreadKey != null) {
           await _selectThread(_selectedThreadKey!);
         }
       }
     } catch (error) {
-      if (!mounted || _mailAccountGroupId != groupId || _currentGroupId() != groupId) return;
+      if (!mounted ||
+          _mailAccountGroupId != groupId ||
+          _currentGroupId() != groupId) return;
       update(() {
         _mailAccountLoading = false;
         _mailAccountConfigured = false;
@@ -1156,7 +1160,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     } catch (_) {
       // The inbox remains usable when the provider is temporarily unavailable.
     }
-    if (mounted) await _loadThreads(refresh: true);
+    if (mounted) _loadThreads(refresh: true);
   }
 
   String? _currentGroupId() {

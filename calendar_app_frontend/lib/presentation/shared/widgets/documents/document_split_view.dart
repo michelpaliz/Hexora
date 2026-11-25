@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// How the workspace is shared between the document list and its preview.
@@ -511,7 +512,7 @@ class _ModeButton extends StatelessWidget {
         tooltip: tooltip,
         onPressed: onPressed,
         icon: Icon(icon),
-        iconSize: 17,
+        iconSize: HexoraIconTokens.standard,
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints.tightFor(width: 30, height: 30),
         style: IconButton.styleFrom(

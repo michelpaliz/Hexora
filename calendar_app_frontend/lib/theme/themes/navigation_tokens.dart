@@ -11,7 +11,7 @@ abstract final class NavigationTokens {
   static const double sectionSize = 10;
   static const double sectionLetterSpacing = 0.35;
   static const double countSize = 11;
-  static const double iconSize = 18;
+  static const double iconSize = HexoraIconTokens.standard;
   static const double desktopRowHeight = 40;
   static const double touchRowHeight = 48;
   // Shared desktop navigation width. Keeping this centralized ensures every
@@ -31,8 +31,11 @@ abstract final class NavigationTokens {
 
   // App shell (global bar + contextual toolbar).
   static const double globalBarHeight = 52;
+  static const double bottomGlobalBarHeight = 40;
   static const double globalItemHeight = 38;
   static const double globalItemPadding = 8;
+  static const double workspaceNavigationHeight = 44;
+  static const double workspaceNavigationGap = 8;
   static const double contextBarHeight = 36;
   static const double searchHeight = 34;
   static const double sidebarToggleSize = 30;

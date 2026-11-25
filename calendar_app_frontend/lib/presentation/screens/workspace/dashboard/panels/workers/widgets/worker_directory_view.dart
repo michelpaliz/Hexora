@@ -190,7 +190,7 @@ class _WorkerDirectoryViewState extends State<WorkerDirectoryView> {
         border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.swap_vert_rounded, size: 17, color: cs.onSurfaceVariant),
+        Icon(Icons.swap_vert_rounded, size: 18, color: cs.onSurfaceVariant),
         const SizedBox(width: 5),
         DropdownButtonHideUnderline(
           child: DropdownButton<bool>(
@@ -436,7 +436,7 @@ class _DirectoryFilterMenu extends StatelessWidget {
             value: WorkerStatusFilter.all,
             enabled: value != WorkerStatusFilter.all,
             child: Row(children: [
-              const Icon(Icons.restart_alt_rounded, size: 17),
+              const Icon(Icons.restart_alt_rounded, size: 18),
               const SizedBox(width: 8),
               Text(isSpanish ? 'Restablecer' : 'Reset'),
             ]),

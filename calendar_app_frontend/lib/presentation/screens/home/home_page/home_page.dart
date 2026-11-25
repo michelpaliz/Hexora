@@ -7,6 +7,7 @@ import 'package:hexora/services/notification/domain/socket_notification_listener
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/home/home_page/widgets/home_sliver_content.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_loading_view.dart';
 import 'package:hexora/navigation/main_scaffold.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -78,7 +79,7 @@ class _HomePageState extends State<HomePage> {
     final user = context.watch<AuthService>().currentUser;
 
     if (user == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: HexoraLoadingView());
     }
 
     final bottomSafePadding = MediaQuery.of(context).padding.bottom + 16;

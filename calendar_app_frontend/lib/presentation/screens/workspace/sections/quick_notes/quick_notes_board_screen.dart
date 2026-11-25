@@ -1357,7 +1357,7 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
                             _isEs ? 'Acciones de columna' : 'Column actions',
                         icon: Icon(
                           Icons.more_vert_rounded,
-                          size: 17,
+                          size: 18,
                           color: cs.onSurfaceVariant,
                         ),
                         onSelected: (value) {

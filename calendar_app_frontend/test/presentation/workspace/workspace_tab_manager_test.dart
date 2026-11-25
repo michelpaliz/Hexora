@@ -6,6 +6,8 @@ import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_c
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab_bar.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab_manager.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 WorkspaceTab _tab(String id) => WorkspaceTab(
@@ -152,6 +154,51 @@ void main() {
 
     final editable = tester.widget<EditableText>(find.byType(EditableText));
     expect(editable.controller.text, 'unsaved invoice draft');
+  });
+
+  testWidgets('home workspace content renders below the Chrome tab strip',
+      (tester) async {
+    final manager = WorkspaceTabManager(businessId: 'business-1')
+      ..openOrActivateTab(_tab('home'));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: WorkspaceContent(
+            manager: manager,
+            builder: (_, __) => const WorkspaceMainContent(
+              child: ColoredBox(
+                key: ValueKey('home-workspace-content'),
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tabs = tester.getRect(find.byType(WorkspaceTabBar));
+    final home = tester.getRect(
+      find.byKey(const ValueKey('home-workspace-content')),
+    );
+    expect(tabs.bottom, home.top);
+    expect(
+      tester
+          .widget<Material>(
+            find.byKey(const ValueKey('workspace-tab-bar-background')),
+          )
+          .color,
+      AppColors.inputBackground,
+    );
+    final surface = tester.widget<Container>(
+      find.byKey(const ValueKey('workspace-tab-bar-surface')),
+    );
+    expect(
+      (surface.decoration! as BoxDecoration).color,
+      AppColors.inputBackground,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
@@ -329,7 +376,16 @@ void main() {
 
     expect(
       tester.getTopLeft(find.byType(WorkspaceTabBar)).dx,
-      tester.getTopRight(find.byKey(const ValueKey('module-sidebar'))).dx,
+      tester.getTopRight(find.byKey(const ValueKey('module-sidebar'))).dx +
+          NavigationTokens.workspaceNavigationGap,
+    );
+    expect(
+      tester.getTopLeft(find.byType(WorkspaceTabBar)).dx,
+      tester.getTopLeft(find.byKey(const ValueKey('main-content'))).dx,
+    );
+    expect(
+      tester.getTopRight(find.byType(WorkspaceTabBar)).dx,
+      tester.getTopRight(find.byKey(const ValueKey('main-content'))).dx,
     );
     expect(
       tester.getTopLeft(find.byKey(const ValueKey('module-sidebar'))).dy,
@@ -344,7 +400,8 @@ void main() {
     await tester.pump();
     expect(
       tester.getTopLeft(find.byType(WorkspaceTabBar)).dx,
-      tester.getTopRight(find.byKey(const ValueKey('module-sidebar'))).dx,
+      tester.getTopRight(find.byKey(const ValueKey('module-sidebar'))).dx +
+          NavigationTokens.workspaceNavigationGap,
     );
   });
 

@@ -319,7 +319,7 @@ class _ClientInvoiceComparisonViewState
         segments: [
           ButtonSegment(
             value: _IncomeAnalyticsMode.monthly,
-            icon: const Icon(LucideIcons.chartColumn, size: 17),
+            icon: const Icon(LucideIcons.chartColumn, size: 18),
             label: Text(
               compactLabels
                   ? (isSpanish ? 'Mensual' : 'Monthly')
@@ -328,7 +328,7 @@ class _ClientInvoiceComparisonViewState
           ),
           ButtonSegment(
             value: _IncomeAnalyticsMode.clients,
-            icon: const Icon(LucideIcons.arrowLeftRight, size: 17),
+            icon: const Icon(LucideIcons.arrowLeftRight, size: 18),
             label: Text(isSpanish ? 'Comparar clientes' : 'Compare clients'),
           ),
         ],

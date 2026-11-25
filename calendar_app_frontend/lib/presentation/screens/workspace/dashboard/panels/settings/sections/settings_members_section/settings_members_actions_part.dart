@@ -123,7 +123,7 @@ extension _SettingsMembersActionsPart on _SettingsMembersSectionState {
                       }
                     }
                   },
-                  icon: const Icon(Icons.copy_rounded, size: 17),
+                  icon: const Icon(Icons.copy_rounded, size: 18),
                   label: Text(es ? 'Copiar enlace' : 'Copy link'),
                 ),
               ],

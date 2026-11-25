@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 
 /// Unified 56 px mobile navigation header used by standalone screens.
 class HexoraMobileAppBar extends StatelessWidget
@@ -37,8 +38,10 @@ class HexoraMobileAppBar extends StatelessWidget
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
-      iconTheme: IconThemeData(color: cs.onSurface, size: 24),
-      actionsIconTheme: IconThemeData(color: cs.onSurface, size: 24),
+      iconTheme:
+          IconThemeData(color: cs.onSurface, size: HexoraIconTokens.appBar),
+      actionsIconTheme:
+          IconThemeData(color: cs.onSurface, size: HexoraIconTokens.appBar),
       automaticallyImplyLeading: false,
       leading: leading ??
           (canGoBack

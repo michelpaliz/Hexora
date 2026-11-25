@@ -1825,7 +1825,7 @@ class StatementsAiMatchSuggestDialog {
                 ),
                 child: Icon(
                   Icons.account_balance_wallet_outlined,
-                  size: 17,
+                  size: 18,
                   color: accent,
                 ),
               ),
@@ -1977,7 +1977,7 @@ class StatementsAiMatchSuggestDialog {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.warning_amber_rounded, size: 17, color: cs.error),
+          Icon(Icons.warning_amber_rounded, size: 18, color: cs.error),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

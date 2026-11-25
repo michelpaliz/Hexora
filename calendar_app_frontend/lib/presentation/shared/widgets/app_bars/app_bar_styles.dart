@@ -19,6 +19,11 @@ class AppBarStyles {
       ),
       iconTheme: IconThemeData(
         color: isDarkMode ? AppDarkColors.textPrimary : Colors.white,
+        size: HexoraIconTokens.appBar,
+      ),
+      actionsIconTheme: IconThemeData(
+        color: isDarkMode ? AppDarkColors.textPrimary : Colors.white,
+        size: HexoraIconTokens.appBar,
       ),
       foregroundColor: isDarkMode ? AppDarkColors.textPrimary : Colors.white,
     );

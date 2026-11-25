@@ -154,7 +154,7 @@ class VisitWorkerFilter extends StatelessWidget {
         label: isSpanish ? 'Filtro: mis visitas' : 'Filter: my visits',
         child: Chip(
           key: const ValueKey('my-visits-filter'),
-          avatar: const Icon(Icons.person_outline_rounded, size: 17),
+          avatar: const Icon(Icons.person_outline_rounded, size: 18),
           label: Text(isSpanish ? 'Mis visitas' : 'My visits'),
           side: BorderSide(color: cs.outlineVariant),
           backgroundColor: cs.primaryContainer.withValues(alpha: 0.45),
@@ -717,7 +717,7 @@ class _GeofencedVisitsViewState extends State<GeofencedVisitsView> {
           if (widget.todayOnly)
             FilledButton.tonalIcon(
               onPressed: null,
-              icon: const Icon(Icons.calendar_today_rounded, size: 17),
+              icon: const Icon(Icons.calendar_today_rounded, size: 18),
               label: Text(
                 DateFormat('dd MMM yyyy', _isSpanish ? 'es' : 'en')
                     .format(_range.start),
@@ -1631,7 +1631,7 @@ class _TrackingStatusCard extends StatelessWidget {
             ),
             TextButton.icon(
               onPressed: tracking.isBusy ? null : onEditTeam,
-              icon: const Icon(Icons.groups_2_outlined, size: 17),
+              icon: const Icon(Icons.groups_2_outlined, size: 18),
               label: Text(
                 companionNames.isEmpty
                     ? (isSpanish

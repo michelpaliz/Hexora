@@ -62,7 +62,7 @@ class ButtonStyles {
     required String label,
     required ButtonStyle style,
     required VoidCallback onPressed,
-    double iconSize = 20.0,
+    double iconSize = HexoraIconTokens.compact,
   }) {
     return ElevatedButton.icon(
       style: style,

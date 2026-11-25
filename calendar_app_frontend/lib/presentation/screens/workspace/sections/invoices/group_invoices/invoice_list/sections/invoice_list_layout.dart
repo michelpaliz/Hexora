@@ -408,7 +408,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                             tooltip:
                                 isSpanish ? 'Limpiar búsqueda' : 'Clear search',
                             onPressed: () => _setGlobalSearchDebounced(''),
-                            icon: const Icon(Icons.close_rounded, size: 17),
+                            icon: const Icon(Icons.close_rounded, size: 18),
                           ),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
@@ -464,7 +464,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                                 color: cs.onSurfaceVariant)),
                         const SizedBox(width: 3),
                         Icon(Icons.arrow_drop_down_rounded,
-                            size: 17, color: cs.onSurfaceVariant),
+                            size: 18, color: cs.onSurfaceVariant),
                       ],
                     ),
                   ),

@@ -462,7 +462,7 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
             if (trailing != null) ...[const SizedBox(width: 4), trailing],
             IconButton(
               padding: EdgeInsets.zero,
-              iconSize: 17,
+              iconSize: HexoraIconTokens.standard,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               icon: Icon(
                 obscured

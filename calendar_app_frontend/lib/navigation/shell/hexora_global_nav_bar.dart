@@ -51,6 +51,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
     this.notificationCount = 0,
     this.notificationsSelected = false,
     this.onOpenNotifications,
+    this.notificationControl,
     this.downloads,
     this.onlineMembers,
     this.profile,
@@ -61,6 +62,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
     this.workspaceStatus,
     this.collapsed = false,
     this.onToggleCollapsed,
+    this.headerPosition = GlobalHeaderPosition.top,
   });
 
   final List<HexoraNavDestination> destinations;
@@ -72,6 +74,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
   final int notificationCount;
   final bool notificationsSelected;
   final VoidCallback? onOpenNotifications;
+  final Widget? notificationControl;
   final Widget? downloads;
   final Widget? onlineMembers;
   final Widget? profile;
@@ -93,6 +96,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
   /// Toggles [collapsed]. When provided, clicking the HEXORA brand calls this
   /// instead of [onBrandTap].
   final VoidCallback? onToggleCollapsed;
+  final GlobalHeaderPosition headerPosition;
 
   // The wordmark drops before the company name, so the active workspace stays
   // identifiable longer than the Hexora brand text (responsive priority).
@@ -122,7 +126,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
     var width = 12.0;
     if (downloads != null) width += compactActions ? 44 : 112;
     if (onlineMembers != null) width += compactActions ? 44 : 136;
-    if (onOpenNotifications != null) width += 44;
+    if (notificationControl != null || onOpenNotifications != null) width += 44;
     if (profile != null) width += 50;
     if (profileDetails != null &&
         navigationDisplayMode != NavigationDisplayMode.iconsOnly &&
@@ -182,9 +186,12 @@ class HexoraGlobalNavBar extends StatelessWidget {
         // instead of being squeezed into intermediate constraints.
         final navBackground = HexoraGlobalNavColors.backgroundFor(context);
         final navForeground = HexoraGlobalNavColors.foregroundFor(context);
+        final headerAtBottom = headerPosition == GlobalHeaderPosition.bottom;
         return Container(
           key: const ValueKey('global-nav-surface'),
-          height: NavigationTokens.globalBarHeight,
+          height: headerAtBottom
+              ? NavigationTokens.bottomGlobalBarHeight
+              : NavigationTokens.globalBarHeight,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           clipBehavior: Clip.hardEdge,
           decoration: BoxDecoration(
@@ -193,6 +200,13 @@ class HexoraGlobalNavBar extends StatelessWidget {
             color: navBackground,
             image: Theme.of(context).brightness == Brightness.dark
                 ? _brandedBackground
+                : null,
+            border: headerAtBottom
+                ? Border(
+                    top: BorderSide(
+                      color: navForeground.withValues(alpha: 0.14),
+                    ),
+                  )
                 : null,
           ),
           child: Row(
@@ -250,7 +264,10 @@ class HexoraGlobalNavBar extends StatelessWidget {
                 const SizedBox(width: 4),
                 onlineMembers!,
               ],
-              if (onOpenNotifications != null) ...[
+              if (notificationControl != null) ...[
+                const SizedBox(width: 4),
+                notificationControl!,
+              ] else if (onOpenNotifications != null) ...[
                 const SizedBox(width: 4),
                 HexoraNavIconButton(
                   icon: notificationCount > 0

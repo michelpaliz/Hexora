@@ -16,16 +16,16 @@ void main() {
     await preferences.bindUser('user-a');
     expect(
       preferences.navigationDisplayMode,
-      NavigationDisplayMode.automatic,
+      NavigationDisplayMode.iconsOnly,
     );
     await preferences.setNavigationDisplayMode(
-      NavigationDisplayMode.iconsOnly,
+      NavigationDisplayMode.automatic,
     );
 
     await preferences.bindUser('user-b');
     expect(
       preferences.navigationDisplayMode,
-      NavigationDisplayMode.automatic,
+      NavigationDisplayMode.iconsOnly,
     );
     await preferences.setNavigationDisplayMode(
       NavigationDisplayMode.iconsAndText,
@@ -34,7 +34,7 @@ void main() {
     await preferences.bindUser('user-a');
     expect(
       preferences.navigationDisplayMode,
-      NavigationDisplayMode.iconsOnly,
+      NavigationDisplayMode.automatic,
     );
   });
 
@@ -54,7 +54,7 @@ void main() {
     await preferences.bindUser('new-user');
     expect(
       preferences.navigationDisplayMode,
-      NavigationDisplayMode.automatic,
+      NavigationDisplayMode.iconsOnly,
     );
   });
 
@@ -85,18 +85,38 @@ void main() {
     );
   });
 
-  test('navigation layout defaults to split and persists per user', () async {
+  test('navigation layout defaults to unified and persists per user', () async {
     final preferences = _testPreferencesProvider();
 
     await preferences.bindUser('user-a');
-    expect(preferences.navigationLayout, NavigationLayout.split);
-    await preferences.setNavigationLayout(NavigationLayout.unified);
+    expect(preferences.navigationLayout, NavigationLayout.unified);
+    await preferences.setNavigationLayout(NavigationLayout.split);
 
     await preferences.bindUser('user-b');
-    expect(preferences.navigationLayout, NavigationLayout.split);
+    expect(preferences.navigationLayout, NavigationLayout.unified);
 
     await preferences.bindUser('user-a');
-    expect(preferences.navigationLayout, NavigationLayout.unified);
+    expect(preferences.navigationLayout, NavigationLayout.split);
+  });
+
+  test('global header position defaults to bottom and persists per user',
+      () async {
+    final updates = <Map<String, dynamic>>[];
+    final preferences = UserPreferencesProvider(
+      remoteLoader: () async => <String, dynamic>{},
+      remoteUpdater: (changes) async => updates.add(changes),
+    );
+
+    await preferences.bindUser('user-a');
+    expect(preferences.globalHeaderPosition, GlobalHeaderPosition.bottom);
+    await preferences.setGlobalHeaderPosition(GlobalHeaderPosition.top);
+    expect(updates.last, {'globalHeaderPosition': 'top'});
+
+    await preferences.bindUser('user-b');
+    expect(preferences.globalHeaderPosition, GlobalHeaderPosition.bottom);
+
+    await preferences.bindUser('user-a');
+    expect(preferences.globalHeaderPosition, GlobalHeaderPosition.top);
   });
 }
 

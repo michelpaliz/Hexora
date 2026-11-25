@@ -1161,7 +1161,7 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child:
-                      Icon(LucideIcons.sparkles, size: 17, color: cs.primary),
+                      Icon(LucideIcons.sparkles, size: 18, color: cs.primary),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -1214,7 +1214,7 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
                       onPressed: widget.onOpenAssistant,
                       tooltip:
                           widget.isEs ? 'Abrir asistente' : 'Open assistant',
-                      icon: const Icon(LucideIcons.arrowUpRight, size: 17),
+                      icon: const Icon(LucideIcons.arrowUpRight, size: 18),
                       visualDensity: VisualDensity.compact,
                     ),
                 ],
@@ -1767,7 +1767,7 @@ class _StatCard extends StatelessWidget {
             decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: color, size: 17),
+            child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1896,7 +1896,7 @@ class _QuickActionTile extends StatelessWidget {
             decoration: BoxDecoration(
                 color: qa.color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8)),
-            child: Icon(qa.icon, color: qa.color, size: 17),
+            child: Icon(qa.icon, color: qa.color, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1999,7 +1999,7 @@ class _RecentActivity extends StatelessWidget {
                   decoration: BoxDecoration(
                       color: items[i].color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10)),
-                  child: Icon(items[i].icon, color: items[i].color, size: 17),
+                  child: Icon(items[i].icon, color: items[i].color, size: 18),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

@@ -839,7 +839,7 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                                     visualDensity: VisualDensity.compact,
                                     leading: Icon(
                                       Icons.receipt_long_outlined,
-                                      size: 17,
+                                      size: 18,
                                       color: cs.primary,
                                     ),
                                     title: Text(
@@ -1612,7 +1612,7 @@ class _BudgetClientStatsBoxState extends State<_BudgetClientStatsBox>
                             collapsed
                                 ? Icons.keyboard_arrow_right_rounded
                                 : Icons.keyboard_arrow_down_rounded,
-                            size: 17,
+                            size: 18,
                             color: cs.onSurfaceVariant,
                           ),
                       ],

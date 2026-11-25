@@ -357,7 +357,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                         IconButton(
                             onPressed: widget.onEditSelectedClient,
                             tooltip: l.editClient,
-                            icon: const Icon(LucideIcons.pencil, size: 17),
+                            icon: const Icon(LucideIcons.pencil, size: 18),
                             style: IconButton.styleFrom(
                               foregroundColor: cs.onSurfaceVariant,
                               hoverColor: cs.primary.withValues(alpha: 0.08),

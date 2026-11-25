@@ -52,7 +52,7 @@ User userFromJson(Map<String, dynamic> raw, {String? fallbackId}) {
   final phoneNumber = optStringAny(json, ['phoneNumber', 'phone']);
   final location = optStringAny(json, ['location', 'city']);
   final autoStatementImportEnabled =
-      optBool(json, 'autoStatementImportEnabled') ?? false;
+      optBool(json, 'autoStatementImportEnabled') ?? true;
 
   return User(
     id: id,

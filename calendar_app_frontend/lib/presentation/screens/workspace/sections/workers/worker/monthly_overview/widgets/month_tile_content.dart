@@ -47,7 +47,7 @@ class MonthTileContent extends StatelessWidget {
             ),
             child: Icon(
               Icons.calendar_today_rounded,
-              size: 17,
+              size: 18,
               color: emphasisColor,
             ),
           ),

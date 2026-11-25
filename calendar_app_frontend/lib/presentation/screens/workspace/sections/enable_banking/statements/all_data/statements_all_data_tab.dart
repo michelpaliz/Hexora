@@ -797,7 +797,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                       children: [
                         Icon(
                           Icons.tune_rounded,
-                          size: 17,
+                          size: 18,
                           color:
                               customExpanded ? cs.primary : cs.onSurfaceVariant,
                         ),
@@ -2602,7 +2602,7 @@ class _HeaderIconAction extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 1),
         child: IconButton(
           onPressed: onPressed,
-          icon: Icon(icon, size: 17),
+          icon: Icon(icon, size: 18),
           style: IconButton.styleFrom(
             minimumSize: Size(size, size),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -2653,7 +2653,7 @@ class _HeaderPageSizeSelector extends StatelessWidget {
                   SizedBox(
                     width: 22,
                     child: option == value
-                        ? Icon(Icons.check_rounded, size: 17, color: cs.primary)
+                        ? Icon(Icons.check_rounded, size: 18, color: cs.primary)
                         : null,
                   ),
                   Text('$option'),
@@ -2691,7 +2691,7 @@ class _HeaderPageSizeSelector extends StatelessWidget {
             const SizedBox(width: 4),
             Icon(
               Icons.keyboard_arrow_down_rounded,
-              size: 17,
+              size: 18,
               color: cs.onSurfaceVariant,
             ),
           ],

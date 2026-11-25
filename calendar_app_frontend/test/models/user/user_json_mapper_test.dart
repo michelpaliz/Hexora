@@ -26,6 +26,23 @@ void main() {
     expect(user.email, 'member@example.com');
   });
 
+  test('enables automatic statement import when a new profile omits it', () {
+    final user = User.fromJson(profile());
+
+    expect(user.autoStatementImportEnabled, isTrue);
+    expect(
+      User(
+        id: 'new-user',
+        name: 'New user',
+        email: 'new@example.com',
+        userName: 'new_user',
+        groupIds: const [],
+        emailVerified: false,
+      ).autoStatementImportEnabled,
+      isTrue,
+    );
+  });
+
   test('keeps identity fields required', () {
     final json = profile(email: null)..remove('_id');
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/services/auth/token/token_service.dart';
@@ -8,6 +9,7 @@ import 'package:hexora/services/business_chat/business_chat_drafts.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
@@ -17,6 +19,7 @@ import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_c
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:provider/provider.dart';
 import 'bank_transaction_chat_card.dart';
 import 'bank_transaction_picker.dart';
@@ -33,6 +36,18 @@ import 'widgets/mobile_chat_inbox_header.dart';
 import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:url_launcher/url_launcher.dart';
+
+@visibleForTesting
+bool resolveBusinessChatConversationPaneCollapsed({
+  required bool narrow,
+  required bool manuallyCollapsed,
+  required bool embedded,
+  required NavigationDisplayMode? displayMode,
+}) {
+  if (narrow) return false;
+  return manuallyCollapsed ||
+      (embedded && displayMode == NavigationDisplayMode.iconsOnly);
+}
 
 class BusinessChatScreen extends StatefulWidget {
   const BusinessChatScreen(
@@ -931,7 +946,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
               height: 38,
               child: Row(
                 children: [
-                  const Icon(Icons.attach_file_rounded, size: 17),
+                  const Icon(Icons.attach_file_rounded, size: 18),
                   const SizedBox(width: 11),
                   Text(_es ? 'Adjuntar archivo' : 'Attach file',
                       style: const TextStyle(fontSize: 13.5)),
@@ -958,7 +973,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                 height: 38,
                 child: Row(
                   children: [
-                    Icon(Icons.account_balance_outlined, size: 17),
+                    Icon(Icons.account_balance_outlined, size: 18),
                     SizedBox(width: 11),
                     Text('Compartir movimiento',
                         style: TextStyle(fontSize: 13.5)),
@@ -971,7 +986,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                 height: 38,
                 child: Row(
                   children: [
-                    Icon(Icons.receipt_long_outlined, size: 17),
+                    Icon(Icons.receipt_long_outlined, size: 18),
                     SizedBox(width: 11),
                     Text('Revisar factura', style: TextStyle(fontSize: 13.5)),
                   ],
@@ -982,7 +997,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                 height: 38,
                 child: Row(
                   children: [
-                    Icon(Icons.payments_outlined, size: 17),
+                    Icon(Icons.payments_outlined, size: 18),
                     SizedBox(width: 11),
                     Text('Revisar gasto', style: TextStyle(fontSize: 13.5)),
                   ],
@@ -993,7 +1008,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                 height: 38,
                 child: Row(
                   children: [
-                    Icon(Icons.access_time_outlined, size: 17),
+                    Icon(Icons.access_time_outlined, size: 18),
                     SizedBox(width: 11),
                     Text('Revisar horas', style: TextStyle(fontSize: 13.5)),
                   ],
@@ -2770,6 +2785,16 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    UserPreferencesProvider? preferences;
+    try {
+      preferences = context.watch<UserPreferencesProvider>();
+    } on ProviderNotFoundException {
+      // Standalone/mobile chat routes do not always mount workspace
+      // preferences. Their existing responsive behavior remains unchanged.
+    }
+    final embedded = widget.onExit == null;
+    final forceIconsOnly = embedded &&
+        preferences?.navigationDisplayMode == NavigationDisplayMode.iconsOnly;
     final workspaceCanvas = Theme.of(context).brightness == Brightness.dark
         ? Theme.of(context).scaffoldBackgroundColor
         : AppColors.workspaceCanvas;
@@ -2799,21 +2824,28 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
               ],
               Expanded(child: LayoutBuilder(builder: (context, constraints) {
                 final narrow = constraints.maxWidth < 700;
+                final conversationPaneCollapsed =
+                    resolveBusinessChatConversationPaneCollapsed(
+                  narrow: narrow,
+                  manuallyCollapsed: _chatPaneCollapsed,
+                  embedded: embedded,
+                  displayMode: preferences?.navigationDisplayMode,
+                );
                 return Row(children: [
                   if (!narrow || !_showChatOnNarrow)
                     SizedBox(
                         width: narrow
                             ? constraints.maxWidth
-                            : (_chatPaneCollapsed
+                            : (conversationPaneCollapsed
                                 ? NavigationTokens.railWidth
                                 : 250),
                         child: SidebarEdgeShell(
-                          collapsed: !narrow && _chatPaneCollapsed,
-                          onToggle: narrow
+                          collapsed: conversationPaneCollapsed,
+                          onToggle: narrow || forceIconsOnly
                               ? null
                               : () => setState(() =>
                                   _chatPaneCollapsed = !_chatPaneCollapsed),
-                          showHandle: !narrow,
+                          showHandle: !narrow && !forceIconsOnly,
                           expandTooltip: _es
                               ? 'Mostrar conversaciones'
                               : 'Show conversations',
@@ -2835,7 +2867,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                     _es ? 'Borrar búsqueda' : 'Clear search',
                               )
                             else ...[
-                              if (!_chatPaneCollapsed)
+                              if (!conversationPaneCollapsed)
                                 Padding(
                                   padding:
                                       const EdgeInsets.fromLTRB(12, 4, 12, 8),
@@ -2953,7 +2985,8 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                                           ? 'Archivo adjunto'
                                                                           : 'Attachment'))
                                                                   .toString();
-                                          if (_chatPaneCollapsed && !narrow) {
+                                          if (conversationPaneCollapsed &&
+                                              !narrow) {
                                             return _CompactConversationRailItem(
                                               icon: conversation.type == 'issue'
                                                   ? Icons.report_outlined
@@ -3207,7 +3240,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                                   icon: const Icon(
                                                                       Icons
                                                                           .account_balance_outlined,
-                                                                      size: 17),
+                                                                      size: 18),
                                                                   label: Text(_es
                                                                       ? 'Compartir movimiento bancario'
                                                                       : 'Share bank transaction'),
@@ -3220,7 +3253,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                                   icon: const Icon(
                                                                       Icons
                                                                           .receipt_long_outlined,
-                                                                      size: 17),
+                                                                      size: 18),
                                                                   label: Text(_es
                                                                       ? 'Revisar factura'
                                                                       : 'Review invoice'),
@@ -3233,7 +3266,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                                   icon: const Icon(
                                                                       Icons
                                                                           .payments_outlined,
-                                                                      size: 17),
+                                                                      size: 18),
                                                                   label: Text(_es
                                                                       ? 'Revisar gasto'
                                                                       : 'Review expense'),
@@ -3246,7 +3279,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                                   icon: const Icon(
                                                                       Icons
                                                                           .access_time_outlined,
-                                                                      size: 17),
+                                                                      size: 18),
                                                                   label: Text(_es
                                                                       ? 'Revisar horas'
                                                                       : 'Review hours'),

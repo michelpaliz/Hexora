@@ -120,8 +120,8 @@ class GroupEditorViewModel extends ChangeNotifier {
   void configureTeamInvitations(List<Map<String, dynamic>> invitations) {
     _creationInvitations = invitations
         .map((item) => {
-              'email': String(item['email'] ?? '').trim().toLowerCase(),
-              'role': String(item['role'] ?? 'member'),
+              'email': (item['email'] ?? '').toString().trim().toLowerCase(),
+              'role': (item['role'] ?? 'member').toString(),
             })
         .where((item) => (item['email'] ?? '').isNotEmpty)
         .toList(growable: false);

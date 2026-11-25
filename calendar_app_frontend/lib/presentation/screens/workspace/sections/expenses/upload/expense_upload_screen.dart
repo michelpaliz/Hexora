@@ -2775,7 +2775,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                       isLast
                           ? Icons.playlist_add_check_circle_outlined
                           : Icons.arrow_forward_rounded,
-                      size: 17,
+                      size: 18,
                     ),
               label: Text(isLast
                   ? (isEs ? 'Importar documento' : 'Import document')

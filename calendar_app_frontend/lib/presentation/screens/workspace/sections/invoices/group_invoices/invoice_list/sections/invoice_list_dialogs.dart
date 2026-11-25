@@ -165,7 +165,7 @@ extension _InvoiceListDialogs on _InvoicesTabListState {
                                       ),
                                       Icon(
                                         Icons.open_in_new_rounded,
-                                        size: 17,
+                                        size: 18,
                                         color: cs.onSurfaceVariant,
                                       ),
                                     ],

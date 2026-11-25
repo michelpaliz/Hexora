@@ -287,7 +287,7 @@ class _PermissionGroup extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(Icons.check_circle_rounded,
-                      size: 17, color: sensitive ? cs.error : cs.primary),
+                      size: 18, color: sensitive ? cs.error : cs.primary),
                   const SizedBox(width: 9),
                   Expanded(
                       child: Text(item,

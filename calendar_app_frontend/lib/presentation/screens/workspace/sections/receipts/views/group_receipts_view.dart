@@ -583,7 +583,7 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
                                 onPressed: _clearAll,
                                 icon: const Icon(
                                   Icons.filter_alt_off_outlined,
-                                  size: 17,
+                                  size: 18,
                                 ),
                                 constraints: const BoxConstraints.tightFor(
                                   width: 36,

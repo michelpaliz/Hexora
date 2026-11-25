@@ -41,7 +41,7 @@ class User {
     this.photoBlobName,
     List<String>? sharedCalendars,
     List<String>? notifications,
-    this.autoStatementImportEnabled = false,
+    this.autoStatementImportEnabled = true,
   })  : _id = id,
         _email = email,
         _calendarsIds = sharedCalendars ?? [],

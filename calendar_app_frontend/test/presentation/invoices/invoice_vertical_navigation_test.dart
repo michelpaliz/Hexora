@@ -61,6 +61,19 @@ void main() {
     expect(find.byKey(const ValueKey('invoice-wizard-rail')), findsOneWidget);
     expect(find.text('Nueva factura'), findsOneWidget);
     expect(
+      find.byKey(const ValueKey('invoice-wizard-client-name')),
+      findsOneWidget,
+    );
+    expect(find.text('Paso 1 de 4'), findsOneWidget);
+    expect(
+      tester
+          .widget<LinearProgressIndicator>(
+            find.byKey(const ValueKey('invoice-wizard-progress-bar')),
+          )
+          .value,
+      .25,
+    );
+    expect(
       find.byKey(const ValueKey('invoice-wizard-rail-toggle')),
       findsOneWidget,
     );
@@ -86,6 +99,16 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('invoice-flow-step-2')));
     await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Paso 3 de 4'), findsOneWidget);
+    expect(
+      tester
+          .widget<LinearProgressIndicator>(
+            find.byKey(const ValueKey('invoice-wizard-progress-bar')),
+          )
+          .value,
+      .75,
+    );
 
     expect(
       find.byKey(const ValueKey('invoice-line-mode-manual')),

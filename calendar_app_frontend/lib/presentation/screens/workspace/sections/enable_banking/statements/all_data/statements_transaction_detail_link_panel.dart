@@ -111,7 +111,7 @@ class _StatementsTransactionDetailLinkPanelState
           ),
           child: Icon(
             Icons.account_balance_wallet_outlined,
-            size: 17,
+            size: 18,
             color: accent,
           ),
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/navigation/shell/hexora_app_shell.dart';
 import 'package:hexora/navigation/shell/hexora_global_nav_bar.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
@@ -198,7 +199,7 @@ void main() {
     expect(tester.getTopLeft(find.byType(WorkspaceTabBar)).dy, 0);
     expect(
       tester.getTopLeft(find.byType(WorkspaceTabBar)).dx,
-      NavigationTokens.sidebarWidth,
+      NavigationTokens.sidebarWidth + NavigationTokens.workspaceNavigationGap,
     );
 
     await tester.tap(header);
@@ -420,6 +421,69 @@ void main() {
 
     tester.view.physicalSize = const Size(1280, 800);
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('bottom global header leaves workspace tabs at the top',
+      (tester) async {
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var collapsed = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => HexoraAppShell(
+              globalHeaderPosition: GlobalHeaderPosition.bottom,
+              globalNavigationCollapsed: collapsed,
+              onRestoreGlobalNavigation: () =>
+                  setState(() => collapsed = false),
+              globalNav: HexoraGlobalNavBar(
+                headerPosition: GlobalHeaderPosition.bottom,
+                destinations: const [],
+                activeId: 'home',
+                onSelected: (_) {},
+                collapsed: collapsed,
+                onToggleCollapsed: () => setState(() => collapsed = !collapsed),
+              ),
+              body: const ColoredBox(
+                key: ValueKey('bottom-header-workspace'),
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final workspace = find.byKey(const ValueKey('bottom-header-workspace'));
+    final nav = find.byKey(const ValueKey('global-nav-surface'));
+    expect(tester.getTopLeft(workspace).dy, 0);
+    expect(
+      tester.getBottomLeft(workspace).dy,
+      700 - NavigationTokens.bottomGlobalBarHeight,
+    );
+    expect(
+      tester.getTopLeft(nav).dy,
+      700 - NavigationTokens.bottomGlobalBarHeight,
+    );
+    expect(tester.getSize(nav).height, NavigationTokens.bottomGlobalBarHeight);
+
+    await tester.tap(find.byKey(const ValueKey('global-navigation-toggle')));
+    await tester.pumpAndSettle();
+    expect(tester.getBottomLeft(workspace).dy, 700);
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey('global-navigation-viewport')),
+          )
+          .height,
+      0,
+    );
     expect(tester.takeException(), isNull);
   });
 }

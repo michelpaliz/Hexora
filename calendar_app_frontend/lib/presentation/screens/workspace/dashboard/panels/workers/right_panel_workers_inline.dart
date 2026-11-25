@@ -438,12 +438,12 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
           side: BorderSide(color: cs.outlineVariant.withValues(alpha: .55)),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        icon: const Icon(Icons.calendar_month_outlined, size: 17),
+        icon: const Icon(Icons.calendar_month_outlined, size: 18),
         label: Row(mainAxisSize: MainAxisSize.min, children: [
           Text(_selectedMonthLabel(context),
               style: const TextStyle(fontSize: 12.5)),
           const SizedBox(width: 5),
-          const Icon(Icons.expand_more_rounded, size: 17),
+          const Icon(Icons.expand_more_rounded, size: 18),
         ]),
       ),
       const SizedBox(width: 6),
@@ -1650,7 +1650,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
               borderRadius: BorderRadius.circular(9),
             ),
             child: Icon(Icons.account_balance_wallet_rounded,
-                color: cs.primary, size: 17),
+                color: cs.primary, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
