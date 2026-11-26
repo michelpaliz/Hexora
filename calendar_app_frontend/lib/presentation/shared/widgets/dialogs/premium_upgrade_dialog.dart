@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 
 Future<void> showPremiumUpgradeDialog(
   BuildContext context, {
@@ -22,7 +23,7 @@ Future<void> showPremiumUpgradeDialog(
             onPressed: () {
               Navigator.of(ctx).pop();
               try {
-                Navigator.of(context).pushNamed('/upgrade-premium');
+                Navigator.of(context).pushNamed(AppRoutes.upgradePremium);
               } catch (_) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(l.upgradeToPremium)),

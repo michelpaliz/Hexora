@@ -50,11 +50,16 @@ import 'package:hexora/presentation/screens/profile/view/profile_view_screen.dar
 import 'package:hexora/presentation/screens/settings/screens/settings.dart';
 import 'package:hexora/presentation/screens/preferences/user_preferences_screen.dart';
 import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_preview_screen.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_plans_screen.dart';
 
 final Map<String, WidgetBuilder> routes = {
   AppRoutes.settings: (context) => const Settings(),
   AppRoutes.preferences: (context) => const UserPreferencesScreen(),
   AppRoutes.dashboardPreview: (context) => const DashboardPreviewScreen(),
+  AppRoutes.upgradePremium: (context) {
+    final group = ModalRoute.of(context)?.settings.arguments as Group?;
+    return PremiumPlansScreen(group: group);
+  },
   AppRoutes.loginRoute: (context) => const LoginView(),
   AppRoutes.registerRoute: (context) => const RegisterView(),
   AppRoutes.invitation: (context) => InvitationLinkScreen.fromRoute(context),

@@ -277,29 +277,62 @@ class _SettingsState extends State<Settings> {
                     ),
                   ),
                   SectionCard(
-                    child: NavTile(
-                      leading: Icon(Icons.receipt_long_outlined,
-                          color: cs.primary, size: 20),
-                      iconBgColor: cs.primary.withValues(alpha: 0.12),
-                      title: Localizations.localeOf(context).languageCode == 'es'
-                          ? 'Facturación'
-                          : 'Billing',
-                      subtitle:
-                          Localizations.localeOf(context).languageCode == 'es'
-                              ? 'Idioma predeterminado de las facturas'
-                              : 'Default invoice language',
-                      onTap: () {
-                        final group = context.read<GroupDomain?>()?.currentGroup;
-                        if (group == null) {
-                          _snack(Localizations.localeOf(context).languageCode == 'es'
-                              ? 'Selecciona una empresa primero.'
-                              : 'Select a business first.');
-                          return;
-                        }
-                        Navigator.of(context).push(MaterialPageRoute<void>(
-                          builder: (_) => BillingSettingsScreen(groupId: group.id),
-                        ));
-                      },
+                    child: Column(
+                      children: [
+                        NavTile(
+                          leading: Icon(Icons.receipt_long_outlined,
+                              color: cs.primary, size: 20),
+                          iconBgColor: cs.primary.withValues(alpha: 0.12),
+                          title: Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Facturación'
+                              : 'Billing',
+                          subtitle:
+                              Localizations.localeOf(context).languageCode == 'es'
+                                  ? 'Idioma predeterminado de las facturas'
+                                  : 'Default invoice language',
+                          onTap: () {
+                            final group = context.read<GroupDomain?>()?.currentGroup;
+                            if (group == null) {
+                              _snack(Localizations.localeOf(context).languageCode == 'es'
+                                  ? 'Selecciona una empresa primero.'
+                                  : 'Select a business first.');
+                              return;
+                            }
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => BillingSettingsScreen(groupId: group.id),
+                            ));
+                          },
+                        ),
+                        Divider(
+                          height: 0,
+                          indent: 63,
+                          color: cs.outlineVariant.withValues(alpha: 0.4),
+                        ),
+                        NavTile(
+                          leading: Icon(Icons.workspace_premium_rounded,
+                              color: cs.primary, size: 20),
+                          iconBgColor: cs.primary.withValues(alpha: 0.12),
+                          title: Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Planes y Premium'
+                              : 'Plans and Premium',
+                          subtitle: Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Primer año gratis y funciones Premium'
+                              : 'Free first year and Premium features',
+                          onTap: () {
+                            final group = context.read<GroupDomain?>()?.currentGroup;
+                            if (group == null) {
+                              _snack(Localizations.localeOf(context).languageCode == 'es'
+                                  ? 'Selecciona una empresa primero.'
+                                  : 'Select a business first.');
+                              return;
+                            }
+                            Navigator.of(context).pushNamed(
+                              AppRoutes.upgradePremium,
+                              arguments: group,
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 20),
