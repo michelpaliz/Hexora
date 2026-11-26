@@ -65,9 +65,8 @@ class _MailConsoleView extends StatelessWidget {
             label: Localizations.localeOf(context).languageCode == 'es'
                 ? 'Cuenta de correo'
                 : 'Email account',
-            onTap: () => invoke(
-              () => state.update(() => state._showMailAccountSetup = true),
-            ),
+            selected: state._showMailAccountSetup,
+            onTap: () => invoke(state._openMailAccountSetup),
           ),
         CollapsibleSidebarItem(
           key: const ValueKey('mail-footer-action'),
@@ -100,7 +99,8 @@ class _MailConsoleView extends StatelessWidget {
     final bool isDetailView = state._selectedThreadKey != null ||
         state._showCompose ||
         state._showFooterManager ||
-        state._showTemplateManager;
+        state._showTemplateManager ||
+        state._showMailAccountSetup;
 
     void mobileBack() {
       if (state._sendingReply) return;
@@ -113,11 +113,17 @@ class _MailConsoleView extends StatelessWidget {
         state._showCompose = false;
         state._showFooterManager = false;
         state._showTemplateManager = false;
+        state._showMailAccountSetup = false;
       });
     }
 
     String appBarTitle() {
       if (state._showCompose) return l.mailComposeTitle;
+      if (state._showMailAccountSetup) {
+        return Localizations.localeOf(context).languageCode == 'es'
+            ? 'Cuenta de correo'
+            : 'Email account';
+      }
       if (state._showFooterManager) return l.mailFooterCreateCta;
       if (state._showTemplateManager) return 'Templates';
       if (state._selectedThreadKey != null) {
@@ -155,6 +161,12 @@ class _MailConsoleView extends StatelessWidget {
     }
 
     Widget mobileBody() {
+      if (state._showMailAccountSetup) {
+        return state._buildMailAccountSetup(
+          embedded: true,
+          showEmbeddedHeader: false,
+        );
+      }
       if (state._showCompose) {
         return MailComposeScreen(
           groupId: state._currentGroupId(),
@@ -323,7 +335,11 @@ class _MailConsoleView extends StatelessWidget {
 
   Widget _buildDesktop(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final workspaceCanvas = theme.brightness == Brightness.light
+        ? theme.scaffoldBackgroundColor
+        : cs.surface;
     final domain = context.watch<MailDomain>();
     final threadsState = domain.threadsState;
     final threadState = state._selectedThreadKey == null
@@ -548,66 +564,71 @@ class _MailConsoleView extends StatelessWidget {
     }
 
     Widget rightPaneContent() {
-      return state._showCompose
-          ? MailComposeScreen(
-              groupId: state._currentGroupId(),
-              embedded: true,
-              onClose: () => state.update(() => state._showCompose = false),
-              onSent: () => state.update(() => state._showCompose = false),
-            )
-          : state._showFooterManager
-              ? _FooterManagerPanel(state: state)
-              : state._showTemplateManager
-                  ? _TemplatesManagerPanel(state: state)
-                  : state._selectedThreadKey == null
-                      ? const _MailReadingEmptyState()
-                      : (selectedThread == null)
-                          ? (threadState?.error != null)
-                              ? Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(l.mailConsoleLoadError),
-                                      const SizedBox(height: 8),
-                                      TextButton(
-                                        onPressed: _asyncCallback(
-                                          () => context
-                                              .read<MailDomain>()
-                                              .loadThreadDetail(
-                                                state._selectedThreadKey!,
-                                              ),
-                                        ),
-                                        child: Text(l.tryAgain),
+      return state._showMailAccountSetup
+          ? state._buildMailAccountSetup(embedded: true)
+          : state._showCompose
+              ? MailComposeScreen(
+                  groupId: state._currentGroupId(),
+                  embedded: true,
+                  onClose: () => state.update(() => state._showCompose = false),
+                  onSent: () => state.update(() => state._showCompose = false),
+                )
+              : state._showFooterManager
+                  ? _FooterManagerPanel(state: state)
+                  : state._showTemplateManager
+                      ? _TemplatesManagerPanel(state: state)
+                      : state._selectedThreadKey == null
+                          ? const _MailReadingEmptyState()
+                          : (selectedThread == null)
+                              ? (threadState?.error != null)
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(l.mailConsoleLoadError),
+                                          const SizedBox(height: 8),
+                                          TextButton(
+                                            onPressed: _asyncCallback(
+                                              () => context
+                                                  .read<MailDomain>()
+                                                  .loadThreadDetail(
+                                                    state._selectedThreadKey!,
+                                                  ),
+                                            ),
+                                            child: Text(l.tryAgain),
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    )
+                                  : const Center(
+                                      child: CircularProgressIndicator())
+                              : _ConversationPane(
+                                  thread: selectedThread,
+                                  folder: state._folder,
+                                  replyTarget: state._replyTarget,
+                                  onStartReply: state._startReply,
+                                  onReply: state._sendReply,
+                                  onCloseReply: state._closeReplyComposer,
+                                  onOpenFullReply: state._openFullReply,
+                                  replySubjectController:
+                                      state._replySubjectCtrl,
+                                  replyController: state._replyCtrl,
+                                  replyFocus: state._replyFocus,
+                                  sendingReply: state._sendingReply,
+                                  onDownloadAttachment: _asyncValueChanged(
+                                    (attachment) => state._downloadAttachment(
+                                      attachment,
+                                      domain,
+                                    ),
                                   ),
-                                )
-                              : const Center(child: CircularProgressIndicator())
-                          : _ConversationPane(
-                              thread: selectedThread,
-                              folder: state._folder,
-                              replyTarget: state._replyTarget,
-                              onStartReply: state._startReply,
-                              onReply: state._sendReply,
-                              onCloseReply: state._closeReplyComposer,
-                              onOpenFullReply: state._openFullReply,
-                              replySubjectController: state._replySubjectCtrl,
-                              replyController: state._replyCtrl,
-                              replyFocus: state._replyFocus,
-                              sendingReply: state._sendingReply,
-                              onDownloadAttachment: _asyncValueChanged(
-                                (attachment) => state._downloadAttachment(
-                                  attachment,
-                                  domain,
-                                ),
-                              ),
-                            );
+                                );
     }
 
     final workspace = Column(
       children: [
         Expanded(
-          child: state._showFooterManager ||
+          child: state._showMailAccountSetup ||
+                  state._showFooterManager ||
                   state._showTemplateManager ||
                   state._showCompose
               ? rightPaneContent()
@@ -622,7 +643,7 @@ class _MailConsoleView extends StatelessWidget {
                           width: listWidth,
                           child: ColoredBox(
                             key: const ValueKey('mail-desktop-list-surface'),
-                            color: cs.surface,
+                            color: workspaceCanvas,
                             child: middleColumn(context),
                           ),
                         ),

@@ -9,6 +9,7 @@ import 'package:hexora/services/business_chat/business_chat_drafts.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_screen.dart';
@@ -119,6 +120,12 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     final requestedGroupId = widget.groupId;
     try {
       final groupRepository = context.read<GroupDomain>().groupRepository;
+      // Presence and canonical profiles come from independent endpoints.
+      // Start both together so avatar hydration does not form a request
+      // waterfall after the conversation list is already visible.
+      final profilesFuture = groupRepository
+          .getGroupMemberProfiles(requestedGroupId)
+          .catchError((_) => <User>[]);
       final members = await _api.memberPresence(requestedGroupId);
       final photos = <String, String?>{
         for (final member in members) member.id: member.photoUrl,
@@ -127,18 +134,13 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       // The chat presence endpoint can intentionally omit profile fields.
       // Hydrate missing avatars from the canonical group member profiles so
       // incoming messages use the same photo shown everywhere else in Hexora.
-      try {
-        final profiles =
-            await groupRepository.getGroupMemberProfiles(requestedGroupId);
-        for (final profile in profiles) {
-          final current = photos[profile.id]?.trim() ?? '';
-          final photo = profile.photoUrl?.trim() ?? '';
-          if (current.isEmpty && photo.isNotEmpty) {
-            photos[profile.id] = photo;
-          }
+      final profiles = await profilesFuture;
+      for (final profile in profiles) {
+        final current = photos[profile.id]?.trim() ?? '';
+        final photo = profile.photoUrl?.trim() ?? '';
+        if (current.isEmpty && photo.isNotEmpty) {
+          photos[profile.id] = photo;
         }
-      } catch (_) {
-        // Presence photos remain a valid fallback when profile hydration fails.
       }
 
       if (!mounted || requestedGroupId != widget.groupId) return;

@@ -439,7 +439,11 @@ class _HexoraMultiSelectFilterState extends State<HexoraMultiSelectFilter> {
               onChanged: (value) => setState(() => _query = value),
             ),
             const SizedBox(height: 4),
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 2,
               children: [
                 TextButton.icon(
                   onPressed: visibleValues.isEmpty
@@ -455,7 +459,6 @@ class _HexoraMultiSelectFilterState extends State<HexoraMultiSelectFilter> {
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                   ),
                 ),
-                const Spacer(),
                 TextButton(
                   onPressed: _selected.isEmpty
                       ? null

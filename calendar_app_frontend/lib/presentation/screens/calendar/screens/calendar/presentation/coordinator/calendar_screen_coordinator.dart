@@ -195,9 +195,11 @@ class CalendarScreenCoordinator {
 
       // 7) Single, idempotent refresh (silent to avoid UX flicker)
       if (!context.mounted) return;
-      await eventDomain.manualRefresh(context, silent: true);
+      await Future.wait([
+        eventDomain.manualRefresh(context, silent: true),
+        _syncWeather(me?.location),
+      ]);
       if (_isDisposed) return;
-      await _syncWeather(me?.location);
       // UI redraw is driven by CalendarUIController's notifier listener.
     } catch (e, s) {
       devtools.log("❌ Error initializing calendar: $e\n$s");

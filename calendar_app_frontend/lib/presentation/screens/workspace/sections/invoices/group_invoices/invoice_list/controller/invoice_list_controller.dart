@@ -637,8 +637,24 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
         _mismatchOnly = !_mismatchOnly;
       });
 
+  String _invoiceClientDisplayName(Invoice invoice, AppLocalizations l) =>
+      _resolveInvoiceClient(invoice, widget.clients, l).name.trim();
+
   String _normalizedClientName(Invoice invoice, AppLocalizations l) =>
-      _invoiceFallbackClientName(invoice, l).trim().toLowerCase();
+      _invoiceClientDisplayName(invoice, l).toLowerCase();
+
+  String _clientFilterLabel(
+    String normalizedName,
+    List<Invoice> invoices,
+    AppLocalizations l,
+  ) {
+    for (final invoice in invoices) {
+      if (_normalizedClientName(invoice, l) == normalizedName) {
+        return _invoiceClientDisplayName(invoice, l);
+      }
+    }
+    return normalizedName;
+  }
 
   String _normalizedLifecycleStatus(Invoice invoice) {
     final raw = (invoice.status ?? '').trim().toLowerCase();

@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
@@ -178,10 +177,7 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
     final locale = Localizations.localeOf(context).languageCode;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final lightTheme = Theme.of(context).brightness != Brightness.dark;
-        final tabSurface = lightTheme
-            ? AppColors.inputBackground
-            : HexoraGlobalNavColors.background;
+        final tabSurface = HexoraGlobalNavColors.backgroundFor(context);
         return Material(
           key: const ValueKey('workspace-tab-bar-background'),
           // Match the surface behind the rounded outer clip so its corner
@@ -197,13 +193,6 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
               height: NavigationTokens.workspaceNavigationHeight,
               decoration: BoxDecoration(
                 color: tabSurface,
-                border: Border(
-                  bottom: BorderSide(
-                    color: lightTheme
-                        ? AppColors.inputBorder
-                        : Colors.white.withValues(alpha: 0.12),
-                  ),
-                ),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
@@ -304,6 +293,9 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
                                     ),
                                     tab: tab,
                                     active: active == tab.identity,
+                                    showSeparator: index < tabs.length - 1 &&
+                                        active != tab.identity &&
+                                        active != tabs[index + 1].identity,
                                     dirty: manager.isDirty(tab.identity),
                                     width: tabWidth,
                                     onActivate: () =>
@@ -367,14 +359,14 @@ class _TabScrollButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final foreground = HexoraGlobalNavColors.foregroundFor(context);
     return Tooltip(
       message: tooltip,
       child: IconButton(
         onPressed: enabled ? onPressed : null,
         icon: Icon(icon, size: NavigationTokens.iconSize),
-        color: cs.onSurfaceVariant,
-        disabledColor: cs.onSurfaceVariant.withValues(alpha: 0.35),
+        color: foreground,
+        disabledColor: foreground.withValues(alpha: 0.35),
         splashRadius: 14,
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints.tightFor(width: 26, height: 34),
@@ -388,6 +380,7 @@ class _WorkspaceTabButton extends StatefulWidget {
     super.key,
     required this.tab,
     required this.active,
+    required this.showSeparator,
     required this.dirty,
     required this.width,
     required this.onActivate,
@@ -396,6 +389,7 @@ class _WorkspaceTabButton extends StatefulWidget {
 
   final WorkspaceTab tab;
   final bool active;
+  final bool showSeparator;
   final bool dirty;
   final double width;
   final VoidCallback onActivate;
@@ -421,19 +415,20 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final showClose = widget.active || _hovered || _focused;
-    final lightTheme = Theme.of(context).brightness != Brightness.dark;
-    final tabForeground =
-        lightTheme ? AppColors.textPrimary : HexoraGlobalNavColors.foreground;
+    final tabForeground = HexoraGlobalNavColors.foregroundFor(context);
+    final tabSurface = HexoraGlobalNavColors.backgroundFor(context);
 
-    // Chrome-style tabs keep a visible layered surface even when inactive.
-    // The shared clipper creates the flared lower shoulders from the reference.
+    // The active surface reaches the workspace edge without an underline.
     final Color background;
     if (widget.active) {
-      background = AppColors.selectedControl;
+      background = Theme.of(context).scaffoldBackgroundColor;
     } else if (_hovered || _focused) {
-      background = Colors.white.withValues(alpha: 0.13);
+      background = Color.alphaBlend(
+        cs.primary.withValues(alpha: 0.06),
+        tabSurface,
+      );
     } else {
-      background = Colors.white.withValues(alpha: 0.07);
+      background = tabSurface;
     }
 
     return Listener(
@@ -463,7 +458,7 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
                         alignment: Alignment.center,
                         children: [
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 2, 10, 2),
+                            padding: const EdgeInsets.fromLTRB(14, 7, 10, 0),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.center,
@@ -472,7 +467,7 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
                                   widget.tab.icon,
                                   size: NavigationTokens.iconSize,
                                   color: widget.active
-                                      ? AppColors.primary
+                                      ? cs.primary
                                       : tabForeground,
                                 ),
                                 const SizedBox(width: 6),
@@ -487,8 +482,9 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
                                       context,
                                       selected: widget.active,
                                     ).copyWith(
+                                      fontWeight: FontWeight.w500,
                                       color: widget.active
-                                          ? AppColors.textPrimary
+                                          ? cs.primary
                                           : tabForeground,
                                     ),
                                   ),
@@ -506,7 +502,7 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
                                             splashRadius: 11,
                                             iconSize: 14,
                                             color: widget.active
-                                                ? AppColors.textSecondary
+                                                ? cs.onSurfaceVariant
                                                 : tabForeground,
                                             visualDensity:
                                                 VisualDensity.compact,
@@ -523,14 +519,17 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
                               ],
                             ),
                           ),
-                          if (widget.active)
-                            const Positioned(
-                              left: 12,
-                              right: 12,
-                              bottom: 0,
-                              height: 2,
+                          if (widget.showSeparator && !_hovered && !_focused)
+                            PositionedDirectional(
+                              end: 1,
+                              top: 14,
+                              bottom: 10,
+                              width: 1,
                               child: IgnorePointer(
-                                child: ColoredBox(color: AppColors.primary),
+                                child: ColoredBox(
+                                  color:
+                                      cs.outlineVariant.withValues(alpha: .5),
+                                ),
                               ),
                             ),
                           if (_focused)
@@ -563,19 +562,22 @@ class _ChromeWorkspaceTabClipper extends CustomClipper<Path> {
   static Path pathFor(Size size) {
     final width = size.width;
     final height = size.height;
-    // Keep adjacent sides close; the previous broad shoulders left a
-    // visible gutter on both sides of every tab.
-    const shoulder = 2.0;
-    const topRadius = 8.0;
+    // A small navigation strip stays visible above each tab. The lower shoulders
+    // curve out into the workspace, giving the active tab an open base.
+    const shoulder = 1.0;
+    const topRadius = 10.0;
+    const bottomRadius = 5.0;
+    const top = 6.0;
 
     return Path()
       ..moveTo(0, height)
-      ..quadraticBezierTo(shoulder, height, shoulder, height - 5)
-      ..lineTo(shoulder, topRadius)
-      ..quadraticBezierTo(shoulder, 0, shoulder + topRadius, 0)
-      ..lineTo(width - shoulder - topRadius, 0)
-      ..quadraticBezierTo(width - shoulder, 0, width - shoulder, topRadius)
-      ..lineTo(width - shoulder, height - 5)
+      ..quadraticBezierTo(shoulder, height, shoulder, height - bottomRadius)
+      ..lineTo(shoulder, top + topRadius)
+      ..quadraticBezierTo(shoulder, top, shoulder + topRadius, top)
+      ..lineTo(width - shoulder - topRadius, top)
+      ..quadraticBezierTo(
+          width - shoulder, top, width - shoulder, top + topRadius)
+      ..lineTo(width - shoulder, height - bottomRadius)
       ..quadraticBezierTo(width - shoulder, height, width, height)
       ..close();
   }
@@ -631,8 +633,7 @@ class _AllTabsButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final lightTheme = Theme.of(context).brightness != Brightness.dark;
-    final buttonForeground =
-        lightTheme ? AppColors.textSecondary : HexoraGlobalNavColors.foreground;
+    final buttonForeground = HexoraGlobalNavColors.foregroundFor(context);
     final viewport = MediaQuery.sizeOf(context);
     final width = (viewport.width - 16).clamp(1.0, 340.0).toDouble();
     final maxHeight = (viewport.height * 0.68).clamp(180.0, 560.0).toDouble();

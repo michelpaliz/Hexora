@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 
@@ -203,12 +204,19 @@ class _WorkspaceContentState extends State<WorkspaceContent>
                 key: ValueKey<String>(tab.identity.value),
                 child: TickerMode(
                   enabled: tab.identity == active,
-                  child: _tabView(
-                    context,
-                    manager,
-                    tab,
-                    tab.identity == active,
-                  ),
+                  // Restored tabs can include several data-heavy modules.
+                  // Mount each tab only after it is selected once; visited
+                  // tabs remain cached and mounted so forms, scrolling, and
+                  // controller state are still preserved between switches.
+                  child:
+                      tab.identity == active || _cache.containsKey(tab.identity)
+                          ? _tabView(
+                              context,
+                              manager,
+                              tab,
+                              tab.identity == active,
+                            )
+                          : const SizedBox.shrink(),
                 ),
               ),
           ],
@@ -289,22 +297,31 @@ class WorkspaceChromeFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.symmetric(
-        horizontal: NavigationTokens.workspaceNavigationGap,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (tabBar != null) tabBar!,
-          Expanded(
+    const horizontalInset = EdgeInsetsDirectional.symmetric(
+      horizontal: NavigationTokens.workspaceNavigationGap,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (tabBar != null)
+          ColoredBox(
+            // Paint the side gutters as part of the navigation strip too.
+            color: HexoraGlobalNavColors.backgroundFor(context),
+            child: Padding(
+              padding: horizontalInset,
+              child: tabBar!,
+            ),
+          ),
+        Expanded(
+          child: Padding(
+            padding: horizontalInset,
             child: Padding(
               padding: bodyPadding,
               child: child,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

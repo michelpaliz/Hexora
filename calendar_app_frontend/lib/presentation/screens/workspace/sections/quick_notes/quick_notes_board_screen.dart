@@ -197,22 +197,30 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
       try {
         userDomain = context.read<UserDomain>();
       } catch (_) {}
-      final data = await _api.board(widget.group.id);
-      try {
-        if (userDomain != null) {
-          final users = await userDomain.getUsersForGroup(widget.group);
-          _auditNames = {
-            for (final user in users)
-              user.id: _validAuditName(user.displayName) ??
-                  _validAuditName(user.name) ??
-                  _auditFallback,
-          };
-        }
-      } catch (_) {}
+      Map<String, String>? loadedAuditNames;
+      late Map<String, dynamic> data;
+      await Future.wait<void>([
+        () async {
+          data = await _api.board(widget.group.id);
+        }(),
+        () async {
+          try {
+            if (userDomain == null) return;
+            final users = await userDomain.getUsersForGroup(widget.group);
+            loadedAuditNames = {
+              for (final user in users)
+                user.id: _validAuditName(user.displayName) ??
+                    _validAuditName(user.name) ??
+                    _auditFallback,
+            };
+          } catch (_) {}
+        }(),
+      ]);
       final rawNotes = data['notes'] as List? ?? const [];
       final rawLimits = data['columnLimits'] as Map? ?? const {};
       if (!mounted) return;
       setState(() {
+        if (loadedAuditNames != null) _auditNames = loadedAuditNames!;
         _notes = rawNotes
             .whereType<Map>()
             .map((item) => Map<String, dynamic>.from(item))
@@ -1077,7 +1085,9 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.sizeOf(context).width < 700;
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Theme.of(context).brightness == Brightness.light
+          ? Theme.of(context).scaffoldBackgroundColor
+          : Theme.of(context).colorScheme.surface,
       floatingActionButton: isMobile
           ? FloatingActionButton.small(
               onPressed: _create,

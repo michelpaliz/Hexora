@@ -54,6 +54,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
     this.notificationControl,
     this.downloads,
     this.onlineMembers,
+    this.quickSettings,
     this.profile,
     this.profileDetails,
     this.onBack,
@@ -77,6 +78,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
   final Widget? notificationControl;
   final Widget? downloads;
   final Widget? onlineMembers;
+  final Widget? quickSettings;
   final Widget? profile;
   final Widget? profileDetails;
   final VoidCallback? onBack;
@@ -126,6 +128,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
     var width = 12.0;
     if (downloads != null) width += compactActions ? 44 : 112;
     if (onlineMembers != null) width += compactActions ? 44 : 136;
+    if (quickSettings != null) width += 44;
     if (notificationControl != null || onOpenNotifications != null) width += 44;
     if (profile != null) width += 50;
     if (profileDetails != null &&
@@ -263,6 +266,10 @@ class HexoraGlobalNavBar extends StatelessWidget {
               if (onlineMembers != null) ...[
                 const SizedBox(width: 4),
                 onlineMembers!,
+              ],
+              if (quickSettings != null) ...[
+                const SizedBox(width: 4),
+                quickSettings!,
               ],
               if (notificationControl != null) ...[
                 const SizedBox(width: 4),

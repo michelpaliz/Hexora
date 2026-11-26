@@ -128,8 +128,13 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     if (_isBootstrapped) return;
     try {
       _selectedUserFilter = null;
-      await _c.initSockets();
-      await _c.loadData(initialGroup: widget.group);
+      // Socket authentication and calendar hydration are independent startup
+      // work. Running them together avoids delaying the first calendar frame
+      // on the websocket connection path.
+      await Future.wait([
+        _c.initSockets(),
+        _c.loadData(initialGroup: widget.group),
+      ]);
       _c.calendarUI?.setShowWeatherIcons(_weatherIconsEnabled);
       _c.calendarUI?.setEventFilter(userId: _selectedUserFilter);
       // If your coordinator exposes current view, you can map it to initialIndex here.

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/models/calendar/events/event.dart';
@@ -89,7 +90,7 @@ class _Tone {
   final Color sidebarActive;
 
   static const _light = _Tone(
-    scaffold: Color(0xFFF1F5FB),
+    scaffold: AppColors.workspaceCanvas,
     surface: Colors.white,
     heroBg: Color(0xFFE7EFFC),
     inputBg: Color(0xFFF4F7FD),
@@ -243,51 +244,63 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
     final activity = <_ActivityItem>[];
     final docs = <_DocItem>[];
     bool statsLoaded = false;
+    bool invoiceStatsLoaded = false;
+    bool clientStatsLoaded = false;
 
     if (groupId != null && groupId.isNotEmpty) {
-      // Invoices
-      try {
-        final invoices = await InvoicesApi().listByGroup(groupId);
-        facturas = invoices.length;
-        pagadas = invoices.where((i) {
-          final ps = (i.paymentStatus ?? '').toLowerCase();
-          return ps == 'paid' || ps == 'pagada' || (i.paidAmount ?? 0) > 0;
-        }).length;
-        pendientes = facturas - pagadas;
-        statsLoaded = facturas > 0;
+      // These datasets are independent. Load them together so entering Home
+      // takes one network round trip window instead of three in sequence.
+      await Future.wait([
+        () async {
+          try {
+            final invoices = await InvoicesApi().listByGroup(groupId);
+            facturas = invoices.length;
+            pagadas = invoices.where((i) {
+              final ps = (i.paymentStatus ?? '').toLowerCase();
+              return ps == 'paid' || ps == 'pagada' || (i.paidAmount ?? 0) > 0;
+            }).length;
+            pendientes = facturas - pagadas;
+            invoiceStatsLoaded = facturas > 0;
 
-        final recent = [...invoices]..sort((a, b) =>
-            (b.issueDate ?? DateTime(0)).compareTo(a.issueDate ?? DateTime(0)));
-        for (final inv in recent.take(4)) {
-          final number = inv.invoiceNumber.trim();
-          final client = (inv.clientName ?? '').trim();
-          activity.add(_ActivityItem(
-            _isEs ? 'Factura creada' : 'Invoice created',
-            [if (number.isNotEmpty) '#$number', if (client.isNotEmpty) client]
-                .join(' · '),
-            inv.issueDate,
-            Icons.description_rounded,
-            _Palette.blue,
-          ));
-        }
-      } catch (_) {/* fall back below */}
-
-      // Clients
-      try {
-        final list = await ClientsApi().list(groupId: groupId);
-        clientes = list.length;
-        statsLoaded = statsLoaded || clientes > 0;
-      } catch (_) {}
-
-      // Documents
-      try {
-        final list = await PrivateDocumentsApi().list(groupId: groupId);
-        final sorted = [...list]..sort((a, b) =>
-            (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0)));
-        for (final d in sorted.take(3)) {
-          docs.add(_DocItem(d.displayTitle, d.category, d.createdAt));
-        }
-      } catch (_) {}
+            final recent = [...invoices]..sort((a, b) =>
+                (b.issueDate ?? DateTime(0))
+                    .compareTo(a.issueDate ?? DateTime(0)));
+            for (final inv in recent.take(4)) {
+              final number = inv.invoiceNumber.trim();
+              final client = (inv.clientName ?? '').trim();
+              activity.add(_ActivityItem(
+                _isEs ? 'Factura creada' : 'Invoice created',
+                [
+                  if (number.isNotEmpty) '#$number',
+                  if (client.isNotEmpty) client,
+                ].join(' · '),
+                inv.issueDate,
+                Icons.description_rounded,
+                _Palette.blue,
+              ));
+            }
+          } catch (_) {/* fall back below */}
+        }(),
+        () async {
+          try {
+            final list = await ClientsApi().list(groupId: groupId);
+            clientes = list.length;
+            clientStatsLoaded = clientes > 0;
+          } catch (_) {}
+        }(),
+        () async {
+          try {
+            final list = await PrivateDocumentsApi().list(groupId: groupId);
+            final sorted = [...list]..sort((a, b) =>
+                (b.createdAt ?? DateTime(0))
+                    .compareTo(a.createdAt ?? DateTime(0)));
+            for (final d in sorted.take(3)) {
+              docs.add(_DocItem(d.displayTitle, d.category, d.createdAt));
+            }
+          } catch (_) {}
+        }(),
+      ]);
+      statsLoaded = invoiceStatsLoaded || clientStatsLoaded;
     }
 
     // Upcoming calendar events (already loaded in the EventDomain, if any).
@@ -1104,7 +1117,7 @@ class _AskHexoraBarState extends State<_AskHexoraBar> {
     final tone = _Tone.of(context);
     final focused = _focusNode.hasFocus;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final functionalSurface = isDark ? tone.inputBg : const Color(0xFFF1F5FB);
+    final functionalSurface = isDark ? tone.inputBg : AppColors.workspaceCanvas;
     final functionalBorder = isDark ? tone.border : const Color(0xFFDCE5F2);
     final suggestions = <({String label, String prompt, IconData icon})>[
       (

@@ -657,8 +657,11 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
             : widget.initialTabIndex.clamp(0, 1);
     _createTabsController(initialIndex: idx);
     _createImportTabsController(initialIndex: widget.initialImportTabIndex);
-    loadProviders();
-    loadRecentUploads();
+    // Embedded module modes render only one side of this workspace. Avoid
+    // fetching the hidden dataset on first mount; the combined and provider
+    // management modes still receive everything they display.
+    if (!widget.listOnly) loadProviders();
+    if (!widget.uploadOnly && !widget.providerFormOnly) loadRecentUploads();
     if (widget.initialExpenseId?.trim().isNotEmpty == true) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) openExpenseEditorById(widget.initialExpenseId!);

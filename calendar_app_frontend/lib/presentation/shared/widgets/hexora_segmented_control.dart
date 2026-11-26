@@ -28,12 +28,14 @@ class HexoraSegmentedControl<T> extends StatelessWidget {
     required this.onChanged,
     this.height = 34,
     this.backgroundColor,
+    this.expandSegments = false,
   });
 
   final List<HexoraSegment<T>> segments;
   final T selected;
   final ValueChanged<T> onChanged;
   final double height;
+  final bool expandSegments;
 
   /// Track colour; defaults to the neutral [trackColor]. Use a surface colour
   /// when the control sits directly on the workspace canvas.
@@ -71,15 +73,29 @@ class HexoraSegmentedControl<T> extends StatelessWidget {
           children: [
             for (var i = 0; i < segments.length; i++) ...[
               if (i > 0) const SizedBox(width: 2),
-              _SegmentButton<T>(
-                segment: segments[i],
-                selected: segments[i].value == selected,
-                onTap: () {
-                  if (segments[i].value != selected) {
-                    onChanged(segments[i].value);
-                  }
-                },
-              ),
+              if (expandSegments)
+                Expanded(
+                  child: _SegmentButton<T>(
+                    segment: segments[i],
+                    selected: segments[i].value == selected,
+                    compact: true,
+                    onTap: () {
+                      if (segments[i].value != selected) {
+                        onChanged(segments[i].value);
+                      }
+                    },
+                  ),
+                )
+              else
+                _SegmentButton<T>(
+                  segment: segments[i],
+                  selected: segments[i].value == selected,
+                  onTap: () {
+                    if (segments[i].value != selected) {
+                      onChanged(segments[i].value);
+                    }
+                  },
+                ),
             ],
           ],
         ),
@@ -93,11 +109,13 @@ class _SegmentButton<T> extends StatelessWidget {
     required this.segment,
     required this.selected,
     required this.onTap,
+    this.compact = false,
   });
 
   final HexoraSegment<T> segment;
   final bool selected;
   final VoidCallback onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +157,7 @@ class _SegmentButton<T> extends StatelessWidget {
             splashColor: cs.primary.withValues(alpha: 0.08),
             highlightColor: Colors.transparent,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 10),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -153,21 +171,9 @@ class _SegmentButton<T> extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                   ],
-                  // The invisible semibold copy reserves the widest label so
-                  // the weight change does not move neighbouring tabs.
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Opacity(
-                        opacity: 0,
-                        child: ExcludeSemantics(
-                          child: Text(segment.label,
-                              maxLines: 1,
-                              style:
-                                  base?.copyWith(fontWeight: FontWeight.w600)),
-                        ),
-                      ),
-                      AnimatedDefaultTextStyle(
+                  if (compact)
+                    Expanded(
+                      child: AnimatedDefaultTextStyle(
                         duration: duration,
                         curve: HexoraMotion.enter,
                         style: (base ?? const TextStyle()).copyWith(
@@ -175,10 +181,43 @@ class _SegmentButton<T> extends StatelessWidget {
                           fontWeight:
                               selected ? FontWeight.w600 : FontWeight.w400,
                         ),
-                        child: Text(segment.label, maxLines: 1),
+                        child: Text(
+                          segment.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                    ],
-                  ),
+                    )
+                  else
+                    // The invisible semibold copy reserves the widest label
+                    // so the weight change does not move neighbouring tabs.
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Opacity(
+                          opacity: 0,
+                          child: ExcludeSemantics(
+                            child: Text(
+                              segment.label,
+                              maxLines: 1,
+                              style:
+                                  base?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                        AnimatedDefaultTextStyle(
+                          duration: duration,
+                          curve: HexoraMotion.enter,
+                          style: (base ?? const TextStyle()).copyWith(
+                            color: foreground,
+                            fontWeight:
+                                selected ? FontWeight.w600 : FontWeight.w400,
+                          ),
+                          child: Text(segment.label, maxLines: 1),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/presentation/shared/widgets/app_bars/app_bar_styles.dart';
 import 'package:hexora/theme/themes/compact_component_theme.dart';
 import 'package:hexora/theme/themes/theme_variant.dart';
@@ -20,7 +21,7 @@ final ThemeData neutralLightTheme = compactComponentTheme(
       surface: Color(0xFFFFFFFF),
       onSurface: Color(0xFF172033),
       surfaceContainerLowest: Color(0xFFFFFFFF),
-      surfaceContainerLow: Color(0xFFF8FAFC),
+      surfaceContainerLow: AppColors.workspaceCanvas,
       surfaceContainer: Color(0xFFF1F5F9),
       surfaceContainerHigh: Color(0xFFE8EEF5),
       surfaceContainerHighest: Color(0xFFDDE5EF),
@@ -31,7 +32,7 @@ final ThemeData neutralLightTheme = compactComponentTheme(
       onError: Colors.white,
     ),
     textTheme: AppTypography.materialTextTheme(brightness: Brightness.light),
-    scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+    scaffoldBackgroundColor: AppColors.workspaceCanvas,
     appBarTheme: AppBarStyles.defaultAppBarTheme(),
     extensions: <ThemeExtension<dynamic>>[
       AppTypography.light(scale: 1.0),

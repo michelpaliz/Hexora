@@ -127,7 +127,6 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       revision == _threadSelectionRevision &&
       threadKey == _selectedThreadKey;
 
-  Timer? _threadDebounce;
   Timer? _threadSearchDebounce;
 
   TextEditingController get _threadSearchController =>
@@ -136,6 +135,16 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   void update(VoidCallback fn) {
     if (!mounted) return;
     setState(fn);
+  }
+
+  void _openMailAccountSetup() {
+    update(() {
+      _selectedThreadKey = null;
+      _showCompose = false;
+      _showFooterManager = false;
+      _showTemplateManager = false;
+      _showMailAccountSetup = true;
+    });
   }
 
   final TextEditingController _footerNameCtrl = TextEditingController();
@@ -207,7 +216,6 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     _replySubjectController?.dispose();
     _replyCtrl.dispose();
     _threadSearchCtrl?.dispose();
-    _threadDebounce?.cancel();
     _threadSearchDebounce?.cancel();
     _footerNameCtrl.dispose();
     _footerTextCtrl.dispose();
@@ -238,16 +246,13 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   }
 
   void _loadThreads({required bool refresh}) {
-    _threadDebounce?.cancel();
-    _threadDebounce = Timer(const Duration(milliseconds: 200), () {
-      if (!mounted) return;
-      final query = (_threadSearchCtrl?.text ?? '').trim();
-      context.read<MailDomain>().loadThreads(
-            folder: _folder,
-            refresh: refresh,
-            query: query,
-          );
-    });
+    if (!mounted) return;
+    final query = (_threadSearchCtrl?.text ?? '').trim();
+    context.read<MailDomain>().loadThreads(
+          folder: _folder,
+          refresh: refresh,
+          query: query,
+        );
   }
 
   void _onThreadSearchChanged(String value) {
@@ -272,7 +277,8 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     if (_folder == folder &&
         !_showCompose &&
         !_showFooterManager &&
-        !_showTemplateManager) {
+        !_showTemplateManager &&
+        !_showMailAccountSetup) {
       return;
     }
     setState(() {
@@ -281,6 +287,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       _showCompose = false;
       _showFooterManager = false;
       _showTemplateManager = false;
+      _showMailAccountSetup = false;
     });
     _syncRoute();
     _loadThreads(refresh: true);
@@ -304,6 +311,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       _showFooterManager = false;
       _showTemplateManager = false;
       _showCompose = false;
+      _showMailAccountSetup = false;
       _selectedThreadKey = threadKey;
       _replyTarget = null;
       _replyDraftMessageId = null;
@@ -565,6 +573,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       _replyTarget = null;
       _showFooterManager = false;
       _showTemplateManager = false;
+      _showMailAccountSetup = false;
       _selectedThreadKey = null;
     });
   }
@@ -636,6 +645,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       _showFooterManager = true;
       _showTemplateManager = false;
       _showCompose = false;
+      _showMailAccountSetup = false;
       _selectedThreadKey = null;
     });
     _syncRoute();
@@ -646,6 +656,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
       _showTemplateManager = true;
       _showFooterManager = false;
       _showCompose = false;
+      _showMailAccountSetup = false;
       _selectedThreadKey = null;
       _templateError = null;
     });
@@ -1195,27 +1206,36 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     if (_mailAccountLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (!_mailAccountConfigured || _showMailAccountSetup) {
-      return _MailAccountSetup(
-        key: ValueKey('mail-account-${_currentGroupId()}'),
-        groupId: _currentGroupId(),
-        initialAccount: _mailAccount,
-        error: _mailAccountError,
-        canCancel: _mailAccountConfigured,
-        canManage: context.read<GroupDashboardState>().canSeeAdmin,
-        onCancel: () => update(() => _showMailAccountSetup = false),
-        onSaved: (account) {
-          update(() {
-            _mailAccount = account;
-            _mailAccountConfigured = true;
-            _showMailAccountSetup = false;
-            _mailAccountError = null;
-          });
-          unawaited(_syncMailAccount());
-        },
-      );
+    if (!_mailAccountConfigured) {
+      return _buildMailAccountSetup(embedded: false);
     }
     return _MailConsoleView(state: this);
+  }
+
+  Widget _buildMailAccountSetup({
+    required bool embedded,
+    bool showEmbeddedHeader = true,
+  }) {
+    return _MailAccountSetup(
+      key: ValueKey('mail-account-${_currentGroupId()}'),
+      groupId: _currentGroupId(),
+      initialAccount: _mailAccount,
+      error: _mailAccountError,
+      canCancel: _mailAccountConfigured,
+      canManage: context.read<GroupDashboardState>().canSeeAdmin,
+      embedded: embedded,
+      showEmbeddedHeader: showEmbeddedHeader,
+      onCancel: () => update(() => _showMailAccountSetup = false),
+      onSaved: (account) {
+        update(() {
+          _mailAccount = account;
+          _mailAccountConfigured = true;
+          _showMailAccountSetup = false;
+          _mailAccountError = null;
+        });
+        unawaited(_syncMailAccount());
+      },
+    );
   }
 
   Future<void> _downloadAttachment(

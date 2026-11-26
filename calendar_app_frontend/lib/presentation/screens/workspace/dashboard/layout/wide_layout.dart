@@ -9,6 +9,7 @@ import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/navigation/shell/hexora_app_shell.dart';
 import 'package:hexora/navigation/shell/hexora_global_nav_bar.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
+import 'package:hexora/navigation/shell/hexora_quick_settings.dart';
 import 'package:hexora/navigation/shell/worker_status_indicator.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
@@ -310,13 +311,14 @@ class WideLayout extends StatelessWidget {
                                           group: state.group,
                                           embedded: true,
                                         )
-                                      : _fallbackPanel(state, section),
+                                      : _fallbackPanel(state, tab),
         ),
       ],
     );
   }
 
-  Widget _fallbackPanel(GroupDashboardState state, String section) {
+  Widget _fallbackPanel(GroupDashboardState state, WorkspaceTab tab) {
+    final section = tab.section;
     final panel = GroupDashboardRightPanel(
       activeAnchor: section,
       counts: state.counts,
@@ -328,6 +330,8 @@ class WideLayout extends StatelessWidget {
       onOpenCalendar: () => state.openSection('calendar'),
       onOpenNotifications: () => state.openSection('notifications'),
       onOpenSettings: () => state.openSection('settings'),
+      settingsNavigationRevision:
+          int.tryParse(tab.arguments['navigationRevision'] ?? '') ?? 0,
     );
     if (section == Sections.businessChat) {
       return WorkspaceMainContent(child: panel);
@@ -1228,6 +1232,10 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
           notificationCount: unreadNotifications,
           notificationsSelected: activeSection == Sections.notifications,
           onOpenNotifications: () => state.openSection(Sections.notifications),
+          quickSettings: HexoraQuickSettingsButton(
+            headerPosition: preferences.globalHeaderPosition,
+            onOpenAllPreferences: state.openPersonalSettings,
+          ),
           notificationControl: NotificationPreviewPopover(
             notifications: notifications,
             unreadCount: unreadNotifications,

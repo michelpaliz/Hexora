@@ -7,6 +7,8 @@ import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_c
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user_preferences.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';
@@ -237,21 +239,25 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     });
     try {
       final token = await _token();
-      final items = await _repo.getWorkers(
-        widget.group.id,
-        token,
-        status: _statusFilter == WorkerStatusFilter.all
-            ? null
-            : (_statusFilter == WorkerStatusFilter.inactive
-                ? WorkerStatus.archived
-                : WorkerStatus.active),
-      );
-      final totals = await _repo.getActiveWorkersTotals(
-        widget.group.id,
-        token,
-        year: _totalsYear,
-        month: _totalsMonth,
-      );
+      final results = await Future.wait<Object?>([
+        _repo.getWorkers(
+          widget.group.id,
+          token,
+          status: _statusFilter == WorkerStatusFilter.all
+              ? null
+              : (_statusFilter == WorkerStatusFilter.inactive
+                  ? WorkerStatus.archived
+                  : WorkerStatus.active),
+        ),
+        _repo.getActiveWorkersTotals(
+          widget.group.id,
+          token,
+          year: _totalsYear,
+          month: _totalsMonth,
+        ),
+      ]);
+      final items = results[0]! as List<Worker>;
+      final totals = results[1]! as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
         _workers = items;
@@ -586,13 +592,19 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
   Widget _buildNavigation(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isEs = _isSpanish(context);
+    final preferences = context.watch<UserPreferencesProvider?>();
+    final forceIconsOnly =
+        preferences?.navigationDisplayMode == NavigationDisplayMode.iconsOnly;
 
-    if (_sideMenuCollapsed) {
+    if (_sideMenuCollapsed || forceIconsOnly) {
       return SizedBox(
         width: _collapsedMenuWidth,
         child: SidebarEdgeShell(
           collapsed: true,
-          onToggle: () => setState(() => _sideMenuCollapsed = false),
+          onToggle: forceIconsOnly
+              ? null
+              : () => setState(() => _sideMenuCollapsed = false),
+          showHandle: !forceIconsOnly,
           headerTitle: l.workersLabel,
           collapseInHeader: true,
           child: _WorkersCollapsedRail(

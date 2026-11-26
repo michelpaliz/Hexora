@@ -33,6 +33,7 @@ class GroupDashboardRightPanel extends StatelessWidget {
   final VoidCallback onOpenCalendar;
   final VoidCallback onOpenNotifications;
   final VoidCallback onOpenSettings;
+  final int settingsNavigationRevision;
 
   const GroupDashboardRightPanel({
     super.key,
@@ -46,6 +47,7 @@ class GroupDashboardRightPanel extends StatelessWidget {
     required this.onOpenCalendar,
     required this.onOpenNotifications,
     required this.onOpenSettings,
+    this.settingsNavigationRevision = 0,
   });
 
   @override
@@ -164,7 +166,10 @@ class GroupDashboardRightPanel extends StatelessWidget {
         break;
 
       case 'settings':
-        content = SettingsInlinePanel(group: group);
+        content = SettingsInlinePanel(
+          key: ValueKey('settings-personal-$settingsNavigationRevision'),
+          group: group,
+        );
         break;
 
       default:

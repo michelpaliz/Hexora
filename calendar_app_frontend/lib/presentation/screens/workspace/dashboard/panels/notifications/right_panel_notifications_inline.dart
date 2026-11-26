@@ -309,21 +309,24 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
     });
     try {
       final downloadsStore = DownloadJobsStore.instance;
-      if (downloadsStore.boundGroupId == widget.group.id &&
-          downloadsStore.loadedOnce) {
-        await downloadsStore.refresh();
-      } else {
-        await downloadsStore.bindGroup(widget.group.id);
-      }
-      await OcrImportJobsStore.instance.refresh();
-      var jobNotifications = const <JobNotification>[];
-      try {
-        jobNotifications =
-            await NotificationApiClient().getJobNotifications(unread: true);
-      } catch (_) {
-        jobNotifications = const <JobNotification>[];
-      }
-      final data = await _viewModel.fetchNotificationsForGroup(widget.group.id);
+      final results = await Future.wait<Object?>([
+        downloadsStore.boundGroupId == widget.group.id &&
+                downloadsStore.loadedOnce
+            ? downloadsStore.refresh()
+            : downloadsStore.bindGroup(widget.group.id),
+        OcrImportJobsStore.instance.refresh(),
+        () async {
+          try {
+            return await NotificationApiClient()
+                .getJobNotifications(unread: true);
+          } catch (_) {
+            return const <JobNotification>[];
+          }
+        }(),
+        _viewModel.fetchNotificationsForGroup(widget.group.id),
+      ]);
+      final jobNotifications = results[2]! as List<JobNotification>;
+      final data = results[3]! as List<NotificationUser>;
       // Refresh domain so the nav-bar badge count reflects the server's
       // current read state (domain may be stale from the initial app load).
       final user = _viewModel.userDomain.user;

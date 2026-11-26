@@ -8,6 +8,8 @@ class _MailAccountSetup extends StatefulWidget {
     required this.error,
     required this.canCancel,
     required this.canManage,
+    this.embedded = false,
+    this.showEmbeddedHeader = true,
     required this.onCancel,
     required this.onSaved,
   });
@@ -17,6 +19,8 @@ class _MailAccountSetup extends StatefulWidget {
   final String? error;
   final bool canCancel;
   final bool canManage;
+  final bool embedded;
+  final bool showEmbeddedHeader;
   final VoidCallback onCancel;
   final ValueChanged<Map<String, dynamic>> onSaved;
 
@@ -69,8 +73,16 @@ class _MailAccountSetupState extends State<_MailAccountSetup> {
   @override
   void dispose() {
     for (final controller in [
-      _email, _displayName, _imapHost, _imapPort, _imapUser, _imapPassword,
-      _smtpHost, _smtpPort, _smtpUser, _smtpPassword,
+      _email,
+      _displayName,
+      _imapHost,
+      _imapPort,
+      _imapUser,
+      _imapPassword,
+      _smtpHost,
+      _smtpPort,
+      _smtpUser,
+      _smtpPassword,
     ]) {
       controller.dispose();
     }
@@ -78,7 +90,8 @@ class _MailAccountSetupState extends State<_MailAccountSetup> {
   }
 
   String? _required(String? value) {
-    if ((value ?? '').trim().isEmpty) return _t('Campo obligatorio', 'Required field');
+    if ((value ?? '').trim().isEmpty)
+      return _t('Campo obligatorio', 'Required field');
     return null;
   }
 
@@ -146,14 +159,17 @@ class _MailAccountSetupState extends State<_MailAccountSetup> {
         var message = response.body;
         try {
           final body = jsonDecode(response.body);
-          if (body is Map && body['error'] != null) message = body['error'].toString();
+          if (body is Map && body['error'] != null)
+            message = body['error'].toString();
         } catch (_) {}
         throw Exception(message);
       }
       final decoded = jsonDecode(response.body);
       widget.onSaved((decoded as Map).cast<String, dynamic>());
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+      if (mounted)
+        setState(
+            () => _error = error.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -177,8 +193,10 @@ class _MailAccountSetupState extends State<_MailAccountSetup> {
         border: const OutlineInputBorder(),
         suffixIcon: password
             ? IconButton(
-                onPressed: () => setState(() => _showPasswords = !_showPasswords),
-                icon: Icon(_showPasswords ? Icons.visibility_off : Icons.visibility),
+                onPressed: () =>
+                    setState(() => _showPasswords = !_showPasswords),
+                icon: Icon(
+                    _showPasswords ? Icons.visibility_off : Icons.visibility),
               )
             : null,
       ),
@@ -200,103 +218,157 @@ class _MailAccountSetupState extends State<_MailAccountSetup> {
         ),
       );
     }
-    return Scaffold(
-      appBar: AppBar(
-        leading: widget.canCancel
-            ? IconButton(onPressed: widget.onCancel, icon: const Icon(Icons.arrow_back))
-            : null,
-        title: Text(_t('Cuenta de correo del negocio', 'Business email account')),
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 820),
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.all(24),
-              children: [
-                Text(
-                  _t('Conecta una cuenta que pertenezca a este negocio. Los mensajes solo estarán disponibles dentro de este negocio.',
-                      'Connect an account owned by this business. Its messages will only be available inside this business.'),
-                  style: theme.textTheme.bodyLarge,
+    final body = Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 820),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              Text(
+                _t('Conecta una cuenta que pertenezca a este negocio. Los mensajes solo estarán disponibles dentro de este negocio.',
+                    'Connect an account owned by this business. Its messages will only be available inside this business.'),
+                style: theme.textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 20),
+              Wrap(spacing: 8, children: [
+                OutlinedButton.icon(
+                  onPressed: () => _applyProvider('gmail'),
+                  icon: const Icon(Icons.mail_outline),
+                  label: const Text('Gmail'),
                 ),
-                const SizedBox(height: 20),
-                Wrap(spacing: 8, children: [
-                  OutlinedButton.icon(
-                    onPressed: () => _applyProvider('gmail'),
-                    icon: const Icon(Icons.mail_outline),
-                    label: const Text('Gmail'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => _applyProvider('outlook'),
-                    icon: const Icon(Icons.mail_outline),
-                    label: const Text('Microsoft 365'),
-                  ),
-                ]),
-                const SizedBox(height: 20),
-                _field(_email, _t('Correo del negocio', 'Business email'),
-                    keyboardType: TextInputType.emailAddress),
-                const SizedBox(height: 12),
-                _field(_displayName, _t('Nombre del remitente', 'Sender name'), validator: (_) => null),
-                const SizedBox(height: 24),
-                Text('IMAP', style: theme.textTheme.titleMedium),
-                const SizedBox(height: 12),
-                _field(_imapHost, _t('Servidor IMAP', 'IMAP host')),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(child: _field(_imapPort, _t('Puerto IMAP', 'IMAP port'),
-                      keyboardType: TextInputType.number, validator: _portValidator)),
-                  const SizedBox(width: 12),
-                  Expanded(child: SwitchListTile(
-                    value: _imapSecure,
-                    onChanged: (value) => setState(() => _imapSecure = value),
-                    title: Text(_t('Conexión segura', 'Secure connection')),
-                  )),
-                ]),
-                const SizedBox(height: 12),
-                _field(_imapUser, _t('Usuario IMAP', 'IMAP username')),
-                const SizedBox(height: 12),
-                _field(_imapPassword, _t('Contraseña IMAP', 'IMAP password'),
-                    password: true, validator: _passwordValidator),
-                const SizedBox(height: 24),
-                Text('SMTP', style: theme.textTheme.titleMedium),
-                const SizedBox(height: 12),
-                _field(_smtpHost, _t('Servidor SMTP', 'SMTP host')),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(child: _field(_smtpPort, _t('Puerto SMTP', 'SMTP port'),
-                      keyboardType: TextInputType.number, validator: _portValidator)),
-                  const SizedBox(width: 12),
-                  Expanded(child: SwitchListTile(
-                    value: _smtpSecure,
-                    onChanged: (value) => setState(() => _smtpSecure = value),
-                    title: Text(_t('Conexión segura', 'Secure connection')),
-                  )),
-                ]),
-                const SizedBox(height: 12),
-                _field(_smtpUser, _t('Usuario SMTP', 'SMTP username')),
-                const SizedBox(height: 12),
-                _field(_smtpPassword, _t('Contraseña SMTP', 'SMTP password'),
-                    password: true, validator: _passwordValidator),
-                if (_error != null) ...[
-                  const SizedBox(height: 16),
-                  Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
-                ],
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: _saving ? null : _save,
-                  icon: _saving
-                      ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.check_circle_outline),
-                  label: Text(_saving
-                      ? _t('Verificando...', 'Verifying...')
-                      : _t('Verificar y guardar', 'Verify and save')),
+                OutlinedButton.icon(
+                  onPressed: () => _applyProvider('outlook'),
+                  icon: const Icon(Icons.mail_outline),
+                  label: const Text('Microsoft 365'),
                 ),
+              ]),
+              const SizedBox(height: 20),
+              _field(_email, _t('Correo del negocio', 'Business email'),
+                  keyboardType: TextInputType.emailAddress),
+              const SizedBox(height: 12),
+              _field(_displayName, _t('Nombre del remitente', 'Sender name'),
+                  validator: (_) => null),
+              const SizedBox(height: 24),
+              Text('IMAP', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 12),
+              _field(_imapHost, _t('Servidor IMAP', 'IMAP host')),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(
+                    child: _field(_imapPort, _t('Puerto IMAP', 'IMAP port'),
+                        keyboardType: TextInputType.number,
+                        validator: _portValidator)),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: SwitchListTile(
+                  value: _imapSecure,
+                  onChanged: (value) => setState(() => _imapSecure = value),
+                  title: Text(_t('Conexión segura', 'Secure connection')),
+                )),
+              ]),
+              const SizedBox(height: 12),
+              _field(_imapUser, _t('Usuario IMAP', 'IMAP username')),
+              const SizedBox(height: 12),
+              _field(_imapPassword, _t('Contraseña IMAP', 'IMAP password'),
+                  password: true, validator: _passwordValidator),
+              const SizedBox(height: 24),
+              Text('SMTP', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 12),
+              _field(_smtpHost, _t('Servidor SMTP', 'SMTP host')),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(
+                    child: _field(_smtpPort, _t('Puerto SMTP', 'SMTP port'),
+                        keyboardType: TextInputType.number,
+                        validator: _portValidator)),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: SwitchListTile(
+                  value: _smtpSecure,
+                  onChanged: (value) => setState(() => _smtpSecure = value),
+                  title: Text(_t('Conexión segura', 'Secure connection')),
+                )),
+              ]),
+              const SizedBox(height: 12),
+              _field(_smtpUser, _t('Usuario SMTP', 'SMTP username')),
+              const SizedBox(height: 12),
+              _field(_smtpPassword, _t('Contraseña SMTP', 'SMTP password'),
+                  password: true, validator: _passwordValidator),
+              if (_error != null) ...[
+                const SizedBox(height: 16),
+                Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
               ],
-            ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _saving ? null : _save,
+                icon: _saving
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.check_circle_outline),
+                label: Text(_saving
+                    ? _t('Verificando...', 'Verifying...')
+                    : _t('Verificar y guardar', 'Verify and save')),
+              ),
+            ],
           ),
         ),
       ),
+    );
+    if (widget.embedded) {
+      return ColoredBox(
+        color: theme.scaffoldBackgroundColor,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (widget.showEmbeddedHeader)
+              Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: theme.colorScheme.outlineVariant),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    if (widget.canCancel)
+                      IconButton(
+                        onPressed: widget.onCancel,
+                        icon: const Icon(Icons.arrow_back_rounded),
+                      ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        _t('Cuenta de correo del negocio',
+                            'Business email account'),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(child: body),
+          ],
+        ),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(
+        leading: widget.canCancel
+            ? IconButton(
+                onPressed: widget.onCancel,
+                icon: const Icon(Icons.arrow_back_rounded),
+              )
+            : null,
+        title:
+            Text(_t('Cuenta de correo del negocio', 'Business email account')),
+      ),
+      body: body,
     );
   }
 }

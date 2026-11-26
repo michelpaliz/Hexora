@@ -12,6 +12,40 @@ import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 
 void main() {
+  for (final width in [1104.0, 1400.0, 1720.0]) {
+    testWidgets('client filter keeps usable width with all columns at $width',
+        (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = Size(width, 700);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      await tester.pumpWidget(const MaterialApp(
+        home: Scaffold(
+          body: CompactDocumentTableHeader(
+            identityLabel: 'Factura',
+            actionsWidth: 96,
+            showDeliveryColumn: true,
+            invoiceColumnOrder: true,
+            preferWideClient: true,
+            visibleFinancialColumns: {
+              HexoraFinancialColumn.date,
+              HexoraFinancialColumn.concept,
+              HexoraFinancialColumn.notes,
+              HexoraFinancialColumn.taxableBase,
+              HexoraFinancialColumn.vat,
+              HexoraFinancialColumn.total,
+              HexoraFinancialColumn.payment,
+            },
+          ),
+        ),
+      ));
+      expect(tester.takeException(), isNull);
+      final client = find.byKey(const ValueKey('document-client-header'));
+      expect(tester.getSize(client).width, greaterThanOrEqualTo(219.99));
+      expect(find.text('Client'), findsOneWidget);
+    });
+  }
+
   for (final brightness in Brightness.values) {
     testWidgets('invoice columns and status slots align in $brightness',
         (tester) async {

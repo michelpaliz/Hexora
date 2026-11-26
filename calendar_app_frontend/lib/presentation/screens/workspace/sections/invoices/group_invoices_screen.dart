@@ -428,6 +428,16 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     return (qp.sortBy, qp.sortDir);
   }
 
+  void _mergeUnnumberedReceiptDraft(Receipt? receipt) {
+    if (!mounted || receipt == null) return;
+    if (_receiptDrafts.any((item) => item.id == receipt.id)) return;
+    setState(() {
+      _receipts.removeWhere((item) => item.id == receipt.id);
+      _receiptDrafts.insert(0, receipt);
+      _selectedReceipt ??= receipt;
+    });
+  }
+
   Future<void> _loadAll({
     bool sortingInvoices = false,
     bool emitErrorSnack = false,
@@ -443,6 +453,46 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     try {
       final (sortBy, sortDir) = _invoiceSortParams();
       final previousSelectedClientId = _selectedClient?.id;
+      // The compatibility lookup is independent from the primary invoice,
+      // receipt, client, and billing requests. Start it at the same time so
+      // it does not add another serial network wait to the first render.
+      final unnumberedDraftFuture = () async {
+        try {
+          final lookup = await _receiptsApi.lookupUnnumberedDraft(
+            groupId: widget.group.id,
+          );
+          var receipt = lookup.receipt;
+          final lookupId = (lookup.existingReceiptId ?? '').trim();
+          if (lookup.exists && receipt == null && lookupId.isNotEmpty) {
+            receipt = await _receiptsApi.getById(lookupId);
+          }
+          return receipt;
+        } catch (_) {
+          // Non-blocking fallback for deployments where the draft list
+          // endpoint omits the current unnumbered receipt.
+          return null;
+        }
+      }();
+      final pendingInvoiceId = _pendingInitialInvoiceId;
+      final initialInvoiceFuture = () async {
+        if (_selectedMenu != 'invoice_editor' || pendingInvoiceId == null) {
+          return null;
+        }
+        try {
+          var invoice = await _invoicesApi.getById(pendingInvoiceId);
+          if (invoice.lines.isEmpty) {
+            final lines = await _linesApi.list(pendingInvoiceId);
+            if (lines.isNotEmpty) {
+              invoice = invoice.copyWith(lines: lines);
+            }
+          }
+          return invoice;
+        } catch (_) {
+          // The list result remains a safe fallback when detail hydration is
+          // temporarily unavailable. The editor must still be reachable.
+          return null;
+        }
+      }();
       final results = await Future.wait([
         _clientsApi.list(
           groupId: widget.group.id,
@@ -474,46 +524,20 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       if (!mounted) return;
       final issuedReceipts = List<Receipt>.from(results[3] as List<Receipt>);
       final draftReceipts = List<Receipt>.from(results[4] as List<Receipt>);
-
-      try {
-        final lookup = await _receiptsApi.lookupUnnumberedDraft(
-          groupId: widget.group.id,
-        );
-        Receipt? unnumberedDraft = lookup.receipt;
-        final lookupId = (lookup.existingReceiptId ?? '').trim();
-        if (lookup.exists && unnumberedDraft == null && lookupId.isNotEmpty) {
-          unnumberedDraft = await _receiptsApi.getById(lookupId);
-        }
-        if (unnumberedDraft != null &&
-            !draftReceipts.any((item) => item.id == unnumberedDraft!.id)) {
-          draftReceipts.insert(0, unnumberedDraft);
-        }
-      } catch (_) {
-        // Non-blocking fallback for deployments where the draft list endpoint
-        // omits the current unnumbered receipt.
+      final needsUnnumberedDraftImmediately =
+          _selectedMenu == 'receipts' || _selectedMenu == 'receipt_editor';
+      final unnumberedDraft =
+          needsUnnumberedDraftImmediately ? await unnumberedDraftFuture : null;
+      if (unnumberedDraft != null &&
+          !draftReceipts.any((item) => item.id == unnumberedDraft.id)) {
+        draftReceipts.insert(0, unnumberedDraft);
       }
       if (!mounted) return;
       final draftIds = draftReceipts.map((receipt) => receipt.id).toSet();
       issuedReceipts.removeWhere(
         (receipt) => draftIds.contains(receipt.id),
       );
-      Invoice? hydratedInitialInvoice;
-      final pendingInvoiceId = _pendingInitialInvoiceId;
-      if (_selectedMenu == 'invoice_editor' && pendingInvoiceId != null) {
-        try {
-          hydratedInitialInvoice = await _invoicesApi.getById(pendingInvoiceId);
-          if (hydratedInitialInvoice.lines.isEmpty) {
-            final lines = await _linesApi.list(pendingInvoiceId);
-            if (lines.isNotEmpty) {
-              hydratedInitialInvoice =
-                  hydratedInitialInvoice.copyWith(lines: lines);
-            }
-          }
-        } catch (_) {
-          // The list result remains a safe fallback when detail hydration is
-          // temporarily unavailable. The editor must still be reachable.
-        }
-      }
+      final hydratedInitialInvoice = await initialInvoiceFuture;
       if (!mounted) return;
       setState(() {
         _clients = List<GroupClient>.from(
@@ -568,6 +592,11 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           hydratedInvoice: hydratedInitialInvoice,
         );
       });
+      if (!needsUnnumberedDraftImmediately) {
+        unawaited(
+          unnumberedDraftFuture.then(_mergeUnnumberedReceiptDraft),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       final message = e.toString();

@@ -59,6 +59,9 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
   String? _billingError;
   int _billingLoadGeneration = 0;
   bool _initialized = false;
+  bool _notificationsRequested = false;
+  bool _membersRequested = false;
+  bool _billingRequested = false;
 
   @override
   void didChangeDependencies() {
@@ -78,9 +81,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
       inviteRepo: context.read<InvitationRepository>(),
       auth: context.read<AuthProvider>(),
     );
-    _loadNotifications();
-    _loadMembers();
-    _loadBillingProfile();
+    _loadSelectedSectionData();
   }
 
   @override
@@ -93,9 +94,10 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
       inviteRepo: context.read<InvitationRepository>(),
       auth: context.read<AuthProvider>(),
     );
-    _loadNotifications();
-    _loadMembers();
-    _loadBillingProfile();
+    _notificationsRequested = false;
+    _membersRequested = false;
+    _billingRequested = false;
+    _loadSelectedSectionData();
   }
 
   Future<void> _loadMembers() async {
@@ -188,6 +190,27 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
 
   void _selectSection(String section) {
     setState(() => _selectedSection = section);
+    _loadSelectedSectionData();
+  }
+
+  void _loadSelectedSectionData() {
+    switch (_selectedSection) {
+      case 'notifications':
+        if (_notificationsRequested) return;
+        _notificationsRequested = true;
+        _loadNotifications();
+        return;
+      case 'members':
+        if (_membersRequested) return;
+        _membersRequested = true;
+        _loadMembers();
+        return;
+      case 'billing':
+        if (_billingRequested) return;
+        _billingRequested = true;
+        _loadBillingProfile();
+        return;
+    }
   }
 
   @override
@@ -324,10 +347,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
                     label: l.billingProfileTitle,
                     selected: _selectedSection == 'billing',
                     collapsed: collapsed,
-                    onTap: () {
-                      if (_selectedSection != 'billing') _loadBillingProfile();
-                      _selectSection('billing');
-                    },
+                    onTap: () => _selectSection('billing'),
                   ),
                   SizedBox(height: collapsed ? 8 : 18),
                   if (!collapsed) ...[

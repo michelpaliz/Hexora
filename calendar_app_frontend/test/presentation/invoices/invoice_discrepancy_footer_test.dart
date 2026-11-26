@@ -28,6 +28,7 @@ Invoice _invoice({
   required String id,
   required String number,
   required String clientId,
+  String? clientName,
   required num base,
   required num vat,
   required num total,
@@ -37,7 +38,8 @@ Invoice _invoice({
       invoiceNumber: number,
       groupId: 'group',
       clientId: clientId,
-      clientName: clientId == 'client-a' ? 'Cliente A' : 'Cliente B',
+      clientName:
+          clientName ?? (clientId == 'client-a' ? 'Cliente A' : 'Cliente B'),
       status: 'issued',
       issueDate: DateTime(2026, 10, 20),
       subtotal: base,
@@ -85,6 +87,7 @@ void main() {
       id: 'valid-b',
       number: '398-26',
       clientId: 'client-b',
+      clientName: 'Nombre antiguo',
       base: 50,
       vat: 10.5,
       total: 60.5,
@@ -140,7 +143,62 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.enterText(find.byType(TextFormField).first, 'Cliente A');
+        final clientFilter = find.byKey(
+          const ValueKey('invoice-column-filter-client'),
+        );
+        expect(clientFilter, findsOneWidget);
+        expect(find.text('Cliente'), findsOneWidget);
+
+        await tester.tap(clientFilter);
+        await tester.pumpAndSettle();
+        final filterDialog = find.byType(Dialog);
+        expect(find.text('Buscar cliente...'), findsOneWidget);
+        expect(
+          find.descendant(of: filterDialog, matching: find.text('Cliente A')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: filterDialog, matching: find.text('Cliente B')),
+          findsOneWidget,
+        );
+        expect(find.text('Nombre antiguo'), findsNothing);
+
+        await tester.enterText(find.byType(TextField).last, 'cliente b');
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(of: filterDialog, matching: find.text('Cliente A')),
+          findsNothing,
+        );
+        final clientBOption =
+            find.descendant(of: filterDialog, matching: find.text('Cliente B'));
+        expect(clientBOption, findsOneWidget);
+        await tester.tap(clientBOption);
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('valid-b')), findsOneWidget);
+        expect(find.byKey(const ValueKey('valid-a')), findsNothing);
+
+        await tester.tapAt(const Offset(8, 8));
+        await tester.pumpAndSettle();
+        final activeClientChip = find.ancestor(
+          of: find.text('Cliente: Cliente B'),
+          matching: find.byType(InputChip),
+        );
+        expect(activeClientChip, findsOneWidget);
+        await tester.tap(
+          find.descendant(
+            of: activeClientChip,
+            matching: find.byIcon(Icons.close_rounded),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final invoiceSearch = find.byWidgetPredicate(
+          (widget) =>
+              widget is TextField &&
+              widget.decoration?.hintText ==
+                  'Buscar factura, cliente o concepto...',
+        );
+        await tester.enterText(invoiceSearch, 'Cliente A');
         await tester.pump(const Duration(milliseconds: 320));
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('mismatch')), findsOneWidget);
@@ -155,7 +213,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('mismatch')), findsOneWidget);
         expect(find.byKey(const ValueKey('valid-a')), findsNothing);
-        expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.close_rounded), findsWidgets);
         expect(
           tester.widgetList<Tooltip>(find.byType(Tooltip)).any(
                 (tooltip) =>
@@ -176,7 +234,7 @@ void main() {
         expect(find.byKey(const ValueKey('valid-a')), findsOneWidget);
         expect(find.byKey(const ValueKey('valid-b')), findsNothing);
 
-        await tester.enterText(find.byType(TextFormField).first, 'Cliente B');
+        await tester.enterText(invoiceSearch, 'Cliente B');
         await tester.pump(const Duration(milliseconds: 320));
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('valid-b')), findsOneWidget);

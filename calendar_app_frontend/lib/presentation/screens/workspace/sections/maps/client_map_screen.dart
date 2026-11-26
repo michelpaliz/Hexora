@@ -6,6 +6,7 @@ import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
@@ -163,12 +164,16 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     try {
       final userDomain = context.read<UserDomain>();
       final timeTrackingApi = context.read<ITimeTrackingApiClient>();
-      final authToken = await userDomain.getAuthToken();
+      // These requests do not depend on the user-domain token. Start them
+      // immediately so token retrieval does not add a serial delay to map
+      // startup.
+      final mapTokenFuture = _mapsApi.getToken(forceRefresh: true);
       final clientsFuture = widget.canEdit
           ? _clientsApi
               .list(groupId: widget.group.id, active: true)
               .catchError((_) => <GroupClient>[])
           : Future<List<GroupClient>>.value(const <GroupClient>[]);
+      final authToken = await userDomain.getAuthToken();
       final workerLocationsFuture = widget.canEdit
           ? timeTrackingApi
               .getActiveWorkerLocations(widget.group.id, authToken)
@@ -176,7 +181,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
           : Future<List<WorkerLiveLocation>>.value(
               const <WorkerLiveLocation>[]);
       final results = await Future.wait<dynamic>(<Future<dynamic>>[
-        _mapsApi.getToken(forceRefresh: true),
+        mapTokenFuture,
         clientsFuture,
         timeTrackingApi.getClientLocations(widget.group.id, authToken),
         workerLocationsFuture,
@@ -1533,7 +1538,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(panelContext ?? context).brightness == Brightness.light
-            ? const Color(0xFFF1F5FB)
+            ? AppColors.workspaceCanvas
             : cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),

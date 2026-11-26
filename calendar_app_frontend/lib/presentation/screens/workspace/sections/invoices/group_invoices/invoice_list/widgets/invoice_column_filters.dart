@@ -43,6 +43,7 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
     required List<Invoice> invoices,
   }) {
     return HexoraFilterableHeaderCell(
+      key: ValueKey('invoice-column-filter-${column.name}'),
       label: label,
       width: width,
       numeric: numeric,
@@ -128,17 +129,11 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
               }.where((value) => value.isNotEmpty).toList()
                 ..sort(),
               selected: _selectedClientNames,
-              labelFor: (value) {
-                for (final invoice in invoices) {
-                  if (_normalizedClientName(
-                          invoice, AppLocalizations.of(context)!) ==
-                      value) {
-                    return _invoiceFallbackClientName(
-                        invoice, AppLocalizations.of(context)!);
-                  }
-                }
-                return value;
-              },
+              labelFor: (value) => _clientFilterLabel(
+                value,
+                invoices,
+                AppLocalizations.of(context)!,
+              ),
               onChanged: (value) =>
                   _updateInvoiceListState(() => _selectedClientNames = value),
               searchable: true,

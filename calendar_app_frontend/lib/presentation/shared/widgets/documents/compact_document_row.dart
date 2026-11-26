@@ -170,22 +170,20 @@ _DocumentColumnLayout _documentColumnLayout(
   final delivery = includeDelivery ? 96.0 : 0.0;
   final totalActionGap =
       columns.contains(HexoraFinancialColumn.total) ? _totalActionGap : 0.0;
+  // Reserve a usable client/filter column before distributing the remaining
+  // width. With concept and notes enabled, the percentage columns previously
+  // consumed the whole row and silently reduced the client width to zero.
+  final proportionalWidth =
+      invoice + status + payment + date + concept + notes + base + vat + total;
+  final remainingWidth =
+      (width - delivery - totalActionGap - actionsWidth - _clientMinWidth)
+          .clamp(0.0, double.infinity);
+  final columnScale = (remainingWidth / proportionalWidth).clamp(0.0, 1.0);
   final availableClient = width -
-      invoice -
-      status -
       delivery -
       totalActionGap -
-      payment -
-      date -
-      concept -
-      notes -
-      base -
-      vat -
-      total -
-      actionsWidth;
-  // Never force the client column beyond the remaining row width. Near the
-  // expanded breakpoint the preferred minimum can be a few pixels wider than
-  // the available space, which makes the complete row overflow.
+      actionsWidth -
+      proportionalWidth * columnScale;
   final clientMaxWidth = preferWideClient ? 420.0 : _clientMaxWidth;
   final client = availableClient >= _clientMinWidth
       ? availableClient.clamp(_clientMinWidth, clientMaxWidth).toDouble()
@@ -195,17 +193,17 @@ _DocumentColumnLayout _documentColumnLayout(
   return _DocumentColumnLayout(
     expanded: true,
     columns: columns,
-    invoice: invoice,
+    invoice: invoice * columnScale,
     client: client,
-    status: status,
+    status: status * columnScale,
     delivery: delivery,
-    payment: payment,
-    date: date,
-    concept: concept,
-    notes: notes,
-    base: base,
-    vat: vat,
-    total: total,
+    payment: payment * columnScale,
+    date: date * columnScale,
+    concept: concept * columnScale,
+    notes: notes * columnScale,
+    base: base * columnScale,
+    vat: vat * columnScale,
+    total: total * columnScale,
     actions: actionsWidth,
     spacer: spacer,
     totalActionGap: totalActionGap,

@@ -109,6 +109,7 @@ class GroupDashboardState extends ChangeNotifier {
   String? invoicesInitialReceiptId;
   String? invoicesInitialBudgetId;
   int invoicesNavigationRevision = 0;
+  int settingsNavigationRevision = 0;
   bool _sectionChosenSinceOpen = false;
 
   static const _adminOnlySections = {
@@ -196,6 +197,35 @@ class GroupDashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Opens the personal preferences inside the existing workspace Settings
+  /// tab. The revision also resets an already-mounted Settings panel back to
+  /// its personal configuration section.
+  void openPersonalSettings() {
+    settingsNavigationRevision += 1;
+    _sectionChosenSinceOpen = true;
+    if (isWide) {
+      for (final tab in workspaceTabs.tabs) {
+        if (tab.section != Sections.settings) continue;
+        final previousRevision =
+            int.tryParse(tab.arguments['navigationRevision'] ?? '') ?? 0;
+        if (settingsNavigationRevision <= previousRevision) {
+          settingsNavigationRevision = previousRevision + 1;
+        }
+        break;
+      }
+      workspaceTabs.openOrActivateTab(
+        _tabForSection(
+          Sections.settings,
+          arguments: <String, String>{
+            'navigationRevision': settingsNavigationRevision.toString(),
+          },
+        ),
+      );
+      return;
+    }
+    openSection(Sections.settings);
+  }
+
   void openInvoicesWorkspace({
     required String initialMenu,
     String? initialInvoiceId,
@@ -270,6 +300,7 @@ class GroupDashboardState extends ChangeNotifier {
     final runtime = InsightsChatRuntime.instanceFor('panel::${group.id}');
     runtime.setInteractionMode(InsightsInteractionMode.openQuestions);
     await runtime.ensureLoaded(context);
+    if (!context.mounted) return;
     await runtime.send(
       context: context,
       text: text,
@@ -324,17 +355,24 @@ class GroupDashboardState extends ChangeNotifier {
   // ---------------- LOAD DATA ----------------
 
   Future<void> _loadAll() async {
-    counts = await _gm.groupRepository.getMembersCount(group.id, mode: 'union');
-
-    Group? refreshed;
-    try {
-      refreshed = await _gm.groupRepository.getGroupById(group.id);
-    } catch (_) {}
+    final results = await Future.wait<Object?>([
+      _gm.groupRepository.getMembersCount(group.id, mode: 'union'),
+      () async {
+        try {
+          return await _gm.groupRepository.getGroupById(group.id);
+        } catch (_) {
+          return null;
+        }
+      }(),
+      _getSafeUser(),
+    ]);
+    counts = results[0]! as MembersCount;
+    final refreshed = results[1] as Group?;
+    user = results[2] as User?;
 
     final target = refreshed ?? group;
 
     role = await RoleResolver.resolve(group: target, userDomain: _ud);
-    user = await _getSafeUser();
     if (isWide && user != null && workspaceTabs.tabs.isEmpty) {
       await workspaceTabs.configureSession(user!.id);
       final restored = await workspaceTabs.restore(
@@ -425,7 +463,7 @@ class GroupDashboardState extends ChangeNotifier {
     final l = AppLocalizations.of(context)!;
     final es = l.localeName.startsWith('es');
     final defaults = switch (section) {
-      Sections.home => (LucideIcons.house, 'Home'),
+      Sections.home => (LucideIcons.house, l.home),
       Sections.invoices => (LucideIcons.fileText, es ? 'Ingresos' : 'Income'),
       Sections.invoiceClients => (
           LucideIcons.users,
@@ -557,7 +595,9 @@ class GroupDashboardState extends ChangeNotifier {
 
   bool get showBottomBar => !isWide;
 
-  Color get backdrop => ThemeColors.containerBg(context);
+  Color get backdrop => Theme.of(context).brightness == Brightness.light
+      ? Theme.of(context).scaffoldBackgroundColor
+      : ThemeColors.containerBg(context);
 
   // Builds the top app bar (previously inside build())
   AppBar buildAppBar() {

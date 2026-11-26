@@ -53,7 +53,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
       if (_vatRange.active && !_vatRange.includes(inv.taxTotal)) return false;
       if (_totalRange.active && !_totalRange.includes(inv.total)) return false;
       if (searchQuery.isNotEmpty) {
-        final clientName = _invoiceFallbackClientName(inv, l).toLowerCase();
+        final clientName = _invoiceClientDisplayName(inv, l).toLowerCase();
         final amount = inv.total?.toString() ?? '';
         final searchable = [
           inv.invoiceNumber,
@@ -586,6 +586,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
               searchActive: searchQuery.isNotEmpty,
               columnFilterActive: hasColumnFilters,
               clientNames: _selectedClientNames,
+              clientLabelFor: (value) =>
+                  _clientFilterLabel(value, sourceInvoices, l),
               lifecycleStatuses: _selectedLifecycleStatuses,
               paymentStatuses: _selectedPaymentStatuses,
               dateActive: hasFilter,
@@ -785,6 +787,7 @@ class _InvoiceActiveFiltersBar extends StatelessWidget {
     required this.searchActive,
     required this.columnFilterActive,
     required this.clientNames,
+    required this.clientLabelFor,
     required this.lifecycleStatuses,
     required this.paymentStatuses,
     required this.dateActive,
@@ -801,6 +804,7 @@ class _InvoiceActiveFiltersBar extends StatelessWidget {
   final bool searchActive;
   final bool columnFilterActive;
   final Set<String> clientNames;
+  final String Function(String) clientLabelFor;
   final Set<String> lifecycleStatuses;
   final Set<String> paymentStatuses;
   final bool dateActive;
@@ -819,8 +823,11 @@ class _InvoiceActiveFiltersBar extends StatelessWidget {
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     final chips = <Widget>[];
     for (final client in clientNames) {
+      final label = clientLabelFor(client);
       chips.add(_chip(
-          'Cliente: ${client.isEmpty ? '-' : client}', cs, onClearClient));
+          '${isEs ? 'Cliente' : 'Client'}: ${label.isEmpty ? '-' : label}',
+          cs,
+          onClearClient));
     }
     for (final status in lifecycleStatuses) {
       chips.add(

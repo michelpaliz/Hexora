@@ -33,12 +33,16 @@ class _ThreadToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final workspaceCanvas = theme.brightness == Brightness.light
+        ? theme.scaffoldBackgroundColor
+        : cs.surface;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: workspaceCanvas,
         border: Border(
           bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
         ),
@@ -157,8 +161,7 @@ class _ThreadToolbar extends StatelessWidget {
             icon: hasUnread
                 ? Icons.mark_email_read_outlined
                 : Icons.mark_email_unread_outlined,
-            tooltip:
-                hasUnread ? l.mailDetailMarkRead : l.mailDetailMarkUnread,
+            tooltip: hasUnread ? l.mailDetailMarkRead : l.mailDetailMarkUnread,
             disabledTooltip: l.mailConsoleSelectThread,
             onTap: hasSelection ? onToggleRead : null,
             bgColor: hasSelection
@@ -204,9 +207,8 @@ class _ThreadToolbar extends StatelessWidget {
             bgColor: hasSelection
                 ? cs.error.withValues(alpha: 0.10)
                 : cs.surfaceContainerHighest.withValues(alpha: 0.35),
-            iconColor: hasSelection
-                ? cs.error
-                : cs.onSurface.withValues(alpha: 0.22),
+            iconColor:
+                hasSelection ? cs.error : cs.onSurface.withValues(alpha: 0.22),
           ),
         ],
       ),

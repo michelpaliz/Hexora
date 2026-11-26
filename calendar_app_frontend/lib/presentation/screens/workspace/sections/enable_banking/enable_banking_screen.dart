@@ -66,7 +66,8 @@ class EnableBankingScreen extends StatelessWidget {
           create: (_) => StatementsController(groupId: activeGroup?.id),
         ),
         ChangeNotifierProvider(
-          create: (_) => StatementsAnalyticsController(groupId: activeGroup?.id),
+          create: (_) =>
+              StatementsAnalyticsController(groupId: activeGroup?.id),
         ),
       ],
       child: _EnableBankingView(
@@ -190,6 +191,7 @@ class _EnableBankingView extends StatefulWidget {
 class _EnableBankingViewState extends State<_EnableBankingView>
     with SingleTickerProviderStateMixin {
   bool _didInit = false;
+  bool _importsRequested = false;
   EnableBankingMenu _selectedMenu = EnableBankingMenu.allData;
   late final TabController _mobileTabController;
   // null = auto (collapses when width < 1100), true/false = user override
@@ -210,8 +212,26 @@ class _EnableBankingViewState extends State<_EnableBankingView>
     );
     _mobileTabController.addListener(() {
       if (_mobileTabController.indexIsChanging) return;
-      setState(() => _selectedMenu = _mobileTabs[_mobileTabController.index]);
+      _selectMenu(_mobileTabs[_mobileTabController.index]);
     });
+  }
+
+  void _selectMenu(EnableBankingMenu menu) {
+    setState(() => _selectedMenu = menu);
+    if (menu == EnableBankingMenu.imports ||
+        menu == EnableBankingMenu.history ||
+        menu == EnableBankingMenu.banking) {
+      _ensureImportsLoaded();
+    }
+  }
+
+  void _ensureImportsLoaded() {
+    if (_importsRequested || !mounted) return;
+    _importsRequested = true;
+    final controller = context.read<StatementsController>();
+    if (controller.imports.isEmpty && !controller.loadingImports) {
+      controller.listImports();
+    }
   }
 
   @override
@@ -305,12 +325,6 @@ class _EnableBankingViewState extends State<_EnableBankingView>
         );
       });
     }
-
-    if (!context.mounted) return;
-    Future<void>(() async {
-      if (!mounted) return;
-      await context.read<StatementsController>().listImports();
-    });
 
     Future<void>(() async {
       if (!mounted) return;
@@ -556,7 +570,7 @@ class _EnableBankingViewState extends State<_EnableBankingView>
             children: [
               EnableBankingLeftNav(
                 selected: _selectedMenu,
-                onSelect: (menu) => setState(() => _selectedMenu = menu),
+                onSelect: _selectMenu,
                 collapsed: collapsed,
                 onToggleCollapse: () => forceIconOnly
                     ? null

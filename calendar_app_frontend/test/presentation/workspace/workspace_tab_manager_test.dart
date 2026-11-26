@@ -6,8 +6,10 @@ import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_c
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab_bar.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab_manager.dart';
-import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
+import 'package:hexora/theme/themes/app_theme.dart';
+import 'package:hexora/theme/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 WorkspaceTab _tab(String id) => WorkspaceTab(
@@ -300,50 +302,107 @@ void main() {
     expect(editable.controller.text, 'unsaved invoice draft');
   });
 
-  testWidgets('home workspace content renders below the Chrome tab strip',
+  testWidgets('unvisited inactive tabs mount only when first selected',
       (tester) async {
     final manager = WorkspaceTabManager(businessId: 'business-1')
-      ..openOrActivateTab(_tab('home'));
+      ..openOrActivateTab(_tab('invoice:new'))
+      ..openOrActivateTab(_tab('bank'));
+    final builds = <String, int>{};
 
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: WorkspaceContent(
             manager: manager,
-            builder: (_, __) => const WorkspaceMainContent(
-              child: ColoredBox(
-                key: ValueKey('home-workspace-content'),
-                color: Colors.white,
-              ),
-            ),
+            builder: (_, tab) {
+              builds.update(
+                tab.identity.value,
+                (count) => count + 1,
+                ifAbsent: () => 1,
+              );
+              return Text(tab.identity.value);
+            },
           ),
         ),
       ),
     );
-    await tester.pumpAndSettle();
 
-    final tabs = tester.getRect(find.byType(WorkspaceTabBar));
-    final home = tester.getRect(
-      find.byKey(const ValueKey('home-workspace-content')),
-    );
-    expect(tabs.bottom, home.top);
-    expect(
-      tester
-          .widget<Material>(
-            find.byKey(const ValueKey('workspace-tab-bar-background')),
-          )
-          .color,
-      AppColors.inputBackground,
-    );
-    final surface = tester.widget<Container>(
-      find.byKey(const ValueKey('workspace-tab-bar-surface')),
-    );
-    expect(
-      (surface.decoration! as BoxDecoration).color,
-      AppColors.inputBackground,
-    );
-    expect(tester.takeException(), isNull);
+    expect(builds, {'bank': 1});
+    manager.activateTab(const WorkspaceTabIdentity('invoice:new'));
+    await tester.pump();
+    expect(builds, {'bank': 1, 'invoice:new': 1});
+
+    manager.activateTab(const WorkspaceTabIdentity('bank'));
+    await tester.pump();
+    expect(builds, {'bank': 1, 'invoice:new': 1});
   });
+
+  for (final variant in ['light', 'blue', 'dark']) {
+    final theme = AppTheme.forPlatform(
+      variant == 'dark' ? Brightness.dark : Brightness.light,
+      isWeb: true,
+      lightVariant: variant == 'blue'
+          ? LightThemeVariant.blue
+          : LightThemeVariant.neutral,
+    );
+    testWidgets('Chrome strip matches navigation and content: $variant',
+        (tester) async {
+      final manager = WorkspaceTabManager(businessId: 'business-1')
+        ..openOrActivateTab(_tab('bank'))
+        ..openOrActivateTab(_tab('home'));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: WorkspaceContent(
+              manager: manager,
+              builder: (_, __) => const WorkspaceMainContent(
+                child: ColoredBox(
+                  key: ValueKey('home-workspace-content'),
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final tabs = tester.getRect(find.byType(WorkspaceTabBar));
+      final home = tester.getRect(
+        find.byKey(const ValueKey('home-workspace-content')),
+      );
+      expect(tabs.bottom, home.top);
+      expect(
+        tester
+            .widget<Material>(
+              find.byKey(const ValueKey('workspace-tab-bar-background')),
+            )
+            .color,
+        HexoraGlobalNavColors.backgroundFor(
+            tester.element(find.byType(WorkspaceTabBar))),
+      );
+      final surface = tester.widget<Container>(
+        find.byKey(const ValueKey('workspace-tab-bar-surface')),
+      );
+      expect(
+        (surface.decoration! as BoxDecoration).color,
+        HexoraGlobalNavColors.backgroundFor(
+            tester.element(find.byType(WorkspaceTabBar))),
+      );
+      final activeSurface = tester.widget<Material>(find
+          .ancestor(of: find.text('HOME'), matching: find.byType(Material))
+          .first);
+      final inactiveSurface = tester.widget<Material>(find
+          .ancestor(of: find.text('BANK'), matching: find.byType(Material))
+          .first);
+      expect(activeSurface.color, theme.scaffoldBackgroundColor);
+      expect(
+          inactiveSurface.color, (surface.decoration! as BoxDecoration).color);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets(
       'layout-sensitive workspace keeps a stable ancestor chain on tab switch',
