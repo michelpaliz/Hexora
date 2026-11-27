@@ -129,6 +129,7 @@ Future<_Calls> _pump(
   Size size = const Size(1200, 800),
   Brightness brightness = Brightness.light,
   Completer<void>? identityGate,
+  Completer<void>? photoGate,
   Future<({String name, List<int> bytes})?> Function(BuildContext)? pickLogo,
   bool settle = true,
 }) async {
@@ -157,7 +158,10 @@ Future<_Calls> _pump(
             Uint8List.fromList([1, 2, 3]),
             name: 'photo.png',
           ),
-          uploadPhoto: (g, f) async => calls.photos.add(f),
+          uploadPhoto: (g, f) async {
+            calls.photos.add(f);
+            await photoGate?.future;
+          },
           pickInvoiceLogo: pickLogo ??
               (_) async => (name: 'logo.png', bytes: const [1, 2, 3]),
         ),
@@ -241,6 +245,22 @@ void main() {
     // card shorter; this bounds the compact view mode.
     expect(height, lessThanOrEqualTo(220));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('profile loading uses a pulsing skeleton instead of a spinner',
+      (tester) async {
+    final api = _FakeBillingApi({})
+      ..pending['g1'] = Completer<BillingProfile?>();
+    await _pump(tester, api: api, settle: false);
+
+    expect(_k('business-profile-loading-skeleton'), findsOneWidget);
+    expect(find.text('Comprobando configuración…'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    api.pending['g1']!.complete(_profile());
+    await tester.pumpAndSettle();
+    expect(_k('business-profile-loading-skeleton'), findsNothing);
+    expect(find.text('Configuración completa'), findsOneWidget);
   });
 
   testWidgets('warning shows the most important issue and the rest on demand',
@@ -399,6 +419,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(calls.photos, hasLength(1));
     expect(api.logos, hasLength(1), reason: 'photo never touches the logo');
+  });
+
+  testWidgets('photo upload uses the compact animated overlay', (tester) async {
+    final photoGate = Completer<void>();
+    await _pump(
+      tester,
+      api: _FakeBillingApi({'g1': _profile()}),
+      photoGate: photoGate,
+    );
+
+    await tester.tap(_k('business-photo-edit'));
+    await tester.pump();
+    await tester.pump();
+    expect(_k('business-photo-loading'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    photoGate.complete();
+    await tester.pumpAndSettle();
+    expect(_k('business-photo-loading'), findsNothing);
   });
 
   testWidgets('desktop: identity | fiscal grid | configuration, in order',

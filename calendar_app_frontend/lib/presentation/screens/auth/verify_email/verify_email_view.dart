@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/auth/models/verification_result.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/screens/auth/shared_utilities/auth_shared_widgets.dart';
 import 'package:hexora/presentation/screens/auth/verify_email/very_status_card.dart';
+import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -143,43 +145,113 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.verifyEmailTitle),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 1. Status Card (Feedback)
-                VerifyStatusCard(
-                  isVerifying: _isVerifying,
-                  result: _result,
-                  token: _token,
-                  onRetry: () => _token != null ? _verify(_token!) : null,
-                ),
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/home_page/dark_bg_color.png'),
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 600;
+              final horizontalPadding = compact ? 16.0 : 32.0;
+              final verticalPadding = compact ? 64.0 : 32.0;
 
-                const SizedBox(height: 32),
-
-                // 2. Action Section (Input + Buttons)
-                VerifyActionSection(
-                  emailController: _emailController,
-                  isResending: _isResending,
-                  onResend: _resend,
-                  onBackToLogin: () {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      AppRoutes.loginRoute,
-                      (route) => false,
-                    );
-                  },
-                ),
-              ],
-            ),
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: SingleChildScrollView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        compact ? 20 : 32,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: (constraints.maxHeight -
+                                  verticalPadding -
+                                  (compact ? 20 : 32))
+                              .clamp(0, double.infinity),
+                        ),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 480),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Center(
+                                  child: constraints.maxWidth >= 1000
+                                      ? const HexoraWordmark(width: 180)
+                                      : const HexoraBrandIcon(size: 56),
+                                ),
+                                const SizedBox(height: 24),
+                                buildAuthCard(
+                                  context: context,
+                                  padding: EdgeInsets.all(compact ? 20 : 28),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Text(
+                                        l10n.verifyEmailTitle,
+                                        key: const Key('verify_email_title'),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 20),
+                                      VerifyStatusCard(
+                                        isVerifying: _isVerifying,
+                                        result: _result,
+                                        token: _token,
+                                        onRetry: () => _token != null
+                                            ? _verify(_token!)
+                                            : null,
+                                      ),
+                                      const SizedBox(height: 24),
+                                      VerifyActionSection(
+                                        emailController: _emailController,
+                                        isResending: _isResending,
+                                        verificationSucceeded:
+                                            _result?.success == true,
+                                        onResend: _resend,
+                                        onBackToLogin: () {
+                                          Navigator.of(context)
+                                              .pushNamedAndRemoveUntil(
+                                            AppRoutes.loginRoute,
+                                            (route) => false,
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: compact ? 12 : 16,
+                    right: compact ? 16 : 24,
+                    child: const AuthLanguageSelector(),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),

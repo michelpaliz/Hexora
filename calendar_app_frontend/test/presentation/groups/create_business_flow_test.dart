@@ -76,6 +76,8 @@ void main() {
     testWidgets('all steps validate and preserve edits at $size',
         (tester) async {
       await mount(tester, size);
+      expect(find.text('Step 1 of 4'), findsWidgets);
+      expect(find.text('Cancel'), findsOneWidget);
       await next(tester);
       expect(find.text('This field is required.'), findsOneWidget);
       expect(find.text('Choose a business type.'), findsOneWidget);
@@ -100,6 +102,7 @@ void main() {
       expect(find.text('121.00 EUR'), findsOneWidget);
       await next(tester);
       expect(find.text('Invite your team'), findsOneWidget);
+      expect(find.text('Skip team'), findsOneWidget);
       await enter(tester, 'Email address', 'invalid');
       await tester.tap(find.text('Create business').last);
       await tester.pumpAndSettle();

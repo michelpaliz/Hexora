@@ -102,13 +102,13 @@
   "loginInvalidCredentials": "Credenciales inválidas. Inténtalo de nuevo.",
   "authError": "Error de autenticación",
   "verifyEmailTitle": "Verifica tu correo electrónico",
-  "verifyEmailInfo": "Te enviamos un enlace de Verificación.",
+  "verifyEmailInfo": "Te hemos enviado un enlace de verificación. Ábrelo desde tu correo para terminar de verificar tu cuenta.",
   "verifyingEmail": "Verificando tu correo...",
   "verifyEmailTryAgain": "Intentar de nuevo",
-  "resendVerificationButton": "Reenviar Verificación",
+  "resendVerificationButton": "Reenviar correo de verificación",
   "resendVerificationSending": "Enviando...",
   "resendVerificationInvalidEmail": "Ingresa un correo válido para reenviar.",
-  "resendVerificationSent": "Correo de Verificaciónviado a {email}",
+  "resendVerificationSent": "Correo de verificación enviado a {email}",
   "@resendVerificationSent": {
     "placeholders": {
       "email": {
@@ -116,7 +116,7 @@
       }
     }
   },
-  "resendVerificationFailed": "No se pudo reenviar la Verificación: {error}",
+  "resendVerificationFailed": "No se pudo reenviar la verificación: {error}",
   "@resendVerificationFailed": {
     "placeholders": {
       "error": {

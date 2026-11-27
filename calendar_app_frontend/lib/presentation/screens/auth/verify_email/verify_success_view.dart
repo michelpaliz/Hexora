@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
-import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -60,7 +59,7 @@ class VerifyEmailSuccessView extends StatelessWidget {
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
-                      height: 52, 
+                      height: 52,
                       child: FilledButton(
                         onPressed: () {
                           final next = Uri.base.queryParameters['next'];

@@ -231,9 +231,15 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     required DateTime end,
     required bool quickInitially,
   }) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
     var quickMode = quickInitially;
+    var dismissing = false;
     final added = await showHexoraDialog<bool>(
       context: context,
+      barrierDismissible: false,
+      requestFocus: true,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           final media = MediaQuery.sizeOf(context);
@@ -245,6 +251,22 @@ class _MainCalendarViewState extends State<MainCalendarView> {
           final height = (media.height * heightFactor)
               .clamp(420.0, quickMode ? 720.0 : 900.0);
           final l = AppLocalizations.of(context)!;
+
+          Future<void> dismissEditor(bool result) async {
+            if (dismissing) return;
+            dismissing = true;
+            FocusManager.instance.primaryFocus?.unfocus();
+            await Future<void>.delayed(Duration.zero);
+            if (context.mounted) Navigator.of(context).pop(result);
+          }
+
+          Future<void> expandEditor() async {
+            FocusManager.instance.primaryFocus?.unfocus();
+            await Future<void>.delayed(Duration.zero);
+            if (context.mounted) {
+              setDialogState(() => quickMode = false);
+            }
+          }
 
           final editor = Material(
             color: Theme.of(context).colorScheme.surface,
@@ -270,7 +292,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                       IconButton(
                         tooltip: MaterialLocalizations.of(context)
                             .closeButtonTooltip,
-                        onPressed: () => Navigator.pop(context, false),
+                        onPressed: () => unawaited(dismissEditor(false)),
                         icon: const Icon(Icons.close_rounded),
                       ),
                     ],
@@ -286,11 +308,10 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                     useStickyFooter: true,
                     initialStartDate: start,
                     initialEndDate: end,
-                    onMoreOptions: quickMode
-                        ? () => setDialogState(() => quickMode = false)
-                        : null,
-                    onCancel: () => Navigator.pop(context, false),
-                    onCreated: () => Navigator.pop(context, true),
+                    onMoreOptions:
+                        quickMode ? () => unawaited(expandEditor()) : null,
+                    onCancel: () => unawaited(dismissEditor(false)),
+                    onCreated: () => unawaited(dismissEditor(true)),
                   ),
                 ),
               ],

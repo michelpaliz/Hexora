@@ -80,7 +80,10 @@ void main() {
             width >= 1000 ? findsOneWidget : findsNothing);
         expect(find.byType(HexoraBrandIcon),
             width < 1000 ? findsOneWidget : findsNothing);
-        expect(tester.getSize(find.byType(Card)).width, lessThanOrEqualTo(480));
+        expect(
+          tester.getSize(find.byKey(const ValueKey('auth-card'))).width,
+          lessThanOrEqualTo(480),
+        );
         expect(tester.takeException(), isNull);
         final submit = find.descendant(
             of: find.byType(RegisterForm),
@@ -92,6 +95,24 @@ void main() {
       });
     }
   }
+
+  testWidgets('news panel is visible to the left of login on wide screens',
+      (tester) async {
+    await _pump(
+      tester,
+      size: const Size(1200, 800),
+      register: false,
+    );
+
+    final news = find.byKey(const ValueKey('auth-news-desktop'));
+    final authCard = find.byKey(const ValueKey('auth-card'));
+    expect(news, findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('announcement-empty-state')), findsOneWidget);
+    expect(
+        tester.getTopRight(news).dx, lessThan(tester.getTopLeft(authCard).dx));
+    expect(find.byKey(const ValueKey('auth-news-inline')), findsNothing);
+  });
 
   testWidgets('account switch and recovery navigation work without duplicates',
       (tester) async {

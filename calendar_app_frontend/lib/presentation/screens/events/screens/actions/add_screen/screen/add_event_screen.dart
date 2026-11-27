@@ -7,9 +7,10 @@ import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/groups/category/category_api_client.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/screens/events/screens/actions/add_screen/function/helper/add_event_helpers.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/shared/form/event_dialogs.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/shared/form/event_form_router.dart';
+import 'package:hexora/presentation/screens/events/screens/actions/shared/utils/with_loading_dialog.dart'
+    as loading;
 import 'package:hexora/presentation/screens/events/screens/repetition_dialog/dialog/repetition_dialog.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -134,7 +135,10 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
 
   Future<void> _submitEvent() async {
     final l = AppLocalizations.of(context)!;
-    final ok = await withLoadingDialog<bool>(
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    final ok = await loading.withLoadingDialog<bool>(
       context,
       () => addEvent(context),
       message: l.createEventMessage,

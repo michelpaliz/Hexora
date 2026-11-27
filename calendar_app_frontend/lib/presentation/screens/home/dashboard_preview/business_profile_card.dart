@@ -753,12 +753,9 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
   Widget _infoGrid({required int columns}) {
     final cs = Theme.of(context).colorScheme;
     if (!_profileLoaded && !_profileError) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: SizedBox.square(
-          dimension: 16,
-          child: CircularProgressIndicator(strokeWidth: 1.8, color: cs.primary),
-        ),
+      return _BusinessDetailsLoadingSkeleton(
+        key: const ValueKey('business-profile-loading-skeleton'),
+        columns: columns,
       );
     }
     final p = _profile;
@@ -1096,7 +1093,10 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 14, color: color),
+        if (state == BusinessSetupState.checking)
+          _LoadingDots(color: color)
+        else
+          Icon(icon, size: 14, color: color),
         const SizedBox(width: 5),
         Flexible(
           child: Text(label,
@@ -1427,22 +1427,36 @@ class _PhotoEditTargetState extends State<_PhotoEditTarget> {
             onTap: widget.busy ? null : widget.onTap,
             child: Stack(fit: StackFit.passthrough, children: [
               widget.child,
-              if (widget.busy)
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: .32),
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: const Center(
-                      child: SizedBox.square(
-                        dimension: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      ),
-                    ),
-                  ),
+              Positioned.fill(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: widget.busy
+                      ? DecoratedBox(
+                          key: const ValueKey('business-photo-loading'),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: .30),
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 13, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: .64),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: const _LoadingDots(
+                                color: Colors.white,
+                                dotSize: 5,
+                              ),
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(
+                          key: ValueKey('business-photo-idle'),
+                        ),
                 ),
+              ),
               Positioned(
                 right: 8,
                 bottom: 8,
@@ -1465,6 +1479,158 @@ class _PhotoEditTargetState extends State<_PhotoEditTarget> {
             ]),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Compact motion indicator used in status pills and image overlays.
+class _LoadingDots extends StatefulWidget {
+  const _LoadingDots({required this.color, this.dotSize = 4});
+
+  final Color color;
+  final double dotSize;
+
+  @override
+  State<_LoadingDots> createState() => _LoadingDotsState();
+}
+
+class _LoadingDotsState extends State<_LoadingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(3, (index) {
+          final phase = (_controller.value + index * .22) % 1;
+          final distance = (phase - .5).abs() * 2;
+          final emphasis = 1 - Curves.easeInOut.transform(distance);
+          return Padding(
+            padding: EdgeInsets.only(left: index == 0 ? 0 : 3),
+            child: Opacity(
+              opacity: .35 + emphasis * .65,
+              child: Transform.scale(
+                scale: .72 + emphasis * .28,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: widget.color,
+                    shape: BoxShape.circle,
+                  ),
+                  child: SizedBox.square(dimension: widget.dotSize),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+/// A low-motion placeholder that preserves the fiscal grid while it loads.
+class _BusinessDetailsLoadingSkeleton extends StatefulWidget {
+  const _BusinessDetailsLoadingSkeleton({super.key, required this.columns});
+
+  final int columns;
+
+  @override
+  State<_BusinessDetailsLoadingSkeleton> createState() =>
+      _BusinessDetailsLoadingSkeletonState();
+}
+
+class _BusinessDetailsLoadingSkeletonState
+    extends State<_BusinessDetailsLoadingSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+    lowerBound: .45,
+    upperBound: 1,
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.onSurfaceVariant;
+    final cells = List<Widget>.generate(
+      4,
+      (_) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SkeletonLine(widthFactor: .38, height: 7, color: color),
+          const SizedBox(height: 7),
+          _SkeletonLine(widthFactor: .72, height: 10, color: color),
+        ],
+      ),
+    );
+    final rows = <Widget>[];
+    for (var i = 0; i < cells.length; i += widget.columns) {
+      final slice = cells.skip(i).take(widget.columns).toList();
+      rows.add(Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var j = 0; j < widget.columns; j++) ...[
+            if (j > 0) const SizedBox(width: 20),
+            Expanded(child: j < slice.length ? slice[j] : const SizedBox()),
+          ],
+        ],
+      ));
+    }
+    return FadeTransition(
+      opacity: _controller,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final (index, row) in rows.indexed) ...[
+            if (index > 0) const SizedBox(height: 12),
+            row,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonLine extends StatelessWidget {
+  const _SkeletonLine({
+    required this.widthFactor,
+    required this.height,
+    required this.color,
+  });
+
+  final double widthFactor;
+  final double height;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      widthFactor: widthFactor,
+      alignment: Alignment.centerLeft,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .16),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: SizedBox(height: height),
       ),
     );
   }

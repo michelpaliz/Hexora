@@ -81,11 +81,13 @@ class AuthLanguageSelector extends StatelessWidget {
 
 /// Shared card builder
 Widget buildAuthCard({
+  Key? key,
   required BuildContext context,
   required Widget child,
   EdgeInsetsGeometry padding = const EdgeInsets.all(28),
 }) {
   return Card(
+    key: key,
     margin: EdgeInsets.zero,
     elevation: 0,
     color: Theme.of(context).colorScheme.surface,

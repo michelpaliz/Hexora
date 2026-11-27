@@ -69,7 +69,10 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
           insetPadding:
               const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760, maxHeight: 900),
+            constraints: BoxConstraints(
+              maxWidth: 760,
+              maxHeight: MediaQuery.sizeOf(context).height - 48,
+            ),
             child: const CreateGroupData(),
           ),
         ),

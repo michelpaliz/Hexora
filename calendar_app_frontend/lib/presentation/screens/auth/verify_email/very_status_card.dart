@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/services/auth/models/verification_result.dart';
+import 'package:hexora/presentation/screens/auth/shared_utilities/auth_shared_widgets.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -32,18 +33,18 @@ class VerifyStatusCard extends StatelessWidget {
     if (isVerifying) {
       bgColor = cs.surface;
       borderColor = cs.outlineVariant.withValues(alpha: 0.5);
-      content = Column(
+      content = Row(
         children: [
-          const SizedBox(
-            height: 40,
-            width: 40,
-            child: CircularProgressIndicator(strokeWidth: 3),
+          const SizedBox.square(
+            dimension: 32,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
           ),
-          const SizedBox(height: 16),
-          Text(
-            l10n.verifyingEmail,
-            style: t.bodyLarge.copyWith(color: cs.onSurface),
-            textAlign: TextAlign.center,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              l10n.verifyingEmail,
+              style: t.bodyMedium.copyWith(color: cs.onSurface),
+            ),
           ),
         ],
       );
@@ -55,31 +56,38 @@ class VerifyStatusCard extends StatelessWidget {
       final textColor = success ? Colors.green.shade900 : Colors.red.shade900;
 
       content = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(
-            success ? Icons.check_circle_rounded : Icons.error_rounded,
-            color: iconColor,
-            size: 64,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            result!.message,
-            textAlign: TextAlign.center,
-            style: t.bodyLarge.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                success ? Icons.check_circle_rounded : Icons.error_rounded,
+                color: iconColor,
+                size: 32,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  result!.message,
+                  style: t.bodyMedium.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
           if (!success && (token?.isNotEmpty ?? false)) ...[
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: onRetry,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: iconColor,
-                side: BorderSide(color: iconColor),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: onRetry,
+                style: TextButton.styleFrom(foregroundColor: iconColor),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(l10n.verifyEmailTryAgain),
               ),
-              icon: const Icon(Icons.refresh, size: 18),
-              label: Text(l10n.verifyEmailTryAgain),
             ),
           ],
         ],
@@ -88,14 +96,34 @@ class VerifyStatusCard extends StatelessWidget {
       // Idle / Default state
       bgColor = cs.primaryContainer.withValues(alpha: 0.3);
       borderColor = cs.primary.withValues(alpha: 0.2);
-      content = Column(
+      content = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.mark_email_read_outlined, size: 64, color: cs.primary),
-          const SizedBox(height: 16),
-          Text(
-            l10n.verifyEmailInfo,
-            textAlign: TextAlign.center,
-            style: t.bodyMedium.copyWith(color: cs.onSurface),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.mark_email_unread_rounded,
+              size: 24,
+              color: cs.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                l10n.verifyEmailInfo,
+                style: t.bodyMedium.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.45,
+                ),
+              ),
+            ),
           ),
         ],
       );
@@ -103,10 +131,10 @@ class VerifyStatusCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: borderColor),
       ),
       child: content,
@@ -118,6 +146,7 @@ class VerifyStatusCard extends StatelessWidget {
 class VerifyActionSection extends StatelessWidget {
   final TextEditingController emailController;
   final bool isResending;
+  final bool verificationSucceeded;
   final VoidCallback onResend;
   final VoidCallback onBackToLogin;
 
@@ -125,6 +154,7 @@ class VerifyActionSection extends StatelessWidget {
     super.key,
     required this.emailController,
     required this.isResending,
+    this.verificationSucceeded = false,
     required this.onResend,
     required this.onBackToLogin,
   });
@@ -138,86 +168,69 @@ class VerifyActionSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Input Field
-        TextFormField(
-          controller: emailController,
-          keyboardType: TextInputType.emailAddress,
-          style: t.bodyLarge,
-          decoration: InputDecoration(
-            labelText: l10n.email,
-            hintText: l10n.emailHint,
-            prefixIcon: Icon(Icons.email_outlined, color: cs.primary),
-            filled: true,
-            fillColor: cs.surface,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: cs.outline),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: cs.outlineVariant),
+        if (!verificationSucceeded) ...[
+          TextFormField(
+            key: const Key('verify_email_field'),
+            controller: emailController,
+            enabled: !isResending,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.send,
+            autofillHints: const [AutofillHints.email],
+            onFieldSubmitted: (_) {
+              if (!isResending) onResend();
+            },
+            style: t.bodyMedium,
+            decoration: authInputDecoration(
+              context,
+              labelText: l10n.email,
+              hintText: l10n.emailHint,
+              icon: Icons.email_outlined,
             ),
           ),
-        ),
-        const SizedBox(height: 24),
-
-        // Action Buttons
-        Row(
-          children: [
-            // Resend Button
-            Expanded(
-              child: SizedBox(
-                height: 50,
-                child: FilledButton.icon(
-                  icon: isResending
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: cs.onPrimary,
-                          ),
-                        )
-                      : const Icon(Icons.send_rounded, size: 18),
-                  label: Text(
-                    isResending
-                        ? l10n.resendVerificationSending
-                        : l10n.resendVerificationButton,
-                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  style: FilledButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: isResending ? null : onResend,
+          const SizedBox(height: 18),
+          SizedBox(
+            height: 50,
+            child: FilledButton.icon(
+              key: const Key('resend_verification_button'),
+              icon: isResending
+                  ? SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: cs.onPrimary,
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded, size: 18),
+              label: Text(
+                isResending
+                    ? l10n.resendVerificationSending
+                    : l10n.resendVerificationButton,
+                style: t.buttonText,
+              ),
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
+              onPressed: isResending ? null : onResend,
             ),
-            const SizedBox(width: 12),
-            // Back Button
-            Expanded(
-              child: SizedBox(
-                height: 50,
-                child: OutlinedButton(
-                  onPressed: onBackToLogin,
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    side: BorderSide(color: cs.outlineVariant),
-                  ),
-                  child: Text(
-                    l10n.backToLogin,
-                    style: t.bodyLarge.copyWith(
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+          ),
+          const SizedBox(height: 10),
+        ],
+        SizedBox(
+          height: 44,
+          child: TextButton.icon(
+            key: const Key('back_to_login_button'),
+            onPressed: onBackToLogin,
+            icon: const Icon(Icons.arrow_back_rounded, size: 18),
+            label: Text(
+              l10n.backToLogin,
+              style: t.bodyMedium.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
+          ),
         ),
       ],
     );

@@ -246,7 +246,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get verifyEmailTitle => 'Verifica tu correo electrónico';
 
   @override
-  String get verifyEmailInfo => 'Te enviamos un enlace de Verificación.';
+  String get verifyEmailInfo =>
+      'Te hemos enviado un enlace de verificación. Ábrelo desde tu correo para terminar de verificar tu cuenta.';
 
   @override
   String get verifyingEmail => 'Verificando tu correo...';
@@ -255,7 +256,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get verifyEmailTryAgain => 'Intentar de nuevo';
 
   @override
-  String get resendVerificationButton => 'Reenviar Verificación';
+  String get resendVerificationButton => 'Reenviar correo de verificación';
 
   @override
   String get resendVerificationSending => 'Enviando...';
@@ -266,12 +267,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String resendVerificationSent(String email) {
-    return 'Correo de Verificaciónviado a $email';
+    return 'Correo de verificación enviado a $email';
   }
 
   @override
   String resendVerificationFailed(String error) {
-    return 'No se pudo reenviar la Verificación: $error';
+    return 'No se pudo reenviar la verificación: $error';
   }
 
   @override

@@ -215,20 +215,24 @@ class _CreateGroupDataState extends State<CreateGroupData> {
           final isWide = MediaQuery.sizeOf(context).width >= 700;
           if (!isWide) {
             return Scaffold(
-              body: SafeArea(child: content),
+              body: SafeArea(child: SizedBox.expand(child: content)),
             );
           }
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 880, maxHeight: 880),
-              child: Card(
-                margin:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-                clipBehavior: Clip.antiAlias,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+          return LayoutBuilder(
+            builder: (context, constraints) => Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 760,
+                  maxHeight: constraints.maxHeight,
                 ),
-                child: content,
+                child: Card(
+                  margin: EdgeInsets.zero,
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: content,
+                ),
               ),
             ),
           );
@@ -240,9 +244,10 @@ class _CreateGroupDataState extends State<CreateGroupData> {
   Widget _wizard(BuildContext context, GroupEditorViewModel vm) {
     final cs = Theme.of(context).colorScheme;
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(22, 18, 22, 16),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
           color: cs.primary.withValues(alpha: 0.06),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -267,17 +272,18 @@ class _CreateGroupDataState extends State<CreateGroupData> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               _progress(context),
             ],
           ),
         ),
-        Expanded(
+        Flexible(
+          fit: FlexFit.loose,
           child: AbsorbPointer(
             absorbing: vm.isSubmitting,
             child: SingleChildScrollView(
               controller: _scroll,
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
               child: Form(
                 key: _formKey,
                 autovalidateMode: _validation,
@@ -295,54 +301,108 @@ class _CreateGroupDataState extends State<CreateGroupData> {
           ),
         ),
         Container(
-          padding: const EdgeInsets.fromLTRB(22, 14, 22, 18),
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
           decoration: BoxDecoration(
             border: Border(top: BorderSide(color: cs.outlineVariant)),
           ),
-          child: OverflowBar(
-            alignment: MainAxisAlignment.end,
-            overflowAlignment: OverflowBarAlignment.end,
-            spacing: 12,
-            overflowSpacing: 8,
-            children: [
-              if (_step > 0)
-                OutlinedButton.icon(
-                  onPressed: vm.isSubmitting ? null : () => _goTo(_step - 1),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  label: Text(_t('Atrás', 'Back')),
-                ),
-              FilledButton.icon(
-                onPressed: vm.isSubmitting
-                    ? null
-                    : _step < 3
-                        ? _next
-                        : () => _create(vm),
-                icon: vm.isSubmitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        _step < 3
-                            ? Icons.arrow_forward_rounded
-                            : Icons.check_rounded,
-                      ),
-                style: FilledButton.styleFrom(minimumSize: const Size(140, 48)),
-                label: Text(
-                  vm.isSubmitting
-                      ? _t('Creando…', 'Creating…')
-                      : _step < 3
-                          ? _t('Continuar', 'Continue')
-                          : _t('Crear negocio', 'Create business'),
-                ),
-              ),
-            ],
-          ),
+          child: _footer(context, vm),
         ),
       ],
     );
   }
+
+  Widget _footer(BuildContext context, GroupEditorViewModel vm) =>
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 760;
+          final stepText = Text(
+            _t('Paso ${_step + 1} de 4', 'Step ${_step + 1} of 4'),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+          );
+          final cancel = TextButton(
+            onPressed:
+                vm.isSubmitting ? null : () => Navigator.of(context).maybePop(),
+            child: Text(_t('Cancelar', 'Cancel')),
+          );
+          final back = _step == 0
+              ? null
+              : OutlinedButton.icon(
+                  onPressed: vm.isSubmitting ? null : () => _goTo(_step - 1),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                  label: Text(_t('Atrás', 'Back')),
+                );
+          final primary = FilledButton(
+            onPressed: vm.isSubmitting
+                ? null
+                : _step < 3
+                    ? _next
+                    : () => _create(vm),
+            style: FilledButton.styleFrom(minimumSize: const Size(140, 42)),
+            child: vm.isSubmitting
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _step < 3
+                            ? _t('Continuar', 'Continue')
+                            : _t('Crear negocio', 'Create business'),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        _step < 3
+                            ? Icons.arrow_forward_rounded
+                            : Icons.check_rounded,
+                        size: 18,
+                      ),
+                    ],
+                  ),
+          );
+          final skip = _step == 3
+              ? TextButton(
+                  onPressed: vm.isSubmitting ? null : () => _create(vm),
+                  child: Text(_t('Omitir equipo', 'Skip team')),
+                )
+              : null;
+
+          if (narrow) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(children: [stepText, const Spacer(), cancel]),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    if (back != null) back,
+                    if (back != null && skip != null) const SizedBox(width: 8),
+                    if (skip != null) skip,
+                  ],
+                ),
+                if (back != null || skip != null) const SizedBox(height: 8),
+                SizedBox(width: double.infinity, child: primary),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              stepText,
+              const Spacer(),
+              cancel,
+              if (skip != null) skip,
+              if (back != null) ...[const SizedBox(width: 8), back],
+              const SizedBox(width: 8),
+              primary,
+            ],
+          );
+        },
+      );
 
   Widget _progress(BuildContext context) {
     final labels = _isSpanish
@@ -355,10 +415,10 @@ class _CreateGroupDataState extends State<CreateGroupData> {
           Text(
               '${_t('Paso ${_step + 1} de 4', 'Step ${_step + 1} of 4')} · ${labels[_step]}',
               style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           LinearProgressIndicator(
               value: (_step + 1) / 4,
-              minHeight: 5,
+              minHeight: 4,
               borderRadius: BorderRadius.circular(8)),
         ]);
       }
@@ -373,30 +433,46 @@ class _CreateGroupDataState extends State<CreateGroupData> {
                   ? () => _goTo(index)
                   : null,
           style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-            backgroundColor: active ? cs.primaryContainer : Colors.transparent,
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            backgroundColor: active
+                ? cs.primaryContainer.withValues(alpha: 0.7)
+                : Colors.transparent,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: Row(children: [
-            CircleAvatar(
-                radius: 14,
-                backgroundColor:
-                    active || complete ? cs.primary : cs.surfaceContainerHigh,
-                foregroundColor:
-                    active || complete ? cs.onPrimary : cs.onSurfaceVariant,
-                child: complete
-                    ? const Icon(Icons.check_rounded, size: 16)
-                    : Text('${index + 1}',
-                        style: const TextStyle(fontSize: 12))),
-            const SizedBox(width: 8),
-            Expanded(
-                child: Text(labels[index],
-                    style: TextStyle(
-                        color: active ? cs.onPrimaryContainer : cs.onSurface,
-                        fontSize: 12,
-                        fontWeight:
-                            active ? FontWeight.w700 : FontWeight.w500))),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Row(children: [
+              CircleAvatar(
+                  radius: 12,
+                  backgroundColor:
+                      active || complete ? cs.primary : cs.surfaceContainerHigh,
+                  foregroundColor:
+                      active || complete ? cs.onPrimary : cs.onSurfaceVariant,
+                  child: complete
+                      ? const Icon(Icons.check_rounded, size: 14)
+                      : Text('${index + 1}',
+                          style: const TextStyle(fontSize: 11))),
+              const SizedBox(width: 6),
+              Expanded(
+                  child: Text(labels[index],
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: active ? cs.primary : cs.onSurfaceVariant,
+                          fontSize: 12,
+                          fontWeight:
+                              active ? FontWeight.w700 : FontWeight.w500))),
+            ]),
+            const SizedBox(height: 6),
+            Container(
+              height: 3,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: active || complete
+                    ? cs.primary
+                    : cs.outlineVariant.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
           ]),
         ));
       }));
@@ -414,56 +490,54 @@ class _CreateGroupDataState extends State<CreateGroupData> {
             'Add the information used to identify your workspace.',
           ),
         ),
-        _section(
-          child: Row(children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: _logoBytes == null
-                  ? Container(
-                      width: 72,
-                      height: 72,
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      child: Icon(Icons.storefront_outlined,
-                          size: 32,
-                          color:
-                              Theme.of(context).colorScheme.onPrimaryContainer))
-                  : Image.memory(_logoBytes!,
-                      width: 72, height: 72, fit: BoxFit.cover),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text(_t('Logo del negocio', 'Business logo'),
-                      style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: 4),
-                  Text(
-                      _t('Opcional · visible en tus facturas',
-                          'Optional · shown on your invoices'),
-                      style: Theme.of(context).textTheme.bodySmall),
-                  Wrap(spacing: 8, children: [
-                    TextButton.icon(
-                        onPressed: _pickingLogo ? null : _pickLogo,
-                        icon: const Icon(Icons.add_photo_alternate_outlined,
-                            size: 18),
-                        label: Text(_pickingLogo
-                            ? _t('Abriendo…', 'Opening…')
-                            : _logo == null
-                                ? _t('Añadir logo', 'Add logo')
-                                : _t('Cambiar', 'Change'))),
-                    if (_logo != null)
-                      TextButton(
-                          onPressed: () => setState(() {
-                                _logo = null;
-                                _logoBytes = null;
-                              }),
-                          child: Text(_t('Eliminar', 'Remove'))),
-                  ]),
-                ])),
-          ]),
-        ),
-        const SizedBox(height: 24),
+        Row(children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: _logoBytes == null
+                ? Container(
+                    width: 64,
+                    height: 64,
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    child: Icon(Icons.storefront_outlined,
+                        size: 28,
+                        color:
+                            Theme.of(context).colorScheme.onPrimaryContainer))
+                : Image.memory(_logoBytes!,
+                    width: 64, height: 64, fit: BoxFit.cover),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(_t('Logo del negocio', 'Business logo'),
+                    style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 4),
+                Text(
+                    _t('Opcional · visible en tus facturas',
+                        'Optional · shown on your invoices'),
+                    style: Theme.of(context).textTheme.bodySmall),
+                Wrap(spacing: 4, children: [
+                  TextButton.icon(
+                      onPressed: _pickingLogo ? null : _pickLogo,
+                      icon: const Icon(Icons.add_photo_alternate_outlined,
+                          size: 18),
+                      label: Text(_pickingLogo
+                          ? _t('Abriendo…', 'Opening…')
+                          : _logo == null
+                              ? _t('Añadir logo', 'Add logo')
+                              : _t('Cambiar', 'Change'))),
+                  if (_logo != null)
+                    TextButton(
+                        onPressed: () => setState(() {
+                              _logo = null;
+                              _logoBytes = null;
+                            }),
+                        child: Text(_t('Eliminar', 'Remove'))),
+                ]),
+              ])),
+        ]),
+        const SizedBox(height: 20),
         _field(
           _name,
           _t('Nombre del negocio', 'Business name'),
@@ -491,7 +565,8 @@ class _CreateGroupDataState extends State<CreateGroupData> {
         _field(
           _description,
           _t('Descripción (opcional)', 'Description (optional)'),
-          maxLines: 3,
+          minLines: 2,
+          maxLines: 4,
         ),
       ],
     );
@@ -827,7 +902,7 @@ class _CreateGroupDataState extends State<CreateGroupData> {
   }
 
   Widget _heading(String title, String subtitle) => Padding(
-        padding: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.only(bottom: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -852,11 +927,13 @@ class _CreateGroupDataState extends State<CreateGroupData> {
     TextEditingController controller,
     String label, {
     bool required = false,
+    int? minLines,
     int maxLines = 1,
     TextInputType? keyboardType,
   }) =>
       TextFormField(
         controller: controller,
+        minLines: minLines,
         maxLines: maxLines,
         keyboardType: keyboardType,
         textInputAction:
@@ -880,9 +957,9 @@ class _CreateGroupDataState extends State<CreateGroupData> {
   InputDecoration _decoration(String label) => InputDecoration(
         labelText: label,
         floatingLabelBehavior: FloatingLabelBehavior.always,
-        isDense: false,
+        isDense: true,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         errorMaxLines: 3,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
@@ -891,7 +968,7 @@ class _CreateGroupDataState extends State<CreateGroupData> {
 
   Widget _section({required Widget child}) => Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(16),
@@ -905,10 +982,10 @@ class _CreateGroupDataState extends State<CreateGroupData> {
         builder: (context, constraints) => constraints.maxWidth < 560
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [first, const SizedBox(height: 16), second])
+                children: [first, const SizedBox(height: 14), second])
             : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(child: first),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 Expanded(child: second)
               ]),
       );
