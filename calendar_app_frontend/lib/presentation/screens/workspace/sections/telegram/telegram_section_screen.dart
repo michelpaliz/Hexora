@@ -13,6 +13,8 @@ import 'package:hexora/services/telegram/domain/telegram_domain.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:hexora/models/user/user_preferences.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'components/telegram_account_widget.dart';
 import 'components/telegram_chat_list.dart';
 import 'components/telegram_chat_view.dart';
@@ -693,10 +695,14 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
           onSectionSelected: _selectSection,
           onDisconnect: () => _showDisconnectConfirm(context, domain),
         );
-        final menuInChatHeader = constraints.maxWidth >= 1280 &&
+        // On desktop the secondary sidebar already owns module navigation.
+        // Only use the compact header selector in the intermediate layout.
+        final hasDesktopSideMenu = constraints.maxWidth >= 1080;
+        final menuInChatHeader = !hasDesktopSideMenu &&
             _selectedSection == _TelegramConnectedSection.chats &&
             domain.selectedChat != null;
-        final showPanelMenu = inlineMenu && !menuInChatHeader;
+        final showPanelMenu =
+            inlineMenu && !menuInChatHeader && !hasDesktopSideMenu;
 
         final isChats = _selectedSection == _TelegramConnectedSection.chats;
         final contentCard = FolderPanel(
@@ -719,7 +725,7 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (isChats && !menuInChatHeader) ...[
+                if (isChats && showPanelMenu) ...[
                   Align(alignment: Alignment.centerRight, child: menu),
                   const SizedBox(height: 6),
                 ],
@@ -754,10 +760,23 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
         );
 
         if (constraints.maxWidth >= 1080) {
+          UserPreferencesProvider? preferences;
+          try {
+            preferences = context.watch<UserPreferencesProvider>();
+          } on ProviderNotFoundException {
+            // Focused Telegram widget tests may not mount the app shell.
+          }
+          final iconsOnly = preferences?.navigationDisplayMode ==
+              NavigationDisplayMode.iconsOnly;
           return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            SizedBox(
-                width: NavigationTokens.sidebarWidth,
+            AnimatedContainer(
+                duration: HexoraMotion.duration(context, HexoraMotion.layout),
+                curve: HexoraMotion.navigationCurve,
+                width: iconsOnly
+                    ? NavigationTokens.railWidth
+                    : NavigationTokens.sidebarWidth,
                 child: _TelegramSideMenu(
+                  collapsed: iconsOnly,
                   account: domain.account!,
                   selectedSection: _selectedSection,
                   chatsCount:
@@ -990,6 +1009,7 @@ class _TelegramTopMenu extends StatelessWidget {
 
 class _TelegramSideMenu extends StatelessWidget {
   const _TelegramSideMenu({
+    required this.collapsed,
     required this.account,
     required this.selectedSection,
     required this.chatsCount,
@@ -998,6 +1018,7 @@ class _TelegramSideMenu extends StatelessWidget {
     required this.onSectionSelected,
     required this.onDisconnect,
   });
+  final bool collapsed;
   final TelegramAccount account;
   final _TelegramConnectedSection selectedSection;
   final int chatsCount;
@@ -1013,16 +1034,18 @@ class _TelegramSideMenu extends StatelessWidget {
         final cs = Theme.of(context).colorScheme;
         final sidebarHeaderScope = SidebarHeaderScope.maybeOf(context);
         final sidebarHeader = sidebarHeaderScope?.enabled == true
-            ? sidebarHeaderScope!.builder(context, false)
+            ? sidebarHeaderScope!.builder(context, collapsed)
             : null;
-        Widget heading(String label) => Padding(
-              padding: const EdgeInsets.fromLTRB(12, 20, 8, 10),
-              child: Text(label,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: cs.onSurfaceVariant)),
-            );
+        Widget heading(String label) => collapsed
+            ? const SizedBox(height: 10)
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(12, 20, 8, 10),
+                child: Text(label,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurfaceVariant)),
+              );
         return Column(children: [
           if (sidebarHeader != null) sidebarHeader,
           Expanded(
@@ -1035,6 +1058,7 @@ class _TelegramSideMenu extends StatelessWidget {
                   label: l.telegramMenuChats,
                   badgeText: chatsCount > 0 ? '$chatsCount' : null,
                   selected: selectedSection == _TelegramConnectedSection.chats,
+                  collapsed: collapsed,
                   onTap: () =>
                       onSectionSelected(_TelegramConnectedSection.chats),
                 ),
@@ -1044,6 +1068,7 @@ class _TelegramSideMenu extends StatelessWidget {
                   badgeLive: hasActiveExport,
                   selected:
                       selectedSection == _TelegramConnectedSection.exports,
+                  collapsed: collapsed,
                   onTap: () =>
                       onSectionSelected(_TelegramConnectedSection.exports),
                 ),
@@ -1054,25 +1079,28 @@ class _TelegramSideMenu extends StatelessWidget {
                   label: es ? 'Conexión Telegram' : 'Telegram connection',
                   selected:
                       selectedSection == _TelegramConnectedSection.account,
+                  collapsed: collapsed,
                   onTap: () =>
                       onSectionSelected(_TelegramConnectedSection.account),
                 ),
                 const SizedBox(height: 24),
                 Divider(color: cs.outlineVariant.withValues(alpha: .35)),
-                Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(account.fullName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall)),
-                TextButton.icon(
-                  onPressed: loadingAccount ? null : onDisconnect,
-                  icon: const Icon(Icons.link_off, size: 16),
-                  label: Text(es ? 'Desconectar' : 'Disconnect'),
-                  style: TextButton.styleFrom(
-                      foregroundColor: cs.onSurfaceVariant,
-                      alignment: Alignment.centerLeft),
-                ),
+                if (!collapsed)
+                  Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(account.fullName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall)),
+                if (!collapsed)
+                  TextButton.icon(
+                    onPressed: loadingAccount ? null : onDisconnect,
+                    icon: const Icon(Icons.link_off, size: 16),
+                    label: Text(es ? 'Desconectar' : 'Disconnect'),
+                    style: TextButton.styleFrom(
+                        foregroundColor: cs.onSurfaceVariant,
+                        alignment: Alignment.centerLeft),
+                  ),
               ],
             ),
           ),
@@ -1088,6 +1116,7 @@ class _TelegramMenuItem extends StatelessWidget {
     required this.onTap,
     this.badgeText,
     this.badgeLive = false,
+    this.collapsed = false,
   });
 
   final IconData icon;
@@ -1096,16 +1125,17 @@ class _TelegramMenuItem extends StatelessWidget {
   final VoidCallback onTap;
   final String? badgeText;
   final bool badgeLive;
+  final bool collapsed;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8, bottom: 4),
+      padding: EdgeInsets.only(right: collapsed ? 0 : 8, bottom: 4),
       child: SidebarItem(
         icon: icon,
         label: label,
         isSelected: selected,
-        collapsed: false,
+        collapsed: collapsed,
         onTap: onTap,
         count: badgeLive ? null : int.tryParse(badgeText ?? ''),
         trailing: badgeLive
@@ -1740,13 +1770,6 @@ class WorkspaceHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isCompact = MediaQuery.sizeOf(context).width < 860;
     final phone = MediaQuery.sizeOf(context).width < 700;
-    final headerAction = IconButton.styleFrom(
-      fixedSize: const Size(34, 34),
-      minimumSize: const Size(34, 34),
-      padding: EdgeInsets.zero,
-      foregroundColor: cs.onSurfaceVariant,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-    );
     // One compact white header surface, fixed above the message canvas.
     return Material(
       key: const ValueKey('telegram-workspace-header'),
@@ -1811,52 +1834,30 @@ class WorkspaceHeader extends StatelessWidget {
                   menu!,
                   const SizedBox(width: 8),
                 ],
-                if (phone)
-                  PopupMenuButton<_TelegramHeaderAction>(
-                    tooltip: MaterialLocalizations.of(context).showMenuTooltip,
-                    icon: const Icon(Icons.more_vert_rounded),
-                    onSelected: (action) {
-                      switch (action) {
-                        case _TelegramHeaderAction.refresh:
-                          onRefresh();
-                        case _TelegramHeaderAction.export:
-                          onExportChat();
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      NavigationPopupMenuItem(
-                        value: _TelegramHeaderAction.refresh,
-                        enabled: !isLoadingTopics,
-                        child:
-                            Text(AppLocalizations.of(context)!.telegramRefresh),
-                      ),
-                      NavigationPopupMenuItem(
-                        value: _TelegramHeaderAction.export,
-                        child:
-                            Text(AppLocalizations.of(context)!.telegramExport),
-                      ),
-                    ],
-                  )
-                else ...[
-                  IconButton(
-                    tooltip: AppLocalizations.of(context)!.telegramRefresh,
-                    onPressed: isLoadingTopics ? null : onRefresh,
-                    style: headerAction,
-                    icon: isLoadingTopics
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.refresh_rounded, size: 18),
-                  ),
-                  IconButton(
-                    tooltip: AppLocalizations.of(context)!.telegramExport,
-                    onPressed: onExportChat,
-                    style: headerAction,
-                    icon: const Icon(Icons.ios_share_rounded, size: 18),
-                  ),
-                ],
+                PopupMenuButton<_TelegramHeaderAction>(
+                  tooltip: MaterialLocalizations.of(context).showMenuTooltip,
+                  icon: const Icon(Icons.more_vert_rounded),
+                  onSelected: (action) {
+                    switch (action) {
+                      case _TelegramHeaderAction.refresh:
+                        onRefresh();
+                      case _TelegramHeaderAction.export:
+                        onExportChat();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    NavigationPopupMenuItem(
+                      value: _TelegramHeaderAction.refresh,
+                      enabled: !isLoadingTopics,
+                      child:
+                          Text(AppLocalizations.of(context)!.telegramRefresh),
+                    ),
+                    NavigationPopupMenuItem(
+                      value: _TelegramHeaderAction.export,
+                      child: Text(AppLocalizations.of(context)!.telegramExport),
+                    ),
+                  ],
+                ),
               ],
             ),
             if (chat.isForumChat) ...[

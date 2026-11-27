@@ -24,6 +24,7 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/member_row/components/members_role_chip.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/hexora_user_avatar.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_empty_state.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/presentation/utils/roles/group_role_labels.dart';
 import 'package:hexora/presentation/utils/roles/role_policy.dart';

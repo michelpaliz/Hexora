@@ -309,6 +309,7 @@ class _InvoiceFinancialSummaryBarState
             showDeliveryColumn: true,
             invoiceColumnOrder: true,
             preferWideClient: true,
+            fullColumnsMinWidth: 1360,
             loading: widget.loading,
             trailing: trailing,
           );

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
-import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 
 import 'workspace_tab.dart';
@@ -29,67 +28,8 @@ class _CachedWorkspaceTab {
   final Widget child;
 }
 
-class _WorkspaceContentState extends State<WorkspaceContent>
-    with SingleTickerProviderStateMixin {
+class _WorkspaceContentState extends State<WorkspaceContent> {
   final Map<WorkspaceTabIdentity, _CachedWorkspaceTab> _cache = {};
-  late final AnimationController _contentController = AnimationController(
-    vsync: this,
-    duration: HexoraMotion.moduleNavigation,
-    value: 1,
-  );
-  late final CurvedAnimation _contentCurve = CurvedAnimation(
-    parent: _contentController,
-    curve: HexoraMotion.enter,
-  );
-  late final Animation<double> _contentOpacity = Tween<double>(
-    begin: .92,
-    end: 1,
-  ).animate(_contentCurve);
-  WorkspaceTabIdentity? _lastActiveIdentity;
-
-  @override
-  void initState() {
-    super.initState();
-    _lastActiveIdentity = widget.manager.activeIdentity;
-    widget.manager.addListener(_handleManagerChanged);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _contentController.duration =
-        HexoraMotion.duration(context, HexoraMotion.moduleNavigation);
-    if (HexoraMotion.reduceMotion(context)) _contentController.value = 1;
-  }
-
-  @override
-  void didUpdateWidget(covariant WorkspaceContent oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.manager == widget.manager) return;
-    oldWidget.manager.removeListener(_handleManagerChanged);
-    widget.manager.addListener(_handleManagerChanged);
-    _lastActiveIdentity = widget.manager.activeIdentity;
-    _contentController.value = 1;
-  }
-
-  void _handleManagerChanged() {
-    final activeIdentity = widget.manager.activeIdentity;
-    if (_lastActiveIdentity == activeIdentity) return;
-    _lastActiveIdentity = activeIdentity;
-    if (!mounted || HexoraMotion.reduceMotion(context)) {
-      _contentController.value = 1;
-      return;
-    }
-    _contentController.forward(from: 0);
-  }
-
-  @override
-  void dispose() {
-    widget.manager.removeListener(_handleManagerChanged);
-    _contentCurve.dispose();
-    _contentController.dispose();
-    super.dispose();
-  }
 
   bool _tabConfigurationChanged(WorkspaceTab previous, WorkspaceTab next) {
     if (previous.section != next.section ||
@@ -125,11 +65,16 @@ class _WorkspaceContentState extends State<WorkspaceContent>
     final content = WorkspaceTabScope(
       manager: manager,
       tab: tab,
-      child: _cachedTab(context, tab),
+      child: TooltipVisibility(
+        // Cached tabs remain mounted in IndexedStack. Prevent their tooltip
+        // OverlayPortals from participating in hover hit testing while the
+        // tab is offstage.
+        visible: active,
+        child: _cachedTab(context, tab),
+      ),
     );
     return WorkspaceTabChromeScope(
       active: active,
-      contentOpacity: _contentOpacity,
       tabBarBuilder: (tabBarContext) => WorkspaceTabBar(
         manager: manager,
         onClose: (tab) => _requestClose(tabBarContext, tab),
@@ -233,13 +178,11 @@ class WorkspaceTabChromeScope extends InheritedWidget {
   const WorkspaceTabChromeScope({
     super.key,
     required this.active,
-    required this.contentOpacity,
     required this.tabBarBuilder,
     required super.child,
   });
 
   final bool active;
-  final Animation<double> contentOpacity;
   final WorkspaceTabBarBuilder tabBarBuilder;
 
   static WorkspaceTabChromeScope? maybeOf(BuildContext context) =>
@@ -248,7 +191,6 @@ class WorkspaceTabChromeScope extends InheritedWidget {
   @override
   bool updateShouldNotify(WorkspaceTabChromeScope oldWidget) =>
       oldWidget.active != active ||
-      oldWidget.contentOpacity != contentOpacity ||
       oldWidget.tabBarBuilder != tabBarBuilder;
 }
 
@@ -267,12 +209,7 @@ class WorkspaceMainContent extends StatelessWidget {
       color: Theme.of(context).scaffoldBackgroundColor,
       child: WorkspaceChromeFrame(
         tabBar: chrome.active ? chrome.tabBarBuilder(context) : null,
-        child: FadeTransition(
-          opacity: chrome.active
-              ? chrome.contentOpacity
-              : const AlwaysStoppedAnimation<double>(1),
-          child: child,
-        ),
+        child: child,
       ),
     );
   }

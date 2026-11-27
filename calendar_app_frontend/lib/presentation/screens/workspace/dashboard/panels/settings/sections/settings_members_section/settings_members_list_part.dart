@@ -27,7 +27,9 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            es ? 'Buscar y filtrar invitaciones' : 'Search and filter invitations',
+            es
+                ? 'Buscar y filtrar invitaciones'
+                : 'Search and filter invitations',
             style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
@@ -45,7 +47,8 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
                   ),
                   decoration: InputDecoration(
                     isDense: true,
-                    labelText: es ? 'Email o destinatario' : 'Email or recipient',
+                    labelText:
+                        es ? 'Email o destinatario' : 'Email or recipient',
                     prefixIcon: const Icon(Icons.search_rounded, size: 18),
                     suffixIcon: _invitationQuery.isEmpty
                         ? null
@@ -180,34 +183,28 @@ extension _SettingsMembersListPart on _SettingsMembersSectionState {
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final es = Localizations.localeOf(context).languageCode == 'es';
+    final l = AppLocalizations.of(context)!;
     final filteringInvitations = _selectedTab == 4 &&
         (_invitationQuery.isNotEmpty ||
             _invitationStatusFilter != 'all' ||
             _invitationDeliveryFilter != 'all' ||
             _invitationRoleFilter != 'all');
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(Icons.people_outline, size: 32, color: cs.onSurfaceVariant),
-            const SizedBox(height: 12),
-            Text(
-              filteringInvitations
-                  ? (es
-                      ? 'No hay invitaciones que coincidan con los filtros.'
-                      : 'No invitations match these filters.')
-                  : _selectedTab == 4
-                      ? (es ? 'No hay invitaciones.' : 'No invitations yet.')
-                      : (es ? 'No hay miembros.' : 'No members found.'),
-              style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
+    return HexoraEmptyState(
+      icon: filteringInvitations
+          ? Icons.filter_alt_off_outlined
+          : Icons.person_add_alt_outlined,
+      title: filteringInvitations
+          ? l.emptyFiltersTitle
+          : _selectedTab == 4
+              ? l.emptyInvitationsTitle
+              : l.emptyEmployeesTitle,
+      description: filteringInvitations
+          ? l.emptyFiltersDescription
+          : _selectedTab == 4
+              ? l.emptyInvitationsDescription
+              : l.emptyEmployeesDescription,
+      variant: HexoraEmptyStateVariant.compact,
+      maxDescriptionWidth: 380,
     );
   }
 

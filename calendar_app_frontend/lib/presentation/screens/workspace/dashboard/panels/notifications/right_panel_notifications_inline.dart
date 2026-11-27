@@ -603,13 +603,9 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
     }
     if (destination == NotificationDestination.event) {
       final eventId = EventArgsHelper(notification.args).eventId!;
-      final event =
-          await context.read<IEventRepository>().getEventById(eventId);
+      await context.read<IEventRepository>().getEventById(eventId);
       if (!mounted) return;
-      await Navigator.of(context).pushNamed(
-        AppRoutes.eventDetail,
-        arguments: event,
-      );
+      context.read<GroupDashboardState>().openCalendarEvent(eventId);
       return;
     }
     final dashboard = context.read<GroupDashboardState>();
@@ -1079,142 +1075,159 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
               );
 
               if (isWide) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    filter,
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: WorkspaceMainContent(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: FolderPanel(
-                                title: l.notifications,
-                                showTab: !inlineHeaderActions,
-                                showBorder: false,
-                                showToolbarDivider: false,
-                                contentTopPadding: inlineHeaderActions ? 6 : 8,
-                                backgroundColor: notificationCanvas,
-                                actions: inlineHeaderActions
-                                    ? const []
-                                    : [
-                                        _compactRefreshAction(
-                                            context, l.refreshAction),
-                                        _compactActionsMenu(context),
-                                      ],
-                                child: listWithFilter,
-                              ),
-                            ),
-                            // Same 12 px gap as before (widths unchanged),
-                            // with a hairline instead of a white seam.
-                            SizedBox(
-                              key: const ValueKey(
-                                  'notifications-panels-divider'),
-                              width: 12,
-                              child: Center(
-                                child: Container(
-                                  width: 1,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .outlineVariant
-                                      .withValues(alpha: 0.6),
+                return ColoredBox(
+                  // Paint the space between the notification sidebar and the
+                  // workspace chrome. A bare SizedBox exposed the parent
+                  // surface as a white vertical gap beside the tab strip.
+                  color: notificationCanvas,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      filter,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: WorkspaceMainContent(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: FolderPanel(
+                                  title: l.notifications,
+                                  showTab: !inlineHeaderActions,
+                                  showBorder: false,
+                                  showToolbarDivider: false,
+                                  contentTopPadding:
+                                      inlineHeaderActions ? 6 : 8,
+                                  backgroundColor: notificationCanvas,
+                                  actions: inlineHeaderActions
+                                      ? const []
+                                      : [
+                                          _compactRefreshAction(
+                                              context, l.refreshAction),
+                                          _compactActionsMenu(context),
+                                        ],
+                                  child: listWithFilter,
                                 ),
                               ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: FolderPanel(
+                              // Same 12 px gap as before (widths unchanged),
+                              // with a hairline instead of a white seam.
+                              SizedBox(
                                 key: const ValueKey(
-                                    'notification-details-folder'),
-                                title: null,
-                                showTab: false,
-                                showBorder: false,
-                                contentTopPadding: 0,
-                                backgroundColor: notificationCanvas,
-                                actions: [
-                                  if (!_downloadsMode &&
-                                      !_ocrJobsMode &&
-                                      effectiveSelected != null)
-                                    IconButton(
-                                      style: ThemedButtons.iconAction(context),
-                                      tooltip: MaterialLocalizations.of(context)
-                                          .closeButtonTooltip,
-                                      icon: const Icon(Icons.close, size: 18),
-                                      onPressed: () =>
-                                          setState(() => _detailsClosed = true),
-                                    ),
-                                ],
-                                child: _ocrJobsMode
-                                    ? _OcrJobDetailsPanel(
-                                        job: effectiveSelectedOcrJob,
-                                        onOpen: effectiveSelectedOcrJob == null
-                                            ? null
-                                            : () => _openOcrJob(
-                                                effectiveSelectedOcrJob),
-                                      )
-                                    : _downloadsMode
-                                        ? DownloadDetailsPanel(
-                                            item: effectiveSelectedDownload,
-                                            onRefresh: _refreshSelectedDownload,
-                                            onDownload: _downloadSelectedJob,
-                                          )
-                                        : NotificationDetailsPanel(
-                                            notification: effectiveSelected,
-                                            groupName: widget.group.name,
-                                            onOpen: effectiveSelected != null &&
-                                                    selectedDestination != null
-                                                ? () => _handleOpenNotification(
-                                                    effectiveSelected)
-                                                : null,
-                                            openLabel:
-                                                selectedDestination == null
-                                                    ? null
-                                                    : _openLabel(
-                                                        selectedDestination,
-                                                        Localizations.localeOf(
-                                                                    context)
-                                                                .languageCode ==
-                                                            'es',
-                                                        notification:
-                                                            effectiveSelected),
-                                            onMarkRead: effectiveSelected !=
-                                                        null &&
-                                                    !effectiveSelected.isRead
-                                                ? () => _handleMarkRead(
-                                                    effectiveSelected)
-                                                : null,
-                                            onConfirm: effectiveSelected == null
-                                                ? null
-                                                : () => _handleConfirm(
-                                                    effectiveSelected),
-                                            onNegate: effectiveSelected == null
-                                                ? null
-                                                : () => _handleNegate(
-                                                    effectiveSelected),
-                                            onDelete: effectiveSelected == null
-                                                ? null
-                                                : () => _handleDelete(
-                                                    effectiveSelected),
-                                            onClose: effectiveSelected == null
-                                                ? null
-                                                : () => setState(() =>
-                                                    _detailsClosed = true),
-                                            onOpenRecurrence:
-                                                selectedDestination == null
-                                                    ? null
-                                                    : () => _openRecurrences(
-                                                        effectiveSelected!),
-                                          ),
+                                    'notifications-panels-divider'),
+                                width: 12,
+                                child: Center(
+                                  child: Container(
+                                    width: 1,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .outlineVariant
+                                        .withValues(alpha: 0.6),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
+                              Expanded(
+                                flex: 2,
+                                child: FolderPanel(
+                                  key: const ValueKey(
+                                      'notification-details-folder'),
+                                  title: null,
+                                  showTab: false,
+                                  showBorder: false,
+                                  contentTopPadding: 0,
+                                  backgroundColor: notificationCanvas,
+                                  actions: [
+                                    if (!_downloadsMode &&
+                                        !_ocrJobsMode &&
+                                        effectiveSelected != null)
+                                      IconButton(
+                                        style:
+                                            ThemedButtons.iconAction(context),
+                                        tooltip:
+                                            MaterialLocalizations.of(context)
+                                                .closeButtonTooltip,
+                                        icon: const Icon(Icons.close, size: 18),
+                                        onPressed: () => setState(
+                                            () => _detailsClosed = true),
+                                      ),
+                                  ],
+                                  child: _ocrJobsMode
+                                      ? _OcrJobDetailsPanel(
+                                          job: effectiveSelectedOcrJob,
+                                          onOpen:
+                                              effectiveSelectedOcrJob == null
+                                                  ? null
+                                                  : () => _openOcrJob(
+                                                      effectiveSelectedOcrJob),
+                                        )
+                                      : _downloadsMode
+                                          ? DownloadDetailsPanel(
+                                              item: effectiveSelectedDownload,
+                                              onRefresh:
+                                                  _refreshSelectedDownload,
+                                              onDownload: _downloadSelectedJob,
+                                            )
+                                          : NotificationDetailsPanel(
+                                              notification: effectiveSelected,
+                                              groupName: widget.group.name,
+                                              onOpen: effectiveSelected !=
+                                                          null &&
+                                                      selectedDestination !=
+                                                          null
+                                                  ? () =>
+                                                      _handleOpenNotification(
+                                                          effectiveSelected)
+                                                  : null,
+                                              openLabel: selectedDestination ==
+                                                      null
+                                                  ? null
+                                                  : _openLabel(
+                                                      selectedDestination,
+                                                      Localizations.localeOf(
+                                                                  context)
+                                                              .languageCode ==
+                                                          'es',
+                                                      notification:
+                                                          effectiveSelected),
+                                              onMarkRead: effectiveSelected !=
+                                                          null &&
+                                                      !effectiveSelected.isRead
+                                                  ? () => _handleMarkRead(
+                                                      effectiveSelected)
+                                                  : null,
+                                              onConfirm:
+                                                  effectiveSelected == null
+                                                      ? null
+                                                      : () => _handleConfirm(
+                                                          effectiveSelected),
+                                              onNegate:
+                                                  effectiveSelected == null
+                                                      ? null
+                                                      : () => _handleNegate(
+                                                          effectiveSelected),
+                                              onDelete:
+                                                  effectiveSelected == null
+                                                      ? null
+                                                      : () => _handleDelete(
+                                                          effectiveSelected),
+                                              onClose: effectiveSelected == null
+                                                  ? null
+                                                  : () => setState(() =>
+                                                      _detailsClosed = true),
+                                              onOpenRecurrence:
+                                                  selectedDestination == null
+                                                      ? null
+                                                      : () => _openRecurrences(
+                                                          effectiveSelected!),
+                                            ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               }
 

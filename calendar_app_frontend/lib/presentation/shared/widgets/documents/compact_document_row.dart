@@ -6,19 +6,23 @@ import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_ta
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 
 Set<HexoraFinancialColumn> _columnsForWidth(
-  double width,
-  Set<HexoraFinancialColumn> requested,
-) {
+    double width, Set<HexoraFinancialColumn> requested,
+    {bool invoicePriority = false}) {
   final columns = Set<HexoraFinancialColumn>.of(requested);
+  // Optional columns disappear by priority using the table container's
+  // actual width. This remains correct when a sidebar or details drawer makes
+  // the table narrow inside an otherwise wide browser window.
   columns
     ..remove(HexoraFinancialColumn.concept)
     ..remove(HexoraFinancialColumn.notes);
-  if (width < 860) {
+  if (width < (invoicePriority ? 1120 : 860)) {
     columns
       ..remove(HexoraFinancialColumn.taxableBase)
       ..remove(HexoraFinancialColumn.vat);
   }
-  if (width < 640) columns.remove(HexoraFinancialColumn.date);
+  if (width < (invoicePriority ? 860 : 640)) {
+    columns.remove(HexoraFinancialColumn.date);
+  }
   return columns;
 }
 
@@ -117,11 +121,16 @@ _DocumentColumnLayout _documentColumnLayout(
   double actionsWidth, [
   bool includeDelivery = false,
   bool preferWideClient = false,
+  double fullColumnsMinWidth = _expandedTableWidth,
 ]) {
   final expanded = width >= _expandedTableWidth;
-  final columns = expanded
+  final columns = width >= fullColumnsMinWidth
       ? Set<HexoraFinancialColumn>.of(requested)
-      : _columnsForWidth(width, requested);
+      : _columnsForWidth(
+          width,
+          requested,
+          invoicePriority: fullColumnsMinWidth > _expandedTableWidth,
+        );
   if (!expanded) {
     return _DocumentColumnLayout(
       expanded: false,
@@ -262,6 +271,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
     this.showDeliveryColumn = false,
     this.invoiceColumnOrder = false,
     this.preferWideClient = false,
+    this.fullColumnsMinWidth = _expandedTableWidth,
     this.headerBuilder,
   });
 
@@ -278,6 +288,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
   final bool showDeliveryColumn;
   final bool invoiceColumnOrder;
   final bool preferWideClient;
+  final double fullColumnsMinWidth;
   final Widget Function(
     BuildContext context,
     CompactDocumentColumn column,
@@ -328,6 +339,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
         effectiveActionsWidth,
         showDeliveryColumn,
         preferWideClient,
+        fullColumnsMinWidth,
       );
       // The header and its rows must cross the responsive breakpoint
       // together. Otherwise labels remain visible while row values move into
@@ -537,6 +549,7 @@ class CompactDocumentFinancialFooter extends StatelessWidget {
     this.showDeliveryColumn = false,
     this.invoiceColumnOrder = false,
     this.preferWideClient = false,
+    this.fullColumnsMinWidth = _expandedTableWidth,
     this.loading = false,
     this.trailing,
   });
@@ -553,6 +566,7 @@ class CompactDocumentFinancialFooter extends StatelessWidget {
   final bool showDeliveryColumn;
   final bool invoiceColumnOrder;
   final bool preferWideClient;
+  final double fullColumnsMinWidth;
   final bool loading;
   final Widget? trailing;
 
@@ -572,18 +586,21 @@ class CompactDocumentFinancialFooter extends StatelessWidget {
         label: '$semanticsLabel: $value',
         child: Align(
           alignment: AlignmentDirectional.centerEnd,
-          child: Text(
-            loading ? '—' : value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.end,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontFamily: HexoraTypography.fontFamily,
-                  fontSize: emphasized ? 13.5 : 12.5,
-                  fontWeight: emphasized ? FontWeight.w800 : FontWeight.w600,
-                  color: emphasized ? cs.primary : cs.onSurface,
-                  fontFeatures: HexoraTypography.numericFeatures,
-                ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerEnd,
+            child: Text(
+              loading ? '—' : value,
+              maxLines: 1,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontFamily: HexoraTypography.fontFamily,
+                    fontSize: emphasized ? 13.5 : 12.5,
+                    fontWeight: emphasized ? FontWeight.w800 : FontWeight.w600,
+                    color: emphasized ? cs.primary : cs.onSurface,
+                    fontFeatures: HexoraTypography.numericFeatures,
+                  ),
+            ),
           ),
         ),
       ),
@@ -615,6 +632,7 @@ class CompactDocumentFinancialFooter extends StatelessWidget {
           effectiveActionsWidth,
           showDeliveryColumn,
           preferWideClient,
+          fullColumnsMinWidth,
         );
         final stacked = _usesStackedDocumentLayout(
           layout,
@@ -755,6 +773,8 @@ class CompactDocumentRow extends StatelessWidget {
       this.compactSplitLayout = false,
       this.hideActionsInSplitView = false,
       this.compactTitle,
+      this.rowMinHeight = 52,
+      this.fullColumnsMinWidth = _expandedTableWidth,
       this.separatorWidth = 1,
       this.taxableBase,
       this.vat,
@@ -792,6 +812,8 @@ class CompactDocumentRow extends StatelessWidget {
   final bool compactSplitLayout;
   final bool hideActionsInSplitView;
   final String? compactTitle;
+  final double rowMinHeight;
+  final double fullColumnsMinWidth;
   final double separatorWidth;
   final num? taxableBase;
   final num? vat;
@@ -851,7 +873,7 @@ class CompactDocumentRow extends StatelessWidget {
           selectedBorderColor:
               selected ? cs.outlineVariant.withValues(alpha: .55) : null,
           onTap: onTap,
-          minHeight: useCompactSplitLayout ? 56 : 52,
+          minHeight: useCompactSplitLayout ? 52 : rowMinHeight,
           verticalPadding: 2,
           separatorWidth: separatorWidth,
           child: LayoutBuilder(builder: (context, constraints) {
@@ -861,6 +883,7 @@ class CompactDocumentRow extends StatelessWidget {
               actionsColumnWidth,
               showDeliveryColumn,
               preferWideClient,
+              fullColumnsMinWidth,
             );
             final columns = layout.columns;
             // A desktop viewport can still contain a narrow list pane (for
@@ -990,13 +1013,17 @@ class CompactDocumentRow extends StatelessWidget {
                 ]);
             final amountWidget = amount == null
                 ? null
-                : Text(amount!,
-                    textAlign: TextAlign.right,
-                    style: text.bodyMedium?.copyWith(
-                        fontFamily: HexoraTypography.fontFamily,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        fontFeatures: HexoraTypography.numericFeatures));
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: Text(amount!,
+                        maxLines: 1,
+                        textAlign: TextAlign.right,
+                        style: text.bodyMedium?.copyWith(
+                            fontFamily: HexoraTypography.fontFamily,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: HexoraTypography.numericFeatures)));
             Widget busyIndicator() => const SizedBox(
                 width: 16,
                 height: 16,

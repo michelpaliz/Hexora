@@ -1,4 +1,6 @@
 // presentation/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +13,7 @@ import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/models/weather/day_summary.dart';
 import 'package:hexora/services/groups/event/domain/event_domain.dart';
+import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/insights/right_panel_insights_inline.dart';
@@ -74,12 +77,16 @@ String calendarViewModeForSideMenu(String menu) {
 class MainCalendarView extends StatefulWidget {
   final Group? group;
   final bool embedded;
+  final String? initialEventId;
+  final int navigationRevision;
   final ValueChanged<CalendarDashboardActions?>? onActionsReady;
 
   const MainCalendarView({
     super.key,
     this.group,
     this.embedded = false,
+    this.initialEventId,
+    this.navigationRevision = 0,
     this.onActionsReady,
   });
 
@@ -139,6 +146,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
       _c.calendarUI?.setEventFilter(userId: _selectedUserFilter);
       // If your coordinator exposes current view, you can map it to initialIndex here.
       _isBootstrapped = true;
+      await _openRequestedEvent();
     } finally {
       if (mounted) setState(() {});
     }
@@ -150,7 +158,23 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     if (oldWidget.group?.id != widget.group?.id) {
       _isBootstrapped = false;
       _bootstrap();
+    } else if (oldWidget.initialEventId != widget.initialEventId ||
+        oldWidget.navigationRevision != widget.navigationRevision) {
+      _openRequestedEvent();
     }
+  }
+
+  Future<void> _openRequestedEvent() async {
+    final eventId = widget.initialEventId?.trim();
+    if (eventId == null || eventId.isEmpty || !_isBootstrapped) return;
+    final event = await context.read<IEventRepository>().getEventById(eventId);
+    if (!mounted) return;
+    setState(() {
+      _viewingEvent = event;
+      _editingEvent = null;
+      _rightPanelCollapsed = false;
+      _panelView = _SidePanelView.viewEvent;
+    });
   }
 
   void _toggleWeatherIcons(bool value) {
@@ -159,66 +183,142 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     setState(() {});
   }
 
-  Future<void> _openAddEvent(Group group) async {
-    bool? added;
-
-    final isWideNow = MediaQuery.of(context).size.width >= 1000;
-    if (isWideNow) {
-      final now = DateTime.now();
+  Future<void> _openAddEvent(
+    Group group, {
+    DateTime? start,
+    DateTime? end,
+  }) async {
+    final initialStart = start ?? DateTime.now();
+    final initialEnd = end ?? initialStart.add(const Duration(hours: 1));
+    final isWideNow = MediaQuery.sizeOf(context).width >= 1440;
+    if (isWideNow && widget.embedded && kIsWeb) {
       setState(() {
         _rightPanelCollapsed = false;
         _panelView = _SidePanelView.addEvent;
-        _pendingAddEventStart = now;
-        _pendingAddEventEnd = now.add(const Duration(hours: 1));
-      });
-      return;
-    }
-
-    if (widget.embedded && kIsWeb) {
-      setState(() {
-        _rightPanelCollapsed = false;
-        _panelView = _SidePanelView.addEvent;
+        _pendingAddEventStart = initialStart;
+        _pendingAddEventEnd = initialEnd;
       });
       return;
     }
 
     if (kIsWeb) {
-      // On web, keep the 3-column layout in place by showing a dialog instead of full navigation.
-      added = await showHexoraDialog<bool>(
-        context: context,
-        builder: (dialogCtx) {
-          final media = MediaQuery.of(dialogCtx).size;
-          return Dialog(
-            insetPadding:
-                const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: 980,
-                maxHeight: media.height * 0.9,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: media.width * 0.8,
-                  height: media.height * 0.86,
-                  child: AddEventScreen(group: group),
-                ),
-              ),
-            ),
-          );
-        },
+      await _showAddEventEditor(
+        group,
+        start: initialStart,
+        end: initialEnd,
+        quickInitially: false,
       );
-    } else {
-      added = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(
-          builder: (_) => AddEventScreen(group: group),
-        ),
-      );
+      return;
     }
 
+    final added = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AddEventScreen(
+          group: group,
+          initialStartDate: initialStart,
+          initialEndDate: initialEnd,
+        ),
+      ),
+    );
     if (added == true) {
       await _refreshCalendarOnly();
     }
+  }
+
+  Future<void> _showAddEventEditor(
+    Group group, {
+    required DateTime start,
+    required DateTime end,
+    required bool quickInitially,
+  }) async {
+    var quickMode = quickInitially;
+    final added = await showHexoraDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final media = MediaQuery.sizeOf(context);
+          final compactViewport = media.width < 700 || media.height < 650;
+          final horizontalRoom = (media.width - 48).clamp(320.0, 920.0);
+          final width =
+              quickMode ? horizontalRoom.clamp(320.0, 580.0) : horizontalRoom;
+          final heightFactor = quickMode ? 0.78 : 0.9;
+          final height = (media.height * heightFactor)
+              .clamp(420.0, quickMode ? 720.0 : 900.0);
+          final l = AppLocalizations.of(context)!;
+
+          final editor = Material(
+            color: Theme.of(context).colorScheme.surface,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 10, 8, 6),
+                  child: Row(
+                    children: [
+                      Icon(Icons.event_rounded,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          l.addEvent,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: MaterialLocalizations.of(context)
+                            .closeButtonTooltip,
+                        onPressed: () => Navigator.pop(context, false),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: AddEventScreen(
+                    key: const ValueKey('calendar-add-event-editor'),
+                    group: group,
+                    embedded: true,
+                    quickMode: quickMode,
+                    useStickyFooter: true,
+                    initialStartDate: start,
+                    initialEndDate: end,
+                    onMoreOptions: quickMode
+                        ? () => setDialogState(() => quickMode = false)
+                        : null,
+                    onCancel: () => Navigator.pop(context, false),
+                    onCreated: () => Navigator.pop(context, true),
+                  ),
+                ),
+              ],
+            ),
+          );
+
+          if (compactViewport) {
+            return Dialog.fullscreen(child: editor);
+          }
+          return Dialog(
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: AnimatedContainer(
+              duration: HexoraMotion.fast,
+              curve: HexoraMotion.enter,
+              width: width,
+              height: height,
+              child: editor,
+            ),
+          );
+        },
+      ),
+    );
+    if (added == true) await _refreshCalendarOnly();
   }
 
   Future<void> _refreshCalendarOnly() async {
@@ -227,12 +327,20 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   }
 
   void _openAddEventForRange(DateTime start, DateTime end) {
-    setState(() {
-      _rightPanelCollapsed = false;
-      _panelView = _SidePanelView.addEvent;
-      _pendingAddEventStart = start;
-      _pendingAddEventEnd = end;
-    });
+    _pendingAddEventStart = start;
+    _pendingAddEventEnd = end;
+    final group = widget.group;
+    if (group == null) return;
+    if (kIsWeb) {
+      unawaited(_showAddEventEditor(
+        group,
+        start: start,
+        end: end,
+        quickInitially: true,
+      ));
+      return;
+    }
+    unawaited(_openAddEvent(group, start: start, end: end));
   }
 
   void _openAddEventForSlot(DateTime slot) {
@@ -1005,8 +1113,12 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 return AddEventScreen(
                   group: currentGroup,
                   embedded: true,
+                  useStickyFooter: true,
                   initialStartDate: _pendingAddEventStart,
                   initialEndDate: _pendingAddEventEnd,
+                  onCancel: () => setState(
+                    () => _panelView = _SidePanelView.miniCalendar,
+                  ),
                   onCreated: () async {
                     await _refreshCalendarOnly();
                     if (!mounted) return;
@@ -1602,8 +1714,12 @@ class _MainCalendarViewState extends State<MainCalendarView> {
               return AddEventScreen(
                 group: currentGroup,
                 embedded: true,
+                useStickyFooter: true,
                 initialStartDate: _pendingAddEventStart,
                 initialEndDate: _pendingAddEventEnd,
+                onCancel: () => setState(
+                  () => _panelView = _SidePanelView.upcoming,
+                ),
                 onCreated: () async {
                   await _refreshCalendarOnly();
                 },

@@ -541,11 +541,12 @@ class _ScrollableNavStripState extends State<_ScrollableNavStrip> {
   bool _hasOverflow = false;
   bool _canScrollLeft = false;
   bool _canScrollRight = false;
+  bool _scrollStateSyncScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    _controller.addListener(_syncScrollState);
+    _controller.addListener(_scheduleScrollStateSync);
     _scheduleScrollStateSync();
   }
 
@@ -558,13 +559,16 @@ class _ScrollableNavStripState extends State<_ScrollableNavStrip> {
   @override
   void dispose() {
     _controller
-      ..removeListener(_syncScrollState)
+      ..removeListener(_scheduleScrollStateSync)
       ..dispose();
     super.dispose();
   }
 
   void _scheduleScrollStateSync() {
+    if (_scrollStateSyncScheduled) return;
+    _scrollStateSyncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollStateSyncScheduled = false;
       if (mounted) _syncScrollState();
     });
   }

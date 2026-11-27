@@ -27,7 +27,6 @@ class _SettingsSystemConfigSectionState
     extends State<SettingsSystemConfigSection> {
   late User? currentUser;
   String userName = '';
-  bool _autoStatementImportLoading = false;
 
   @override
   void didChangeDependencies() {
@@ -142,24 +141,6 @@ class _SettingsSystemConfigSectionState
     ));
   }
 
-  Future<void> _toggleAutoStatementImport(bool enabled) async {
-    final loc = AppLocalizations.of(context)!;
-    if (_autoStatementImportLoading) return;
-    setState(() => _autoStatementImportLoading = true);
-    try {
-      await context.read<AuthProvider>().setAutoStatementImportEnabled(enabled);
-      if (!mounted) return;
-      final isEs = Localizations.localeOf(context).languageCode == 'es';
-      _snack(isEs ? 'Configuración guardada.' : 'Settings saved.');
-    } catch (_) {
-      _snack(loc.autoStatementImportUpdateFailed);
-    } finally {
-      if (mounted) {
-        setState(() => _autoStatementImportLoading = false);
-      }
-    }
-  }
-
   /// Width from which the sections split into two columns. Measured on the
   /// space this section receives, so it follows every navigation layout.
   static const double _twoColumnMinWidth = 700;
@@ -219,7 +200,7 @@ class _SettingsSystemConfigSectionState
                   title: loc.preferencesNavigation,
                   child: const NavigationPreference(),
                 );
-                final other = _otherPreferences(authProvider, loc, isEs);
+                final other = _otherPreferences(loc, isEs);
                 if (preferenceLayoutWidth(context, constraints.maxWidth) <
                     _twoColumnMinWidth) {
                   return Column(
@@ -249,7 +230,6 @@ class _SettingsSystemConfigSectionState
   }
 
   Widget _otherPreferences(
-    AuthProvider authProvider,
     AppLocalizations loc,
     bool isEs,
   ) {
@@ -266,20 +246,6 @@ class _SettingsSystemConfigSectionState
         _Section(
           title: loc.preferencesLanguage,
           trailing: const LanguagePreference(shortLabels: true, onCanvas: true),
-        ),
-        const _SectionDivider(),
-        _Section(
-          title: isEs ? 'Importación automática' : 'Automatic import',
-          child: _AutoImportRow(
-            title: isEs ? 'Importar extracto diario' : 'Import daily statement',
-            description: isEs
-                ? 'Solo en los negocios que lo tengan configurado.'
-                : 'Only for businesses where it is configured.',
-            value:
-                authProvider.currentUser?.autoStatementImportEnabled ?? false,
-            onChanged:
-                _autoStatementImportLoading ? null : _toggleAutoStatementImport,
-          ),
         ),
         const _SectionDivider(),
         _Section(
@@ -358,68 +324,6 @@ class _SectionDivider extends StatelessWidget {
               .withValues(alpha: 0.6),
         ),
       );
-}
-
-class _AutoImportRow extends StatelessWidget {
-  const _AutoImportRow({
-    required this.title,
-    required this.description,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String title;
-  final String description;
-  final bool value;
-
-  /// Null while a change is being saved.
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    return MergeSemantics(
-      child: InkWell(
-        key: const ValueKey('settings-auto-import'),
-        onTap: onChanged == null ? null : () => onChanged!(!value),
-        borderRadius: BorderRadius.circular(8),
-        hoverColor: cs.primary.withValues(alpha: 0.045),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
-          child: Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w500),
-                      ),
-                      Text(
-                        description,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          height: 1.25,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Switch.adaptive(value: value, onChanged: onChanged),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _ActionRow extends StatelessWidget {

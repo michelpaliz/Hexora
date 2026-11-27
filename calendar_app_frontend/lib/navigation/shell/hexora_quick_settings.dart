@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_segmented_control.dart';
+import 'package:hexora/state/locale_provider.dart';
 import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:hexora/theme/theme_provider.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -86,6 +87,7 @@ class _QuickSettingsPanel extends StatelessWidget {
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     final preferences = context.watch<UserPreferencesProvider>();
     final themeMode = context.watch<ThemeModeProvider>();
+    final locale = context.watch<LocaleProvider>();
     final selectedAppearance = switch (themeMode.mode) {
       ThemeMode.light => themeMode.lightVariant == LightThemeVariant.blue
           ? _QuickAppearance.lightBlue
@@ -251,6 +253,31 @@ class _QuickSettingsPanel extends StatelessWidget {
                       enabled: themeMode.isLoaded,
                       isEs: isEs,
                       onChanged: selectAppearance,
+                    ),
+                    const SizedBox(height: 10),
+                    Divider(height: 1, color: cs.outlineVariant),
+                    const SizedBox(height: 10),
+                    _label(context, isEs ? 'Idioma' : 'Language'),
+                    const SizedBox(height: 6),
+                    HexoraSegmentedControl<String>(
+                      expandSegments: true,
+                      segments: const [
+                        HexoraSegment(
+                          value: 'es',
+                          label: 'Español',
+                          icon: LucideIcons.languages,
+                          key: ValueKey('quick-language-es'),
+                        ),
+                        HexoraSegment(
+                          value: 'en',
+                          label: 'English',
+                          icon: LucideIcons.languages,
+                          key: ValueKey('quick-language-en'),
+                        ),
+                      ],
+                      selected: locale.locale.languageCode,
+                      onChanged: (languageCode) =>
+                          locale.setLocale(Locale(languageCode)),
                     ),
                     const SizedBox(height: 10),
                     Divider(height: 1, color: cs.outlineVariant),

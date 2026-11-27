@@ -6,6 +6,68 @@ import 'package:hexora/presentation/screens/workspace/dashboard/panels/notificat
 import 'package:hexora/theme/themes/app_theme.dart';
 
 void main() {
+  testWidgets('event details follow the Spanish locale', (tester) async {
+    final notification = NotificationUser(
+      id: 'event-notice',
+      senderId: 'sender',
+      recipientId: 'recipient',
+      titleKey: 'notification.event.reminder.title',
+      messageKey: 'notification.event.reminder.message',
+      fallbackTitle: 'Event reminder',
+      fallbackMessage: 'Event reminder message',
+      args: {
+        'eventId': 'event-1',
+        'eventTitle': 'Visita de seguimiento',
+        'eventType': 'work_visit',
+        'status': 'pending',
+        'createdByName': 'Michael',
+        'startDate': DateTime(2026, 11, 16, 10).toIso8601String(),
+        'endDate': DateTime(2026, 11, 16, 11, 45).toIso8601String(),
+        'reminderTime': 30,
+        'location': 'Sevilla',
+        'description': 'Cita de demostración',
+        'clientName': 'StudySpark Academy',
+        'primaryServiceId': 'service-1',
+      },
+      timestamp: DateTime(2026, 11, 1),
+      groupId: 'group-1',
+      category: Category.eventReminder,
+      type: NotificationType.reminder,
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.forPlatform(
+        Brightness.light,
+        platform: TargetPlatform.windows,
+      ),
+      locale: const Locale('es'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: NotificationDetailsPanel(
+          notification: notification,
+          groupName: 'Grupo',
+          onConfirm: null,
+          onNegate: null,
+          onMarkRead: null,
+          onDelete: null,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('EVENTO'), findsOneWidget);
+    expect(find.text('Creado por'), findsOneWidget);
+    expect(find.text('Visita de trabajo'), findsWidgets);
+    expect(find.text('Pendiente'), findsOneWidget);
+    expect(find.text('HORARIO'), findsOneWidget);
+    expect(find.text('CONTENIDO'), findsOneWidget);
+    expect(find.text('VISITA DE TRABAJO'), findsOneWidget);
+    expect(find.text('Ver detalles'), findsOneWidget);
+    expect(find.text('Created by'), findsNothing);
+    expect(find.text('Schedule'), findsNothing);
+  });
+
   for (final width in [360.0, 600.0]) {
     testWidgets('receipt details use payload and expose actions at $width',
         (tester) async {

@@ -152,8 +152,12 @@ class _HexoraDocumentToolbarState extends State<HexoraDocumentToolbar> {
               ),
               const SizedBox(width: 16),
               SizedBox(
+                // Some document workspaces intentionally use a compact search
+                // field (for example proposals use 240 px). A fixed 320 px
+                // lower bound makes num.clamp throw when that configured
+                // maximum is smaller than 320.
                 width: (constraints.maxWidth * .30)
-                    .clamp(320.0, widget.searchMaxWidth),
+                    .clamp(0.0, widget.searchMaxWidth),
                 child: search,
               ),
               const SizedBox(width: 16),
@@ -208,10 +212,13 @@ class _HexoraDocumentToolbarState extends State<HexoraDocumentToolbar> {
                             ),
                             const SizedBox(width: 6),
                             Flexible(
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                reverse: true,
-                                child: widget.actions,
+                              child: Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  reverse: true,
+                                  child: widget.actions,
+                                ),
                               ),
                             ),
                           ],
@@ -224,30 +231,7 @@ class _HexoraDocumentToolbarState extends State<HexoraDocumentToolbar> {
                             widget.viewSwitcher!,
                             const SizedBox(width: 6),
                           ],
-                          Expanded(
-                            child: widget.centerSearch
-                                ? Center(
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                        maxWidth: widget.searchMaxWidth,
-                                      ),
-                                      child: search,
-                                    ),
-                                  )
-                                : search,
-                          ),
-                          if (widget.centerSearch &&
-                              widget.viewSwitcher != null)
-                            Visibility(
-                              visible: false,
-                              maintainSize: true,
-                              maintainAnimation: true,
-                              maintainState: true,
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 6),
-                                child: widget.viewSwitcher!,
-                              ),
-                            ),
+                          Expanded(child: search),
                         ],
                       ),
                     ],

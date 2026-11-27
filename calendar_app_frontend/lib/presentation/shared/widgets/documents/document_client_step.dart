@@ -67,6 +67,13 @@ class DocumentClientStep extends StatelessWidget {
     this.searchDriven = false,
     this.searchDrivenDetails,
     this.modeSelectorTrailing,
+    this.compactPreviewLabel,
+    this.compactListHeightFactor = .62,
+    this.compactListMinHeight = 280,
+    this.compactListMaxHeight = 460,
+    this.compactPreviewHeightFactor = .56,
+    this.compactPreviewMinHeight = 320,
+    this.compactPreviewMaxHeight = 520,
   });
 
   final List<GroupClient> clients;
@@ -93,6 +100,13 @@ class DocumentClientStep extends StatelessWidget {
   final bool showClientCount;
   final bool searchDriven;
   final Widget? searchDrivenDetails;
+  final String? compactPreviewLabel;
+  final double compactListHeightFactor;
+  final double compactListMinHeight;
+  final double compactListMaxHeight;
+  final double compactPreviewHeightFactor;
+  final double compactPreviewMinHeight;
+  final double compactPreviewMaxHeight;
 
   /// Optional controls aligned to the right of the mode selector, so a
   /// document-type toggle (e.g. Factura / Recibo) and the client-source toggle
@@ -185,7 +199,9 @@ class DocumentClientStep extends StatelessWidget {
           if (selectedClientId == null) return list;
           final availableHeight =
               constraints.maxHeight.isFinite ? constraints.maxHeight : 700.0;
-          final listSlot = (availableHeight * .62).clamp(280.0, 460.0);
+          final listSlot = (availableHeight * compactListHeightFactor)
+              .clamp(compactListMinHeight, compactListMaxHeight)
+              .toDouble();
           return SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -194,10 +210,12 @@ class DocumentClientStep extends StatelessWidget {
                 const SizedBox(height: 10),
                 _CompactPreviewSection(
                   emptyLabel: emptySelectionLabel,
+                  label: compactPreviewLabel,
                   child: searchDriven
                       ? SizedBox(
-                          height: (availableHeight * .56)
-                              .clamp(320.0, 520.0)
+                          height: (availableHeight * compactPreviewHeightFactor)
+                              .clamp(compactPreviewMinHeight,
+                                  compactPreviewMaxHeight)
                               .toDouble(),
                           child: detailsBody,
                         )
@@ -697,10 +715,12 @@ class _CompactPreviewSection extends StatelessWidget {
   const _CompactPreviewSection({
     required this.emptyLabel,
     required this.child,
+    this.label,
   });
 
   final String emptyLabel;
   final Widget child;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -731,7 +751,7 @@ class _CompactPreviewSection extends StatelessWidget {
             color: cs.primary,
           ),
           title: Text(
-            isSpanish ? 'Vista del cliente' : 'Client preview',
+            label ?? (isSpanish ? 'Vista del cliente' : 'Client preview'),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),

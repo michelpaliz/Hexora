@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
-import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/add_screen/utils/form/reminder_options.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/shared/base/base_event_logic.dart';
 import 'package:hexora/presentation/screens/events/screens/actions/shared/form/event_dialogs.dart';
@@ -19,6 +18,8 @@ class EventFormWorkVisit extends StatefulWidget {
   final String ownerUserId;
   final bool isEditing;
   final bool showSubmitButton;
+  final bool quickMode;
+  final VoidCallback? onMoreOptions;
 
   /// Optional: lets the parent/router provide a dialog implementation.
   final EventDialogs? dialogs;
@@ -33,6 +34,8 @@ class EventFormWorkVisit extends StatefulWidget {
     required this.ownerUserId,
     this.isEditing = false,
     this.showSubmitButton = true,
+    this.quickMode = false,
+    this.onMoreOptions,
     this.dialogs,
     this.enableClientServicePickers = true,
   });
@@ -264,75 +267,83 @@ class _EventFormWorkVisitState extends State<EventFormWorkVisit> {
             onEndTap: () => _handleDateSelection(false),
           ),
 
-          // ── AL COMPLETAR ────────────────────────────────────────────────
-          _FormSectionLabel(loc.eventFormCompletion),
-          _PhotoRequirementTile(
-            value: widget.logic.requiresCompletionPhotos,
-            minimumPhotos: widget.logic.completionRequirements.minPhotos,
-            onChanged: widget.logic.setRequiresCompletionPhotos,
-          ),
-
-          // ── OPCIONES ────────────────────────────────────────────────────
-          _FormSectionLabel(loc.eventFormOptions),
-          _OptionsCard(
-            reminderEnabled: _notifyMe,
-            reminderMinutes: _reminder,
-            onReminderTap: _chooseReminder,
-            isRepetitive: widget.logic.isRepetitive,
-            onRepetitionTap: _handleRepetitionTap,
-          ),
-
-          // ── DETALLES ─────────────────────────────────────────────────────
-          _FormSectionLabel(isSpanish ? 'Detalles' : 'Details'),
-          DescriptionSection(
-            title: loc.descriptionLabel,
-            cardBuilder: SectionCard.new,
-            controller: widget.logic.descriptionController,
-          ),
-          const SizedBox(height: 16),
-          Material(
-            color: Theme.of(context).colorScheme.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant),
+          if (widget.quickMode) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const ValueKey('event-form-more-options'),
+                onPressed: widget.onMoreOptions,
+                icon: const Icon(Icons.open_in_full_rounded, size: 17),
+                label: Text(loc.eventFormMoreOptions),
+              ),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: ExpansionTile(
-              expansionAnimationStyle: HexoraMotion.expansionStyle(context),
-              initiallyExpanded: _advancedExpanded,
-              onExpansionChanged: (value) =>
-                  setState(() => _advancedExpanded = value),
-              title: Text(loc.eventFormMoreOptions),
-              subtitle: widget.logic.selectedEventColor == null
-                  ? null
-                  : Text(
-                      '${loc.colorLabel} · ${ColorManager.getColorName(
-                        Color(widget.logic.selectedEventColor!),
-                        localeCode:
-                            Localizations.localeOf(context).languageCode,
-                      )}',
-                    ),
-              leading: const Icon(Icons.tune_rounded),
-              tilePadding: const EdgeInsets.symmetric(horizontal: 14),
-              childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              shape: const RoundedRectangleBorder(),
-              collapsedShape: const RoundedRectangleBorder(),
-              children: [
-                ColorSection(
-                  title: loc.colorLabel,
-                  cardBuilder: SectionCard.new,
-                  selectedColorValue: widget.logic.selectedEventColor,
-                  onColorChanged: (color) {
-                    if (color != null) {
-                      widget.logic.setSelectedColor(color.toARGB32());
-                    }
-                  },
-                  colorValues: widget.logic.colorList,
+          ] else ...[
+            const SizedBox(height: 18),
+            Material(
+              color: Theme.of(context).colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: ExpansionTile(
+                key: const ValueKey('event-form-advanced-options'),
+                expansionAnimationStyle: HexoraMotion.expansionStyle(context),
+                initiallyExpanded: _advancedExpanded,
+                onExpansionChanged: (value) =>
+                    setState(() => _advancedExpanded = value),
+                title: Text(loc.eventFormMoreOptions),
+                subtitle: Text(
+                  isSpanish
+                      ? 'Recordatorio, repetición, fotos y detalles'
+                      : 'Reminder, repetition, photos and details',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
+                leading: const Icon(Icons.tune_rounded),
+                tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                shape: const RoundedRectangleBorder(),
+                collapsedShape: const RoundedRectangleBorder(),
+                children: [
+                  _PhotoRequirementTile(
+                    value: widget.logic.requiresCompletionPhotos,
+                    minimumPhotos:
+                        widget.logic.completionRequirements.minPhotos,
+                    onChanged: widget.logic.setRequiresCompletionPhotos,
+                  ),
+                  const SizedBox(height: 10),
+                  _OptionsCard(
+                    reminderEnabled: _notifyMe,
+                    reminderMinutes: _reminder,
+                    onReminderTap: _chooseReminder,
+                    isRepetitive: widget.logic.isRepetitive,
+                    onRepetitionTap: _handleRepetitionTap,
+                  ),
+                  const SizedBox(height: 10),
+                  DescriptionSection(
+                    title: loc.descriptionLabel,
+                    cardBuilder: SectionCard.new,
+                    controller: widget.logic.descriptionController,
+                  ),
+                  const SizedBox(height: 10),
+                  ColorSection(
+                    title: loc.colorLabel,
+                    cardBuilder: SectionCard.new,
+                    selectedColorValue: widget.logic.selectedEventColor,
+                    onColorChanged: (color) {
+                      if (color != null) {
+                        widget.logic.setSelectedColor(color.toARGB32());
+                      }
+                    },
+                    colorValues: widget.logic.colorList,
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
 
           // ── SUBMIT ───────────────────────────────────────────────────────
           if (widget.showSubmitButton) ...[

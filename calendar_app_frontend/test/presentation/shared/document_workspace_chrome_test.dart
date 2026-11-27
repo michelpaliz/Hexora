@@ -48,71 +48,115 @@ void main() {
     expect(selected, 1);
   });
 
-  testWidgets('shared document toolbar keeps search and actions responsive',
-      (tester) async {
-    tester.view.physicalSize = const Size(1200, 300);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    var query = '';
+  for (final centerSearch in [false, true]) {
+    testWidgets('shared document toolbar responsive: centered=$centerSearch',
+        (tester) async {
+      tester.view.physicalSize = const Size(1200, 300);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var query = '';
 
-    Widget app() => MaterialApp(
-          theme: AppTheme.forPlatform(
-            Brightness.light,
-            platform: TargetPlatform.windows,
-          ),
-          home: Scaffold(
-            body: StatefulBuilder(
-              builder: (context, setState) => HexoraDocumentToolbar(
-                statusTabs: HexoraDocumentStatusTabs(
-                  selectedIndex: 0,
-                  onSelected: (_) {},
-                  tabs: const [
-                    HexoraDocumentStatusTab(
-                      label: 'Borradores',
-                      count: 2,
-                      icon: Icons.drafts_outlined,
-                    ),
-                    HexoraDocumentStatusTab(
-                      label: 'Facturas',
-                      count: 10,
-                      icon: Icons.receipt_long_outlined,
-                    ),
-                  ],
-                ),
-                viewSwitcher: const SizedBox(
-                  key: ValueKey('test-view-switcher'),
-                  width: 64,
-                  height: 36,
-                ),
-                searchHint: 'Buscar documentos...',
-                searchValue: query,
-                onSearchChanged: (value) => setState(() => query = value),
-                actions: const SizedBox(
-                  key: ValueKey('test-options'),
-                  width: 96,
-                  height: 36,
+      Widget app() => MaterialApp(
+            theme: AppTheme.forPlatform(
+              Brightness.light,
+              platform: TargetPlatform.windows,
+            ),
+            home: Scaffold(
+              body: StatefulBuilder(
+                builder: (context, setState) => HexoraDocumentToolbar(
+                  centerSearch: centerSearch,
+                  statusTabs: HexoraDocumentStatusTabs(
+                    selectedIndex: 0,
+                    onSelected: (_) {},
+                    tabs: const [
+                      HexoraDocumentStatusTab(
+                        label: 'Borradores',
+                        count: 2,
+                        icon: Icons.drafts_outlined,
+                      ),
+                      HexoraDocumentStatusTab(
+                        label: 'Facturas',
+                        count: 10,
+                        icon: Icons.receipt_long_outlined,
+                      ),
+                    ],
+                  ),
+                  viewSwitcher: const SizedBox(
+                    key: ValueKey('test-view-switcher'),
+                    width: 64,
+                    height: 36,
+                  ),
+                  searchHint: 'Buscar documentos...',
+                  searchValue: query,
+                  onSearchChanged: (value) => setState(() => query = value),
+                  actions: const SizedBox(
+                    key: ValueKey('test-options'),
+                    width: 96,
+                    height: 36,
+                  ),
                 ),
               ),
             ),
-          ),
-        );
+          );
 
-    await tester.pumpWidget(app());
-    await tester.enterText(find.byType(TextField), 'Cliente Norte');
-    await tester.pump();
-    expect(query, 'Cliente Norte');
-    expect(
-        tester.getSize(find.byType(TextField)).width, lessThanOrEqualTo(320));
-    expect(
-      tester.getCenter(find.byKey(const ValueKey('test-options'))).dy,
-      closeTo(tester.getCenter(find.text('Borradores')).dy, 1),
+      await tester.pumpWidget(app());
+      await tester.enterText(find.byType(TextField), 'Cliente Norte');
+      await tester.pump();
+      expect(query, 'Cliente Norte');
+      if (!centerSearch) {
+        expect(tester.getSize(find.byType(TextField)).width,
+            lessThanOrEqualTo(320));
+      }
+      expect(
+        tester.getCenter(find.byKey(const ValueKey('test-options'))).dy,
+        closeTo(tester.getCenter(find.text('Borradores')).dy, 1),
+      );
+
+      tester.view.physicalSize = const Size(520, 300);
+      await tester.pumpAndSettle();
+      expect(find.text('Cliente Norte'), findsOneWidget);
+      final toolbar = tester.getRect(find.byType(HexoraDocumentToolbar));
+      final search = tester.getRect(find.byType(TextField));
+      final options =
+          tester.getRect(find.byKey(const ValueKey('test-options')));
+      expect(search.right, closeTo(toolbar.right - 3, 1));
+      expect(options.right, closeTo(toolbar.right - 3, 1));
+      expect(find.byKey(const ValueKey('test-view-switcher')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('centered toolbar accepts a search maximum below 320',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 300);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.forPlatform(
+          Brightness.light,
+          platform: TargetPlatform.windows,
+        ),
+        home: Scaffold(
+          body: HexoraDocumentToolbar(
+            centerSearch: true,
+            searchMaxWidth: 240,
+            statusTabs: const SizedBox(width: 320, height: 36),
+            viewSwitcher: const SizedBox(width: 64, height: 36),
+            searchHint: 'Search proposals or clients...',
+            searchValue: '',
+            onSearchChanged: (_) {},
+            actions: const SizedBox(width: 96, height: 36),
+          ),
+        ),
+      ),
     );
 
-    tester.view.physicalSize = const Size(520, 300);
-    await tester.pumpAndSettle();
-    expect(find.text('Cliente Norte'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byType(TextField)).width, 240);
   });
 
   testWidgets('detail header exposes navigation, expand and close actions',

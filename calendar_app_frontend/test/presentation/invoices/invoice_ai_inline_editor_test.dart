@@ -9,7 +9,7 @@ import 'package:hexora/services/invoicing/invoice_lines_ocr_flow.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 
 void main() {
-  testWidgets('shows the unified AI chat inline without secondary tabs',
+  testWidgets('shows only the conversation before an AI draft exists',
       (tester) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1;
@@ -65,20 +65,50 @@ void main() {
       findsOneWidget,
     );
     final composer = find.byKey(const ValueKey('invoice-ai-composer'));
-    expect(tester.getSize(composer).height, inInclusiveRange(44, 60));
-    expect(find.byTooltip('Enviar'), findsOneWidget);
-    final summary = find.byKey(const ValueKey('invoice-ai-summary-panel'));
-    expect(summary, findsOneWidget);
-    expect(find.text('Resumen de factura'), findsOneWidget);
-    expect(find.text('0 líneas'), findsOneWidget);
-    expect(find.text('Sin líneas todavía'), findsOneWidget);
+    expect(tester.getSize(composer).height, inInclusiveRange(78, 104));
     expect(
-      find.text(
-        'Describe los trabajos o adjunta un archivo para generar las líneas.',
-      ),
+      find.text('Describe la factura que quieres crear...'),
       findsOneWidget,
     );
-    expect(tester.getSize(summary).height, lessThan(200));
+    expect(find.byTooltip('Enviar'), findsOneWidget);
+    final sendButton = tester.widget<IconButton>(
+      find.ancestor(
+        of: find.byIcon(Icons.arrow_upward_rounded),
+        matching: find.byType(IconButton),
+      ),
+    );
+    expect(sendButton.onPressed, isNull);
+    final initialComposerHeight = tester.getSize(composer).height;
+    final messageField = find.descendant(
+      of: composer,
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(
+      messageField,
+      'Corte de césped\nRecorte de setos\nRetirada de residuos',
+    );
+    await tester.pump();
+    expect(tester.getSize(composer).height, greaterThan(initialComposerHeight));
+    expect(
+      tester
+          .widget<IconButton>(
+            find.ancestor(
+              of: find.byIcon(Icons.arrow_upward_rounded),
+              matching: find.byType(IconButton),
+            ),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    tester.view.physicalSize = const Size(620, 700);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(composer).width, lessThan(620));
+    expect(tester.takeException(), isNull);
+    final summary = find.byKey(const ValueKey('invoice-ai-summary-panel'));
+    expect(summary, findsNothing);
+    expect(find.text('Resumen de factura'), findsNothing);
+    expect(find.text('0 líneas'), findsNothing);
+    expect(find.text('Sin líneas todavía'), findsNothing);
     expect(
       find.byKey(const ValueKey('invoice-ai-confirm-action')),
       findsNothing,
@@ -95,7 +125,7 @@ void main() {
       find.text('Revisa siempre las líneas antes de añadirlas al borrador.'),
       findsNothing,
     );
-    expect(find.byType(TabBar), findsNothing);
+    expect(find.byType(TabBar), findsOneWidget);
   });
 
   testWidgets('collapses and expands long user invoice messages',

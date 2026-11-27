@@ -3628,7 +3628,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invoiceChangeHistoryTitle => 'Changes';
 
   @override
-  String get invoiceChangeHistoryEmpty => 'No changes yet.';
+  String get invoiceChangeHistoryEmpty => 'No changes yet';
+
+  @override
+  String get invoiceChangeHistoryEmptyDescription =>
+      'Changes made to this invoice will appear here, allowing you to track its activity over time.';
+
+  @override
+  String get emptyClientsDescription =>
+      'Add a client to start managing your invoices.';
+
+  @override
+  String get emptyServicesTitle => 'No services yet';
+
+  @override
+  String get emptyServicesDescription =>
+      'Create a service to reuse it in invoices and proposals.';
+
+  @override
+  String get emptyEmployeesTitle => 'No employees yet';
+
+  @override
+  String get emptyEmployeesDescription =>
+      'Add employees to start managing your team.';
+
+  @override
+  String get emptyNotificationsTitle => 'You\'re all caught up';
+
+  @override
+  String get emptyNotificationsDescription =>
+      'New notifications will appear here.';
+
+  @override
+  String get emptySearchTitle => 'No results found';
+
+  @override
+  String get emptySearchDescription =>
+      'Try a different search or adjust your filters.';
+
+  @override
+  String get emptyFiltersTitle => 'No matching results';
+
+  @override
+  String get emptyFiltersDescription =>
+      'Adjust or clear the active filters to see more results.';
+
+  @override
+  String get emptyCalendarTitle => 'No scheduled events';
+
+  @override
+  String get emptyCalendarDescription =>
+      'Your upcoming events will appear here.';
+
+  @override
+  String get emptyInvitationsTitle => 'No pending invitations';
+
+  @override
+  String get emptyInvitationsDescription =>
+      'Pending business invitations will appear here.';
 
   @override
   String get reasonLabel => 'Reason';

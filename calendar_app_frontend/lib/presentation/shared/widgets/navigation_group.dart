@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
@@ -20,7 +22,7 @@ class CollapsedNavigationDestination {
 }
 
 /// Accessible flyout for an expandable group rendered in a collapsed rail.
-class CollapsedNavigationGroup extends StatelessWidget {
+class CollapsedNavigationGroup extends StatefulWidget {
   const CollapsedNavigationGroup({
     super.key,
     required this.title,
@@ -33,6 +35,69 @@ class CollapsedNavigationGroup extends StatelessWidget {
   final IconData icon;
   final List<CollapsedNavigationDestination> destinations;
   final bool selected;
+
+  @override
+  State<CollapsedNavigationGroup> createState() =>
+      _CollapsedNavigationGroupState();
+}
+
+class _CollapsedNavigationGroupState extends State<CollapsedNavigationGroup> {
+  Timer? _openTimer;
+  Timer? _closeTimer;
+  MenuController? _menuController;
+  bool _anchorHovered = false;
+  bool _menuHovered = false;
+
+  @override
+  void dispose() {
+    _openTimer?.cancel();
+    _closeTimer?.cancel();
+    super.dispose();
+  }
+
+  void _openOnHover(MenuController controller) {
+    _anchorHovered = true;
+    _closeTimer?.cancel();
+    if (controller.isOpen) return;
+    _openTimer?.cancel();
+    _openTimer = Timer(const Duration(milliseconds: 220), () {
+      if (mounted && _anchorHovered && !controller.isOpen) controller.open();
+    });
+  }
+
+  void _leaveAnchor(MenuController controller) {
+    _anchorHovered = false;
+    _openTimer?.cancel();
+    _scheduleClose(controller);
+  }
+
+  void _hoverMenu(MenuController controller, bool hovered) {
+    _menuHovered = hovered;
+    if (hovered) {
+      _closeTimer?.cancel();
+    } else {
+      _scheduleClose(controller);
+    }
+  }
+
+  void _scheduleClose(MenuController controller) {
+    _closeTimer?.cancel();
+    _closeTimer = Timer(const Duration(milliseconds: 260), () {
+      if (mounted && !_anchorHovered && !_menuHovered && controller.isOpen) {
+        controller.close();
+      }
+    });
+  }
+
+  void _toggle(MenuController controller) {
+    _openTimer?.cancel();
+    _closeTimer?.cancel();
+    if (controller.isOpen) {
+      controller.close();
+    } else {
+      controller.open();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,9 +116,13 @@ class CollapsedNavigationGroup extends StatelessWidget {
         ),
       ),
       menuChildren: [
-        for (final destination in destinations)
+        for (final destination in widget.destinations)
           MenuItemButton(
             onPressed: destination.onTap,
+            onHover: (hovered) {
+              final controller = _menuController;
+              if (controller != null) _hoverMenu(controller, hovered);
+            },
             leadingIcon: Icon(
               destination.icon,
               size: NavigationTokens.iconSize,
@@ -78,14 +147,21 @@ class CollapsedNavigationGroup extends StatelessWidget {
             child: Text(destination.label),
           ),
       ],
-      builder: (context, controller, child) => SidebarItem(
-        icon: icon,
-        label: title,
-        isSelected: selected,
-        collapsed: true,
-        groupHeader: true,
-        onTap: controller.isOpen ? controller.close : controller.open,
-      ),
+      builder: (context, controller, child) {
+        _menuController = controller;
+        return MouseRegion(
+          onEnter: (_) => _openOnHover(controller),
+          onExit: (_) => _leaveAnchor(controller),
+          child: SidebarItem(
+            icon: widget.icon,
+            label: widget.title,
+            isSelected: widget.selected,
+            collapsed: true,
+            groupHeader: true,
+            onTap: () => _toggle(controller),
+          ),
+        );
+      },
     );
   }
 }

@@ -485,6 +485,7 @@ class HexoraDocumentFooter extends StatelessWidget {
     this.secondaryActions = const [],
     this.compact = false,
     this.showStatusWhenNarrow = false,
+    this.primaryFullWidthWhenNarrow = false,
   });
 
   final Widget? status;
@@ -493,6 +494,7 @@ class HexoraDocumentFooter extends StatelessWidget {
   final List<Widget> secondaryActions;
   final bool compact;
   final bool showStatusWhenNarrow;
+  final bool primaryFullWidthWhenNarrow;
 
   @override
   Widget build(BuildContext context) {
@@ -520,11 +522,13 @@ class HexoraDocumentFooter extends StatelessWidget {
               primary,
             ];
             if (compact) {
-              final actionRow = Row(children: [
-                if (back != null) back!,
-                const Spacer(),
-                Flexible(child: primary),
-              ]);
+              final actionRow = primaryFullWidthWhenNarrow && back == null
+                  ? SizedBox(width: double.infinity, child: primary)
+                  : Row(children: [
+                      if (back != null) back!,
+                      const Spacer(),
+                      Flexible(child: primary),
+                    ]);
               if (!showStatusWhenNarrow || status == null) return actionRow;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

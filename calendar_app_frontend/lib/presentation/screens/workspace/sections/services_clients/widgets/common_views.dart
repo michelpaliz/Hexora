@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_empty_state.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 class EmptyView extends StatelessWidget {
@@ -19,34 +20,14 @@ class EmptyView extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 56, color: cs.primary),
-            const SizedBox(height: 12),
-            Text(title, style: theme.textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text(subtitle, textAlign: TextAlign.center),
-            if (cta != null && onPressed != null) ...[
-              const SizedBox(height: 16),
-              HexoraButton(
-                icon: Icons.add,
-                label: cta!,
-                onPressed: onPressed,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => HexoraEmptyState(
+        icon: icon,
+        title: title,
+        description: subtitle,
+        primaryAction: cta != null && onPressed != null
+            ? HexoraEmptyStateAction(label: cta!, onPressed: onPressed)
+            : null,
+      );
 }
 
 class ErrorView extends StatelessWidget {

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/l10n/build_context_locale.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/status_filter_chips.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_popup_menu.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_empty_state.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_directory_tabs.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_list_section.dart';
 
@@ -66,6 +68,7 @@ class _WorkerDirectoryViewState extends State<WorkerDirectoryView> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final isEs = context.isSpanishLocale;
     final cs = Theme.of(context).colorScheme;
 
@@ -299,22 +302,27 @@ class _WorkerDirectoryViewState extends State<WorkerDirectoryView> {
 
             // ── worker list (flat) ──
             if (visible.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(28),
-                child: Text(
-                  query.isNotEmpty
-                      ? (isEs
-                          ? 'No hay resultados para esta búsqueda.'
-                          : 'No results for this search.')
-                      : (isEs
-                          ? (widget.showPartners
-                              ? 'No hay socios con este estado.'
-                              : 'No hay trabajadores con este estado.')
-                          : (widget.showPartners
-                              ? 'No partners with this status.'
-                              : 'No workers with this status.')),
-                  textAlign: TextAlign.center,
-                ),
+              HexoraEmptyState(
+                icon: query.isNotEmpty
+                    ? Icons.search_off_rounded
+                    : Icons.badge_outlined,
+                title: query.isNotEmpty
+                    ? l.emptySearchTitle
+                    : widget.workers.isEmpty
+                        ? l.emptyEmployeesTitle
+                        : l.emptyFiltersTitle,
+                description: query.isNotEmpty
+                    ? l.emptySearchDescription
+                    : widget.workers.isEmpty
+                        ? l.emptyEmployeesDescription
+                        : l.emptyFiltersDescription,
+                variant: HexoraEmptyStateVariant.compact,
+                primaryAction: widget.workers.isEmpty
+                    ? HexoraEmptyStateAction(
+                        label: isEs ? 'Añadir empleado' : 'Add employee',
+                        onPressed: widget.onCreate,
+                      )
+                    : null,
               )
             else
               WorkerListSection(

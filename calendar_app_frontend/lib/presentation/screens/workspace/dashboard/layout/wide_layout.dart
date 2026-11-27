@@ -264,6 +264,11 @@ class WideLayout extends StatelessWidget {
               ? MainCalendarView(
                   group: state.group,
                   embedded: true,
+                  initialEventId: tab.arguments['initialEventId'],
+                  navigationRevision: int.tryParse(
+                        tab.arguments['navigationRevision'] ?? '',
+                      ) ??
+                      0,
                   onActionsReady: state.setCalendarActions,
                 )
               : showInvoicesInline

@@ -49,11 +49,13 @@ class _AuthSwitcherViewState extends State<AuthSwitcherView> {
         child: SafeArea(
           child: LayoutBuilder(builder: (context, constraints) {
             final compact = constraints.maxWidth < 600;
-            return SingleChildScrollView(
+            final content = SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.symmetric(
-                horizontal: compact ? 16 : 32,
-                vertical: compact ? 20 : 32,
+              padding: EdgeInsets.fromLTRB(
+                compact ? 16 : 32,
+                compact ? 64 : 32,
+                compact ? 16 : 32,
+                compact ? 20 : 32,
               ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
@@ -165,6 +167,16 @@ class _AuthSwitcherViewState extends State<AuthSwitcherView> {
                   ),
                 ),
               ),
+            );
+            return Stack(
+              children: [
+                Positioned.fill(child: content),
+                Positioned(
+                  top: compact ? 12 : 16,
+                  right: compact ? 16 : 24,
+                  child: const AuthLanguageSelector(),
+                ),
+              ],
             );
           }),
         ),

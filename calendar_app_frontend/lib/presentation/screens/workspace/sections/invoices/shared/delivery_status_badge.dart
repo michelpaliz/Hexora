@@ -44,6 +44,24 @@ String deliveryStatusLabel(String? value, {bool feminine = false}) {
   }
 }
 
+String deliveryStatusLabelForLocale(
+  String? value, {
+  required bool isSpanish,
+  bool feminine = false,
+}) {
+  if (isSpanish) return deliveryStatusLabel(value, feminine: feminine);
+  switch (normalizedDeliveryStatus(value)) {
+    case 'delivered':
+      return 'Delivered';
+    case 'sent':
+      return 'Sent';
+    case 'failed':
+      return 'Delivery failed';
+    default:
+      return 'Not sent';
+  }
+}
+
 class DeliveryStatusBadge extends StatelessWidget {
   const DeliveryStatusBadge({
     super.key,
@@ -78,9 +96,14 @@ class DeliveryStatusBadge extends StatelessWidget {
     }
     final cs = Theme.of(context).colorScheme;
     final normalized = normalizedDeliveryStatus(status);
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final label = normalized == 'not_sent' && notSentLabel != null
         ? notSentLabel!
-        : deliveryStatusLabel(status, feminine: feminine);
+        : deliveryStatusLabelForLocale(
+            status,
+            isSpanish: isSpanish,
+            feminine: feminine,
+          );
     final color = switch (normalized) {
       'delivered' => Theme.of(context).brightness == Brightness.light
           ? const Color(0xFF2E7D32)

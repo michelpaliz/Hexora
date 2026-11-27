@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_empty_state.dart';
 
 class EmptyView extends StatelessWidget {
   final String title;
@@ -18,28 +18,16 @@ class EmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
-
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        const SizedBox(height: 40),
-        Icon(Icons.access_time_rounded,
-            size: 64, color: Theme.of(context).colorScheme.primary),
-        const SizedBox(height: 12),
-        Text(title, style: t.titleLarge, textAlign: TextAlign.center),
-        const SizedBox(height: 8),
-        Text(subtitle, style: t.bodySmall, textAlign: TextAlign.center),
-        const SizedBox(height: 16),
-        Center(
-          child: FilledButton.icon(
-            onPressed: busy ? null : onEnable,
-            icon: const Icon(Icons.play_circle_outline),
-            label: Text(l.enableTrackingCta),
-          ),
-        ),
-      ],
+    return HexoraEmptyState(
+      icon: Icons.access_time_rounded,
+      title: title,
+      description: subtitle,
+      primaryAction: HexoraEmptyStateAction(
+        label: l.enableTrackingCta,
+        icon: Icons.play_circle_outline,
+        onPressed: busy ? null : onEnable,
+      ),
     );
   }
 }

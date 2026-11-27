@@ -613,6 +613,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
             showDeliveryColumn: true,
             invoiceColumnOrder: true,
             preferWideClient: true,
+            fullColumnsMinWidth: 1360,
             hideActionsInSplitView: true,
             // Preview and overflow use two compact 32px slots with a 4px gap.
             // Keep the header reservation identical to each row.
@@ -723,7 +724,11 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                                           inv,
                                         )
                                     : null,
-                                onTap: () => widget.onTap(inv),
+                                onTap: () {
+                                  widget.onTap(inv);
+                                  DocumentWorkspaceScope.maybeOf(context)
+                                      ?.openPreviewDrawer();
+                                },
                                 onPreview: () => widget.onTap(inv),
                                 onDelete: widget.onDelete == null
                                     ? null

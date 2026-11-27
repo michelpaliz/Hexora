@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:hexora/models/announcements/announcement.dart';
-import 'package:hexora/services/auth/authenticated_http_client.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:http/http.dart' as http;
 

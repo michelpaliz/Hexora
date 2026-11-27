@@ -27,6 +27,10 @@ class AddEventScreen extends StatefulWidget {
   final VoidCallback? onCreated;
   final DateTime? initialStartDate;
   final DateTime? initialEndDate;
+  final bool quickMode;
+  final bool useStickyFooter;
+  final VoidCallback? onMoreOptions;
+  final VoidCallback? onCancel;
 
   const AddEventScreen({
     super.key,
@@ -35,6 +39,10 @@ class AddEventScreen extends StatefulWidget {
     this.onCreated,
     this.initialStartDate,
     this.initialEndDate,
+    this.quickMode = false,
+    this.useStickyFooter = false,
+    this.onMoreOptions,
+    this.onCancel,
   });
 
   @override
@@ -168,7 +176,9 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
     final typo = AppTypography.of(context);
     final isWide = MediaQuery.sizeOf(context).width >= 900;
     final isEmbeddedWeb = widget.embedded && kIsWeb;
-    final useStickySubmit = !isWide && !isEmbeddedWeb;
+    final useStickySubmit = widget.useStickyFooter ||
+        widget.quickMode ||
+        (!isWide && !isEmbeddedWeb);
 
     // single source of truth for CategoryApi
     final categoryApi = CategoryApi(
@@ -197,6 +207,8 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
                       logic: this,
                       onSubmit: _submitEvent,
                       showSubmitButton: !useStickySubmit,
+                      quickMode: widget.quickMode,
+                      onMoreOptions: widget.onMoreOptions,
                       ownerUserId: context.read<UserDomain>().user!.id,
                       isEditing: false,
                       categoryApi: categoryApi,
@@ -209,8 +221,75 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
             ),
           );
 
+    final stickyFooter = _isLoading || !useStickySubmit
+        ? null
+        : ValueListenableBuilder<bool>(
+            valueListenable: canSubmit,
+            builder: (context, ready, _) => Material(
+              color: cs.surface,
+              elevation: 2,
+              child: SafeArea(
+                top: false,
+                minimum: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (!ready) ...[
+                      Text(
+                        _submitHint(l),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: typo.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (widget.onCancel != null) ...[
+                          TextButton(
+                            key: const ValueKey('event-form-cancel'),
+                            onPressed: widget.onCancel,
+                            child: Text(MaterialLocalizations.of(context)
+                                .cancelButtonLabel),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Flexible(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: 46,
+                              minWidth: widget.quickMode ? 150 : 170,
+                            ),
+                            child: FilledButton.icon(
+                              key: const ValueKey('event-form-submit'),
+                              onPressed: ready ? _submitEvent : null,
+                              icon: const Icon(Icons.add_rounded, size: 18),
+                              label: Text(l.addEvent),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+
     if (isEmbeddedWeb) {
-      return ColoredBox(color: Colors.transparent, child: body);
+      return ColoredBox(
+        color: Colors.transparent,
+        child: Column(
+          children: [
+            Expanded(child: body),
+            if (stickyFooter != null) stickyFooter,
+          ],
+        ),
+      );
     }
 
     return Scaffold(
@@ -225,44 +304,7 @@ class _AddEventScreenState extends AddEventLogic<AddEventScreen>
         elevation: 0,
       ),
       body: body,
-      bottomNavigationBar: _isLoading || !useStickySubmit
-          ? null
-          : ValueListenableBuilder<bool>(
-              valueListenable: canSubmit,
-              builder: (context, ready, _) => Material(
-                color: cs.surface,
-                elevation: 8,
-                child: SafeArea(
-                  top: false,
-                  minimum: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (!ready) ...[
-                        Text(
-                          _submitHint(l),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: typo.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                      SizedBox(
-                        height: 52,
-                        child: FilledButton.icon(
-                          onPressed: ready ? _submitEvent : null,
-                          icon: const Icon(Icons.add_rounded),
-                          label: Text(l.addEvent),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+      bottomNavigationBar: stickyFooter,
     );
   }
 

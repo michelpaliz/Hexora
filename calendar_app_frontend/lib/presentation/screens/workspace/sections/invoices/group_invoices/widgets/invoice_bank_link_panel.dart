@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/shared/bank_transaction_link_panel.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_empty_state.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_controller.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_formatters.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
@@ -313,15 +314,16 @@ class _InvoiceBankLinkPanelState extends State<InvoiceBankLinkPanel> {
                 ),
               )
             : entries.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        'No hay movimientos de ingreso sin vincular.',
-                        style: TextStyle(color: cs.onSurfaceVariant),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
+                ? HexoraEmptyState(
+                    icon: Icons.account_balance_wallet_outlined,
+                    title: isEs
+                        ? 'No hay movimientos disponibles'
+                        : 'No available transactions',
+                    description: isEs
+                        ? 'Los movimientos bancarios de ingreso sin vincular aparecerán aquí.'
+                        : 'Unlinked incoming bank transactions will appear here.',
+                    variant: HexoraEmptyStateVariant.compact,
+                    maxDescriptionWidth: 360,
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.all(12),

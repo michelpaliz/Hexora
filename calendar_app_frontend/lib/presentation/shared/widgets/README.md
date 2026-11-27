@@ -15,6 +15,12 @@ feature-specific widgets with their feature and API clients in `lib/services/`.
 | `text_fields/` | Reusable text controls and styles |
 | `weather/` | Weather greeting cards and forecast lists |
 
+Use `hexora_empty_state.dart` after a successful load returns no content. Choose
+the standard variant for workspaces and full lists, and the compact variant for
+dialogs, side panels, and nested sections. Keep loading indicators, request
+errors, and permission messages separate. Add actions only when the user can
+perform the existing operation.
+
 Import `documents/pdf_inline_preview.dart`, not its platform-specific files.
 Its conditional export selects the existing web implementation or non-web stub.
 

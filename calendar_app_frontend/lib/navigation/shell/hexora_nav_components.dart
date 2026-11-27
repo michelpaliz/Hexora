@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
@@ -96,8 +98,41 @@ class HexoraNavTile extends StatefulWidget {
 }
 
 class _HexoraNavTileState extends State<HexoraNavTile> {
+  static const _tooltipExitSettleDuration = Duration(milliseconds: 120);
+
   bool _hovered = false;
   bool _focused = false;
+  bool _moduleTapScheduled = false;
+
+  void _handleTap() {
+    final onTap = widget.onTap;
+    if (onTap == null) return;
+    if (!widget.moduleTab) {
+      onTap();
+      return;
+    }
+    if (_moduleTapScheduled) return;
+    _moduleTapScheduled = true;
+    // MouseTracker also runs in Flutter's post-frame phase. Use the next event
+    // loop turn so changing the module cannot recursively update mouse devices.
+    Timer.run(() {
+      if (!mounted) {
+        _moduleTapScheduled = false;
+        return;
+      }
+      final dismissedTooltip = Tooltip.dismissAllToolTips();
+      if (dismissedTooltip) {
+        Timer(_tooltipExitSettleDuration, () => _commitModuleTap(onTap));
+      } else {
+        _commitModuleTap(onTap);
+      }
+    });
+  }
+
+  void _commitModuleTap(VoidCallback onTap) {
+    _moduleTapScheduled = false;
+    if (mounted) onTap();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +159,7 @@ class _HexoraNavTileState extends State<HexoraNavTile> {
       selected: widget.selected,
       label: widget.semanticLabel ?? widget.tooltip,
       child: InkWell(
-        onTap: widget.onTap,
+        onTap: widget.onTap == null ? null : _handleTap,
         borderRadius: radius,
         customBorder: widget.moduleTab ? tabShape : null,
         onHover: (v) => setState(() => _hovered = v),

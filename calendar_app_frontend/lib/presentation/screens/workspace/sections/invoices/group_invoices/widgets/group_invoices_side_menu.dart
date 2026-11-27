@@ -148,7 +148,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
         (
           key: 'invoices',
           icon: Icons.receipt_long_outlined,
-          label: 'Facturación',
+          label: isEs ? 'Facturación' : 'Billing',
           destinations: [
             CollapsedNavigationDestination(
               icon: Icons.add_rounded,
@@ -158,7 +158,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
             ),
             CollapsedNavigationDestination(
               icon: Icons.receipt_long_outlined,
-              label: 'Facturas emitidas',
+              label: isEs ? 'Facturas emitidas' : 'Issued invoices',
               count: issuedCount + draftsCount,
               selected: selectedMenu == 'invoices_issued' ||
                   selectedMenu == 'invoices_drafts',

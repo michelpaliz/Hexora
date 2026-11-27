@@ -26,7 +26,8 @@ class InvoiceAiChatDialog extends StatefulWidget {
   State<InvoiceAiChatDialog> createState() => _InvoiceAiChatDialogState();
 }
 
-class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
+class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog>
+    with SingleTickerProviderStateMixin {
   final _service = InvoiceLinesOcrService();
   final _message = TextEditingController();
   final _messageFocus = FocusNode();
@@ -48,7 +49,11 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
   bool _savingDraft = false;
   bool _draftSaved = false;
   bool _appliedToEditor = false;
+  bool _draftCollapsed = false;
+  bool _draftHasUnseenUpdate = false;
+  bool _wideWorkspace = false;
   String? _previewingInvoiceId;
+  late final TabController _compactTabs;
 
   bool get _isSpanish => Localizations.localeOf(context).languageCode == 'es';
   bool get _chatLocked => _sending || _savingDraft || _appliedToEditor;
@@ -56,13 +61,25 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
   @override
   void initState() {
     super.initState();
+    _compactTabs = TabController(length: 2, vsync: this)
+      ..addListener(_handleCompactTabChanged);
     _conversationScroll.addListener(_trackConversationPosition);
+  }
+
+  void _handleCompactTabChanged() {
+    if (_compactTabs.index != 1 || _compactTabs.indexIsChanging) return;
+    if (_draftHasUnseenUpdate && mounted) {
+      setState(() => _draftHasUnseenUpdate = false);
+    }
   }
 
   @override
   void dispose() {
     _message.dispose();
     _messageFocus.dispose();
+    _compactTabs
+      ..removeListener(_handleCompactTabChanged)
+      ..dispose();
     _conversationScroll
       ..removeListener(_trackConversationPosition)
       ..dispose();
@@ -449,7 +466,15 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
               response.draftLines, sentDrafts, sentValues, sentIds, sentLines);
           _draftSaved = false;
           _appliedToEditor = false;
+          _draftCollapsed = false;
+          _draftHasUnseenUpdate = !_wideWorkspace;
         }
+        final visibleDraftLines = response.requiresSingleInvoice
+            ? const <OcrExtractedLineDraft>[]
+            : _suggestedLines;
+        final responseTotal = visibleDraftLines
+            .where(_isCompleteLine)
+            .fold<double>(0, (sum, line) => sum + line.lineTotal);
         _messages.add({
           'role': 'assistant',
           'text': response.reply,
@@ -457,7 +482,9 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
               ? 'warning'
               : 'processed',
           if (!response.requiresSingleInvoice)
-            'lineCount': response.draftLines.length.toString(),
+            'lineCount': visibleDraftLines.length.toString(),
+          if (!response.requiresSingleInvoice)
+            'total': responseTotal.toString(),
           if (!response.requiresSingleInvoice)
             'reviewCount': reviewCount.toString(),
           if (concurrentEdits) 'concurrentEdits': 'true',
@@ -475,6 +502,23 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  void _revealDraft() {
+    if (_wideWorkspace) {
+      setState(() {
+        _draftCollapsed = false;
+        _draftHasUnseenUpdate = false;
+      });
+      return;
+    }
+    setState(() => _draftHasUnseenUpdate = false);
+    _compactTabs.animateTo(1);
+  }
+
+  void _requestChanges() {
+    if (!_wideWorkspace) _compactTabs.animateTo(0);
+    _messageFocus.requestFocus();
   }
 
   Future<void> _apply() async {
@@ -584,17 +628,10 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
     final textTheme = Theme.of(context).textTheme;
     final status = item['status'];
     final lineCount = int.tryParse(item['lineCount'] ?? '');
+    final total = double.tryParse(item['total'] ?? '');
     final reviewCount = int.tryParse(item['reviewCount'] ?? '') ?? 0;
     final warning = status == 'warning';
-    final processed = status == 'processed';
-    final statusColor =
-        warning ? const Color(0xFFD97706) : const Color(0xFF15803D);
-    final statusLabel = warning
-        ? (isEs ? 'Requiere revisión' : 'Needs review')
-        : (isEs ? 'Procesado' : 'Processed');
-    final statusIcon = warning
-        ? Icons.warning_amber_rounded
-        : Icons.check_circle_outline_rounded;
+    const statusColor = Color(0xFFD97706);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -609,7 +646,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (warning || processed)
+              if (warning && lineCount == null)
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -620,10 +657,11 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(statusIcon, size: 13, color: statusColor),
+                      const Icon(Icons.warning_amber_rounded,
+                          size: 13, color: statusColor),
                       const SizedBox(width: 4),
                       Text(
-                        statusLabel,
+                        isEs ? 'Requiere revisión' : 'Needs review',
                         style: textTheme.labelSmall?.copyWith(
                           color: statusColor,
                           fontWeight: FontWeight.w800,
@@ -633,33 +671,96 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                   ),
                 ),
               if (lineCount != null) ...[
-                const SizedBox(height: 7),
-                Text(
-                  isEs
-                      ? 'Factura procesada · $lineCount conceptos detectados'
-                      : 'Invoice processed · $lineCount items detected',
-                  style: textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+                InkWell(
+                  key: const ValueKey('invoice-ai-conversation-preview'),
+                  onTap: lineCount > 0 ? _revealDraft : null,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(10, 9, 8, 9),
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer.withValues(alpha: .28),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: colors.primary.withValues(alpha: .2),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: colors.surface,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.receipt_long_outlined,
+                              size: 18, color: colors.primary),
+                        ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isEs ? 'Borrador de factura' : 'Invoice draft',
+                                style: textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                isEs
+                                    ? '$lineCount líneas detectadas'
+                                    : '$lineCount lines detected',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (total != null)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Text(
+                              _formatMoney(total),
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: colors.primary,
+                                fontWeight: FontWeight.w800,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures()
+                                ],
+                              ),
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 2),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                isEs ? 'Revisar' : 'Review',
+                                style: textTheme.labelMedium?.copyWith(
+                                  color: colors.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Icon(Icons.chevron_right_rounded,
+                                  size: 18, color: colors.primary),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 if (reviewCount > 0) ...[
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 5),
                   Text(
                     isEs
                         ? '$reviewCount conceptos necesitan revisión por falta de datos.'
                         : '$reviewCount items need review because data is missing.',
                     style: textTheme.bodySmall?.copyWith(color: statusColor),
-                  ),
-                ],
-                if (lineCount > 0) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    isEs
-                        ? 'Revisa las líneas en el panel derecho o indícame qué deseas corregir.'
-                        : 'Review the lines in the right panel or tell me what to correct.',
-                    style: textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
                   ),
                 ],
               ],
@@ -674,8 +775,9 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                   ),
                 ),
               ],
-              if ((item['text'] ?? '').trim().isNotEmpty) ...[
-                SizedBox(height: lineCount == null ? 5 : 3),
+              if (lineCount == null &&
+                  (item['text'] ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 5),
                 InvoiceAiAssistantDetail(
                   text: item['text']!,
                   isSpanish: isEs,
@@ -711,6 +813,32 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
         ),
       ],
     );
+  }
+
+  String _composerHint(bool isEs) {
+    if (_file != null) {
+      return isEs
+          ? 'Describe qué quieres extraer de este documento...'
+          : 'Describe what to extract from this document...';
+    }
+    if (_suggestedLines.isNotEmpty) {
+      return isEs
+          ? 'Pide a la IA que modifique tu factura...'
+          : 'Ask AI to modify your invoice...';
+    }
+    return isEs
+        ? 'Describe la factura que quieres crear...'
+        : 'Describe the invoice you want to create...';
+  }
+
+  String _attachmentTypeLabel(String fileName, bool isEs) {
+    final dot = fileName.lastIndexOf('.');
+    final extension = dot < 0 ? '' : fileName.substring(dot + 1).toUpperCase();
+    if (extension == 'PDF') {
+      return isEs ? 'Documento PDF' : 'PDF document';
+    }
+    if (extension.isEmpty) return isEs ? 'Archivo adjunto' : 'Attached file';
+    return isEs ? 'Imagen $extension' : '$extension image';
   }
 
   Widget _buildChatPane(BuildContext context, bool isEs) {
@@ -804,54 +932,73 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
               constraints: const BoxConstraints(maxWidth: 760),
               child: Container(
                 key: const ValueKey('invoice-ai-composer'),
-                margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                padding: const EdgeInsets.all(4),
+                margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
                 decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: BorderRadius.circular(16),
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? Colors.white
+                      : colors.surface,
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: colors.outlineVariant.withValues(alpha: .7),
+                    color: colors.outlineVariant.withValues(alpha: .65),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: colors.shadow.withValues(alpha: .05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
+                      color: colors.shadow.withValues(alpha: .035),
+                      blurRadius: 6,
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (_file != null)
                       Container(
-                        margin: const EdgeInsets.only(bottom: 6),
+                        margin: const EdgeInsets.only(bottom: 4),
                         padding: const EdgeInsets.fromLTRB(8, 6, 4, 6),
                         decoration: BoxDecoration(
-                          color: colors.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(14),
+                          color: colors.primaryContainer.withValues(alpha: .22),
+                          borderRadius: BorderRadius.circular(9),
                         ),
                         child: Row(children: [
-                          if (!_file!.fileName.toLowerCase().endsWith('.pdf'))
-                            ClipRRect(
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: colors.surface,
                               borderRadius: BorderRadius.circular(7),
-                              child: Image.memory(
-                                Uint8List.fromList(_file!.bytes),
-                                width: 34,
-                                height: 34,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.image_not_supported_outlined,
-                                ),
-                              ),
-                            )
-                          else
-                            const Icon(Icons.picture_as_pdf_outlined),
+                            ),
+                            child: Icon(
+                              _file!.fileName.toLowerCase().endsWith('.pdf')
+                                  ? Icons.picture_as_pdf_outlined
+                                  : Icons.image_outlined,
+                              size: 18,
+                              color: colors.primary,
+                            ),
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              _file!.fileName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _file!.fileName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  _attachmentTypeLabel(_file!.fileName, isEs),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: textTheme.labelSmall?.copyWith(
+                                    color: colors.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           IconButton(
@@ -859,91 +1006,122 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                             onPressed: _chatLocked
                                 ? null
                                 : () => setState(() => _file = null),
-                            icon: const Icon(Icons.close, size: 18),
+                            constraints: const BoxConstraints.tightFor(
+                              width: 30,
+                              height: 30,
+                            ),
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.close_rounded, size: 17),
                           ),
                         ]),
                       ),
+                    CallbackShortcuts(
+                      bindings: {
+                        const SingleActivator(LogicalKeyboardKey.enter): _send,
+                      },
+                      child: TextField(
+                        controller: _message,
+                        focusNode: _messageFocus,
+                        enabled: !_chatLocked,
+                        minLines: 1,
+                        maxLines: 6,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        style: textTheme.bodySmall?.copyWith(height: 1.35),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          filled: false,
+                          hintText: _composerHint(isEs),
+                          hintStyle: textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                          contentPadding: const EdgeInsets.fromLTRB(3, 4, 3, 7),
+                        ),
+                      ),
+                    ),
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         IconButton(
                           tooltip: isEs
                               ? 'Adjuntar imagen o PDF'
                               : 'Attach image or PDF',
                           onPressed: _chatLocked ? null : _pickFile,
-                          icon: const Icon(Icons.attach_file_rounded, size: 19),
+                          icon: const Icon(Icons.attach_file_rounded, size: 18),
                           constraints: const BoxConstraints.tightFor(
-                            width: 36,
-                            height: 36,
+                            width: 32,
+                            height: 32,
                           ),
                           padding: EdgeInsets.zero,
                           visualDensity: VisualDensity.compact,
                         ),
-                        Expanded(
-                          child: CallbackShortcuts(
-                            bindings: {
-                              const SingleActivator(LogicalKeyboardKey.enter):
-                                  _send,
-                            },
-                            child: TextField(
-                              controller: _message,
-                              focusNode: _messageFocus,
-                              enabled: !_chatLocked,
-                              minLines: 1,
-                              maxLines: 5,
-                              keyboardType: TextInputType.multiline,
-                              textInputAction: TextInputAction.newline,
-                              style: textTheme.bodySmall,
-                              decoration: InputDecoration(
-                                isDense: true,
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                filled: false,
-                                hintText: isEs
-                                    ? 'Escribe cómo quieres crear la factura...'
-                                    : 'Describe how you want to create the invoice...',
-                                contentPadding:
-                                    const EdgeInsets.fromLTRB(4, 7, 4, 7),
-                              ),
+                        Tooltip(
+                          message: _suggestedLines.isEmpty
+                              ? (isEs
+                                  ? 'Puedes describir trabajos o adjuntar una imagen o PDF.'
+                                  : 'Describe work or attach an image or PDF.')
+                              : (isEs
+                                  ? 'Pide cambios antes de guardar el borrador.'
+                                  : 'Request changes before saving the draft.'),
+                          child: SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: Icon(
+                              Icons.info_outline_rounded,
+                              size: 17,
+                              color: colors.onSurfaceVariant,
                             ),
                           ),
                         ),
-                        if (_suggestedLines.isNotEmpty)
-                          Tooltip(
-                            message: isEs
-                                ? 'Revisa las líneas antes de añadirlas al borrador.'
-                                : 'Review the lines before adding them to the draft.',
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: Icon(
-                                Icons.info_outline_rounded,
-                                size: 16,
-                                color: colors.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
+                        const Spacer(),
                         const SizedBox(width: 4),
-                        IconButton.filled(
-                          tooltip: isEs ? 'Enviar' : 'Send',
-                          onPressed: _chatLocked ? null : _send,
-                          constraints: const BoxConstraints.tightFor(
-                            width: 36,
-                            height: 36,
-                          ),
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                          icon: _sending
-                              ? SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: colors.onPrimary,
-                                  ),
-                                )
-                              : const Icon(Icons.arrow_upward_rounded,
-                                  size: 19),
+                        ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: _message,
+                          builder: (context, value, _) {
+                            final canSend = !_chatLocked &&
+                                (value.text.trim().isNotEmpty || _file != null);
+                            return IconButton.filled(
+                              tooltip: isEs ? 'Enviar' : 'Send',
+                              onPressed: canSend ? _send : null,
+                              constraints: const BoxConstraints.tightFor(
+                                width: 34,
+                                height: 34,
+                              ),
+                              padding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                              style: IconButton.styleFrom(
+                                backgroundColor: canSend
+                                    ? colors.primary
+                                    : colors.onSurface.withValues(alpha: .08),
+                                foregroundColor: canSend
+                                    ? colors.onPrimary
+                                    : colors.onSurfaceVariant
+                                        .withValues(alpha: .55),
+                                disabledBackgroundColor: _sending
+                                    ? colors.primary.withValues(alpha: .72)
+                                    : colors.onSurface.withValues(alpha: .08),
+                                disabledForegroundColor: _sending
+                                    ? colors.onPrimary
+                                    : colors.onSurfaceVariant
+                                        .withValues(alpha: .55),
+                              ),
+                              icon: _sending
+                                  ? SizedBox(
+                                      width: 15,
+                                      height: 15,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: colors.onPrimary,
+                                      ),
+                                    )
+                                  : const Icon(Icons.arrow_upward_rounded,
+                                      size: 18),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -1195,7 +1373,11 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
     );
   }
 
-  Widget _buildInvoicePreview(BuildContext context, bool isEs) {
+  Widget _buildInvoicePreview(
+    BuildContext context,
+    bool isEs, {
+    bool canCollapse = false,
+  }) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final completeLines = _suggestedLines.where(_isCompleteLine).toList();
@@ -1259,6 +1441,19 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
+              if (canCollapse) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  key: const ValueKey('invoice-ai-collapse-draft'),
+                  tooltip: isEs ? 'Ocultar borrador' : 'Hide draft',
+                  onPressed: () => setState(() => _draftCollapsed = true),
+                  visualDensity: VisualDensity.compact,
+                  constraints:
+                      const BoxConstraints.tightFor(width: 30, height: 30),
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                ),
+              ],
             ],
           ),
           if (_sending) ...[
@@ -1457,6 +1652,14 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
               spacing: 8,
               runSpacing: 8,
               children: [
+                TextButton.icon(
+                  key: const ValueKey('invoice-ai-request-changes'),
+                  onPressed: _sending || _savingDraft ? null : _requestChanges,
+                  icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+                  label: Text(isEs
+                      ? 'Pedir cambios a la IA'
+                      : 'Request changes with AI'),
+                ),
                 if (!_showEditor)
                   HexoraButton(
                     key: const ValueKey('invoice-ai-confirm-action'),
@@ -1537,41 +1740,135 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                if (constraints.maxWidth >= 980) {
+                final wide = constraints.maxWidth >= 980;
+                _wideWorkspace = wide;
+                final hasDraft = _suggestedLines.isNotEmpty;
+                if (wide) {
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(flex: 6, child: _buildChatPane(context, isEs)),
-                      const SizedBox(width: 16),
                       Expanded(
-                        flex: 5,
-                        child: _buildInvoicePreview(context, isEs),
+                        flex: hasDraft && !_draftCollapsed ? 2 : 1,
+                        child: _buildChatPane(context, isEs),
                       ),
+                      if (hasDraft) ...[
+                        VerticalDivider(
+                          width: 13,
+                          thickness: 1,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outlineVariant
+                              .withValues(alpha: .55),
+                        ),
+                        if (_draftCollapsed)
+                          SizedBox(
+                            width: 42,
+                            child: Align(
+                              alignment: Alignment.topCenter,
+                              child: IconButton.filledTonal(
+                                key: const ValueKey('invoice-ai-expand-draft'),
+                                tooltip:
+                                    isEs ? 'Mostrar borrador' : 'Show draft',
+                                onPressed: _revealDraft,
+                                icon: const Icon(Icons.chevron_left_rounded,
+                                    size: 19),
+                              ),
+                            ),
+                          )
+                        else
+                          Expanded(
+                            flex: 3,
+                            child: _buildInvoicePreview(
+                              context,
+                              isEs,
+                              canCollapse: true,
+                            ),
+                          ),
+                      ],
                     ],
                   );
                 }
-                return DefaultTabController(
-                  length: 2,
-                  child: Column(
-                    children: [
-                      TabBar(
+                return Column(
+                  children: [
+                    SizedBox(
+                      height: 38,
+                      child: TabBar(
+                        controller: _compactTabs,
                         dividerColor: Colors.transparent,
+                        tabAlignment: TabAlignment.center,
+                        isScrollable: true,
+                        labelPadding:
+                            const EdgeInsets.symmetric(horizontal: 14),
                         tabs: [
-                          Tab(text: isEs ? 'Conversación' : 'Conversation'),
-                          Tab(text: isEs ? 'Borrador' : 'Draft'),
+                          Tab(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.chat_bubble_outline_rounded,
+                                    size: 17),
+                                const SizedBox(width: 6),
+                                Text(isEs ? 'Conversación' : 'Conversation'),
+                              ],
+                            ),
+                          ),
+                          Tab(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.receipt_long_outlined,
+                                    size: 17),
+                                const SizedBox(width: 6),
+                                Text(isEs ? 'Borrador' : 'Draft'),
+                                if (hasDraft) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: _draftHasUnseenUpdate
+                                          ? Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .surfaceContainerHighest,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      '${_suggestedLines.length}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: _draftHasUnseenUpdate
+                                                ? Theme.of(context)
+                                                    .colorScheme
+                                                    .onPrimary
+                                                : Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Expanded(
-                        child: TabBarView(
-                          children: [
-                            _buildChatPane(context, isEs),
-                            _buildInvoicePreview(context, isEs),
-                          ],
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _compactTabs,
+                        children: [
+                          _buildChatPane(context, isEs),
+                          _buildInvoicePreview(context, isEs),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 );
               },
             ),

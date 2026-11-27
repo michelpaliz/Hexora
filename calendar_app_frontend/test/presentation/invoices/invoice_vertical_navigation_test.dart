@@ -3,9 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/invoice_editor_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/form/invoice_content_section.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
+import 'package:provider/provider.dart';
 
 void main() {
   final group = Group(
@@ -25,28 +28,35 @@ void main() {
   Future<void> pumpEditor(
     WidgetTester tester, {
     required Size size,
+    UserPreferencesProvider? preferences,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.forPlatform(
-          Brightness.light,
-          platform: TargetPlatform.windows,
-        ),
-        locale: const Locale('es'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: InvoiceEditorScreen(
-            group: group,
-            clients: [client],
-            initialClientId: client.id,
-            embedded: true,
-          ),
+    final app = MaterialApp(
+      theme: AppTheme.forPlatform(
+        Brightness.light,
+        platform: TargetPlatform.windows,
+      ),
+      locale: const Locale('es'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: InvoiceEditorScreen(
+          group: group,
+          clients: [client],
+          initialClientId: client.id,
+          embedded: true,
         ),
       ),
+    );
+    await tester.pumpWidget(
+      preferences == null
+          ? app
+          : ChangeNotifierProvider.value(
+              value: preferences,
+              child: app,
+            ),
     );
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -152,6 +162,36 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('invoice-wizard-rail')), findsNothing);
+  });
+
+  testWidgets('unified navigation keeps the workflow rail compact',
+      (tester) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final preferences = UserPreferencesProvider(
+      remoteLoader: () async => <String, dynamic>{},
+      remoteUpdater: (_) async {},
+    );
+    addTearDown(preferences.dispose);
+    await preferences.setNavigationDisplayMode(
+      NavigationDisplayMode.iconsAndText,
+    );
+
+    await pumpEditor(
+      tester,
+      size: const Size(1400, 900),
+      preferences: preferences,
+    );
+
+    expect(
+      tester.getSize(find.byKey(const ValueKey('invoice-wizard-rail'))).width,
+      52,
+    );
+    expect(find.text('Nueva factura'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('invoice-wizard-rail-toggle')),
+      findsNothing,
+    );
   });
 
   testWidgets('keeps line methods available from the collapsed rail',

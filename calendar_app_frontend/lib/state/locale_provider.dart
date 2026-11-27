@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -10,12 +11,16 @@ class LocaleProvider extends ChangeNotifier {
   static const _localeKey = 'preferred_locale';
   static const _migrationOwnerKey = 'locale_preferences_migration_owner';
   static const defaultLocale = Locale('es');
-  Locale _locale = defaultLocale;
+  late Locale _locale;
   String? _userId;
   int _loadVersion = 0;
   late final Future<void> _initialLoad;
 
-  LocaleProvider() {
+  LocaleProvider({Locale? deviceLocale}) {
+    _locale = _supportedDeviceLocale(
+      deviceLocale ?? PlatformDispatcher.instance.locale,
+    );
+    AuthenticatedHttpClient.setPreferredLanguage(_locale.languageCode);
     _initialLoad = _init();
   }
 
@@ -25,8 +30,10 @@ class LocaleProvider extends ChangeNotifier {
     try {
       final preferences = await SharedPreferences.getInstance();
       final stored = preferences.getString(_localeKey);
-      if (stored != null && (stored == 'en' || stored == 'es')) {
-        _applyLocale(Locale(stored));
+      if (_isSupportedCode(stored)) {
+        _applyLocale(Locale(stored!));
+      } else {
+        await preferences.setString(_localeKey, _locale.languageCode);
       }
     } catch (error) {
       debugPrint('[LocaleProvider] local load failed: $error');
@@ -55,7 +62,7 @@ class LocaleProvider extends ChangeNotifier {
         final migrationOwner = preferences.getString(_migrationOwnerKey);
         final canMigrate = migrationOwner == null;
         final stored = preferences.getString(_keyFor(nextUserId));
-        final legacy = canMigrate ? preferences.getString(_localeKey) : null;
+        final legacy = preferences.getString(_localeKey);
         final selected = _isSupportedCode(stored)
             ? stored!
             : _isSupportedCode(legacy)
@@ -108,6 +115,11 @@ class LocaleProvider extends ChangeNotifier {
   }
 
   static bool _isSupportedCode(String? value) => value == 'en' || value == 'es';
+
+  static Locale _supportedDeviceLocale(Locale locale) =>
+      _isSupportedCode(locale.languageCode)
+          ? Locale(locale.languageCode)
+          : defaultLocale;
 
   static String _keyFor(String userId) => 'hexora.user.$userId.$_localeKey';
 }

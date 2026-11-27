@@ -20,6 +20,7 @@ import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.d
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_wizard_navigation.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_empty_state.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/jobs/vat_ocr_reprocess_job_store.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
@@ -1939,86 +1940,56 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     return Builder(builder: (listContext) {
       final mode = DocumentWorkspaceScope.maybeOf(listContext)?.mode;
       final useFullTable = mode == DocumentViewMode.list;
-      final results = widget.loadingRecentUploads &&
-              widget.recentUploads.isEmpty
-          ? _buildLoadingExpensesState(t, cs, isSpanish)
-          : visibleUploads.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        widget.recentUploads.isEmpty
-                            ? Icons.receipt_long_outlined
-                            : Icons.filter_alt_off_outlined,
-                        size: 28,
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.recentUploads.isNotEmpty &&
-                                _hasActiveExpenseFilters
-                            ? (isSpanish
-                                ? 'No hay gastos que coincidan con los filtros'
-                                : 'No expenses match the current filters')
-                            : (isSpanish
-                                ? 'Todavía no hay gastos'
-                                : 'No expenses yet'),
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.recentUploads.isNotEmpty &&
-                                _hasActiveExpenseFilters
-                            ? (isSpanish
-                                ? 'Prueba con otros filtros o vuelve a Todos.'
-                                : 'Try other filters or switch back to All.')
-                            : (isSpanish
-                                ? 'Los gastos registrados aparecerán aquí.'
-                                : 'Registered expenses will appear here.'),
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (widget.recentUploads.isNotEmpty &&
-                          _hasActiveExpenseFilters) ...[
-                        const SizedBox(height: 10),
-                        TextButton.icon(
-                          onPressed: _resetExpenseFilters,
-                          icon: const Icon(
-                            Icons.filter_alt_off_outlined,
-                            size: 16,
+      final results =
+          widget.loadingRecentUploads && widget.recentUploads.isEmpty
+              ? _buildLoadingExpensesState(t, cs, isSpanish)
+              : visibleUploads.isEmpty
+                  ? HexoraEmptyState(
+                      icon: widget.recentUploads.isEmpty
+                          ? Icons.receipt_long_outlined
+                          : Icons.filter_alt_off_outlined,
+                      title: widget.recentUploads.isNotEmpty &&
+                              _hasActiveExpenseFilters
+                          ? l.emptyFiltersTitle
+                          : (isSpanish
+                              ? 'Todavía no hay gastos'
+                              : 'No expenses yet'),
+                      description: widget.recentUploads.isNotEmpty &&
+                              _hasActiveExpenseFilters
+                          ? l.emptyFiltersDescription
+                          : (isSpanish
+                              ? 'Los gastos registrados aparecerán aquí.'
+                              : 'Registered expenses will appear here.'),
+                      variant: HexoraEmptyStateVariant.compact,
+                      secondaryAction: widget.recentUploads.isNotEmpty &&
+                              _hasActiveExpenseFilters
+                          ? HexoraEmptyStateAction(
+                              label: isSpanish
+                                  ? 'Restablecer filtros'
+                                  : 'Reset filters',
+                              icon: Icons.filter_alt_off_outlined,
+                              onPressed: _resetExpenseFilters,
+                            )
+                          : null,
+                    )
+                  : useFullTable
+                      ? _buildExpenseTable(visibleUploads, l, t, cs, isSpanish)
+                      : ListView.separated(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          itemCount: visibleUploads.length,
+                          separatorBuilder: (_, __) => Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: cs.outlineVariant.withValues(alpha: .28),
                           ),
-                          label: Text(
-                            isSpanish ? 'Restablecer filtros' : 'Reset filters',
+                          itemBuilder: (_, index) => _buildExpenseSplitRow(
+                            visibleUploads[index],
+                            l,
+                            t,
+                            cs,
+                            isSpanish,
                           ),
-                        ),
-                      ],
-                    ],
-                  ),
-                )
-              : useFullTable
-                  ? _buildExpenseTable(visibleUploads, l, t, cs, isSpanish)
-                  : ListView.separated(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      itemCount: visibleUploads.length,
-                      separatorBuilder: (_, __) => Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: cs.outlineVariant.withValues(alpha: .28),
-                      ),
-                      itemBuilder: (_, index) => _buildExpenseSplitRow(
-                        visibleUploads[index],
-                        l,
-                        t,
-                        cs,
-                        isSpanish,
-                      ),
-                    );
+                        );
       return Column(children: [
         _buildCompactListToolbar(l, t, cs, isSpanish),
         const SizedBox(height: 8),

@@ -1,3 +1,5 @@
+import 'dart:ui' show PointerDeviceKind;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -325,6 +327,48 @@ void main() {
     await tester.tap(find.text('Issued invoices'));
     await tester.pumpAndSettle();
     expect(selected, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('collapsed navigation groups open their flyout on hover',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: CollapsibleSidebar.collapsedWidth,
+            child: CollapsedNavigationGroup(
+              title: 'Invoices',
+              icon: Icons.receipt_long_outlined,
+              destinations: [
+                CollapsedNavigationDestination(
+                  label: 'Issued invoices',
+                  icon: Icons.description_outlined,
+                  onTap: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ));
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer();
+    await mouse.moveTo(tester.getCenter(find.byTooltip('Invoices')));
+    await tester.pump(const Duration(milliseconds: 230));
+
+    expect(find.text('Issued invoices'), findsOneWidget);
+
+    await mouse.moveTo(tester.getCenter(find.text('Issued invoices')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Issued invoices'), findsOneWidget);
+
+    await mouse.moveTo(const Offset(700, 500));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Issued invoices'), findsNothing);
+    await mouse.removePointer();
     expect(tester.takeException(), isNull);
   });
 

@@ -144,4 +144,38 @@ void main() {
     expect(find.text('Factura modificada'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('empty history explains what will appear without an action',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.forPlatform(
+          Brightness.light,
+          platform: TargetPlatform.windows,
+        ),
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(
+          body: InvoiceDetailHistoryCard(
+            title: 'History',
+            history: [],
+            localeName: 'en',
+            currency: 'EUR',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('invoice-history-empty-state')),
+        findsOneWidget);
+    expect(find.text('No changes yet'), findsOneWidget);
+    expect(
+      find.text(
+        'Changes made to this invoice will appear here, allowing you to track its activity over time.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(FilledButton), findsNothing);
+  });
 }

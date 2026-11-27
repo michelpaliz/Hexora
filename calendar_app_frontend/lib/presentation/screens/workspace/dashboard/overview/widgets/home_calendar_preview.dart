@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_empty_state.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/services/user/domain/user_agenda_domain.dart';
 import 'package:provider/provider.dart';
@@ -69,9 +70,15 @@ class _HomeCalendarPreviewState extends State<HomeCalendarPreview> {
 
   List<DateTime> _monthDays() {
     final first = DateTime(_selected.year, _selected.month, 1);
-    final start = first.subtract(Duration(days: first.weekday - DateTime.monday));
-    final rowCount = ((first.day - 1 + DateTime(_selected.year, _selected.month + 1, 0).day) / 7).ceil();
-    return List.generate(rowCount * 7, (index) => start.add(Duration(days: index)));
+    final start =
+        first.subtract(Duration(days: first.weekday - DateTime.monday));
+    final rowCount = ((first.day -
+                1 +
+                DateTime(_selected.year, _selected.month + 1, 0).day) /
+            7)
+        .ceil();
+    return List.generate(
+        rowCount * 7, (index) => start.add(Duration(days: index)));
   }
 
   @override
@@ -84,7 +91,10 @@ class _HomeCalendarPreviewState extends State<HomeCalendarPreview> {
       future: _future,
       builder: (context, snapshot) {
         final events = snapshot.data ?? const <Event>[];
-        final selectedEvents = events.where((event) => _sameDay(event.startDate, _selected)).take(3).toList();
+        final selectedEvents = events
+            .where((event) => _sameDay(event.startDate, _selected))
+            .take(3)
+            .toList();
         final hasEvents = events.map((event) => _day(event.startDate)).toSet();
         return Container(
           decoration: BoxDecoration(
@@ -99,7 +109,8 @@ class _HomeCalendarPreviewState extends State<HomeCalendarPreview> {
                   Expanded(
                     child: Text(
                       DateFormat.yMMMM(locale).format(_selected),
-                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
                   TextButton(
@@ -107,12 +118,20 @@ class _HomeCalendarPreviewState extends State<HomeCalendarPreview> {
                       _selected = _day(DateTime.now());
                       _expanded = false;
                     }),
-                    child: Text(l.localeName.startsWith('es') ? 'Hoy' : 'Today'),
+                    child:
+                        Text(l.localeName.startsWith('es') ? 'Hoy' : 'Today'),
                   ),
                   IconButton(
-                    tooltip: _expanded ? (l.localeName.startsWith('es') ? 'Contraer' : 'Collapse') : (l.localeName.startsWith('es') ? 'Ver mes' : 'View month'),
+                    tooltip: _expanded
+                        ? (l.localeName.startsWith('es')
+                            ? 'Contraer'
+                            : 'Collapse')
+                        : (l.localeName.startsWith('es')
+                            ? 'Ver mes'
+                            : 'View month'),
                     visualDensity: VisualDensity.compact,
-                    icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+                    icon:
+                        Icon(_expanded ? Icons.expand_less : Icons.expand_more),
                     onPressed: () => setState(() => _expanded = !_expanded),
                   ),
                 ],
@@ -136,21 +155,37 @@ class _HomeCalendarPreviewState extends State<HomeCalendarPreview> {
                   Expanded(
                     child: Text(
                       DateFormat.MMMMd(locale).format(_selected),
-                      style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+                      style: theme.textTheme.labelLarge
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.pushNamed(context, AppRoutes.groupCalendar, arguments: widget.groupId),
-                    child: Text(l.localeName.startsWith('es') ? 'Ver calendario' : 'View calendar'),
+                    onPressed: () => Navigator.pushNamed(
+                        context, AppRoutes.groupCalendar,
+                        arguments: widget.groupId),
+                    child: Text(l.localeName.startsWith('es')
+                        ? 'Ver calendario'
+                        : 'View calendar'),
                   ),
                 ],
               ),
               if (snapshot.connectionState == ConnectionState.waiting)
-                const Padding(padding: EdgeInsets.all(8), child: SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2)))
+                const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2)))
               else if (selectedEvents.isEmpty)
-                Align(alignment: Alignment.centerLeft, child: Text(l.localeName.startsWith('es') ? 'No hay eventos programados.' : 'No scheduled events.', style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)))
+                HexoraEmptyState(
+                  icon: Icons.event_busy_outlined,
+                  title: l.emptyCalendarTitle,
+                  description: l.emptyCalendarDescription,
+                  variant: HexoraEmptyStateVariant.compact,
+                  maxDescriptionWidth: 320,
+                )
               else
-                ...selectedEvents.map((event) => _AgendaRow(event: event, locale: locale)),
+                ...selectedEvents
+                    .map((event) => _AgendaRow(event: event, locale: locale)),
             ],
           ),
         );
@@ -160,7 +195,14 @@ class _HomeCalendarPreviewState extends State<HomeCalendarPreview> {
 }
 
 class _CalendarGrid extends StatelessWidget {
-  const _CalendarGrid({required this.days, required this.selected, required this.today, required this.eventDays, required this.monthView, required this.onSelect, required this.locale});
+  const _CalendarGrid(
+      {required this.days,
+      required this.selected,
+      required this.today,
+      required this.eventDays,
+      required this.monthView,
+      required this.onSelect,
+      required this.locale});
   final List<DateTime> days;
   final DateTime selected;
   final DateTime today;
@@ -179,13 +221,22 @@ class _CalendarGrid extends StatelessWidget {
     );
     return Column(
       children: [
-        Row(children: [for (var index = 0; index < 7; index++) Expanded(child: Center(child: Text(weekdays[(index + 1) % 7], style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w600))))]),
+        Row(children: [
+          for (var index = 0; index < 7; index++)
+            Expanded(
+                child: Center(
+                    child: Text(weekdays[(index + 1) % 7],
+                        style: tt.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600))))
+        ]),
         const SizedBox(height: 4),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: days.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7, mainAxisExtent: 34),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7, mainAxisExtent: 34),
           itemBuilder: (context, index) {
             final date = days[index];
             final isSelected = date == selected;
@@ -202,10 +253,30 @@ class _CalendarGrid extends StatelessWidget {
                     width: 27,
                     height: 27,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: isSelected ? cs.primary : null, shape: BoxShape.circle, border: isToday && !isSelected ? Border.all(color: cs.primary, width: 1.5) : null),
-                    child: Text('${date.day}', style: tt.bodySmall?.copyWith(color: isSelected ? cs.onPrimary : (sameMonth ? cs.onSurface : cs.onSurfaceVariant.withValues(alpha: .45)), fontWeight: isToday || isSelected ? FontWeight.w700 : FontWeight.w500)),
+                    decoration: BoxDecoration(
+                        color: isSelected ? cs.primary : null,
+                        shape: BoxShape.circle,
+                        border: isToday && !isSelected
+                            ? Border.all(color: cs.primary, width: 1.5)
+                            : null),
+                    child: Text('${date.day}',
+                        style: tt.bodySmall?.copyWith(
+                            color: isSelected
+                                ? cs.onPrimary
+                                : (sameMonth
+                                    ? cs.onSurface
+                                    : cs.onSurfaceVariant
+                                        .withValues(alpha: .45)),
+                            fontWeight: isToday || isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500)),
                   ),
-                  if (hasEvent) Container(width: 4, height: 4, decoration: BoxDecoration(color: cs.secondary, shape: BoxShape.circle)),
+                  if (hasEvent)
+                    Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                            color: cs.secondary, shape: BoxShape.circle)),
                 ],
               ),
             );
@@ -228,8 +299,16 @@ class _AgendaRow extends StatelessWidget {
       padding: const EdgeInsets.only(top: 5),
       child: Row(
         children: [
-          SizedBox(width: 45, child: Text(DateFormat.Hm(locale).format(event.startDate), style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w700))),
-          Expanded(child: Text(event.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall)),
+          SizedBox(
+              width: 45,
+              child: Text(DateFormat.Hm(locale).format(event.startDate),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: cs.primary, fontWeight: FontWeight.w700))),
+          Expanded(
+              child: Text(event.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall)),
         ],
       ),
     );

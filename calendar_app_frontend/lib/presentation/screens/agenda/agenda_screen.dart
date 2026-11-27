@@ -2,9 +2,9 @@ import 'package:hexora/navigation/fab/contextual_fab.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_empty_state.dart';
 import 'package:hexora/models/calendar/agenda_model.dart';
 import 'package:hexora/models/calendar/events/event.dart';
-import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_agenda_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -12,8 +12,9 @@ import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/agenda/sections/agenda_header_section.dart';
 import 'package:hexora/presentation/screens/agenda/sections/agenda_list_section.dart';
 import 'package:hexora/presentation/screens/agenda/widgets/agenda_sliver.dart';
-import 'package:hexora/presentation/shared/widgets/avatars/user_avatar.dart';
 import 'package:hexora/navigation/main_scaffold.dart';
+import 'package:hexora/presentation/screens/calendar/screens/calendar/utils/group_permissions_helper.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -108,12 +109,31 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
+  Future<void> _createEvent() async {
+    final group = context.read<GroupDomain>().currentGroup;
+    if (group == null || group.id != _resolveGroupId()) return;
+    await Navigator.pushNamed(context, AppRoutes.addEvent, arguments: group);
+    if (mounted) await _loadAgenda();
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = _items;
     final gid = _resolveGroupId();
     final loc = AppLocalizations.of(context)!;
     final isDesktop = MediaQuery.of(context).size.width >= 900;
+    var canCreateEvent = false;
+    try {
+      final group = context.read<GroupDomain>().currentGroup;
+      final user = context.read<UserDomain>().user;
+      canCreateEvent = group != null &&
+          group.id == gid &&
+          user != null &&
+          GroupPermissionHelper.canAddEvents(user, group);
+    } on ProviderNotFoundException {
+      // Standalone and focused widget routes can supply an explicit group id
+      // without mounting the full workspace provider graph.
+    }
 
     Widget body;
 
@@ -138,6 +158,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
           setState(() => _loading = true);
           _loadAgenda();
         },
+        onCreateEvent: canCreateEvent ? _createEvent : null,
       );
     } else {
       // ── Mobile: existing scrolling layout ───────────────────────────────
@@ -203,6 +224,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
     if (!widget.showBottomNav) {
       return Scaffold(
         appBar: AppBar(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
           title: Text(
             widget.groupName == null
                 ? loc.agenda
@@ -242,6 +267,7 @@ class _AgendaDesktopLayout extends StatefulWidget {
   final int daysRange;
   final VoidCallback onToggleDays;
   final VoidCallback onRefresh;
+  final VoidCallback? onCreateEvent;
 
   const _AgendaDesktopLayout({
     required this.items,
@@ -249,6 +275,7 @@ class _AgendaDesktopLayout extends StatefulWidget {
     required this.daysRange,
     required this.onToggleDays,
     required this.onRefresh,
+    this.onCreateEvent,
   });
 
   @override
@@ -319,79 +346,120 @@ class _AgendaDesktopLayoutState extends State<_AgendaDesktopLayout> {
     final cs = Theme.of(context).colorScheme;
     final buckets = _buildBuckets();
     final dayEvents = _eventsForDay;
+    final canvas = Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).scaffoldBackgroundColor
+        : AppColors.workspaceCanvas;
 
-    return Column(
-      children: [
-        // ── Top summary bar ───────────────────────────────────────────────
-        _DesktopTopBar(
-          items: widget.allItems,
-          totalDone: _totalDone,
-          daysRange: widget.daysRange,
-          onToggleDays: widget.onToggleDays,
-          onRefresh: widget.onRefresh,
-        ),
-        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
-
-        // ── Three panels ──────────────────────────────────────────────────
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Left: vertical day strip
-              _VerticalDayStrip(
-                buckets: buckets,
-                selectedDay: _selectedDay,
-                onDaySelected: (day) => setState(() {
-                  _selectedDay = day;
-                  _selectedItem = null;
-                }),
+    return ColoredBox(
+      key: const ValueKey('agenda-workspace'),
+      color: canvas,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            _AgendaSurface(
+              child: _DesktopTopBar(
+                items: widget.allItems,
+                totalDone: _totalDone,
+                daysRange: widget.daysRange,
+                onToggleDays: widget.onToggleDays,
+                onRefresh: widget.onRefresh,
+                onCreateEvent: widget.onCreateEvent,
               ),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: _AgendaSurface(
+                clip: true,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Left: vertical day strip
+                    _VerticalDayStrip(
+                      buckets: buckets,
+                      selectedDay: _selectedDay,
+                      onDaySelected: (day) => setState(() {
+                        _selectedDay = day;
+                        _selectedItem = null;
+                      }),
+                    ),
 
-              VerticalDivider(
-                  width: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
+                    VerticalDivider(
+                      width: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.45),
+                    ),
 
-              // Middle: events for the selected day
-              Expanded(
-                child: _DayEventsPanel(
-                  date: _selectedDay,
-                  events: dayEvents,
-                  selectedItemId: _selectedItem?.event.id,
-                  onEventTap: (item) => setState(() {
-                    _selectedItem =
-                        _selectedItem?.event.id == item.event.id ? null : item;
-                  }),
+                    // Middle: events for the selected day
+                    Expanded(
+                      child: _DayEventsPanel(
+                        date: _selectedDay,
+                        events: dayEvents,
+                        selectedItemId: _selectedItem?.event.id,
+                        onEventTap: (item) => setState(() {
+                          _selectedItem =
+                              _selectedItem?.event.id == item.event.id
+                                  ? null
+                                  : item;
+                        }),
+                      ),
+                    ),
+
+                    // Right: event detail panel (slides in)
+                    AnimatedSize(
+                      duration: HexoraMotion.duration(
+                          context, HexoraMotion.navigation),
+                      curve: HexoraMotion.enter,
+                      child: _selectedItem != null
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                VerticalDivider(
+                                    width: 1,
+                                    color: cs.outlineVariant
+                                        .withValues(alpha: 0.3)),
+                                SizedBox(
+                                  width: 300,
+                                  child: _EventDetailPanel(
+                                    item: _selectedItem!,
+                                    onClose: () =>
+                                        setState(() => _selectedItem = null),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
                 ),
               ),
-
-              // Right: event detail panel (slides in)
-              AnimatedSize(
-                duration:
-                    HexoraMotion.duration(context, HexoraMotion.navigation),
-                curve: HexoraMotion.enter,
-                child: _selectedItem != null
-                    ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          VerticalDivider(
-                              width: 1,
-                              color: cs.outlineVariant.withValues(alpha: 0.3)),
-                          SizedBox(
-                            width: 300,
-                            child: _EventDetailPanel(
-                              item: _selectedItem!,
-                              onClose: () =>
-                                  setState(() => _selectedItem = null),
-                            ),
-                          ),
-                        ],
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
+  }
+}
+
+class _AgendaSurface extends StatelessWidget {
+  const _AgendaSurface({required this.child, this.clip = false});
+
+  final Widget child;
+  final bool clip;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final decorated = DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
+      ),
+      child: child,
+    );
+    return clip
+        ? ClipRRect(borderRadius: BorderRadius.circular(14), child: decorated)
+        : decorated;
   }
 }
 
@@ -403,6 +471,7 @@ class _DesktopTopBar extends StatelessWidget {
   final int daysRange;
   final VoidCallback onToggleDays;
   final VoidCallback onRefresh;
+  final VoidCallback? onCreateEvent;
 
   const _DesktopTopBar({
     required this.items,
@@ -410,6 +479,7 @@ class _DesktopTopBar extends StatelessWidget {
     required this.daysRange,
     required this.onToggleDays,
     required this.onRefresh,
+    this.onCreateEvent,
   });
 
   @override
@@ -421,113 +491,138 @@ class _DesktopTopBar extends StatelessWidget {
     final pct = total == 0 ? 0.0 : done / total;
     final is30 = daysRange >= 30;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-      child: Row(
-        children: [
-          // Avatar
-          ValueListenableBuilder<User?>(
-            valueListenable: context.read<UserDomain>().currentUserNotifier,
-            builder: (_, user, __) => user == null
-                ? CircleAvatar(
-                    radius: 18,
-                    backgroundColor: cs.surfaceContainerHighest,
-                    child: Icon(Icons.person,
-                        size: 18, color: cs.onSurfaceVariant),
-                  )
-                : UserAvatar(
-                    user: user,
-                    fetchReadSas: (_) async => null,
-                    radius: 18,
-                  ),
-          ),
-          const SizedBox(width: 12),
-
-          // Progress
-          Expanded(
-            child: Column(
+    return LayoutBuilder(
+      builder: (context, constraints) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: Icon(Icons.calendar_month_outlined,
+                  size: 20, color: cs.primary),
+            ),
+            const SizedBox(width: 11),
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
+                Text(
+                  AppLocalizations.of(context)!.agenda,
+                  style: t.bodyLarge.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (constraints.maxWidth >= 980)
+                  Text(
+                    AppLocalizations.of(context)!.upcomingEventsSubtitle,
+                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 24),
+
+            if (constraints.maxWidth >= 1120)
+              SizedBox(
+                width: 250,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      AppLocalizations.of(context)!
-                          .completedSummary(done, total, (pct * 100).round()),
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurface.withValues(alpha: 0.65),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)!.completedSummary(
+                              done, total, (pct * 100).round()),
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurface.withValues(alpha: 0.65),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (total > 0) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '${(pct * 100).round()}%',
+                            style: t.bodySmall.copyWith(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: done == total ? cs.secondary : cs.primary,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     if (total > 0) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        '${(pct * 100).round()}%',
-                        style: t.bodySmall.copyWith(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: done == total ? cs.secondary : cs.primary,
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: LinearProgressIndicator(
+                          value: pct,
+                          minHeight: 3,
+                          backgroundColor: cs.surfaceContainerHighest,
+                          valueColor: AlwaysStoppedAnimation(
+                            done == total ? cs.secondary : cs.primary,
+                          ),
                         ),
                       ),
                     ],
                   ],
                 ),
-                if (total > 0) ...[
-                  const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: pct,
-                      minHeight: 3,
-                      backgroundColor: cs.surfaceContainerHighest,
-                      valueColor: AlwaysStoppedAnimation(
-                        done == total ? cs.secondary : cs.primary,
-                      ),
-                    ),
-                  ),
+              ),
+            const Spacer(),
+
+            // Day range segmented
+            Container(
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(9),
+                border:
+                    Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+              ),
+              padding: const EdgeInsets.all(2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _Seg(
+                      label: '14d',
+                      active: !is30,
+                      cs: cs,
+                      onTap: is30 ? onToggleDays : null),
+                  _Seg(
+                      label: '30d',
+                      active: is30,
+                      cs: cs,
+                      onTap: !is30 ? onToggleDays : null),
                 ],
-              ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 4),
 
-          // Day range segmented
-          Container(
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(9),
-              border:
-                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+            // Refresh
+            IconButton(
+              tooltip: AppLocalizations.of(context)!.refresh,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              onPressed: onRefresh,
+              visualDensity: VisualDensity.compact,
+              color: cs.onSurfaceVariant,
             ),
-            padding: const EdgeInsets.all(2),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _Seg(
-                    label: '14d',
-                    active: !is30,
-                    cs: cs,
-                    onTap: is30 ? onToggleDays : null),
-                _Seg(
-                    label: '30d',
-                    active: is30,
-                    cs: cs,
-                    onTap: !is30 ? onToggleDays : null),
-              ],
-            ),
-          ),
-          const SizedBox(width: 4),
-
-          // Refresh
-          IconButton(
-            tooltip: AppLocalizations.of(context)!.refresh,
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            onPressed: onRefresh,
-            visualDensity: VisualDensity.compact,
-            color: cs.onSurfaceVariant,
-          ),
-        ],
+            if (onCreateEvent != null) ...[
+              const SizedBox(width: 4),
+              FilledButton.icon(
+                onPressed: onCreateEvent,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(AppLocalizations.of(context)!.addEvent),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -599,7 +694,7 @@ class _VerticalDayStrip extends StatelessWidget {
     final locale = Localizations.localeOf(context).toString();
 
     return SizedBox(
-      width: 88,
+      width: 104,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         child: Column(
@@ -614,17 +709,17 @@ class _VerticalDayStrip extends StatelessWidget {
             final hasEvents = b.count > 0;
 
             final bg = isSelected
-                ? cs.primary
+                ? cs.primaryContainer
                 : b.isToday
                     ? cs.primaryContainer.withValues(alpha: 0.55)
                     : Colors.transparent;
             final textColor = isSelected
-                ? cs.onPrimary
+                ? cs.primary
                 : b.isPast
                     ? cs.onSurface.withValues(alpha: 0.3)
                     : cs.onSurface.withValues(alpha: 0.85);
             final dowColor = isSelected
-                ? cs.onPrimary.withValues(alpha: 0.75)
+                ? cs.primary.withValues(alpha: 0.8)
                 : b.isPast
                     ? cs.onSurface.withValues(alpha: 0.25)
                     : cs.onSurfaceVariant.withValues(alpha: 0.7);
@@ -680,9 +775,7 @@ class _VerticalDayStrip extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 5, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isSelected
-                                ? cs.onPrimary.withValues(alpha: 0.2)
-                                : cs.primary.withValues(alpha: 0.12),
+                            color: cs.primary.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -690,10 +783,8 @@ class _VerticalDayStrip extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
-                              color: isSelected
-                                  ? cs.onPrimary
-                                  : cs.primary
-                                      .withValues(alpha: b.isPast ? 0.5 : 1.0),
+                              color: cs.primary.withValues(
+                                  alpha: b.isPast && !isSelected ? 0.5 : 1.0),
                             ),
                           ),
                         )
@@ -822,23 +913,11 @@ class _DayEventsPanel extends StatelessWidget {
         // Events list
         Expanded(
           child: events.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.event_available_outlined,
-                        size: 36,
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.3),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        loc.noUpcomingEvents,
-                        style: t.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
-                      ),
-                    ],
-                  ),
+              ? HexoraEmptyState(
+                  key: const ValueKey('agenda-empty-state'),
+                  icon: Icons.event_available_outlined,
+                  title: loc.emptyCalendarTitle,
+                  description: loc.emptyCalendarDescription,
                 )
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: 8),

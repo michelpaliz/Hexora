@@ -270,11 +270,23 @@ class _InvoiceLinesEditorState extends State<InvoiceLinesEditor> {
               children: [
                 Row(
                   children: [
-                    Text(
-                      '#${line.position}',
-                      style: t.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: cs.primary,
+                    Container(
+                      width: 30,
+                      height: 30,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: cs.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: cs.primary.withValues(alpha: 0.28),
+                        ),
+                      ),
+                      child: Text(
+                        '${line.position}',
+                        style: t.bodySmall.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: cs.primary,
+                        ),
                       ),
                     ),
                     const Spacer(),

@@ -65,6 +65,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
   DateTime? _selectionStart;
   DateTime? _selectionEnd;
   DateTime? _dragSelectionAnchor;
+  bool _selectionMoved = false;
   bool _syncScheduled = false;
   bool _isDraggingEvent = false;
   bool _isSelectingTimeRange = false;
@@ -239,6 +240,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
     final slot = _timeGridSlotAt(localPosition);
     if (slot == null) return;
     _dragSelectionAnchor = slot;
+    _selectionMoved = false;
     _isSelectingTimeRange = true;
     _updateDraggedTimeSelection(slot);
   }
@@ -247,42 +249,23 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
     if (!_isSelectingTimeRange) return;
     final slot = _timeGridSlotAt(localPosition);
     if (slot == null) return;
+    if (slot != _dragSelectionAnchor) _selectionMoved = true;
     _updateDraggedTimeSelection(slot);
   }
 
-  void _handleSelectionPointerEnd() {
+  void _handleSelectionPointerEnd({bool cancelled = false}) {
     _isSelectingTimeRange = false;
     _dragSelectionAnchor = null;
-  }
-
-  void _selectTimeSlot(DateTime slot) {
-    final tappedStart = _slotStart(slot);
-    final tappedEnd = tappedStart.add(const Duration(hours: 1));
-    final currentStart = _selectionStart;
-    final sameDay = currentStart != null &&
-        currentStart.year == tappedStart.year &&
-        currentStart.month == tappedStart.month &&
-        currentStart.day == tappedStart.day;
-
-    setState(() {
-      if (!sameDay) {
-        _selectionStart = tappedStart;
-        _selectionEnd = tappedEnd;
-        return;
-      }
-
-      _selectionStart =
-          tappedStart.isBefore(currentStart) ? tappedStart : currentStart;
-      final currentEnd =
-          _selectionEnd ?? currentStart.add(const Duration(hours: 1));
-      _selectionEnd = tappedEnd.isAfter(currentEnd) ? tappedEnd : currentEnd;
-    });
+    if (!cancelled && _selectionMoved) return;
+    if (!cancelled) return;
+    _clearTimeSelection();
   }
 
   void _clearTimeSelection() {
     setState(() {
       _selectionStart = null;
       _selectionEnd = null;
+      _selectionMoved = false;
     });
   }
 
@@ -321,7 +304,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 520;
-            final selectionLabel = Row(
+            final labelRow = Row(
               mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
               children: [
                 Icon(Icons.schedule_rounded, size: 19, color: cs.primary),
@@ -343,34 +326,35 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                         ),
                   ),
                 IconButton(
-                  tooltip: 'Cancelar seleccion',
+                  tooltip: MaterialLocalizations.of(context).cancelButtonLabel,
                   onPressed: _clearTimeSelection,
                   icon: const Icon(Icons.close_rounded),
                 ),
               ],
             );
-
             final createButton = FilledButton.icon(
               onPressed: createEvent,
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Crear evento'),
+              label: Text(
+                Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Crear evento'
+                    : 'Create event',
+              ),
             );
-
             if (compact) {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  selectionLabel,
+                  labelRow,
                   const SizedBox(height: 6),
                   SizedBox(width: double.infinity, child: createButton),
                 ],
               );
             }
-
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                selectionLabel,
+                labelRow,
                 const SizedBox(width: 4),
                 createButton,
               ],
@@ -612,7 +596,8 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                       onPointerUp: (_) =>
                                           _handleSelectionPointerEnd(),
                                       onPointerCancel: (_) =>
-                                          _handleSelectionPointerEnd(),
+                                          _handleSelectionPointerEnd(
+                                              cancelled: true),
                                       child: sf.SfCalendar(
                                         key: ObjectKey(
                                             '${ds.hashCode}-$effectiveMode'),
@@ -651,16 +636,21 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                         },
                                         onTap: (details) {
                                           final tapped = details.date;
-                                          if (tapped == null) return;
-                                          final target = details.targetElement;
-                                          if (target !=
-                                              sf.CalendarElement.calendarCell) {
+                                          if (tapped == null ||
+                                              details.targetElement !=
+                                                  sf.CalendarElement
+                                                      .calendarCell ||
+                                              !_isTimeGridView()) {
                                             return;
                                           }
-                                          if (!_isTimeGridView()) {
-                                            return;
-                                          }
-                                          _selectTimeSlot(tapped);
+                                          final start = _slotStart(tapped);
+                                          _clearTimeSelection();
+                                          widget.onTimeRangeSelected?.call(
+                                            start,
+                                            start.add(
+                                              const Duration(hours: 1),
+                                            ),
+                                          );
                                         },
                                         // ✅ Keep Month custom tiles (old behavior)
                                         monthCellBuilder: (context, d) =>
@@ -773,7 +763,8 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                       child: _buildDayHeaders(
                                           context, calendarViewHeaderHeight),
                                     ),
-                                  if (_selectionStart != null &&
+                                  if (_selectionMoved &&
+                                      _selectionStart != null &&
                                       _selectionEnd != null)
                                     Positioned(
                                       left: 16,

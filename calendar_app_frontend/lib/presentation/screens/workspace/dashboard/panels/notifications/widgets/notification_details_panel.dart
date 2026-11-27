@@ -290,6 +290,12 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
       inHours: (h) => isEs ? 'en $h h' : 'in $h h',
       agoMin: (m) => isEs ? 'hace $m min' : '$m min ago',
       agoHours: (h) => isEs ? 'hace $h h' : '$h h ago',
+      agoDays: (d) => isEs
+          ? (d == 1 ? 'hace 1 día' : 'hace $d días')
+          : (d == 1 ? '1 day ago' : '$d days ago'),
+      inDays: (d) => isEs
+          ? (d == 1 ? 'en 1 día' : 'en $d días')
+          : (d == 1 ? 'in 1 day' : 'in $d days'),
     );
 
     final dim = cs.onSurface.withValues(alpha: 0.55);

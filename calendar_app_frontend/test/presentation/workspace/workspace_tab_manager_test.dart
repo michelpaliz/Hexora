@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab_bar.dart';
@@ -140,6 +142,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: Align(
             alignment: Alignment.topLeft,
@@ -159,19 +163,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final chat = find.byKey(const ValueKey('workspace-tab-chat'));
-    final home = find.byKey(const ValueKey('workspace-tab-home'));
-    final gesture = await tester.startGesture(tester.getCenter(chat));
-    await gesture.moveBy(const Offset(-20, 0));
-    await tester.pump(const Duration(milliseconds: 100));
-    await gesture.moveTo(tester.getCenter(home));
-    await tester.pump(const Duration(milliseconds: 300));
-    await gesture.up();
+    final chat = find.byKey(const ValueKey('workspace-tab-item-chat'));
+    await tester.drag(chat, const Offset(-420, 0));
     await tester.pumpAndSettle();
 
     expect(
       manager.tabs.map((tab) => tab.identity.value),
-      ['chat', 'home', 'invoices'],
+      ['home', 'chat', 'invoices'],
     );
     expect(tester.takeException(), isNull);
   });
@@ -222,6 +220,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('rapid tab changes while hovering do not mutate during layout',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final manager = WorkspaceTabManager(businessId: 'business-1');
+    for (var index = 0; index < 4; index++) {
+      manager.openOrActivateTab(_tab('tab-$index'));
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: WorkspaceContent(
+            manager: manager,
+            builder: (_, tab) => WorkspaceMainContent(child: Text(tab.title)),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer();
+
+    for (final index in [0, 3, 1, 2]) {
+      final tab = find.byKey(ValueKey('workspace-tab-tab-$index'));
+      await mouse.moveTo(tester.getCenter(tab));
+      // Let the tab tooltip open before activation. This is the combination
+      // that previously left an OverlayPortal in the offstage cached tab.
+      await tester.pump(const Duration(milliseconds: 550));
+      await mouse.down(tester.getCenter(tab));
+      await mouse.up();
+      await tester.pump();
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+
+    expect(manager.activeIdentity, const WorkspaceTabIdentity('tab-2'));
+    expect(tester.takeException(), isNull);
+  });
+
   test('title updates do not change tab identity or create a duplicate', () {
     final manager = WorkspaceTabManager(businessId: 'business-1');
     manager.openOrActivateTab(_tab('invoice:new'));
@@ -268,11 +313,15 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: WorkspaceContent(
             manager: manager,
-            builder: (_, tab) => TextField(
-              key: ValueKey('field-${tab.identity.value}'),
+            builder: (_, tab) => WorkspaceMainContent(
+              child: TextField(
+                key: ValueKey('field-${tab.identity.value}'),
+              ),
             ),
           ),
         ),
@@ -300,6 +349,13 @@ void main() {
 
     final editable = tester.widget<EditableText>(find.byType(EditableText));
     expect(editable.controller.text, 'unsaved invoice draft');
+    expect(
+      find.descendant(
+        of: find.byType(WorkspaceChromeFrame),
+        matching: find.byType(FadeTransition),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('unvisited inactive tabs mount only when first selected',
@@ -391,12 +447,22 @@ void main() {
         HexoraGlobalNavColors.backgroundFor(
             tester.element(find.byType(WorkspaceTabBar))),
       );
-      final activeSurface = tester.widget<Material>(find
-          .ancestor(of: find.text('HOME'), matching: find.byType(Material))
-          .first);
-      final inactiveSurface = tester.widget<Material>(find
-          .ancestor(of: find.text('BANK'), matching: find.byType(Material))
-          .first);
+      final activeSurface = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byKey(const ValueKey('workspace-tab-home')),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      final inactiveSurface = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byKey(const ValueKey('workspace-tab-bank')),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
       expect(activeSurface.color, theme.scaffoldBackgroundColor);
       expect(
           inactiveSurface.color, (surface.decoration! as BoxDecoration).color);

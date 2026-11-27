@@ -109,6 +109,7 @@ class GroupDashboardState extends ChangeNotifier {
   String? invoicesInitialReceiptId;
   String? invoicesInitialBudgetId;
   int invoicesNavigationRevision = 0;
+  int calendarNavigationRevision = 0;
   int settingsNavigationRevision = 0;
   bool _sectionChosenSinceOpen = false;
 
@@ -278,6 +279,44 @@ class GroupDashboardState extends ChangeNotifier {
     final userId = user?.id;
     if (userId != null) {
       unawaited(_rememberSection(userId, Sections.invoices));
+    }
+    notifyListeners();
+  }
+
+  void openCalendarEvent(String eventId) {
+    final normalizedId = eventId.trim();
+    if (normalizedId.isEmpty) return;
+    calendarNavigationRevision += 1;
+    _sectionChosenSinceOpen = true;
+    if (isWide) {
+      // Workspace tabs are restored independently from this dashboard state.
+      // Keep the request revision ahead of the restored Calendar tab so that
+      // selecting the same notification again still reaches the mounted
+      // Calendar view and reopens its event detail panel.
+      for (final tab in workspaceTabs.tabs) {
+        if (tab.section != Sections.calendar) continue;
+        final previousRevision =
+            int.tryParse(tab.arguments['navigationRevision'] ?? '') ?? 0;
+        if (calendarNavigationRevision <= previousRevision) {
+          calendarNavigationRevision = previousRevision + 1;
+        }
+        break;
+      }
+      workspaceTabs.openOrActivateTab(
+        _tabForSection(
+          Sections.calendar,
+          arguments: <String, String>{
+            'initialEventId': normalizedId,
+            'navigationRevision': calendarNavigationRevision.toString(),
+          },
+        ),
+      );
+      return;
+    }
+    activeSection = Sections.calendar;
+    final userId = user?.id;
+    if (userId != null) {
+      unawaited(_rememberSection(userId, Sections.calendar));
     }
     notifyListeners();
   }

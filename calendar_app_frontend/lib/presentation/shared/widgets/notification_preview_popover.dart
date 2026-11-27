@@ -5,8 +5,10 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_empty_state.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_category_meta.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_formatting.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -227,7 +229,7 @@ class _NotificationPreviewPopoverState
   }
 }
 
-class _NotificationPreviewSurface extends StatelessWidget {
+class _NotificationPreviewSurface extends StatefulWidget {
   const _NotificationPreviewSurface({
     required this.notifications,
     required this.unreadCount,
@@ -247,158 +249,221 @@ class _NotificationPreviewSurface extends StatelessWidget {
   final ValueChanged<NotificationUser> onNotificationTap;
 
   @override
+  State<_NotificationPreviewSurface> createState() =>
+      _NotificationPreviewSurfaceState();
+}
+
+class _NotificationPreviewSurfaceState
+    extends State<_NotificationPreviewSurface> {
+  bool _unreadOnly = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
+    final light = Theme.of(context).brightness == Brightness.light;
     final t = AppTypography.of(context);
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     return Material(
       key: const ValueKey('notification-preview-popover'),
-      color: cs.surface,
-      elevation: 12,
-      shadowColor: cs.shadow.withValues(alpha: 0.22),
+      // The preview must remain a crisp floating surface on the workspace
+      // canvas. The general surface token can be a blue-grey in some themes.
+      color: light ? AppColors.surface : cs.surface,
+      elevation: 6,
+      shadowColor: cs.shadow.withValues(alpha: 0.16),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.72)),
-      ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: cs.shadow.withValues(alpha: 0.16),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
+        side: BorderSide(
+          color: light ? AppColors.inputBorder : cs.outlineVariant,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    isEs ? 'Notificaciones' : 'Notifications',
+                    style: t.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  key: const ValueKey('notification-preview-mark-all'),
+                  onPressed: widget.unreadCount == 0 || widget.markingAllRead
+                      ? null
+                      : widget.onMarkAllRead,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(0, 32),
+                  ),
+                  child: widget.markingAllRead
+                      ? const SizedBox.square(
+                          dimension: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          isEs ? 'Marcar todas como leídas' : 'Mark all read',
+                          style: t.bodySmall.copyWith(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+                IconButton(
+                  key: const ValueKey('notification-preview-close'),
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  onPressed: widget.onClose,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  constraints:
+                      const BoxConstraints.tightFor(width: 32, height: 32),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+          ),
+          Divider(
+            height: 1,
+            color: light ? AppColors.inputBorder : cs.outlineVariant,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 7, 12, 6),
+            child: Row(
+              children: [
+                _NotificationFilterChip(
+                  label: isEs ? 'Todas' : 'All',
+                  selected: !_unreadOnly,
+                  onTap: () => setState(() => _unreadOnly = false),
+                ),
+                const SizedBox(width: 6),
+                _NotificationFilterChip(
+                  label: isEs ? 'Sin leer' : 'Unread',
+                  count: widget.unreadCount,
+                  selected: _unreadOnly,
+                  onTap: () => setState(() => _unreadOnly = true),
+                ),
+              ],
+            ),
+          ),
+          Flexible(
+            child: _visibleNotifications.isEmpty
+                ? HexoraEmptyState(
+                    icon: Icons.notifications_none_rounded,
+                    title: _unreadOnly
+                        ? (isEs ? 'Todo está leído' : 'No unread notifications')
+                        : l.emptyNotificationsTitle,
+                    description: l.emptyNotificationsDescription,
+                    variant: HexoraEmptyStateVariant.compact,
+                    maxDescriptionWidth: 300,
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    itemCount: _visibleNotifications.length,
+                    separatorBuilder: (_, __) => Divider(
+                      height: 1,
+                      indent: 54,
+                      color: light
+                          ? AppColors.inputBorder.withValues(alpha: .72)
+                          : cs.outlineVariant.withValues(alpha: .42),
+                    ),
+                    itemBuilder: (context, index) {
+                      final notification = _visibleNotifications[index];
+                      return _NotificationPreviewRow(
+                        key: ValueKey(
+                            'notification-preview-item-${notification.id}'),
+                        notification: notification,
+                        onTap: () => widget.onNotificationTap(notification),
+                      );
+                    },
+                  ),
+          ),
+          Divider(
+            height: 1,
+            color: light ? AppColors.inputBorder : cs.outlineVariant,
+          ),
+          InkWell(
+            key: const ValueKey('notification-preview-view-all'),
+            onTap: widget.onOpenAll,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(
+                  Flexible(
                     child: Text(
-                      isEs ? 'Notificaciones' : 'Notifications',
-                      style: t.bodyLarge.copyWith(
+                      isEs
+                          ? 'Ver todas las notificaciones'
+                          : 'View all notifications',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall.copyWith(
+                        color: cs.primary,
                         fontWeight: FontWeight.w800,
-                        color: cs.onSurface,
                       ),
                     ),
                   ),
-                  TextButton(
-                    key: const ValueKey('notification-preview-mark-all'),
-                    onPressed: unreadCount == 0 || markingAllRead
-                        ? null
-                        : onMarkAllRead,
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: const Size(0, 32),
-                    ),
-                    child: markingAllRead
-                        ? const SizedBox.square(
-                            dimension: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            isEs ? 'Marcar todas como leídas' : 'Mark all read',
-                            style: t.bodySmall.copyWith(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                  ),
-                  IconButton(
-                    key: const ValueKey('notification-preview-close'),
-                    tooltip:
-                        MaterialLocalizations.of(context).closeButtonTooltip,
-                    onPressed: onClose,
-                    icon: const Icon(Icons.close_rounded, size: 18),
-                    constraints:
-                        const BoxConstraints.tightFor(width: 32, height: 32),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                  ),
+                  const SizedBox(width: 5),
+                  Icon(Icons.arrow_forward_rounded,
+                      size: 15, color: cs.primary),
                 ],
               ),
             ),
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .55)),
-            Flexible(
-              child: notifications.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.notifications_none_rounded,
-                              size: 28,
-                              color: cs.onSurfaceVariant.withValues(alpha: .7)),
-                          const SizedBox(height: 8),
-                          Text(
-                            isEs
-                                ? 'No hay notificaciones recientes'
-                                : 'No recent notifications',
-                            style: t.bodySmall.copyWith(
-                              color: cs.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      padding: EdgeInsets.zero,
-                      itemCount: notifications.length,
-                      separatorBuilder: (_, __) => Divider(
-                        height: 1,
-                        indent: 54,
-                        color: cs.outlineVariant.withValues(alpha: .42),
-                      ),
-                      itemBuilder: (context, index) {
-                        final notification = notifications[index];
-                        return _NotificationPreviewRow(
-                          key: ValueKey(
-                              'notification-preview-item-${notification.id}'),
-                          notification: notification,
-                          onTap: () => onNotificationTap(notification),
-                        );
-                      },
-                    ),
-            ),
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .55)),
-            InkWell(
-              key: const ValueKey('notification-preview-view-all'),
-              onTap: onOpenAll,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        isEs
-                            ? 'Ver todas las notificaciones'
-                            : 'View all notifications',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: t.bodySmall.copyWith(
-                          color: cs.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Icon(Icons.arrow_forward_rounded,
-                        size: 15, color: cs.primary),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<NotificationUser> get _visibleNotifications => _unreadOnly
+      ? widget.notifications
+          .where((notification) => !notification.isRead)
+          .toList()
+      : widget.notifications;
+}
+
+class _NotificationFilterChip extends StatelessWidget {
+  const _NotificationFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.count,
+  });
+
+  final String label;
+  final int? count;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(7),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color:
+              selected ? cs.primary.withValues(alpha: .10) : Colors.transparent,
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Text(
+          count == null ? label : '$label ($count)',
+          style: t.caption.copyWith(
+            color: selected ? cs.primary : cs.onSurfaceVariant,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+          ),
         ),
       ),
     );
@@ -418,12 +483,33 @@ class _NotificationPreviewRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final light = Theme.of(context).brightness == Brightness.light;
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
     final meta = resolveNotifMeta(notification, cs);
     final unread = !notification.isRead;
+    final categoryTitle = notification.getLocalizedTitle(l);
+    final eventTitle = (notification.args['eventTitle'] ??
+            notification.args['title'] ??
+            notification.args['name'] ??
+            '')
+        .toString()
+        .trim();
+    final title = eventTitle.isNotEmpty &&
+            (notification.category == Category.eventReminder ||
+                notification.category == Category.eventStarted)
+        ? eventTitle
+        : categoryTitle;
+    final message = notification.getLocalizedMessage(l).trim();
+    final secondary = eventTitle.isNotEmpty && message.contains(eventTitle)
+        ? categoryTitle
+        : message;
     return Material(
-      color: unread ? cs.primary.withValues(alpha: .065) : Colors.transparent,
+      color: unread
+          ? (light
+              ? AppColors.workspaceCanvas
+              : cs.primary.withValues(alpha: .12))
+          : (light ? AppColors.surface : cs.surface),
       child: InkWell(
         onTap: onTap,
         child: Padding(
@@ -450,7 +536,7 @@ class _NotificationPreviewRow extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            notification.getLocalizedTitle(l),
+                            title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: t.bodySmall.copyWith(
@@ -468,7 +554,7 @@ class _NotificationPreviewRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      notification.getLocalizedMessage(l),
+                      secondary,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: t.bodySmall.copyWith(

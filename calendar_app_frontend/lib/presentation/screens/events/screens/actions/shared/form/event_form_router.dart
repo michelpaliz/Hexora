@@ -12,6 +12,8 @@ class EventFormRouter extends StatefulWidget {
   final CategoryApi categoryApi;
   final bool isEditing;
   final bool showSubmitButton;
+  final bool quickMode;
+  final VoidCallback? onMoreOptions;
 
   /// Parent’s dialog impl (e.g., `this`)
   final EventDialogs dialogs;
@@ -28,6 +30,8 @@ class EventFormRouter extends StatefulWidget {
     required this.dialogs,
     this.isEditing = false,
     this.showSubmitButton = true,
+    this.quickMode = false,
+    this.onMoreOptions,
     this.enableClientServicePickers = false,
   });
 
@@ -59,6 +63,8 @@ class _EventFormRouterState extends State<EventFormRouter> {
       ownerUserId: widget.ownerUserId,
       isEditing: widget.isEditing,
       showSubmitButton: widget.showSubmitButton,
+      quickMode: widget.quickMode,
+      onMoreOptions: widget.onMoreOptions,
       dialogs: widget.dialogs,
       enableClientServicePickers: true,
     );

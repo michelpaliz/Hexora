@@ -6511,8 +6511,104 @@ abstract class AppLocalizations {
   /// No description provided for @invoiceChangeHistoryEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No changes yet.'**
+  /// **'No changes yet'**
   String get invoiceChangeHistoryEmpty;
+
+  /// No description provided for @invoiceChangeHistoryEmptyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes made to this invoice will appear here, allowing you to track its activity over time.'**
+  String get invoiceChangeHistoryEmptyDescription;
+
+  /// No description provided for @emptyClientsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a client to start managing your invoices.'**
+  String get emptyClientsDescription;
+
+  /// No description provided for @emptyServicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No services yet'**
+  String get emptyServicesTitle;
+
+  /// No description provided for @emptyServicesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a service to reuse it in invoices and proposals.'**
+  String get emptyServicesDescription;
+
+  /// No description provided for @emptyEmployeesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No employees yet'**
+  String get emptyEmployeesTitle;
+
+  /// No description provided for @emptyEmployeesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Add employees to start managing your team.'**
+  String get emptyEmployeesDescription;
+
+  /// No description provided for @emptyNotificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re all caught up'**
+  String get emptyNotificationsTitle;
+
+  /// No description provided for @emptyNotificationsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'New notifications will appear here.'**
+  String get emptyNotificationsDescription;
+
+  /// No description provided for @emptySearchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No results found'**
+  String get emptySearchTitle;
+
+  /// No description provided for @emptySearchDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different search or adjust your filters.'**
+  String get emptySearchDescription;
+
+  /// No description provided for @emptyFiltersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching results'**
+  String get emptyFiltersTitle;
+
+  /// No description provided for @emptyFiltersDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust or clear the active filters to see more results.'**
+  String get emptyFiltersDescription;
+
+  /// No description provided for @emptyCalendarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No scheduled events'**
+  String get emptyCalendarTitle;
+
+  /// No description provided for @emptyCalendarDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Your upcoming events will appear here.'**
+  String get emptyCalendarDescription;
+
+  /// No description provided for @emptyInvitationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No pending invitations'**
+  String get emptyInvitationsTitle;
+
+  /// No description provided for @emptyInvitationsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending business invitations will appear here.'**
+  String get emptyInvitationsDescription;
 
   /// No description provided for @reasonLabel.
   ///

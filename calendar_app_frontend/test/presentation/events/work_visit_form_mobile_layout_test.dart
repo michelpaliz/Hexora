@@ -7,7 +7,10 @@ import 'package:hexora/presentation/screens/events/screens/actions/shared/form/t
 import 'package:hexora/theme/themes/app_theme.dart';
 
 class _FormHost extends StatefulWidget {
-  const _FormHost({super.key});
+  const _FormHost({super.key, this.quickMode = false, this.onMoreOptions});
+
+  final bool quickMode;
+  final VoidCallback? onMoreOptions;
 
   @override
   State<_FormHost> createState() => _FormHostState();
@@ -24,6 +27,8 @@ class _FormHostState extends BaseEventLogic<_FormHost> {
           ownerUserId: 'owner',
           onSubmit: () async {},
           showSubmitButton: false,
+          quickMode: widget.quickMode,
+          onMoreOptions: widget.onMoreOptions,
           enableClientServicePickers: false,
         ),
       );
@@ -76,18 +81,22 @@ void main() {
 
     final l =
         AppLocalizations.of(tester.element(find.byType(EventFormWorkVisit)))!;
-    expect(find.text(l.eventFormCompletion), findsOneWidget);
-    expect(find.text(l.eventFormOptions), findsOneWidget);
+    expect(find.text(l.eventFormMoreOptions), findsOneWidget);
+    expect(find.text('Se requiere al menos una foto para finalizar'),
+        findsNothing);
+    expect(find.text('Añadir evento'), findsNothing);
+
+    await tester.ensureVisible(find.text(l.eventFormMoreOptions));
+    await tester.tap(find.text(l.eventFormMoreOptions));
+    await tester.pumpAndSettle();
     expect(find.text('Se requiere al menos una foto para finalizar'),
         findsOneWidget);
-    expect(find.text('Añadir evento'), findsNothing);
 
     await tester.ensureVisible(find.text('Fotos obligatorias'));
     await tester.tap(find.byType(SwitchListTile));
     await tester.pumpAndSettle();
     expect(key.currentState!.requiresCompletionPhotos, isTrue);
 
-    await tester.ensureVisible(find.text('Más opciones'));
     await tester
         .ensureVisible(find.textContaining('Recordatorio · 10 minutos antes'));
     await tester.tap(find.textContaining('Recordatorio · 10 minutos antes'));
@@ -109,9 +118,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(key.currentState!.reminderMinutes, 0);
 
-    await tester.ensureVisible(find.text('Más opciones'));
-    await tester.tap(find.text('Más opciones'));
-    await tester.pumpAndSettle();
     expect(find.text(l.chooseEventColor), findsOneWidget);
     final blueSwatch =
         find.byKey(ValueKey('event-color-${Colors.blue.toARGB32()}'));
@@ -119,8 +125,38 @@ void main() {
     await tester.tap(blueSwatch);
     await tester.pumpAndSettle();
     expect(key.currentState!.selectedEventColor, Colors.blue.toARGB32());
-    expect(find.textContaining('Color · Azul'), findsOneWidget);
     expect(find.byType(DropdownButtonFormField<Color>), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('quick editor defers secondary settings to more options',
+      (tester) async {
+    var expandRequests = 0;
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.forPlatform(
+        Brightness.light,
+        platform: TargetPlatform.windows,
+      ),
+      locale: const Locale('es'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: _FormHost(
+          quickMode: true,
+          onMoreOptions: () => expandRequests++,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.byKey(const ValueKey('event-form-more-options')), findsOneWidget);
+    expect(find.byKey(const ValueKey('event-form-advanced-options')),
+        findsNothing);
+    expect(find.text('Fotos obligatorias'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('event-form-more-options')));
+    expect(expandRequests, 1);
     expect(tester.takeException(), isNull);
   });
 }

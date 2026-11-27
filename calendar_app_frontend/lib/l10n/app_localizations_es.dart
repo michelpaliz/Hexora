@@ -3664,7 +3664,64 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceChangeHistoryTitle => 'Cambios';
 
   @override
-  String get invoiceChangeHistoryEmpty => 'Todavía no hay cambios.';
+  String get invoiceChangeHistoryEmpty => 'Todavía no hay cambios';
+
+  @override
+  String get invoiceChangeHistoryEmptyDescription =>
+      'Los cambios realizados en esta factura aparecerán aquí para que puedas seguir su actividad a lo largo del tiempo.';
+
+  @override
+  String get emptyClientsDescription =>
+      'Añade un cliente para empezar a gestionar tus facturas.';
+
+  @override
+  String get emptyServicesTitle => 'Todavía no hay servicios';
+
+  @override
+  String get emptyServicesDescription =>
+      'Crea un servicio para reutilizarlo en facturas y propuestas.';
+
+  @override
+  String get emptyEmployeesTitle => 'Todavía no hay empleados';
+
+  @override
+  String get emptyEmployeesDescription =>
+      'Añade empleados para empezar a gestionar tu equipo.';
+
+  @override
+  String get emptyNotificationsTitle => 'Todo está al día';
+
+  @override
+  String get emptyNotificationsDescription =>
+      'Las nuevas notificaciones aparecerán aquí.';
+
+  @override
+  String get emptySearchTitle => 'No se encontraron resultados';
+
+  @override
+  String get emptySearchDescription =>
+      'Prueba otra búsqueda o ajusta los filtros.';
+
+  @override
+  String get emptyFiltersTitle => 'No hay resultados coincidentes';
+
+  @override
+  String get emptyFiltersDescription =>
+      'Ajusta o elimina los filtros activos para ver más resultados.';
+
+  @override
+  String get emptyCalendarTitle => 'No hay eventos programados';
+
+  @override
+  String get emptyCalendarDescription =>
+      'Tus próximos eventos aparecerán aquí.';
+
+  @override
+  String get emptyInvitationsTitle => 'No hay invitaciones pendientes';
+
+  @override
+  String get emptyInvitationsDescription =>
+      'Las invitaciones pendientes del negocio aparecerán aquí.';
 
   @override
   String get reasonLabel => 'Motivo';

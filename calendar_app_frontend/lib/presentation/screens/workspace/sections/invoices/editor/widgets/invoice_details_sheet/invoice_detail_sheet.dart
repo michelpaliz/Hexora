@@ -16,7 +16,6 @@ import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/models/invoice/invoice_line.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
-import 'package:hexora/services/shared/content_disposition.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_billing_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_dates.dart';
@@ -95,6 +94,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     with InvoiceDetailSheetLogic {
   bool _previewMenuOpen = false;
   int _inlineTabIndex = 0;
+  int _summaryTabIndex = 0;
   bool _issuingInvoice = false;
   bool _savingInternalNotes = false;
 
@@ -194,6 +194,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     if (!differentInvoice && !documentChanged && !paymentChanged) return;
     _currentInvoice = null;
     if (differentInvoice) {
+      _summaryTabIndex = 0;
       _lines = current.lines;
       _fetchLines();
       _loadInvoiceHistory();
@@ -619,8 +620,12 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
           invoice: invoice,
           localeName: l.localeName,
           showBankingDetails: canUseBanking,
-          onOpenPayments:
-              canUseBanking ? onOpenPayments ?? _openBankTransactions : null,
+          onOpenPayments: canUseBanking &&
+                  (invoice.isLinkedResolved ||
+                      (invoice.linkedEntryId ?? '').trim().isNotEmpty ||
+                      invoice.linkedEntriesCountSafe > 0)
+              ? onOpenPayments ?? _openBankTransactions
+              : null,
         ),
         if ((invoice.status ?? '').toLowerCase() == 'issued') ...[
           const SizedBox(height: 12),
@@ -724,12 +729,6 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             role == 'admin' ||
             role == 'co-admin');
     final canEditDraft = invoice.isDraft && widget.onEditInvoice != null;
-    final canUseBanking = canManagePremiumFeature(
-      widget.group,
-      currentUserId,
-      PremiumFeature.banking,
-    );
-
     final headerMenu = ListTileTheme(
       data: const ListTileThemeData(
         dense: true,
@@ -892,9 +891,6 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                 _InvoiceDetailTabs(
                   selectedIndex: _inlineTabIndex,
                   isEs: isEs,
-                  showLinkTab: widget.actionsInHeader &&
-                      !invoice.isDraft &&
-                      canUseBanking,
                   onSelected: (index) =>
                       setState(() => _inlineTabIndex = index),
                 ),
@@ -969,33 +965,6 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         ],
       );
     }
-    // Tab 3 = Vincular. Reuses the bank transaction linking workflow with
-    // this invoice already selected.
-    if (selectedIndex == 3) {
-      final userId = context.read<UserDomain?>()?.user?.id;
-      if (!canManagePremiumFeature(
-        widget.group,
-        userId,
-        PremiumFeature.banking,
-      )) {
-        return PremiumFeatureRequestScreen(
-          feature: PremiumFeatureRequest.banking,
-          group: widget.group,
-          embedded: true,
-        );
-      }
-      return InvoiceBankLinkPanel(
-        key: ValueKey('invoice-bank-link-tab-${_invoice.id}'),
-        groupId: widget.group.id,
-        invoice: _invoice,
-        embeddedTab: true,
-        onLinked: () async {
-          await _loadInvoiceDetail();
-          if (mounted) await _notifyInvoiceChanged();
-        },
-      );
-    }
-
     // Tab 1 = Vista previa
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1076,26 +1045,46 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
 
   Widget _buildResumenTab(ColorScheme cs, AppLocalizations l,
       {required bool isEs}) {
+    final showLinkTab = widget.actionsInHeader && !_invoice.isDraft;
+    final selectedIndex = showLinkTab ? _summaryTabIndex : 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _InvoiceSummaryTabs(
+          selectedIndex: selectedIndex,
+          isEs: isEs,
+          showLinkTab: showLinkTab,
+          onSelected: (index) => setState(() => _summaryTabIndex = index),
+        ),
+        Expanded(
+          child: HexoraMenuContentTransition.tab(
+            transitionKey: selectedIndex,
+            preserveState: true,
+            child: switch (selectedIndex) {
+              1 => _buildInvoiceLinesSummary(),
+              2 => _buildInvoiceLinkSummary(),
+              _ => _buildInvoiceDataSummary(cs, l, isEs: isEs),
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInvoiceDataSummary(ColorScheme cs, AppLocalizations l,
+      {required bool isEs}) {
     final invoice = _invoice;
     final userId = context.read<UserDomain?>()?.user?.id;
     final canUseEmail =
         canManagePremiumFeature(widget.group, userId, PremiumFeature.email);
-    final canUseBanking =
-        canManagePremiumFeature(widget.group, userId, PremiumFeature.banking);
     final t = AppTypography.of(context);
     final money = NumberFormat.currency(locale: l.localeName, symbol: '€ ');
-    final status = (invoice.status ?? '').toLowerCase();
     final deliveryStatus = normalizeDeliveryStatus(invoice.deliveryStatus);
     final sentAtLine = invoice.sentAt != null
         ? DateFormat('d MMM y · HH:mm', l.localeName)
             .format(invoice.sentAt!.toLocal())
         : null;
     final channelLabel = invoiceDeliveryChannelLabelEs(invoice.deliveryChannel);
-
-    final issueDate = invoice.issuedAtResolved ?? invoice.registeredAt;
-    final issueDateStr = issueDate != null
-        ? DateFormat('d MMM y', l.localeName).format(issueDate.toLocal())
-        : '-';
 
     final settlement = invoice.finalSettlement;
     final showFinalSettlement =
@@ -1107,64 +1096,32 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        // ── Total + status header ──
+        // A compact financial strip; the document header already carries the
+        // client identity and status, so neither is repeated here.
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: cs.primaryContainer.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: cs.primary.withValues(alpha: 0.15)),
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
+              Icon(Icons.receipt_long_outlined, size: 16, color: cs.primary),
+              const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isEs ? 'Total factura' : 'Invoice total',
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      money.format(invoice.total ?? 0),
-                      style: t.titleLarge.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                        fontSize: 22,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: _statusColor(cs, status).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: _statusColor(cs, status).withValues(alpha: 0.3),
+                child: Text(
+                  isEs ? 'Total factura' : 'Invoice total',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(_statusIcon(status),
-                        size: 12, color: _statusColor(cs, status)),
-                    const SizedBox(width: 4),
-                    Text(
-                      _resolveStatus(status),
-                      style: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
-                        color: _statusColor(cs, status),
-                      ),
-                    ),
-                  ],
+              ),
+              Text(
+                money.format(invoice.total ?? 0),
+                style: t.bodyLarge.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: cs.onSurface,
                 ),
               ),
             ],
@@ -1173,16 +1130,10 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
 
         const SizedBox(height: 10),
 
-        // ── Client + Date rows ──
-        _SummaryRow(
-          icon: Icons.person_outline_rounded,
-          label: isEs ? 'Cliente' : 'Client',
-          value: widget.client.name,
-        ),
-        _SummaryRow(
-          icon: Icons.calendar_today_rounded,
-          label: isEs ? 'Fecha' : 'Date',
-          value: issueDateStr,
+        InvoiceDetailDates(
+          invoice: invoice,
+          locale: l.localeName,
+          isEs: isEs,
         ),
 
         const SizedBox(height: 10),
@@ -1191,9 +1142,16 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         _PaymentStatusSection(
           invoice: invoice,
           localeName: l.localeName,
-          showBankingDetails: canUseBanking,
+          // Linked movement state belongs to the invoice summary. Opening the
+          // Banking workspace still passes through its existing access guard.
+          showBankingDetails: true,
+          expandableDetails: true,
           onOpenPayments: invoice.isLinkedResolved ||
-                  (invoice.linkedEntryId ?? '').trim().isNotEmpty
+                  (invoice.linkedEntryId ?? '').trim().isNotEmpty ||
+                  invoice.linkedEntriesCountSafe > 0 ||
+                  widget.invoice.isLinkedResolved ||
+                  (widget.invoice.linkedEntryId ?? '').trim().isNotEmpty ||
+                  widget.invoice.linkedEntriesCountSafe > 0
               ? _openBankTransactions
               : null,
         ),
@@ -1250,22 +1208,49 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             ),
           ),
         ],
-
-        const SizedBox(height: 10),
-
-        // ── Invoice lines ──
-        InvoiceDetailLines(
-          loading: _loading,
-          error: _error,
-          lines: _lines,
-          onRefresh: _fetchLines,
-          subtotal: _invoice.subtotal,
-          taxTotal: _invoice.taxTotal,
-          total: _invoice.total,
-          discountAmount: _invoice.discountAmount,
-          discountPercent: _invoice.discountPercent,
-        ),
       ],
+    );
+  }
+
+  Widget _buildInvoiceLinesSummary() => ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          InvoiceDetailLines(
+            loading: _loading,
+            error: _error,
+            lines: _lines,
+            onRefresh: _fetchLines,
+            subtotal: _invoice.subtotal,
+            taxTotal: _invoice.taxTotal,
+            total: _invoice.total,
+            discountAmount: _invoice.discountAmount,
+            discountPercent: _invoice.discountPercent,
+          ),
+        ],
+      );
+
+  Widget _buildInvoiceLinkSummary() {
+    final userId = context.read<UserDomain?>()?.user?.id;
+    if (!canManagePremiumFeature(
+      widget.group,
+      userId,
+      PremiumFeature.banking,
+    )) {
+      return PremiumFeatureRequestScreen(
+        feature: PremiumFeatureRequest.banking,
+        group: widget.group,
+        embedded: true,
+      );
+    }
+    return InvoiceBankLinkPanel(
+      key: ValueKey('invoice-bank-link-summary-${_invoice.id}'),
+      groupId: widget.group.id,
+      invoice: _invoice,
+      embeddedTab: true,
+      onLinked: () async {
+        await _loadInvoiceDetail();
+        if (mounted) await _notifyInvoiceChanged();
+      },
     );
   }
 
@@ -1700,22 +1685,60 @@ class _DetailRow extends StatelessWidget {
 
 // ── Delivery section (extracted to avoid massive build method) ─────────────────
 
-class _PaymentStatusSection extends StatelessWidget {
+class _PaymentStatusSection extends StatefulWidget {
   const _PaymentStatusSection({
     required this.invoice,
     required this.localeName,
     this.showBankingDetails = true,
     this.onOpenPayments,
+    this.expandableDetails = false,
   });
 
   final Invoice invoice;
   final String localeName;
   final bool showBankingDetails;
   final VoidCallback? onOpenPayments;
+  final bool expandableDetails;
+
+  @override
+  State<_PaymentStatusSection> createState() => _PaymentStatusSectionState();
+
+  static String? _paymentMethodLabel(String? value, {required bool isEs}) {
+    final raw = (value ?? '').trim();
+    if (raw.isEmpty) return null;
+    return switch (raw.toLowerCase()) {
+      'transfer' => isEs ? 'Transferencia' : 'Transfer',
+      'cash' => isEs ? 'Efectivo' : 'Cash',
+      'card' => isEs ? 'Tarjeta' : 'Card',
+      'check' => isEs ? 'Cheque' : 'Check',
+      'bizum' => 'Bizum',
+      _ => raw,
+    };
+  }
+
+  static String? _paymentSourceLabel(String? value, {required bool isEs}) {
+    final raw = (value ?? '').trim();
+    if (raw.isEmpty) return null;
+    return switch (raw.toLowerCase()) {
+      'manual' || 'manual_entry' => isEs ? 'Registro manual' : 'Manual entry',
+      'bank' ||
+      'bank_transaction' ||
+      'statement' ||
+      'reconciliation' =>
+        isEs ? 'Conciliación bancaria' : 'Bank reconciliation',
+      _ => raw,
+    };
+  }
+}
+
+class _PaymentStatusSectionState extends State<_PaymentStatusSection> {
+  bool _detailsExpanded = false;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final invoice = widget.invoice;
+    final localeName = widget.localeName;
     final isEs = localeName.toLowerCase().startsWith('es');
     final status = (invoice.paymentStatus ?? '').trim().toLowerCase();
     final isPaid = const {'paid', 'pagada', 'pagado'}.contains(status);
@@ -1749,15 +1772,24 @@ class _PaymentStatusSection extends StatelessWidget {
         : DateFormat.yMMMd(localeName)
             .add_Hm()
             .format(invoice.paidAt!.toLocal());
-    final method = _paymentMethodLabel(invoice.paymentMethod, isEs: isEs);
-    final source = showBankingDetails
-        ? _paymentSourceLabel(invoice.paymentSource, isEs: isEs)
+    final method = _PaymentStatusSection._paymentMethodLabel(
+      invoice.paymentMethod,
+      isEs: isEs,
+    );
+    final source = widget.showBankingDetails
+        ? _PaymentStatusSection._paymentSourceLabel(
+            invoice.paymentSource,
+            isEs: isEs,
+          )
         : null;
-    final linkedCount = showBankingDetails ? invoice.linkedEntriesCountSafe : 0;
-    final linkedEntryId =
-        showBankingDetails ? (invoice.linkedEntryId ?? '').trim() : '';
-    final canOpenPayments =
-        onOpenPayments != null && (linkedCount > 0 || linkedEntryId.isNotEmpty);
+    final linkedCount =
+        widget.showBankingDetails ? invoice.linkedEntriesCountSafe : 0;
+    final canOpenPayments = widget.onOpenPayments != null;
+    final hasExtraDetails = paidAt != null ||
+        method != null ||
+        source != null ||
+        linkedCount > 0 ||
+        progress == null;
 
     return _CompactStatusSection(
       icon: isPaid
@@ -1777,68 +1809,65 @@ class _PaymentStatusSection extends StatelessWidget {
               money: money,
               color: color,
             ),
-      metadata: [
-        _MetaChip(
-          icon: Icons.payments_outlined,
-          label: '${isEs ? 'Pagado' : 'Paid'}: ${money.format(paid)}',
-        ),
-        if (outstanding != null)
-          _MetaChip(
-            icon: Icons.account_balance_wallet_outlined,
-            label:
-                '${isEs ? 'Pendiente' : 'Outstanding'}: ${money.format(outstanding)}',
-          ),
-        if (paidAt != null)
-          _MetaChip(icon: Icons.event_available_outlined, label: paidAt),
-        if (method != null)
-          _MetaChip(icon: Icons.credit_card_outlined, label: method),
-        if (source != null)
-          _MetaChip(icon: Icons.source_outlined, label: source),
-        if (linkedCount > 0)
-          _MetaChip(
-            icon: Icons.account_tree_outlined,
-            label: isEs
-                ? '$linkedCount movimientos vinculados'
-                : '$linkedCount linked transactions',
-          ),
-      ],
-      action: canOpenPayments
-          ? HexoraButton(
-              onPressed: onOpenPayments,
-              icon: Icons.open_in_new_rounded,
-              label: isEs ? 'Ver pago' : 'View payment',
-              variant: HexoraButtonVariant.ghost,
-              size: HexoraButtonSize.compact,
+      metadata: !widget.expandableDetails || _detailsExpanded
+          ? [
+              // The progress row already shows paid / total. Only repeat amounts
+              // when a progress value cannot be calculated.
+              if (progress == null)
+                _MetaChip(
+                  icon: Icons.payments_outlined,
+                  label: '${isEs ? 'Pagado' : 'Paid'}: ${money.format(paid)}',
+                ),
+              if (progress == null && outstanding != null)
+                _MetaChip(
+                  icon: Icons.account_balance_wallet_outlined,
+                  label:
+                      '${isEs ? 'Pendiente' : 'Outstanding'}: ${money.format(outstanding)}',
+                ),
+              if (paidAt != null)
+                _MetaChip(icon: Icons.event_available_outlined, label: paidAt),
+              if (method != null)
+                _MetaChip(icon: Icons.credit_card_outlined, label: method),
+              if (source != null)
+                _MetaChip(icon: Icons.source_outlined, label: source),
+              if (linkedCount > 0)
+                _MetaChip(
+                  icon: Icons.account_tree_outlined,
+                  label: isEs
+                      ? '$linkedCount movimientos vinculados'
+                      : '$linkedCount linked transactions',
+                ),
+            ]
+          : const [],
+      action: (widget.expandableDetails && hasExtraDetails) || canOpenPayments
+          ? Wrap(
+              spacing: 4,
+              children: [
+                if (widget.expandableDetails && hasExtraDetails)
+                  TextButton.icon(
+                    onPressed: () => setState(
+                      () => _detailsExpanded = !_detailsExpanded,
+                    ),
+                    icon: Icon(
+                      _detailsExpanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      size: 17,
+                    ),
+                    label: Text(_detailsExpanded
+                        ? (isEs ? 'Menos' : 'Less')
+                        : (isEs ? 'Más detalles' : 'More details')),
+                  ),
+                if (canOpenPayments)
+                  TextButton.icon(
+                    onPressed: widget.onOpenPayments,
+                    icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                    label: Text(isEs ? 'Ver pago' : 'View payment'),
+                  ),
+              ],
             )
           : null,
     );
-  }
-
-  static String? _paymentMethodLabel(String? value, {required bool isEs}) {
-    final raw = (value ?? '').trim();
-    if (raw.isEmpty) return null;
-    return switch (raw.toLowerCase()) {
-      'transfer' => isEs ? 'Transferencia' : 'Transfer',
-      'cash' => isEs ? 'Efectivo' : 'Cash',
-      'card' => isEs ? 'Tarjeta' : 'Card',
-      'check' => isEs ? 'Cheque' : 'Check',
-      'bizum' => 'Bizum',
-      _ => raw,
-    };
-  }
-
-  static String? _paymentSourceLabel(String? value, {required bool isEs}) {
-    final raw = (value ?? '').trim();
-    if (raw.isEmpty) return null;
-    return switch (raw.toLowerCase()) {
-      'manual' || 'manual_entry' => isEs ? 'Registro manual' : 'Manual entry',
-      'bank' ||
-      'bank_transaction' ||
-      'statement' ||
-      'reconciliation' =>
-        isEs ? 'Conciliación bancaria' : 'Bank reconciliation',
-      _ => raw,
-    };
   }
 }
 
@@ -2233,62 +2262,15 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
-class _SummaryRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _SummaryRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: cs.onSurfaceVariant),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: t.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const Spacer(),
-          Flexible(
-            child: Text(
-              value,
-              style: t.bodySmall.copyWith(
-                fontWeight: FontWeight.w600,
-                color: cs.onSurface,
-              ),
-              textAlign: TextAlign.end,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _InvoiceDetailTabs extends StatelessWidget {
   const _InvoiceDetailTabs({
     required this.selectedIndex,
     required this.isEs,
-    required this.showLinkTab,
     required this.onSelected,
   });
 
   final int selectedIndex;
   final bool isEs;
-  final bool showLinkTab;
   final ValueChanged<int> onSelected;
 
   @override
@@ -2296,18 +2278,8 @@ class _InvoiceDetailTabs extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final labels = isEs
-        ? [
-            'Resumen',
-            'Vista previa',
-            'Historial',
-            if (showLinkTab) 'Vincular',
-          ]
-        : [
-            'Summary',
-            'Preview',
-            'History',
-            if (showLinkTab) 'Link',
-          ];
+        ? ['Resumen', 'Vista previa', 'Historial']
+        : ['Summary', 'Preview', 'History'];
 
     return SizedBox(
       height: 36,
@@ -2353,6 +2325,89 @@ class _InvoiceDetailTabs extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _InvoiceSummaryTabs extends StatelessWidget {
+  const _InvoiceSummaryTabs({
+    required this.selectedIndex,
+    required this.isEs,
+    required this.showLinkTab,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final bool isEs;
+  final bool showLinkTab;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final labels = [
+      isEs ? 'Datos de factura' : 'Invoice data',
+      isEs ? 'Líneas de factura' : 'Invoice lines',
+      if (showLinkTab) (isEs ? 'Vincular' : 'Link'),
+    ];
+    return Container(
+      height: 40,
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 2),
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Row(
+        children: [
+          for (var index = 0; index < labels.length; index++)
+            Expanded(
+              child: Semantics(
+                selected: selectedIndex == index,
+                button: true,
+                child: InkWell(
+                  onTap: () => onSelected(index),
+                  borderRadius: BorderRadius.circular(7),
+                  child: AnimatedContainer(
+                    duration: HexoraMotion.duration(
+                      context,
+                      HexoraMotion.tabIndicator,
+                    ),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: selectedIndex == index
+                          ? cs.surface
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(7),
+                      border: selectedIndex == index
+                          ? Border.all(
+                              color: cs.outlineVariant.withValues(alpha: .45),
+                            )
+                          : null,
+                    ),
+                    child: Text(
+                      labels[index],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: t.bodySmall.copyWith(
+                        fontSize: 11.5,
+                        color: selectedIndex == index
+                            ? cs.primary
+                            : cs.onSurfaceVariant,
+                        fontWeight: selectedIndex == index
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

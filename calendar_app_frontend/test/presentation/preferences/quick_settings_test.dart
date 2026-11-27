@@ -5,6 +5,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/navigation/shell/hexora_global_nav_bar.dart';
 import 'package:hexora/navigation/shell/hexora_quick_settings.dart';
+import 'package:hexora/state/locale_provider.dart';
 import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:hexora/theme/theme_provider.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
@@ -34,6 +35,8 @@ void main() {
     addTearDown(preferences.dispose);
     final themeMode = ThemeModeProvider();
     addTearDown(themeMode.dispose);
+    final locale = LocaleProvider(deviceLocale: const Locale('es'));
+    addTearDown(locale.dispose);
     await tester.pump();
     var openedAllPreferences = 0;
 
@@ -42,10 +45,11 @@ void main() {
         providers: [
           ChangeNotifierProvider.value(value: preferences),
           ChangeNotifierProvider.value(value: themeMode),
+          ChangeNotifierProvider.value(value: locale),
         ],
-        child: Consumer<ThemeModeProvider>(
-          builder: (context, currentTheme, child) => MaterialApp(
-            locale: const Locale('es'),
+        child: Consumer2<ThemeModeProvider, LocaleProvider>(
+          builder: (context, currentTheme, currentLocale, child) => MaterialApp(
+            locale: currentLocale.locale,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             theme: AppTheme.forPlatform(
@@ -104,6 +108,7 @@ void main() {
     expect(find.text('Visualización'), findsOneWidget);
     expect(find.text('Barra principal'), findsOneWidget);
     expect(find.text('Apariencia'), findsOneWidget);
+    expect(find.text('Idioma'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.byKey(const ValueKey('quick-nav-layout-split')));
@@ -133,6 +138,12 @@ void main() {
     expect(themeMode.mode, ThemeMode.dark);
     expect(find.byKey(const ValueKey('quick-settings-panel')), findsOneWidget);
 
+    await tester.tap(find.byKey(const ValueKey('quick-language-en')));
+    await tester.pumpAndSettle();
+    expect(locale.locale, const Locale('en'));
+    expect(find.text('Language'), findsOneWidget);
+    expect(find.byKey(const ValueKey('quick-settings-panel')), findsOneWidget);
+
     await tester.tap(find.byKey(const ValueKey('quick-main-bar-visible')));
     await tester.pumpAndSettle();
     expect(preferences.topNavCollapsed, isTrue);
@@ -159,12 +170,15 @@ void main() {
     addTearDown(preferences.dispose);
     final themeMode = ThemeModeProvider();
     addTearDown(themeMode.dispose);
+    final locale = LocaleProvider(deviceLocale: const Locale('es'));
+    addTearDown(locale.dispose);
 
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           ChangeNotifierProvider.value(value: preferences),
           ChangeNotifierProvider.value(value: themeMode),
+          ChangeNotifierProvider.value(value: locale),
         ],
         child: MaterialApp(
           home: Scaffold(

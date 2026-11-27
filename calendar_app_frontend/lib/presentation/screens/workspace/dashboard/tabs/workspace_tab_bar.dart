@@ -1,11 +1,48 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 
 import 'workspace_tab.dart';
 import 'workspace_tab_manager.dart';
+
+String _localizedWorkspaceTabTitle(BuildContext context, WorkspaceTab tab) {
+  // Document/editor tabs own their user-facing title. Module landing tabs use
+  // their stable section identity and must follow the current app locale,
+  // including when restored from a session saved in another language.
+  if (tab.identity.value != tab.section) return tab.title;
+  final l = AppLocalizations.of(context);
+  final es = Localizations.localeOf(context).languageCode == 'es';
+  return switch (tab.section) {
+    Sections.home => es ? 'Inicio' : 'Home',
+    Sections.invoices => es ? 'Ingresos' : 'Income',
+    Sections.invoiceClients =>
+      es ? 'Facturas por cliente' : 'Invoices by client',
+    Sections.expenses => es ? 'Gastos' : 'Expenses',
+    Sections.enableBanking => es ? 'Banco' : 'Bank',
+    Sections.calendar => l?.calendar ?? (es ? 'Calendario' : 'Calendar'),
+    Sections.quickNotes => es ? 'Notas rápidas' : 'Quick notes',
+    Sections.budgets => es ? 'Propuestas' : 'Proposals',
+    Sections.businessChat => 'Chat',
+    Sections.maps => es ? 'Mapa' : 'Map',
+    Sections.emails => es ? 'Correos' : 'Emails',
+    Sections.workers => es ? 'Trabajadores' : 'Workers',
+    Sections.chat => es ? 'Asistente IA' : 'AI assistant',
+    Sections.telegram => 'Telegram',
+    Sections.settings => es ? 'Ajustes' : 'Settings',
+    Sections.notifications =>
+      l?.notifications ?? (es ? 'Notificaciones' : 'Notifications'),
+    Sections.agenda => 'Agenda',
+    Sections.services => es ? 'Clientes' : 'Clients',
+    Sections.members => es ? 'Miembros' : 'Members',
+    _ => tab.title,
+  };
+}
 
 class WorkspaceTabBar extends StatefulWidget {
   const WorkspaceTabBar({
@@ -22,22 +59,29 @@ class WorkspaceTabBar extends StatefulWidget {
 }
 
 class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
+  static const _tooltipExitSettleDuration = Duration(milliseconds: 120);
+
   final ScrollController _scrollController = ScrollController();
   final MenuController _allTabsMenu = MenuController();
   int _lastActivationRevision = -1;
   bool _hasOverflow = false;
   bool _canScrollBack = false;
   bool _canScrollForward = false;
+  bool _scrollStateSyncScheduled = false;
+  WorkspaceTabIdentity? _pendingActivation;
+  bool _activationScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_syncScrollState);
+    // Scroll metrics can change while ReorderableListView is inside layout.
+    // Defer the resulting setState until layout and mouse hit testing finish.
+    _scrollController.addListener(_scheduleScrollStateSync);
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_syncScrollState);
+    _scrollController.removeListener(_scheduleScrollStateSync);
     _scrollController.dispose();
     super.dispose();
   }
@@ -61,7 +105,10 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
   }
 
   void _scheduleScrollStateSync() {
+    if (_scrollStateSyncScheduled) return;
+    _scrollStateSyncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollStateSyncScheduled = false;
       if (mounted) _syncScrollState();
     });
   }
@@ -80,6 +127,41 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
           : const Duration(milliseconds: 160),
       curve: Curves.easeOut,
     );
+  }
+
+  void _activateAfterPointerUpdate(WorkspaceTabIdentity identity) {
+    // Do not mutate the active IndexedStack child from a pointer or post-frame
+    // callback. Flutter's MouseTracker itself runs during the frame-finalizing
+    // phase, so a post-frame activation can still recursively enter its device
+    // update. A zero-delay timer runs in the next event-loop turn, after the
+    // complete pointer update and frame have returned.
+    _pendingActivation = identity;
+    if (_activationScheduled) return;
+    _activationScheduled = true;
+    Timer.run(() {
+      if (!mounted) {
+        _activationScheduled = false;
+        return;
+      }
+      // Tooltip overlays animate out through an OverlayPortal/LayoutBuilder.
+      // Activating a different cached tab before that exit completes reparents
+      // render objects while the portal is laying itself out. Wait only when a
+      // tooltip was open; ordinary tab changes remain immediate.
+      final dismissedTooltip = Tooltip.dismissAllToolTips();
+      if (dismissedTooltip) {
+        Timer(_tooltipExitSettleDuration, _commitPendingActivation);
+      } else {
+        _commitPendingActivation();
+      }
+    });
+  }
+
+  void _commitPendingActivation() {
+    _activationScheduled = false;
+    if (!mounted) return;
+    final pending = _pendingActivation;
+    _pendingActivation = null;
+    if (pending != null) widget.manager.activateTab(pending);
   }
 
   void _handlePointerScroll(PointerScrollEvent event) {
@@ -152,9 +234,10 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
   }
 
   double _tabWidth(BuildContext context, WorkspaceTab tab) {
+    final title = _localizedWorkspaceTabTitle(context, tab);
     final labelPainter = TextPainter(
       text: TextSpan(
-        text: tab.title,
+        text: title,
         style: NavigationTokens.label(context, selected: true),
       ),
       textDirection: Directionality.of(context),
@@ -211,7 +294,7 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
                       showLabel: false,
                       onSelected: (identity) {
                         _allTabsMenu.close();
-                        manager.activateTab(identity);
+                        _activateAfterPointerUpdate(identity);
                       },
                     ),
                     const SizedBox(width: 2),
@@ -299,7 +382,8 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
                                     dirty: manager.isDirty(tab.identity),
                                     width: tabWidth,
                                     onActivate: () =>
-                                        manager.activateTab(tab.identity),
+                                        _activateAfterPointerUpdate(
+                                            tab.identity),
                                     onClose: () => widget.onClose(tab),
                                   ),
                                 ),
@@ -414,6 +498,7 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final title = _localizedWorkspaceTabTitle(context, widget.tab);
     final showClose = widget.active || _hovered || _focused;
     final tabForeground = HexoraGlobalNavColors.foregroundFor(context);
     final tabSurface = HexoraGlobalNavColors.backgroundFor(context);
@@ -440,12 +525,12 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
         child: Focus(
           onFocusChange: (focused) => setState(() => _focused = focused),
           child: Tooltip(
-            message: widget.tab.title,
+            message: title,
             waitDuration: const Duration(milliseconds: 500),
             child: Semantics(
               selected: widget.active,
               button: true,
-              label: widget.tab.title,
+              label: title,
               child: ClipPath(
                 clipper: const _ChromeWorkspaceTabClipper(),
                 child: Material(
@@ -474,7 +559,7 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
                                 Flexible(
                                   fit: FlexFit.loose,
                                   child: Text(
-                                    widget.tab.title,
+                                    title,
                                     maxLines: 1,
                                     softWrap: false,
                                     overflow: TextOverflow.ellipsis,
@@ -789,16 +874,18 @@ class _AllTabsMenuState extends State<_AllTabsMenu> {
     super.dispose();
   }
 
-  List<WorkspaceTab> get _filteredTabs {
+  List<WorkspaceTab> _filteredTabs(BuildContext context) {
     final query = _query.trim().toLowerCase();
     if (query.isEmpty) return widget.tabs;
     return widget.tabs
-        .where((tab) => tab.title.toLowerCase().contains(query))
+        .where((tab) => _localizedWorkspaceTabTitle(context, tab)
+            .toLowerCase()
+            .contains(query))
         .toList(growable: false);
   }
 
-  void _activateFirstResult() {
-    final filtered = _filteredTabs;
+  void _activateFirstResult(BuildContext context) {
+    final filtered = _filteredTabs(context);
     if (filtered.isNotEmpty) widget.onSelected(filtered.first.identity);
   }
 
@@ -806,7 +893,7 @@ class _AllTabsMenuState extends State<_AllTabsMenu> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final es = widget.locale == 'es';
-    final filtered = _filteredTabs;
+    final filtered = _filteredTabs(context);
     final searchHeight = widget.tabs.length > 8 ? 46.0 : 0.0;
     final availableListHeight =
         (widget.maxHeight - 44 - searchHeight).clamp(40.0, 420.0).toDouble();
@@ -855,7 +942,7 @@ class _AllTabsMenuState extends State<_AllTabsMenu> {
               child: TextField(
                 controller: _search,
                 onChanged: (value) => setState(() => _query = value),
-                onSubmitted: (_) => _activateFirstResult(),
+                onSubmitted: (_) => _activateFirstResult(context),
                 textInputAction: TextInputAction.go,
                 style: Theme.of(context).textTheme.bodySmall,
                 decoration: InputDecoration(
@@ -910,9 +997,10 @@ class _AllTabsMenuState extends State<_AllTabsMenu> {
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final tab = filtered[index];
+                    final title = _localizedWorkspaceTabTitle(context, tab);
                     final selected = tab.identity == widget.active;
                     return Tooltip(
-                      message: tab.title,
+                      message: title,
                       waitDuration: const Duration(milliseconds: 500),
                       child: MenuItemButton(
                         key: ValueKey(
@@ -964,7 +1052,7 @@ class _AllTabsMenuState extends State<_AllTabsMenu> {
                                     width: NavigationTokens.iconSize,
                                   ),
                         child: Text(
-                          tab.title,
+                          title,
                           maxLines: 1,
                           softWrap: false,
                           overflow: TextOverflow.ellipsis,

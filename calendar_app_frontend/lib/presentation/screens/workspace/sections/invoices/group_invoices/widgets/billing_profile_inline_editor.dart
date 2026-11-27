@@ -1109,11 +1109,11 @@ class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
                     ? cs.primary.withValues(alpha: 0.05)
                     : null),
             dividerColor: Colors.transparent,
-            tabs: const [
-              Tab(text: 'General'),
-              Tab(text: 'Contacto'),
-              Tab(text: 'Facturas'),
-              Tab(text: 'Región'),
+            tabs: [
+              const Tab(text: 'General'),
+              Tab(text: es ? 'Contacto' : 'Contact'),
+              Tab(text: es ? 'Facturas' : 'Invoices'),
+              Tab(text: es ? 'Región' : 'Region'),
             ],
           ),
 

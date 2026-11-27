@@ -989,9 +989,8 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
                   ),
                   modeTab(
                     id: 'photo',
-                    label: l.localeName.startsWith('es')
-                        ? 'Foto e IA'
-                        : 'Photo & AI',
+                    label:
+                        l.localeName.startsWith('es') ? 'Chat IA' : 'AI chat',
                     selected: activeMode == 'photo',
                   ),
                   modeTab(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_empty_state.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -185,8 +186,9 @@ class _InvoicesViewState extends State<InvoicesView> {
                               ? _EmptyTab(
                                   icon: Icons.drafts_outlined,
                                   label: isEs ? 'Sin borradores' : 'No drafts',
-                                  cs: cs,
-                                  t: t,
+                                  description: isEs
+                                      ? 'Los borradores de factura aparecerán aquí.'
+                                      : 'Invoice drafts will appear here.',
                                 )
                               : ListView.separated(
                                   padding: const EdgeInsets.all(10),
@@ -219,8 +221,7 @@ class _InvoicesViewState extends State<InvoicesView> {
                                   label: isEs
                                       ? 'Sin facturas emitidas'
                                       : 'No invoices',
-                                  cs: cs,
-                                  t: t,
+                                  description: l.noInvoicesYetSubtitle,
                                 )
                               : ListView.separated(
                                   padding: const EdgeInsets.all(10),
@@ -398,32 +399,20 @@ class _IssueAllButtonState extends State<_IssueAllButton> {
 class _EmptyTab extends StatelessWidget {
   final IconData icon;
   final String label;
-  final ColorScheme cs;
-  final AppTypography t;
+  final String description;
 
   const _EmptyTab({
     required this.icon,
     required this.label,
-    required this.cs,
-    required this.t,
+    required this.description,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon,
-              size: 36, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            style: t.bodyMedium
-                .copyWith(color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => HexoraEmptyState(
+        icon: icon,
+        title: label,
+        description: description,
+        variant: HexoraEmptyStateVariant.compact,
+        maxDescriptionWidth: 300,
+      );
 }

@@ -194,6 +194,19 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
   bool _logoBusy = false;
   bool _showAllIssues = false;
   String? _saveError;
+  String? _feedback;
+  bool _feedbackIsError = false;
+
+  void _showFeedback(String message, {bool error = false}) {
+    if (!mounted) return;
+    setState(() {
+      _feedback = message;
+      _feedbackIsError = error;
+    });
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   bool get _es => widget.isEs;
   bool get _canEdit =>
@@ -216,6 +229,7 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
       _editing = false;
       _saveError = null;
       _showAllIssues = false;
+      _feedback = null;
       _profile = null;
       _profileLoaded = false;
       _loadProfile();
@@ -339,9 +353,7 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
         _saving = false;
         _editing = false;
       });
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(
-        content: Text(_es ? 'Cambios guardados' : 'Changes saved'),
-      ));
+      _showFeedback(_es ? 'Cambios guardados' : 'Changes saved');
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -363,10 +375,23 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
               imageQuality: 85,
               maxWidth: 1600,
             );
-    final file = await pick();
+    XFile? file;
+    try {
+      file = await pick();
+    } catch (_) {
+      _showFeedback(
+        _es
+            ? 'No se pudo abrir la imagen. Inténtalo de nuevo.'
+            : 'The image could not be opened. Try again.',
+        error: true,
+      );
+      return;
+    }
     if (file == null || !mounted) return;
-    setState(() => _photoBusy = true);
-    final messenger = ScaffoldMessenger.maybeOf(context);
+    setState(() {
+      _photoBusy = true;
+      _feedback = null;
+    });
     final groupDomain = context.read<GroupDomain?>();
     try {
       final upload = widget.uploadPhoto ??
@@ -385,14 +410,16 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
       for (final url in urls) {
         await AvatarUtils.evictNetworkImage(url);
       }
-      messenger?.showSnackBar(SnackBar(
-          content: Text(
-              _es ? 'Imagen de perfil actualizada' : 'Profile image updated')));
+      _showFeedback(_es
+          ? 'Imagen de perfil guardada automáticamente.'
+          : 'Profile image saved automatically.');
     } catch (_) {
-      messenger?.showSnackBar(SnackBar(
-          content: Text(_es
-              ? 'No se pudo actualizar la imagen'
-              : 'The image could not be updated')));
+      _showFeedback(
+        _es
+            ? 'No se pudo guardar la imagen. Inténtalo de nuevo.'
+            : 'The image could not be saved. Try again.',
+        error: true,
+      );
     } finally {
       if (mounted) setState(() => _photoBusy = false);
     }
@@ -410,19 +437,36 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
           );
           final file = selected?.files.single;
           final bytes = file?.bytes;
-          if (file == null ||
-              bytes == null ||
-              bytes.isEmpty ||
-              file.size > 15 * 1024 * 1024) {
+          if (file == null) return null;
+          if (bytes == null || bytes.isEmpty || file.size > 15 * 1024 * 1024) {
+            _showFeedback(
+              _es
+                  ? 'Selecciona una imagen PNG o JPG de hasta 15 MB.'
+                  : 'Choose a PNG or JPG image up to 15 MB.',
+              error: true,
+            );
             return null;
           }
           return (name: file.name, bytes: bytes.toList());
         };
-    final picked = await pick(context);
+    ({String name, List<int> bytes})? picked;
+    try {
+      picked = await pick(context);
+    } catch (_) {
+      _showFeedback(
+        _es
+            ? 'No se pudo abrir el logotipo. Inténtalo de nuevo.'
+            : 'The logo could not be opened. Try again.',
+        error: true,
+      );
+      return;
+    }
     if (picked == null || !mounted) return;
     final groupId = widget.group.id;
-    setState(() => _logoBusy = true);
-    final messenger = ScaffoldMessenger.maybeOf(context);
+    setState(() {
+      _logoBusy = true;
+      _feedback = null;
+    });
     try {
       // Invoice branding only: the profile image is never touched.
       final updated = await _api.uploadLogo(
@@ -433,15 +477,16 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
       if (mounted && widget.group.id == groupId) {
         setState(() => _profile = updated);
       }
-      messenger?.showSnackBar(SnackBar(
-          content: Text(_es
-              ? 'Logotipo de facturación actualizado'
-              : 'Invoice logo updated')));
+      _showFeedback(_es
+          ? 'Logotipo guardado automáticamente.'
+          : 'Logo saved automatically.');
     } catch (_) {
-      messenger?.showSnackBar(SnackBar(
-          content: Text(_es
-              ? 'No se pudo subir el logotipo'
-              : 'The logo could not be uploaded')));
+      _showFeedback(
+        _es
+            ? 'No se pudo guardar el logotipo. Inténtalo de nuevo.'
+            : 'The logo could not be saved. Try again.',
+        error: true,
+      );
     } finally {
       if (mounted) setState(() => _logoBusy = false);
     }
@@ -962,6 +1007,8 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _editActions(),
+            const SizedBox(height: 12),
             grid(),
             const SizedBox(height: 10),
             Text(
@@ -976,34 +1023,37 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
                   key: const ValueKey('business-edit-error'),
                   style: TextStyle(fontSize: 12, color: cs.error)),
             ],
-            const SizedBox(height: 12),
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                TextButton(
-                  key: const ValueKey('business-edit-cancel'),
-                  onPressed: _saving ? null : _cancel,
-                  child: Text(_es ? 'Cancelar' : 'Cancel'),
-                ),
-                FilledButton.icon(
-                  key: const ValueKey('business-edit-save'),
-                  onPressed: _saving || !_dirty ? null : _save,
-                  icon: _saving
-                      ? SizedBox.square(
-                          dimension: 14,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: cs.onPrimary),
-                        )
-                      : const Icon(LucideIcons.check, size: 16),
-                  label: Text(_es ? 'Guardar cambios' : 'Save changes'),
-                ),
-              ],
-            ),
           ],
         );
       }),
+    );
+  }
+
+  Widget _editActions() {
+    final cs = Theme.of(context).colorScheme;
+    return Wrap(
+      alignment: WrapAlignment.end,
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        TextButton(
+          key: const ValueKey('business-edit-cancel'),
+          onPressed: _saving ? null : _cancel,
+          child: Text(_es ? 'Cancelar' : 'Cancel'),
+        ),
+        FilledButton.icon(
+          key: const ValueKey('business-edit-save'),
+          onPressed: _saving || !_dirty ? null : _save,
+          icon: _saving
+              ? SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: cs.onPrimary),
+                )
+              : const Icon(LucideIcons.check, size: 16),
+          label: Text(_es ? 'Guardar cambios' : 'Save changes'),
+        ),
+      ],
     );
   }
 
@@ -1077,7 +1127,42 @@ class _BusinessProfileCardState extends State<BusinessProfileCard> {
         ],
       ],
     );
-    final logo = _logoRow();
+    final cs = Theme.of(context).colorScheme;
+    final logo = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _logoRow(),
+        if (_canEdit && _editing) ...[
+          const SizedBox(height: 8),
+          Text(
+            _es
+                ? 'Las imágenes se guardan automáticamente. Para el resto, pulsa Guardar cambios.'
+                : 'Images save automatically. For other edits, select Save changes.',
+            style: TextStyle(fontSize: 11.5, color: cs.onSurfaceVariant),
+          ),
+        ],
+        if (_logoBusy || _photoBusy || _feedback != null) ...[
+          const SizedBox(height: 8),
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              _logoBusy || _photoBusy
+                  ? (_es ? 'Guardando imagen…' : 'Saving image…')
+                  : _feedback!,
+              key: const ValueKey('business-profile-feedback'),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: _feedbackIsError && !_logoBusy && !_photoBusy
+                    ? cs.error
+                    : cs.primary,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
     final actions = _editing ? null : _actions();
     if (horizontal) {
       return Wrap(

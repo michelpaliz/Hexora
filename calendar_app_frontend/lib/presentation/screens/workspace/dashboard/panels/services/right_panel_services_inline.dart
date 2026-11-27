@@ -11,6 +11,7 @@ import 'package:hexora/presentation/screens/workspace/sections/services_clients/
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/tabs/clients/clients_tab.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/tabs/services/services_tab.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_empty_state.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -657,66 +658,24 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
               final showClientsEmptyState = isClients && _clients.isEmpty;
               final showServicesEmptyState = !isClients && _services.isEmpty;
               if (showClientsEmptyState || showServicesEmptyState) {
-                content = Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 380),
-                    child: Container(
-                      margin: const EdgeInsets.all(18),
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color:
-                            cs.surfaceContainerHighest.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: cs.outlineVariant.withValues(alpha: 0.35),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            showClientsEmptyState
-                                ? Icons.people_outline_rounded
-                                : Icons.design_services_outlined,
-                            size: 30,
-                            color: cs.primary,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            showClientsEmptyState
-                                ? l.noClientsYet
-                                : l.tabServices,
-                            style: t.bodyMedium.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            showClientsEmptyState
-                                ? l.clientSearchHint
-                                : l.createServicesSubtitle,
-                            style: t.bodySmall.copyWith(
-                              color: cs.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          if (!showClientsEmptyState) ...[
-                            const SizedBox(height: 14),
-                            OutlinedButton.icon(
-                              style: ThemedButtons.button(
-                                context,
-                                variant: ButtonVariant.secondary,
-                              ),
-                              onPressed: _startAddService,
-                              icon: const Icon(Icons.add_rounded, size: 18),
-                              label: Text(l.addService),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+                content = HexoraEmptyState(
+                  key: ValueKey(showClientsEmptyState
+                      ? 'clients-empty-state'
+                      : 'services-empty-state'),
+                  icon: showClientsEmptyState
+                      ? Icons.people_outline_rounded
+                      : Icons.design_services_outlined,
+                  title: showClientsEmptyState
+                      ? l.noClientsYet
+                      : l.emptyServicesTitle,
+                  description: showClientsEmptyState
+                      ? l.emptyClientsDescription
+                      : l.emptyServicesDescription,
+                  primaryAction: HexoraEmptyStateAction(
+                    label: showClientsEmptyState ? l.addClient : l.addService,
+                    onPressed: showClientsEmptyState
+                        ? _startAddClient
+                        : _startAddService,
                   ),
                 );
               } else {

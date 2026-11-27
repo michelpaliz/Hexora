@@ -9,6 +9,7 @@ import 'package:hexora/presentation/screens/auth/shared_utilities/auth_switcher_
 import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/state/locale_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -38,20 +39,28 @@ Future<void> _pump(
   tester.view.physicalSize = size;
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
-  await tester.pumpWidget(ChangeNotifierProvider(
-    create: (_) => AuthService(_NoRequests()),
-    child: MaterialApp(
-      theme: ThemeData(brightness: brightness, extensions: const [_typography]),
-      locale: const Locale('es'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.linear(textScale),
+  final locale = LocaleProvider(deviceLocale: const Locale('es'));
+  addTearDown(locale.dispose);
+  await tester.pumpWidget(MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => AuthService(_NoRequests())),
+      ChangeNotifierProvider.value(value: locale),
+    ],
+    child: Consumer<LocaleProvider>(
+      builder: (context, currentLocale, child) => MaterialApp(
+        theme:
+            ThemeData(brightness: brightness, extensions: const [_typography]),
+        locale: currentLocale.locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: child!,
         ),
-        child: child!,
+        home: AuthSwitcherView(showRegister: register),
       ),
-      home: AuthSwitcherView(showRegister: register),
     ),
   ));
   await tester.pumpAndSettle();
@@ -134,17 +143,68 @@ void main() {
     await tester.pump();
     final submit = find.byKey(const Key('login_submit_button'));
     expect(tester.widget<ElevatedButton>(submit).onPressed, isNotNull);
+    expect(
+      tester
+          .widget<EditableText>(
+            find.descendant(
+              of: find.byKey(const Key('login_email_field')),
+              matching: find.byType(EditableText),
+            ),
+          )
+          .controller
+          .text,
+      'user@example.com',
+    );
     tester.view.physicalSize = const Size(390, 600);
     await tester.pumpAndSettle();
     expect(find.byType(HexoraBrandIcon), findsOneWidget);
     expect(find.byType(HexoraWordmark), findsNothing);
-    final resized =
-        tester.widgetList<TextField>(find.byType(TextField)).toList();
-    expect(resized[0].controller!.text, 'user@example.com');
-    expect(resized[1].controller!.text, 'password123');
+    String fieldValue(Key key) => tester
+        .widget<EditableText>(
+          find.descendant(
+            of: find.byKey(key),
+            matching: find.byType(EditableText),
+          ),
+        )
+        .controller
+        .text;
+    expect(fieldValue(const Key('login_email_field')), 'user@example.com');
+    expect(fieldValue(const Key('login_password_field')), 'password123');
     await tester.ensureVisible(submit);
     await tester.pumpAndSettle();
     expect(submit.hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('language switch preserves the active tab and entered values',
+      (tester) async {
+    await _pump(tester, register: false);
+    await tester.enterText(
+      find.byKey(const Key('login_email_field')),
+      'user@example.com',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('auth-language-en')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LoginForm), findsOneWidget);
+    expect(find.text('Login'), findsWidgets);
+    expect(
+      tester
+          .widget<EditableText>(
+            find.descendant(
+              of: find.byKey(const Key('login_email_field')),
+              matching: find.byType(EditableText),
+            ),
+          )
+          .controller
+          .text,
+      'user@example.com',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('auth-language-es')));
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginForm), findsOneWidget);
+    expect(find.text('Iniciar sesión'), findsWidgets);
   });
 }

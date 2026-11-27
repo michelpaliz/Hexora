@@ -1,7 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_popup_menu.dart';
-import 'package:hexora/presentation/shared/widgets/documents/mobile_document_card.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -344,140 +343,188 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     }
   }
 
-  Widget _paymentBadge(BuildContext context) {
-    final invoice = widget.invoice;
-    final status = (invoice.paymentStatus ?? 'unpaid').trim().toLowerCase();
-    final isEs = Localizations.localeOf(context).languageCode == 'es';
-    final paid = status == 'paid';
-    final partial = status == 'partial';
-    final hasPayment = paid || partial;
-    final label = paid
-        ? (isEs ? 'Pagada' : 'Paid')
-        : partial
-            ? (isEs ? 'Pago parcial' : 'Partial payment')
-            : (isEs ? 'Pendiente' : 'Unpaid');
-    final color = paid
-        ? const Color(0xFF27724B)
-        : partial
-            ? const Color(0xFF1D5FBF)
-            : const Color(0xFF57667A);
-    final date = !hasPayment || invoice.paidAt == null
-        ? null
-        : DateFormat.yMMMd(Localizations.localeOf(context).toString())
-            .format(invoice.paidAt!.toLocal());
-    final amount = !hasPayment || invoice.paidAmount == null
-        ? null
-        : NumberFormat.currency(
-            locale: Localizations.localeOf(context).toString(),
-            symbol: invoice.currency?.toUpperCase() == 'EUR'
-                ? '€'
-                : (invoice.currency ?? '€'),
-          ).format(invoice.paidAmount);
-    final source = hasPayment && invoice.paymentSource == 'bank_link'
-        ? (isEs ? 'Transferencia bancaria' : 'Bank transfer')
-        : null;
-    final details = [
-      label,
-      if (amount != null) amount,
-      if (date != null) date,
-      if (source != null) source
-    ].join(' · ');
-    final visibleLabel = date == null
-        ? label
-        : '$label · ${DateFormat('d MMM', Localizations.localeOf(context).toString()).format(invoice.paidAt!.toLocal())}';
-    return Tooltip(
-      message: details,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.09),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(visibleLabel,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            )),
-      ),
-    );
-  }
-
   Widget _buildMobileCard(AppLocalizations l, AppTypography t, ColorScheme cs,
       String total, String date) {
     final inv = widget.invoice;
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        MobileDocumentCard(
-          title: widget.client.name,
-          amount: total,
-          metadata: [
-            inv.invoiceNumber,
-            date,
-            if (inv.isDuplicate) isEs ? 'Duplicado' : 'Duplicate',
-            if ((inv.notes ?? '').trim().isNotEmpty) inv.notes!.trim(),
-          ].where((v) => v.isNotEmpty).join(' · '),
-          isDraft: inv.isDraft,
-          statusLabel: inv.isDraft ? l.statusDraft : l.statusIssued,
-          onTap: widget.onTap,
-          trailing: HexoraPopupMenuButton<String>(
-            tooltip: isEs ? 'Más acciones' : 'More actions',
-            onSelected: (value) {
-              if (value == 'edit') widget.onEdit?.call();
-              if (value == 'internal_notes') _editInternalNotes();
-              if (value == 'download') _downloadPdf();
-              if (value == 'issue') widget.onIssue?.call();
-              if (value == 'link_invoice') widget.onLinkInvoice?.call();
-              if (value == 'delete') widget.onDelete?.call();
-            },
-            itemBuilder: (_) => [
-              if (widget.onEdit != null)
-                HexoraPopupMenuActionItem<String>(
-                  value: 'edit',
-                  icon: Icons.edit_outlined,
-                  label: l.edit,
-                ),
-              HexoraPopupMenuActionItem<String>(
-                value: 'internal_notes',
-                enabled: !_savingInternalNotes,
-                icon: Icons.lock_outline_rounded,
-                label: (_internalNotes ?? '').trim().isEmpty
-                    ? (isEs ? 'Añadir nota interna' : 'Add internal note')
-                    : (isEs ? 'Editar nota interna' : 'Edit internal note'),
+    final paymentStatus = (inv.paymentStatus ?? '').trim().toLowerCase();
+    final paymentLabel = switch (paymentStatus) {
+      'paid' => isEs ? 'Pagada' : 'Paid',
+      'partial' => isEs ? 'Parcial' : 'Partial',
+      'overdue' => isEs ? 'Vencida' : 'Overdue',
+      _ => isEs ? 'Pendiente' : 'Pending',
+    };
+    final paymentColor = switch (paymentStatus) {
+      'paid' => Theme.of(context).brightness == Brightness.light
+          ? const Color(0xFF2E7D32)
+          : const Color(0xFF81C784),
+      'partial' => cs.tertiary,
+      'overdue' => cs.error,
+      _ => cs.onSurfaceVariant,
+    };
+    final paymentIcon = switch (paymentStatus) {
+      'paid' => Icons.check_circle_outline_rounded,
+      'partial' => Icons.timelapse_rounded,
+      'overdue' => Icons.warning_amber_rounded,
+      _ => Icons.schedule_rounded,
+    };
+    final menu = HexoraPopupMenuButton<String>(
+      tooltip: isEs ? 'Más acciones' : 'More actions',
+      onSelected: (value) {
+        if (value == 'edit') widget.onEdit?.call();
+        if (value == 'internal_notes') _editInternalNotes();
+        if (value == 'download') _downloadPdf();
+        if (value == 'issue') widget.onIssue?.call();
+        if (value == 'link_invoice') widget.onLinkInvoice?.call();
+        if (value == 'delete') widget.onDelete?.call();
+      },
+      itemBuilder: (_) => [
+        if (widget.onEdit != null)
+          HexoraPopupMenuActionItem<String>(
+            value: 'edit',
+            icon: Icons.edit_outlined,
+            label: l.edit,
+          ),
+        HexoraPopupMenuActionItem<String>(
+          value: 'internal_notes',
+          enabled: !_savingInternalNotes,
+          icon: Icons.lock_outline_rounded,
+          label: (_internalNotes ?? '').trim().isEmpty
+              ? (isEs ? 'Añadir nota interna' : 'Add internal note')
+              : (isEs ? 'Editar nota interna' : 'Edit internal note'),
+        ),
+        HexoraPopupMenuActionItem<String>(
+          value: 'download',
+          enabled: !_downloadingPdf,
+          icon: Icons.download_rounded,
+          label: isEs ? 'Descargar PDF' : 'Download PDF',
+        ),
+        if (widget.onIssue != null)
+          HexoraPopupMenuActionItem<String>(
+            value: 'issue',
+            icon: Icons.fact_check_outlined,
+            label: l.invoiceIssueCta,
+            tone: HexoraPopupMenuTone.primary,
+          ),
+        if (widget.onLinkInvoice != null)
+          HexoraPopupMenuActionItem<String>(
+            value: 'link_invoice',
+            icon: Icons.link_rounded,
+            label: isEs ? 'Vincular factura' : 'Link invoice',
+          ),
+        if (widget.onDelete != null) const HexoraPopupMenuDivider(),
+        if (widget.onDelete != null)
+          HexoraPopupMenuActionItem<String>(
+            value: 'delete',
+            icon: Icons.delete_outline_rounded,
+            label: l.remove,
+            tone: HexoraPopupMenuTone.destructive,
+          ),
+      ],
+    );
+    return Material(
+      color: widget.selected
+          ? cs.primary.withValues(alpha: .08)
+          : Colors.transparent,
+      child: InkWell(
+        onTap: widget.onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 58),
+          padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 4, 6),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: .35),
               ),
-              HexoraPopupMenuActionItem<String>(
-                value: 'download',
-                enabled: !_downloadingPdf,
-                icon: Icons.download_rounded,
-                label: isEs ? 'Descargar PDF' : 'Download PDF',
+              left: widget.selected
+                  ? BorderSide(color: cs.primary, width: 3)
+                  : BorderSide.none,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            inv.displayNumber(draftLabel: l.statusDraft),
+                            maxLines: 1,
+                            style: t.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        if (date.isNotEmpty) ...[
+                          const SizedBox(width: 7),
+                          Text(
+                            date,
+                            style: t.caption.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 116),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: Text(
+                        total,
+                        maxLines: 1,
+                        style: t.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: HexoraTypography.numericFeatures,
+                        ),
+                      ),
+                    ),
+                  ),
+                  menu,
+                ],
               ),
-              if (widget.onIssue != null)
-                HexoraPopupMenuActionItem<String>(
-                  value: 'issue',
-                  icon: Icons.fact_check_outlined,
-                  label: l.invoiceIssueCta,
-                  tone: HexoraPopupMenuTone.primary,
-                ),
-              if (widget.onLinkInvoice != null)
-                HexoraPopupMenuActionItem<String>(
-                  value: 'link_invoice',
-                  icon: Icons.link_rounded,
-                  label: isEs ? 'Vincular factura' : 'Link invoice',
-                ),
-              if (widget.onDelete != null) const HexoraPopupMenuDivider(),
-              if (widget.onDelete != null)
-                HexoraPopupMenuActionItem<String>(
-                  value: 'delete',
-                  icon: Icons.delete_outline_rounded,
-                  label: l.remove,
-                  tone: HexoraPopupMenuTone.destructive,
-                ),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.client.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ),
+                  DeliveryStatusBadge(
+                    groupId: inv.groupId,
+                    status: inv.deliveryStatus,
+                    channel: inv.deliveryChannel,
+                    sentAt: inv.sentAt,
+                    deliveryError: inv.deliveryError,
+                    feminine: true,
+                    compact: true,
+                  ),
+                  const SizedBox(width: 6),
+                  Tooltip(
+                    message: paymentLabel,
+                    child: Icon(
+                      paymentIcon,
+                      size: 16,
+                      color: paymentColor,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+              ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -615,14 +662,15 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       'unpaid' => cs.onSurfaceVariant,
       _ => cs.onSurfaceVariant,
     };
-    final delivery = DeliveryStatusBadge(
-      groupId: widget.invoice.groupId,
-      status: widget.invoice.deliveryStatus,
-      channel: widget.invoice.deliveryChannel,
-      sentAt: widget.invoice.sentAt,
-      deliveryError: widget.invoice.deliveryError,
-      feminine: true,
-    );
+    Widget delivery({required bool compact}) => DeliveryStatusBadge(
+          groupId: widget.invoice.groupId,
+          status: widget.invoice.deliveryStatus,
+          channel: widget.invoice.deliveryChannel,
+          sentAt: widget.invoice.sentAt,
+          deliveryError: widget.invoice.deliveryError,
+          feminine: true,
+          compact: compact,
+        );
     final concept =
         _conceptDescriptions.isEmpty || _conceptDescriptions.first.isEmpty
             ? null
@@ -679,119 +727,137 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       if ((widget.financialMismatchTooltip ?? '').trim().isNotEmpty)
         widget.financialMismatchTooltip!.trim(),
     ].join('\n');
-    return CompactDocumentRow(
-      title: numberLabel,
-      titleTrailing: warningTooltip.isEmpty
-          ? (widget.invoice.isDuplicate
-              ? Tooltip(
-                  message: isEs ? 'Factura duplicada' : 'Duplicate invoice',
-                  child:
-                      Icon(Icons.content_copy_rounded, size: 15, color: amber),
-                )
-              : null)
-          : Tooltip(
-              message: warningTooltip,
-              child: Icon(Icons.warning_amber_rounded,
-                  size: 16, color: warning ? cs.error : amber),
+    return LayoutBuilder(builder: (context, constraints) {
+      final iconOnlyStatuses = constraints.maxWidth < 980;
+      final compactPaymentIcon = switch (paymentStatus) {
+        'paid' => Icons.check_circle_outline_rounded,
+        'partial' => Icons.timelapse_rounded,
+        'overdue' => Icons.warning_amber_rounded,
+        _ => Icons.schedule_rounded,
+      };
+      return CompactDocumentRow(
+        title: numberLabel,
+        titleTrailing: warningTooltip.isEmpty
+            ? (widget.invoice.isDuplicate
+                ? Tooltip(
+                    message: isEs ? 'Factura duplicada' : 'Duplicate invoice',
+                    child: Icon(Icons.content_copy_rounded,
+                        size: 15, color: amber),
+                  )
+                : null)
+            : Tooltip(
+                message: warningTooltip,
+                child: Icon(Icons.warning_amber_rounded,
+                    size: 16, color: warning ? cs.error : amber),
+              ),
+        metadata: widget.showClient ? widget.client.name : '',
+        amount: totalLabel,
+        date: date,
+        dateWarningTooltip: widget.dateWarningTooltip,
+        payment: Tooltip(
+          message: paymentStatus.isEmpty
+              ? (isEs
+                  ? 'No hay información de pago confirmada'
+                  : 'No confirmed payment information')
+              : paymentLabel,
+          child: iconOnlyStatuses
+              ? Icon(compactPaymentIcon, size: 17, color: paymentColor)
+              : HexoraStatusBadge(
+                  label: paymentLabel,
+                  color: paymentColor,
+                ),
+        ),
+        taxableBase: _subtotal,
+        vat: _taxTotal,
+        visibleFinancialColumns: widget.visibleFinancialColumns,
+        invoiceColumnOrder: true,
+        preferWideClient: true,
+        fullColumnsMinWidth: 1360,
+        rowMinHeight: 46,
+        selected: widget.selected,
+        onTap: widget.onTap,
+        previewLabel: isEs ? 'Vista previa' : 'Preview',
+        quickActionSlots: 0,
+        quickActions: const [],
+        status: Row(mainAxisSize: MainAxisSize.min, children: [
+          Flexible(
+            child: Tooltip(
+              message: isIssued
+                  ? '$documentStatusLabel\n$issuedByTooltip'
+                  : documentStatusLabel,
+              child: iconOnlyStatuses
+                  ? Icon(
+                      documentStatus.icon,
+                      size: 17,
+                      color: documentStatus.color(context),
+                    )
+                  : HexoraStatusBadge.document(
+                      context,
+                      status: documentStatus,
+                      label: documentStatusLabel,
+                    ),
             ),
-      metadata: widget.showClient ? widget.client.name : '',
-      amount: totalLabel,
-      date: date,
-      dateWarningTooltip: widget.dateWarningTooltip,
-      payment: Tooltip(
-        message: paymentStatus.isEmpty
-            ? (isEs
-                ? 'No hay información de pago confirmada'
-                : 'No confirmed payment information')
-            : paymentLabel,
-        child: HexoraStatusBadge(
-          label: paymentLabel,
-          color: paymentColor,
-        ),
-      ),
-      taxableBase: _subtotal,
-      vat: _taxTotal,
-      visibleFinancialColumns: widget.visibleFinancialColumns,
-      invoiceColumnOrder: true,
-      preferWideClient: true,
-      selected: widget.selected,
-      onTap: widget.onTap,
-      previewLabel: isEs ? 'Vista previa' : 'Preview',
-      quickActionSlots: 0,
-      quickActions: const [],
-      status: Row(mainAxisSize: MainAxisSize.min, children: [
-        Flexible(
-          child: Tooltip(
-            message: isIssued
-                ? '$documentStatusLabel\n$issuedByTooltip'
-                : documentStatusLabel,
-            child: HexoraStatusBadge.document(
-              context,
-              status: documentStatus,
-              label: documentStatusLabel,
+          ),
+          const SizedBox(width: 4),
+        ]),
+        delivery: delivery(compact: iconOnlyStatuses),
+        concept: concept,
+        notes: notesCell,
+        showDeliveryColumn: true,
+        compactSplitLayout: true,
+        hideActionsInSplitView: true,
+        compactTitle: widget.invoice.invoiceNumber.trim().isEmpty
+            ? (isEs ? 'Factura' : 'Invoice')
+            : null,
+        separatorWidth: 0,
+        actions: [
+          if (widget.onPreview != null)
+            CompactDocumentAction(
+              isEs ? 'Vista previa' : 'Preview',
+              widget.onPreview,
+              icon: Icons.visibility_outlined,
+              opensPreviewDrawer: true,
             ),
-          ),
-        ),
-        const SizedBox(width: 4),
-      ]),
-      delivery: delivery,
-      concept: concept,
-      notes: notesCell,
-      showDeliveryColumn: true,
-      compactSplitLayout: true,
-      hideActionsInSplitView: true,
-      compactTitle: widget.invoice.invoiceNumber.trim().isEmpty
-          ? (isEs ? 'Factura' : 'Invoice')
-          : null,
-      separatorWidth: 0,
-      actions: [
-        if (widget.onPreview != null)
+          if (widget.onEdit != null)
+            CompactDocumentAction(
+              l.edit,
+              widget.onEdit,
+              icon: Icons.edit_outlined,
+            ),
           CompactDocumentAction(
-            isEs ? 'Vista previa' : 'Preview',
-            widget.onPreview,
-            icon: Icons.visibility_outlined,
-            opensPreviewDrawer: true,
+            (_internalNotes ?? '').trim().isEmpty
+                ? (isEs ? 'Añadir nota interna' : 'Add internal note')
+                : (isEs ? 'Editar nota interna' : 'Edit internal note'),
+            _savingInternalNotes ? null : _editInternalNotes,
+            icon: Icons.lock_outline_rounded,
           ),
-        if (widget.onEdit != null)
           CompactDocumentAction(
-            l.edit,
-            widget.onEdit,
-            icon: Icons.edit_outlined,
+            isEs ? 'Descargar PDF' : 'Download PDF',
+            _downloadingPdf ? null : _downloadPdf,
+            icon: Icons.download_rounded,
           ),
-        CompactDocumentAction(
-          (_internalNotes ?? '').trim().isEmpty
-              ? (isEs ? 'Añadir nota interna' : 'Add internal note')
-              : (isEs ? 'Editar nota interna' : 'Edit internal note'),
-          _savingInternalNotes ? null : _editInternalNotes,
-          icon: Icons.lock_outline_rounded,
-        ),
-        CompactDocumentAction(
-          isEs ? 'Descargar PDF' : 'Download PDF',
-          _downloadingPdf ? null : _downloadPdf,
-          icon: Icons.download_rounded,
-        ),
-        if (widget.onIssue != null)
-          CompactDocumentAction(
-            l.invoiceIssueCta,
-            widget.onIssue,
-            primary: true,
-            icon: Icons.fact_check_outlined,
-          ),
-        if (widget.onLinkInvoice != null)
-          CompactDocumentAction(
-            isEs ? 'Vincular factura' : 'Link invoice',
-            widget.onLinkInvoice,
-            icon: Icons.link_rounded,
-          ),
-        if (widget.onInspectRecurrence != null)
-          CompactDocumentAction(isEs ? 'Ver recurrencia' : 'Recurrence',
-              widget.onInspectRecurrence),
-        if (widget.onDelete != null)
-          CompactDocumentAction(l.delete, widget.onDelete,
-              destructive: true, icon: Icons.delete_outline_rounded),
-      ],
-      details: null,
-      /* details: !_detailsExpanded
+          if (widget.onIssue != null)
+            CompactDocumentAction(
+              l.invoiceIssueCta,
+              widget.onIssue,
+              primary: true,
+              icon: Icons.fact_check_outlined,
+            ),
+          if (widget.onLinkInvoice != null)
+            CompactDocumentAction(
+              isEs ? 'Vincular factura' : 'Link invoice',
+              widget.onLinkInvoice,
+              icon: Icons.link_rounded,
+            ),
+          if (widget.onInspectRecurrence != null)
+            CompactDocumentAction(isEs ? 'Ver recurrencia' : 'Recurrence',
+                widget.onInspectRecurrence),
+          if (widget.onDelete != null)
+            CompactDocumentAction(l.delete, widget.onDelete,
+                destructive: true, icon: Icons.delete_outline_rounded),
+        ],
+        details: null,
+        /* details: !_detailsExpanded
           ? null
           : Align(
               alignment: AlignmentDirectional.centerStart,
@@ -815,7 +881,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                   _InvoiceDeliveryTracking(invoice: widget.invoice),
                 ],
               )), */
-    );
+      );
+    });
   }
 }
 

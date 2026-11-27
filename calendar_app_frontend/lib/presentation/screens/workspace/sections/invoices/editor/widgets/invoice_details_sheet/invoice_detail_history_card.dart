@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_empty_state.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:intl/intl.dart';
 
@@ -555,12 +556,13 @@ class _InvoiceDetailHistoryCardState extends State<InvoiceDetailHistoryCard> {
             ],
           )
         else if (!widget.loading && !hasEntries)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              l.invoiceChangeHistoryEmpty,
-              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-            ),
+          HexoraEmptyState(
+            key: const ValueKey('invoice-history-empty-state'),
+            icon: Icons.history_rounded,
+            title: l.invoiceChangeHistoryEmpty,
+            description: l.invoiceChangeHistoryEmptyDescription,
+            variant: HexoraEmptyStateVariant.compact,
+            maxDescriptionWidth: 420,
           )
         else
           for (var index = 0; index < history.length; index++)

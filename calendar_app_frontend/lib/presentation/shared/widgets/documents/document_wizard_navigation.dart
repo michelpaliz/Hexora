@@ -1,6 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/presentation/shared/widgets/secondary_sidebar_header.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
+import 'package:provider/provider.dart';
+
+/// Whether a nested document workflow should avoid adding another expanded
+/// navigation column beside the user's workspace menu.
+bool documentWizardUsesCompactNavigation(BuildContext context) {
+  UserPreferencesProvider? preferences;
+  try {
+    preferences = context.watch<UserPreferencesProvider>();
+  } on ProviderNotFoundException {
+    // Standalone routes and focused widget tests may not provide workspace
+    // preferences.
+  }
+  return preferences?.navigationLayout == NavigationLayout.unified ||
+      preferences?.navigationDisplayMode == NavigationDisplayMode.iconsOnly;
+}
 
 class DocumentWizardSection {
   const DocumentWizardSection({
@@ -73,6 +90,9 @@ class DocumentWizardRail extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final preferenceForcesCompact =
+        documentWizardUsesCompactNavigation(context);
+    final effectiveCollapsed = collapsed || preferenceForcesCompact;
     var railTitle = title ?? steps[currentStep].label;
     if (title == null) {
       for (final section in steps[currentStep].sections) {
@@ -103,8 +123,8 @@ class DocumentWizardRail extends StatelessWidget {
             duration: const Duration(milliseconds: 160),
             height: 36,
             padding: EdgeInsets.only(
-              left: collapsed ? 13 : 10,
-              right: collapsed ? 13 : 4,
+              left: effectiveCollapsed ? 13 : 10,
+              right: effectiveCollapsed ? 13 : 4,
             ),
             decoration: BoxDecoration(
               color: active ? colors.primary.withValues(alpha: .09) : null,
@@ -122,7 +142,7 @@ class DocumentWizardRail extends StatelessWidget {
                   size: 16,
                   color: future ? color.withValues(alpha: .52) : color,
                 ),
-                if (!collapsed) ...[
+                if (!effectiveCollapsed) ...[
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -161,7 +181,7 @@ class DocumentWizardRail extends StatelessWidget {
         ),
       );
 
-      if (!collapsed || step.sections.isEmpty) return row;
+      if (!effectiveCollapsed || step.sections.isEmpty) return row;
       return MenuAnchor(
         alignmentOffset: const Offset(48, -36),
         menuChildren: [
@@ -200,7 +220,7 @@ class DocumentWizardRail extends StatelessWidget {
     }
 
     List<Widget> extrasAfterStep(int index) {
-      if (collapsed) return const <Widget>[];
+      if (effectiveCollapsed) return const <Widget>[];
       final extra = afterStepBuilder?.call(index);
       return extra == null ? const <Widget>[] : <Widget>[extra];
     }
@@ -209,24 +229,24 @@ class DocumentWizardRail extends StatelessWidget {
       key:
           Key(useInvoiceLegacyKeys ? 'invoice-wizard-rail' : '$keyPrefix-rail'),
       duration: const Duration(milliseconds: 180),
-      width: collapsed ? 52 : expandedWidth,
+      width: effectiveCollapsed ? 52 : expandedWidth,
       color: backgroundColor ?? colors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (allowCollapse && collapsed)
+          if (allowCollapse && effectiveCollapsed && !preferenceForcesCompact)
             Align(
               alignment: Alignment.center,
               child: IconButton(
                 key: Key(useInvoiceLegacyKeys
                     ? 'invoice-wizard-rail-toggle'
                     : '$keyPrefix-rail-toggle'),
-                tooltip: collapsed
+                tooltip: effectiveCollapsed
                     ? (isEs ? 'Expandir navegación' : 'Expand navigation')
                     : (isEs ? 'Contraer navegación' : 'Collapse navigation'),
                 onPressed: onToggleCollapsed,
                 icon: Icon(
-                  collapsed
+                  effectiveCollapsed
                       ? Icons.keyboard_double_arrow_right_rounded
                       : Icons.keyboard_double_arrow_left_rounded,
                   size: HexoraIconTokens.standard,
@@ -237,7 +257,7 @@ class DocumentWizardRail extends StatelessWidget {
                 ),
               ),
             ),
-          if (allowCollapse && !collapsed)
+          if (allowCollapse && !effectiveCollapsed)
             SecondarySidebarHeader(
               title: railTitle,
               onCollapse: onToggleCollapsed,
@@ -245,11 +265,11 @@ class DocumentWizardRail extends StatelessWidget {
                   ? 'invoice-wizard-rail-toggle'
                   : '$keyPrefix-rail-toggle'),
             ),
-          if (!collapsed && header != null) header!,
+          if (!effectiveCollapsed && header != null) header!,
           for (var index = 0; index < steps.length; index++) ...[
             mainStep(index),
             ...extrasAfterStep(index),
-            if (!collapsed &&
+            if (!effectiveCollapsed &&
                 currentStep == index &&
                 groupExpanded &&
                 steps[index].sections.isNotEmpty)
@@ -309,7 +329,7 @@ class DocumentWizardRail extends StatelessWidget {
                   ),
                 ),
           ],
-          if (!collapsed && footer != null)
+          if (!effectiveCollapsed && footer != null)
             Expanded(
               child: Align(
                 alignment: Alignment.bottomCenter,
