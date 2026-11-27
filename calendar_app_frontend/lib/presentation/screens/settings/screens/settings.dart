@@ -401,6 +401,8 @@ class _SettingsState extends State<Settings> {
                       isSpanish:
                           Localizations.localeOf(context).languageCode == 'es',
                       onEmail: _email,
+                      onNews: () => Navigator.of(context)
+                          .pushNamed(AppRoutes.announcements),
                     ),
                   ),
                   const SizedBox(height: 24),

@@ -7,6 +7,7 @@ import 'package:hexora/presentation/screens/auth/register/ui/form/register_form.
 import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'auth_shared_widgets.dart';
+import 'package:hexora/presentation/shared/widgets/announcements/announcement_panel.dart';
 
 enum AuthMode { register, login, forgot }
 
@@ -134,6 +135,19 @@ class _AuthSwitcherViewState extends State<AuthSwitcherView> {
                             ),
                           ),
                         ),
+                        if (_mode != AuthMode.forgot &&
+                            constraints.maxHeight >= 720) ...[
+                          const SizedBox(height: 16),
+                          const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: AnnouncementPanel(
+                              placement: 'authentication',
+                              publicOnly: true,
+                              limit: 3,
+                              compact: true,
+                            ),
+                          ),
+                        ],
                         if (kIsWeb) ...[
                           const SizedBox(height: 12),
                           Center(

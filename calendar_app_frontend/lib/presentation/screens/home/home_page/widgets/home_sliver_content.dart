@@ -36,6 +36,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../widgets/section_header.dart';
+import 'package:hexora/presentation/shared/widgets/announcements/announcement_panel.dart';
 
 enum _HomeView { groups, settings, notifications, profile }
 
@@ -269,6 +270,18 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                     ),
                   ),
                 const SliverToBoxAdapter(child: SizedBox(height: 4)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+                    child: AnnouncementPanel(
+                      placement: 'home',
+                      limit: 3,
+                      compact: true,
+                      onViewAll: () => Navigator.of(context)
+                          .pushNamed(AppRoutes.announcements),
+                    ),
+                  ),
+                ),
               ],
 
               // ── Compact header: secondary views ─────────────────────
@@ -444,6 +457,8 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                       child: ContactSection(
                         isSpanish: _isSpanish,
                         onEmail: _email,
+                        onNews: () => Navigator.of(context)
+                            .pushNamed(AppRoutes.announcements),
                       ),
                     ),
                   ),

@@ -50,18 +50,23 @@ class InvoiceEditorController extends ChangeNotifier {
 
   InvoiceEditorController({
     required this.group,
-    required this.clients,
+    required List<GroupClient> clients,
     this.initialClientId,
-    this.initialInvoice,
-  }) {
+    Invoice? initialInvoice,
+  })  : clients = List<GroupClient>.unmodifiable(
+          clients.where((client) => client.groupId == group.id),
+        ),
+        initialInvoice = initialInvoice?.groupId == group.id
+            ? initialInvoice
+            : null {
     _bindOcrFlow();
-    if (initialInvoice != null) {
-      _applyInitialInvoice(initialInvoice!);
-    } else if (clients.isNotEmpty) {
-      final existing = clients
+    if (this.initialInvoice != null) {
+      _applyInitialInvoice(this.initialInvoice!);
+    } else if (this.clients.isNotEmpty) {
+      final existing = this.clients
           .firstWhere(
             (c) => c.id == initialClientId,
-            orElse: () => clients.first,
+            orElse: () => this.clients.first,
           )
           .id;
       _clientId = existing;

@@ -20,6 +20,7 @@ Map<String, dynamic> userToJson(User u) {
     'sharedCalendars': u.sharedCalendars,
     'notifications': u.notifications,
     'autoStatementImportEnabled': u.autoStatementImportEnabled,
+    'platformRole': u.platformRole,
   };
 }
 
@@ -65,6 +66,7 @@ User userFromJson(Map<String, dynamic> raw, {String? fallbackId}) {
     phoneNumber: phoneNumber,
     location: location,
     autoStatementImportEnabled: autoStatementImportEnabled,
+    platformRole: optString(json, 'platformRole') ?? 'user',
     groupIds: optStringList(json, 'groupIds'),
     photoUrl: optString(json, 'photoUrl'),
     photoBlobName: optString(json, 'photoBlobName'),

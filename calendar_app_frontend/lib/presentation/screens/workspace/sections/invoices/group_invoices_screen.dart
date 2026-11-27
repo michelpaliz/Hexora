@@ -248,6 +248,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   int _classificationViewRefreshTick = 0;
   int _invoiceEditorSession = 0;
   int _receiptEditorSession = 0;
+  int _loadRevision = 0;
   String? _budgetEditorBudgetId;
   List<InvoiceZipDownload> _invoiceZipDownloads = const [];
   late String? _pendingInitialInvoiceId;
@@ -283,6 +284,44 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     _syncInitialMenuExpansion();
     _loadAll();
     Future.microtask(_refreshInvoiceZipDownloads);
+  }
+
+  @override
+  void didUpdateWidget(covariant GroupInvoicesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.group.id == widget.group.id) return;
+
+    _invoiceLinkSubscription?.dispose();
+    _invoiceLinkSubscription = InvoiceLinkEvents.instance.subscribe(
+      widget.group.id,
+      _handleInvoiceLinkChanged,
+    );
+    _loadRevision++;
+    _invoices = [];
+    _drafts = [];
+    _receipts = [];
+    _receiptDrafts = [];
+    _billingProfile = null;
+    _clients = [];
+    _selectedClient = null;
+    _selectedInvoice = null;
+    _selectedReceipt = null;
+    _invoiceEditorClientId = null;
+    _invoiceEditorInvoice = null;
+    _receiptEditorClientId = null;
+    _receiptEditorReceipt = null;
+    _inlineInvoiceEditorUnsaved = false;
+    _inlineReceiptEditorUnsaved = false;
+    _pendingInitialInvoiceId = _normalizedEntityId(widget.initialInvoiceId);
+    _pendingInitialReceiptId = _normalizedEntityId(widget.initialReceiptId);
+    _selectedMenu = widget.initialMenu?.trim().isNotEmpty == true
+        ? widget.initialMenu!.trim()
+        : 'invoices_issued';
+    _invoiceEditorSession++;
+    _receiptEditorSession++;
+    _syncInitialMenuExpansion();
+    _setWorkspaceDirty(false);
+    _loadAll();
   }
 
   void _handleInvoiceLinkChanged() {
@@ -442,6 +481,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     bool sortingInvoices = false,
     bool emitErrorSnack = false,
   }) async {
+    final groupId = widget.group.id;
+    final loadRevision = ++_loadRevision;
     if (sortingInvoices) {
       setState(() => _sortingInvoices = true);
     } else {
@@ -459,7 +500,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       final unnumberedDraftFuture = () async {
         try {
           final lookup = await _receiptsApi.lookupUnnumberedDraft(
-            groupId: widget.group.id,
+            groupId: groupId,
           );
           var receipt = lookup.receipt;
           final lookupId = (lookup.existingReceiptId ?? '').trim();
@@ -480,6 +521,9 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         }
         try {
           var invoice = await _invoicesApi.getById(pendingInvoiceId);
+          if (invoice.groupId != groupId) {
+            throw StateError('Invoice does not belong to this business');
+          }
           if (invoice.lines.isEmpty) {
             final lines = await _linesApi.list(pendingInvoiceId);
             if (lines.isNotEmpty) {
@@ -495,33 +539,33 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       }();
       final results = await Future.wait([
         _clientsApi.list(
-          groupId: widget.group.id,
+          groupId: groupId,
           active: null,
           includeCurrentMonthInvoiceFlag: true,
         ),
         _invoicesApi.listByGroup(
-          widget.group.id,
+          groupId,
           status: 'issued',
           sortBy: sortBy,
           sortDir: sortDir,
         ),
         _invoicesApi.listByGroup(
-          widget.group.id,
+          groupId,
           status: 'draft',
           sortBy: sortBy,
           sortDir: sortDir,
         ),
         _receiptsApi.list(
-          groupId: widget.group.id,
+          groupId: groupId,
           status: 'issued',
         ),
         _receiptsApi.list(
-          groupId: widget.group.id,
+          groupId: groupId,
           status: 'draft',
         ),
-        _billingApi.getByGroup(widget.group.id),
+        _billingApi.getByGroup(groupId),
       ]);
-      if (!mounted) return;
+      if (!_isCurrentInvoiceLoad(groupId, loadRevision)) return;
       final issuedReceipts = List<Receipt>.from(results[3] as List<Receipt>);
       final draftReceipts = List<Receipt>.from(results[4] as List<Receipt>);
       final needsUnnumberedDraftImmediately =
@@ -532,24 +576,27 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           !draftReceipts.any((item) => item.id == unnumberedDraft.id)) {
         draftReceipts.insert(0, unnumberedDraft);
       }
-      if (!mounted) return;
+      if (!_isCurrentInvoiceLoad(groupId, loadRevision)) return;
       final draftIds = draftReceipts.map((receipt) => receipt.id).toSet();
       issuedReceipts.removeWhere(
         (receipt) => draftIds.contains(receipt.id),
       );
       final hydratedInitialInvoice = await initialInvoiceFuture;
-      if (!mounted) return;
+      if (!_isCurrentInvoiceLoad(groupId, loadRevision)) return;
       setState(() {
         _clients = List<GroupClient>.from(
-          results[0] as List<GroupClient>,
+          (results[0] as List<GroupClient>)
+              .where((client) => client.groupId == groupId),
           growable: true,
         );
         _invoices = List<Invoice>.from(
-          results[1] as List<Invoice>,
+          (results[1] as List<Invoice>)
+              .where((invoice) => invoice.groupId == groupId),
           growable: true,
         );
         _drafts = List<Invoice>.from(
-          results[2] as List<Invoice>,
+          (results[2] as List<Invoice>)
+              .where((invoice) => invoice.groupId == groupId),
           growable: true,
         );
         _receipts = List<Receipt>.from(
@@ -560,7 +607,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           draftReceipts,
           growable: true,
         );
-        _billingProfile = results[5] as BillingProfile?;
+        final loadedBillingProfile = results[5] as BillingProfile?;
+        _billingProfile = loadedBillingProfile?.groupId == groupId
+            ? loadedBillingProfile
+            : null;
         _selectedClient = _defaultClient(
           _clients,
           preferredId: previousSelectedClientId,
@@ -598,7 +648,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         );
       }
     } catch (e) {
-      if (!mounted) return;
+      if (!_isCurrentInvoiceLoad(groupId, loadRevision)) return;
       final message = e.toString();
       if (emitErrorSnack) {
         showErrorSnack(context, message);
@@ -607,7 +657,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         setState(() => _error = message);
       }
     } finally {
-      if (mounted) {
+      if (_isCurrentInvoiceLoad(groupId, loadRevision)) {
         if (sortingInvoices) {
           setState(() => _sortingInvoices = false);
         } else {
@@ -615,6 +665,12 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         }
       }
     }
+  }
+
+  bool _isCurrentInvoiceLoad(String groupId, int loadRevision) {
+    return mounted &&
+        widget.group.id == groupId &&
+        _loadRevision == loadRevision;
   }
 
   Future<void> _handleInvoiceSortBySelected(InvoiceSortBy by) async {

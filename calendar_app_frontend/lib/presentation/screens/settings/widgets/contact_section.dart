@@ -6,16 +6,32 @@ class ContactSection extends StatelessWidget {
     super.key,
     required this.isSpanish,
     required this.onEmail,
+    required this.onNews,
   });
 
   final bool isSpanish;
   final ValueChanged<String> onEmail;
+  final VoidCallback onNews;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
+        NavTile(
+          leading: Icon(Icons.campaign_outlined, size: 18, color: cs.primary),
+          iconBgColor: cs.primary.withValues(alpha: 0.12),
+          title: isSpanish ? 'Novedades de Hexora' : 'Hexora News & Updates',
+          subtitle: isSpanish
+              ? 'Funciones, mejoras y avisos del servicio'
+              : 'Features, improvements and service notices',
+          onTap: onNews,
+        ),
+        Divider(
+          height: 0,
+          indent: 63,
+          color: cs.outlineVariant.withValues(alpha: 0.4),
+        ),
         NavTile(
           leading:
               Icon(Icons.support_agent_rounded, size: 18, color: cs.primary),

@@ -21,6 +21,7 @@ class User {
   String? location;
 
   bool autoStatementImportEnabled;
+  String platformRole;
 
   List<String> groupIds;
   List<String> _calendarsIds;
@@ -42,6 +43,7 @@ class User {
     List<String>? sharedCalendars,
     List<String>? notifications,
     this.autoStatementImportEnabled = true,
+    this.platformRole = 'user',
   })  : _id = id,
         _email = email,
         _calendarsIds = sharedCalendars ?? [],
@@ -81,6 +83,7 @@ class User {
     List<String>? sharedCalendars,
     List<String>? notifications,
     bool? autoStatementImportEnabled,
+    String? platformRole,
   }) {
     return User(
       id: id ?? _id,
@@ -99,6 +102,7 @@ class User {
           identical(location, _unchanged) ? this.location : location as String?,
       autoStatementImportEnabled:
           autoStatementImportEnabled ?? this.autoStatementImportEnabled,
+      platformRole: platformRole ?? this.platformRole,
       photoUrl:
           identical(photoUrl, _unchanged) ? this.photoUrl : photoUrl as String?,
       photoBlobName: identical(photoBlobName, _unchanged)
@@ -123,6 +127,7 @@ class User {
       phoneNumber: '',
       location: '',
       autoStatementImportEnabled: false,
+      platformRole: 'user',
       photoUrl: '',
       photoBlobName: '',
       groupIds: const [],

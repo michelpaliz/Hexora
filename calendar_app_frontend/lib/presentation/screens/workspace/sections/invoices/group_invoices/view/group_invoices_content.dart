@@ -26,7 +26,7 @@ class _GroupInvoicesContent extends StatelessWidget {
     }
     return InvoiceEditorScreen(
       key: ValueKey(
-        'inline-invoice-editor-${state._invoiceEditorSession}-${state._invoiceEditorInvoice?.id ?? 'new'}-${state._invoiceEditorClientId ?? 'none'}',
+        'inline-invoice-editor-${state.widget.group.id}-${state._invoiceEditorSession}-${state._invoiceEditorInvoice?.id ?? 'new'}-${state._invoiceEditorClientId ?? 'none'}',
       ),
       group: state.widget.group,
       clients: state._clients,

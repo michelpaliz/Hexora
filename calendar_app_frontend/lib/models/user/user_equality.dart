@@ -17,6 +17,7 @@ bool userEquals(User a, Object other) {
       other.phoneNumber == a.phoneNumber &&
       other.location == a.location &&
       other.autoStatementImportEnabled == a.autoStatementImportEnabled &&
+      other.platformRole == a.platformRole &&
       listEquals(other.groupIds, a.groupIds) &&
       listEquals(other.sharedCalendars, a.sharedCalendars) &&
       listEquals(other.notifications, a.notifications) &&
@@ -36,6 +37,7 @@ int userHashCode(User u) {
     u.phoneNumber,
     u.location,
     u.autoStatementImportEnabled,
+    u.platformRole,
     Object.hashAll(u.groupIds),
     Object.hashAll(u.sharedCalendars),
     Object.hashAll(u.notifications),

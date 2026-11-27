@@ -55,6 +55,7 @@ class AppRoutes {
   static const preferences = '/preferences';
   static const dashboardPreview = '/dashboard-preview';
   static const upgradePremium = '/upgrade-premium';
+  static const announcements = '/news';
 
   static const groupInsights = '/group-insights';
   static const groupQuickNotes = '/group-quick-notes';
