@@ -18,6 +18,8 @@ import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/e
 import 'package:hexora/presentation/screens/workspace/sections/workers/workers_hub_screen.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:provider/provider.dart';
 import 'bank_transaction_chat_card.dart';
@@ -31,6 +33,7 @@ import 'widgets/chat_message_actions.dart';
 import 'widgets/chat_channel_header.dart';
 import 'widgets/chat_composer.dart';
 import 'widgets/chat_inbox_search.dart';
+import 'widgets/chat_sidebar_menu.dart';
 import 'widgets/mobile_chat_inbox_header.dart';
 import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
@@ -2845,8 +2848,9 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                             ? constraints.maxWidth
                             : (conversationPaneCollapsed
                                 ? NavigationTokens.railWidth
-                                : 250),
+                                : NavigationTokens.sidebarWidth),
                         child: SidebarEdgeShell(
+                          backgroundColor: colors.surface,
                           collapsed: conversationPaneCollapsed,
                           onToggle: narrow || forceIconsOnly
                               ? null
@@ -2859,8 +2863,14 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                           collapseTooltip: _es
                               ? 'Compactar conversaciones'
                               : 'Compact conversations',
-                          backgroundColor: Colors.transparent,
                           child: Column(children: [
+                            ChatSidebarMenu(
+                              collapsed: conversationPaneCollapsed,
+                              onMembers: _showMemberPresence,
+                              onCreateTeam: _canCreateTeam ? _createTeam : null,
+                              onCreateIssue:
+                                  _canCreateIssues ? _createIssue : null,
+                            ),
                             if (narrow)
                               ChatInboxSearch(
                                 controller: _conversationSearch,
@@ -2946,12 +2956,18 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                         key: const PageStorageKey(
                                             'business-chat-conversations'),
                                         itemCount: visibleConversations.length,
-                                        separatorBuilder: (_, __) => Divider(
-                                              height: 1,
-                                              indent: 64,
-                                              color: colors.outlineVariant
-                                                  .withValues(alpha: .45),
-                                            ),
+                                        padding: narrow
+                                            ? EdgeInsets.zero
+                                            : const EdgeInsets.symmetric(
+                                                horizontal: 8),
+                                        separatorBuilder: (_, __) => narrow
+                                            ? Divider(
+                                                height: 1,
+                                                indent: 64,
+                                                color: colors.outlineVariant
+                                                    .withValues(alpha: .45),
+                                              )
+                                            : const SizedBox(height: 2),
                                         itemBuilder: (context, index) {
                                           final conversation =
                                               visibleConversations[index];
@@ -2992,21 +3008,26 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                                           ? 'Archivo adjunto'
                                                                           : 'Attachment'))
                                                                   .toString();
-                                          if (conversationPaneCollapsed &&
-                                              !narrow) {
-                                            return _CompactConversationRailItem(
+                                          if (!narrow) {
+                                            return SidebarItem(
                                               icon: conversation.type == 'issue'
                                                   ? Icons.report_outlined
                                                   : conversation.type == 'team'
                                                       ? Icons.groups_outlined
                                                       : Icons.campaign_outlined,
-                                              title: conversation
+                                              label: conversation
                                                       .issue?['title']
                                                       ?.toString() ??
                                                   conversation.title,
-                                              selected: selected,
-                                              unreadCount:
-                                                  conversation.unreadCount,
+                                              isSelected: selected,
+                                              collapsed:
+                                                  conversationPaneCollapsed,
+                                              count:
+                                                  conversation.unreadCount > 0
+                                                      ? conversation.unreadCount
+                                                      : null,
+                                              tooltipLabel:
+                                                  '${conversation.title}\n$preview',
                                               onTap: () {
                                                 final oldId = _selected?.id;
                                                 setState(() {
@@ -3067,7 +3088,8 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                       _showChatOnNarrow ||
                       (narrow && _reviewPanel != null))
                     Expanded(
-                        child: Column(children: [
+                        child: WorkspaceMainContent(
+                            child: Column(children: [
                       Expanded(
                           child: Row(children: [
                         if (narrow && _reviewPanel != null)
@@ -3306,7 +3328,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                             ]),
                           ),
                       ])),
-                    ])),
+                    ]))),
                 ]);
               })),
             ]),
@@ -3508,58 +3530,6 @@ class _PendingBankTransactionPreview extends StatelessWidget {
             onPressed: onRemove,
             icon: const Icon(Icons.close, size: 18)),
       ]),
-    );
-  }
-}
-
-class _CompactConversationRailItem extends StatelessWidget {
-  const _CompactConversationRailItem({
-    required this.icon,
-    required this.title,
-    required this.selected,
-    required this.unreadCount,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final bool selected;
-  final int unreadCount;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Tooltip(
-      message: title,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          height: 56,
-          alignment: Alignment.center,
-          color: selected ? cs.surface : Colors.transparent,
-          child: Badge(
-            isLabelVisible: unreadCount > 0,
-            label: Text(unreadCount > 9 ? '9+' : '$unreadCount'),
-            backgroundColor: const Color(0xFF60A5FA),
-            child: Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: selected
-                    ? cs.primaryContainer
-                    : cs.surfaceContainerHighest.withValues(alpha: .45),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                icon,
-                size: 18,
-                color: selected ? cs.primary : cs.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

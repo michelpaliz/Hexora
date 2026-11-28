@@ -145,9 +145,7 @@ class _HexoraNavTileState extends State<HexoraNavTile> {
       background: navBackground,
       foreground: navForeground,
     );
-    final radius = BorderRadius.circular(
-      widget.selected ? 14 : NavigationTokens.radius,
-    );
+    final radius = BorderRadius.circular(10);
     final tabShape = _ModuleTabShape(
       side: _focused
           ? BorderSide(color: primary.withValues(alpha: 0.85), width: 1.5)

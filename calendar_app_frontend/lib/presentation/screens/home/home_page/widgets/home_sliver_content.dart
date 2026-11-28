@@ -9,8 +9,11 @@ import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/screens/announcements/announcements_screen.dart';
 import 'package:hexora/presentation/screens/home/widgets/home_section_nav.dart';
-import 'package:hexora/presentation/screens/home/home_page/widgets/business_selector_section.dart';
+import 'home_overview.dart';
+import 'home_quick_guide.dart';
+import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/motivational_phrase/quotes/quotes_en.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/motivational_phrase/quotes/quotes_es.dart';
 import 'package:hexora/presentation/screens/settings/dialogs/change_password_dialog.dart';
@@ -36,7 +39,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../widgets/section_header.dart';
-import 'package:hexora/presentation/shared/widgets/announcements/announcement_panel.dart';
 
 enum _HomeView { groups, settings, notifications, profile }
 
@@ -229,6 +231,84 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
           child: CustomScrollView(
             controller: widget.controller,
             slivers: [
+              if (widget.isWide)
+                SliverToBoxAdapter(
+                    child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+                  child: Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 24,
+                      runSpacing: 8,
+                      children: [
+                        const SizedBox(
+                            width: 170,
+                            height: 48,
+                            child: FittedBox(
+                                alignment: Alignment.centerLeft,
+                                child: HexoraSurfaceWordmark())),
+                        Wrap(
+                            spacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              TextButton.icon(
+                                  onPressed: () => setState(
+                                      () => _activeView = _HomeView.groups),
+                                  icon:
+                                      const Icon(Icons.home_outlined, size: 20),
+                                  label: Text(_isSpanish ? 'Inicio' : 'Home'),
+                                  style: TextButton.styleFrom(
+                                      backgroundColor: _activeView ==
+                                              _HomeView.groups
+                                          ? cs.primary.withValues(alpha: .10)
+                                          : null)),
+                              TextButton.icon(
+                                  onPressed: () {
+                                    setState(
+                                        () => _activeView = _HomeView.groups);
+                                    WidgetsBinding.instance
+                                        .addPostFrameCallback((_) {
+                                      final target =
+                                          widget.groupsKey.currentContext;
+                                      if (target != null) {
+                                        Scrollable.ensureVisible(target,
+                                            duration: const Duration(
+                                                milliseconds: 250));
+                                      }
+                                    });
+                                  },
+                                  icon: const Icon(Icons.layers_outlined,
+                                      size: 20),
+                                  label: Text(
+                                      _isSpanish ? 'Negocios' : 'Businesses')),
+                              TextButton.icon(
+                                  onPressed: () =>
+                                      showAnnouncementsDialog(context),
+                                  icon: const Icon(Icons.campaign_outlined,
+                                      size: 20),
+                                  label:
+                                      Text(_isSpanish ? 'Novedades' : 'News')),
+                              TextButton.icon(
+                                  onPressed: () => showHomeQuickGuide(context),
+                                  icon:
+                                      const Icon(Icons.help_outline, size: 20),
+                                  label: Text(_isSpanish ? 'Ayuda' : 'Help')),
+                              IconButton(
+                                  tooltip: _isSpanish
+                                      ? 'Notificaciones'
+                                      : 'Notifications',
+                                  onPressed: () => setState(() =>
+                                      _activeView = _HomeView.notifications),
+                                  icon:
+                                      const Icon(Icons.notifications_outlined)),
+                              IconButton(
+                                  tooltip: loc.settings,
+                                  onPressed: () => setState(
+                                      () => _activeView = _HomeView.settings),
+                                  icon: const Icon(Icons.settings_outlined)),
+                            ]),
+                      ]),
+                )),
               if (widget.showSectionNavBar && widget.sectionItems != null)
                 SliverToBoxAdapter(
                   child: Card(
@@ -264,24 +344,25 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                     key: widget.phraseKey,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 2, 16, 2),
-                      child: _DailyPhraseCard(
-                        onDismiss: () => preferences.setShowDailyQuote(false),
-                      ),
+                      child: Center(
+                          child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 680),
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(14, 5, 8, 5),
+                          decoration: BoxDecoration(
+                              color: cs.surface.withValues(alpha: .75),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                  color: cs.primary.withValues(alpha: .08))),
+                          child: _DailyPhraseCard(
+                            onDismiss: () =>
+                                preferences.setShowDailyQuote(false),
+                          ),
+                        ),
+                      )),
                     ),
                   ),
                 const SliverToBoxAdapter(child: SizedBox(height: 4)),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
-                    child: AnnouncementPanel(
-                      placement: 'home',
-                      limit: 3,
-                      compact: true,
-                      onViewAll: () => Navigator.of(context)
-                          .pushNamed(AppRoutes.announcements),
-                    ),
-                  ),
-                ),
               ],
 
               // ── Compact header: secondary views ─────────────────────
@@ -340,10 +421,13 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
               // ── Groups view (default) ────────────────────────────────
               if (_activeView == _HomeView.groups) ...[
                 SliverToBoxAdapter(
-                  key: widget.groupsKey,
-                  child: const Padding(
-                    padding: EdgeInsets.only(top: 6, bottom: 12),
-                    child: BusinessSelectorSection(),
+                  child: HomeOverview(
+                    user: widget.user,
+                    groupsKey: widget.groupsKey,
+                    onSettings: () =>
+                        setState(() => _activeView = _HomeView.settings),
+                    onProfile: () =>
+                        setState(() => _activeView = _HomeView.profile),
                   ),
                 ),
               ],
@@ -457,8 +541,7 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                       child: ContactSection(
                         isSpanish: _isSpanish,
                         onEmail: _email,
-                        onNews: () => Navigator.of(context)
-                            .pushNamed(AppRoutes.announcements),
+                        onNews: () => showAnnouncementsDialog(context),
                       ),
                     ),
                   ),
@@ -641,23 +724,6 @@ class _WelcomeHeroState extends State<_WelcomeHero> {
         ? rawDate
         : rawDate[0].toUpperCase() + rawDate.substring(1);
 
-    final bg = isDark
-        ? 'assets/images/home_page/dark_bg_color.png'
-        : 'assets/images/home_page/light_bg_color.png';
-
-    // Subtle theme-aware scrim: stronger on the left (greeting) fading toward
-    // the right so the branded watermark keeps showing through.
-    final scrim = LinearGradient(
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-      colors: [
-        cs.surface.withValues(alpha: isDark ? 0.55 : 0.62),
-        cs.surface.withValues(alpha: isDark ? 0.30 : 0.34),
-        cs.surface.withValues(alpha: 0.0),
-      ],
-      stops: const [0.0, 0.55, 1.0],
-    );
-
     final greetingBlock = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -749,14 +815,24 @@ class _WelcomeHeroState extends State<_WelcomeHero> {
           borderRadius: BorderRadius.circular(20),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(bg),
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        cs.surfaceContainerHigh,
+                        cs.primary.withValues(alpha: .18)
+                      ]
+                    : const [
+                        Color(0xFFEDF4FF),
+                        Color(0xFFD4E5FF),
+                        Color(0xFFBBD6FF)
+                      ],
               ),
+              border: Border.all(color: cs.primary.withValues(alpha: .12)),
             ),
             child: DecoratedBox(
-              decoration: BoxDecoration(gradient: scrim),
+              decoration: const BoxDecoration(),
               child: Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: widget.compact ? 16 : 20,
@@ -899,8 +975,7 @@ class _HeroWeather extends StatelessWidget {
       builder: (context, snapshot) {
         final bundle = snapshot.data;
         final weather = bundle?.today;
-        final forecast =
-            bundle?.forecast ?? const <WeatherForecastDayView>[];
+        final forecast = bundle?.forecast ?? const <WeatherForecastDayView>[];
         final loading = snapshot.connectionState == ConnectionState.waiting;
 
         final IconData icon = weather == null
@@ -912,10 +987,10 @@ class _HeroWeather extends StatelessWidget {
         final condition = location == null
             ? (es ? 'Configura tu ubicación' : 'Set your location')
             : loading
-            ? (es ? 'Cargando…' : 'Loading…')
-            : weather == null
-                ? (es ? 'No disponible' : 'Unavailable')
-                : localizeWeatherSummary(l, weather.summary.summary);
+                ? (es ? 'Cargando…' : 'Loading…')
+                : weather == null
+                    ? (es ? 'No disponible' : 'Unavailable')
+                    : localizeWeatherSummary(l, weather.summary.summary);
         final city = weather?.cityName ??
             location ??
             (es ? 'Perfil → Ubicación' : 'Profile → Location');

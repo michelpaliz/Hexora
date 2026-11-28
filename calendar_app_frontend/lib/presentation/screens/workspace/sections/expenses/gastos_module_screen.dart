@@ -24,11 +24,15 @@ const _kModuleGastos = 'gastos';
 const _kModuleImpuestos = 'impuestos';
 const _kModuleAnalitica = 'analitica';
 const _kModuleModelos = 'modelos';
+// Tax-form exports are not part of the current Gastos workflow. Keep the
+// implementation available for its planned return, but do not expose it in
+// either navigation variant meanwhile.
+const _showTaxFormsModule = false;
 const _kModules = [
   _kModuleGastos,
   _kModuleImpuestos,
   _kModuleAnalitica,
-  _kModuleModelos,
+  if (_showTaxFormsModule) _kModuleModelos,
 ];
 
 // ── Gastos sidebar sections ───────────────────────────────────────────────────
@@ -220,18 +224,20 @@ class _GastosModuleScreenState extends State<GastosModuleScreen> {
         groupId: widget.group.id,
         timezone: widget.group.businessHours?.timezone ?? 'Europe/Madrid',
       ),
-      // 3 – Modelos
-      _PlaceholderGrid(
-        title: _modelosSection == 'all'
-            ? (_isEs ? 'Modelos fiscales' : 'Tax forms')
-            : _modelosSection,
-        subtitle: _isEs
-            ? 'Preparado para exports AEAT y declaraciones futuras.'
-            : 'Prepared for future AEAT exports and tax filings.',
-        cards: _kModelos
-            .where((m) => _modelosSection == 'all' || m.$1 == _modelosSection)
-            .toList(),
-      ),
+      if (_showTaxFormsModule)
+        _PlaceholderGrid(
+          title: _modelosSection == 'all'
+              ? (_isEs ? 'Modelos fiscales' : 'Tax forms')
+              : _modelosSection,
+          subtitle: _isEs
+              ? 'Preparado para exports AEAT y declaraciones futuras.'
+              : 'Prepared for future AEAT exports and tax filings.',
+          cards: _kModelos
+              .where(
+                (m) => _modelosSection == 'all' || m.$1 == _modelosSection,
+              )
+              .toList(),
+        ),
     ];
 
     return Row(
@@ -398,29 +404,30 @@ class _GastosUnifiedRail extends StatelessWidget {
                         ),
                       ],
                     ),
-                    CollapsedNavigationGroup(
-                      title: isEs ? 'Modelos' : 'Tax forms',
-                      icon: Icons.description_outlined,
-                      selected: activeModule == _kModuleModelos,
-                      destinations: [
-                        CollapsedNavigationDestination(
-                          label: isEs ? 'Todos los modelos' : 'All forms',
-                          icon: Icons.grid_view_outlined,
-                          count: _kModelos.length,
-                          selected: activeModule == _kModuleModelos &&
-                              modelosSection == 'all',
-                          onTap: () => selectModel('all'),
-                        ),
-                        for (final model in _kModelos)
+                    if (_showTaxFormsModule)
+                      CollapsedNavigationGroup(
+                        title: isEs ? 'Modelos' : 'Tax forms',
+                        icon: Icons.description_outlined,
+                        selected: activeModule == _kModuleModelos,
+                        destinations: [
                           CollapsedNavigationDestination(
-                            label: model.$1,
-                            icon: Icons.description_outlined,
+                            label: isEs ? 'Todos los modelos' : 'All forms',
+                            icon: Icons.grid_view_outlined,
+                            count: _kModelos.length,
                             selected: activeModule == _kModuleModelos &&
-                                modelosSection == model.$1,
-                            onTap: () => selectModel(model.$1),
+                                modelosSection == 'all',
+                            onTap: () => selectModel('all'),
                           ),
-                      ],
-                    ),
+                          for (final model in _kModelos)
+                            CollapsedNavigationDestination(
+                              label: model.$1,
+                              icon: Icons.description_outlined,
+                              selected: activeModule == _kModuleModelos &&
+                                  modelosSection == model.$1,
+                              onTap: () => selectModel(model.$1),
+                            ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -489,32 +496,33 @@ class _GastosUnifiedRail extends StatelessWidget {
                           onPressed: () => onModuleSelected(_kModuleAnalitica),
                         ),
                       ),
-                      NavigationGroup(
-                        title: isEs ? 'Modelos' : 'Tax forms',
-                        icon: Icons.description_outlined,
-                        storageId: 'expenses-tree-models',
-                        initiallyExpanded: activeModule == _kModuleModelos,
-                        child: Column(
-                          children: [
-                            GroupInvoicesSubMenuItem(
-                              icon: Icons.grid_view_outlined,
-                              label: isEs ? 'Todos los modelos' : 'All forms',
-                              count: _kModelos.length,
-                              selected: activeModule == _kModuleModelos &&
-                                  modelosSection == 'all',
-                              onPressed: () => selectModel('all'),
-                            ),
-                            for (final model in _kModelos)
+                      if (_showTaxFormsModule)
+                        NavigationGroup(
+                          title: isEs ? 'Modelos' : 'Tax forms',
+                          icon: Icons.description_outlined,
+                          storageId: 'expenses-tree-models',
+                          initiallyExpanded: activeModule == _kModuleModelos,
+                          child: Column(
+                            children: [
                               GroupInvoicesSubMenuItem(
-                                icon: Icons.description_outlined,
-                                label: model.$1,
+                                icon: Icons.grid_view_outlined,
+                                label: isEs ? 'Todos los modelos' : 'All forms',
+                                count: _kModelos.length,
                                 selected: activeModule == _kModuleModelos &&
-                                    modelosSection == model.$1,
-                                onPressed: () => selectModel(model.$1),
+                                    modelosSection == 'all',
+                                onPressed: () => selectModel('all'),
                               ),
-                          ],
+                              for (final model in _kModelos)
+                                GroupInvoicesSubMenuItem(
+                                  icon: Icons.description_outlined,
+                                  label: model.$1,
+                                  selected: activeModule == _kModuleModelos &&
+                                      modelosSection == model.$1,
+                                  onPressed: () => selectModel(model.$1),
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),

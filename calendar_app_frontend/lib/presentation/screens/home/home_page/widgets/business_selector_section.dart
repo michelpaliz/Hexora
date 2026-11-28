@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'home_quick_guide.dart';
 import 'package:provider/provider.dart';
 
 import 'package:hexora/models/groups/group.dart';
@@ -22,7 +23,9 @@ import 'package:hexora/theme/typography/typography_extension.dart';
 /// (`UserDomain` + `GroupDomain.watchGroupsForUser`). Favorites are saved as
 /// account preferences and follow the user across devices.
 class BusinessSelectorSection extends StatefulWidget {
-  const BusinessSelectorSection({super.key});
+  const BusinessSelectorSection({super.key, this.showHelp = true});
+
+  final bool showHelp;
 
   @override
   State<BusinessSelectorSection> createState() =>
@@ -59,29 +62,7 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
 
   bool get _isSpanish => Localizations.localeOf(context).languageCode == 'es';
 
-  Future<void> _openCreateGroup() async {
-    if (kIsWeb) {
-      await showHexoraDialog<void>(
-        context: context,
-        builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 760,
-              maxHeight: MediaQuery.sizeOf(context).height - 48,
-            ),
-            child: const CreateGroupData(),
-          ),
-        ),
-      );
-      return;
-    }
-    if (!mounted) return;
-    await Navigator.pushNamed(context, AppRoutes.createGroupData);
-  }
+  Future<void> _openCreateGroup() => openHomeCreateBusiness(context);
 
   Future<void> _openGroup(GroupDomain groupDomain, Group group) async {
     groupDomain.currentGroup = group;
@@ -233,8 +214,10 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
               );
             },
           ),
-        const SizedBox(height: 18),
-        _helpBanner(cs),
+        if (widget.showHelp) ...[
+          const SizedBox(height: 18),
+          _helpBanner(cs),
+        ],
       ],
     );
   }
@@ -488,7 +471,7 @@ class _BusinessSelectorSectionState extends State<BusinessSelectorSection> {
           ),
           const SizedBox(width: 12),
           OutlinedButton.icon(
-            onPressed: _openCreateGroup,
+            onPressed: () => showHomeQuickGuide(context),
             icon: const Icon(Icons.menu_book_outlined, size: 16),
             label: Text(_isSpanish ? 'Ver guía rápida' : 'Quick guide'),
             style: OutlinedButton.styleFrom(
@@ -781,4 +764,27 @@ class _BusinessCardState extends State<_BusinessCard> {
       ],
     );
   }
+}
+
+Future<void> openHomeCreateBusiness(BuildContext context) async {
+  if (kIsWeb) {
+    await showHexoraDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 760,
+            maxHeight: MediaQuery.sizeOf(context).height - 48,
+          ),
+          child: const CreateGroupData(),
+        ),
+      ),
+    );
+    return;
+  }
+  if (!context.mounted) return;
+  await Navigator.pushNamed(context, AppRoutes.createGroupData);
 }

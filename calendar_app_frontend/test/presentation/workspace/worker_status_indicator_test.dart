@@ -10,6 +10,7 @@ Future<void> _pumpIndicator(
   WidgetTester tester, {
   required PresenceDomain presence,
   List<String> memberIds = const ['one', 'two'],
+  VoidCallback? onPressed,
 }) async {
   tester.view.physicalSize = const Size(1200, 800);
   tester.view.devicePixelRatio = 1;
@@ -33,6 +34,7 @@ Future<void> _pumpIndicator(
             child: WorkerStatusIndicator(
               memberIds: memberIds,
               groupRoles: const {},
+              onPressed: onPressed ?? () {},
             ),
           ),
         ),
@@ -50,8 +52,9 @@ void main() {
 
     await _pumpIndicator(tester, presence: presence);
 
-    expect(find.text('—'), findsOneWidget);
-    expect(find.byTooltip('Usuarios conectados'), findsOneWidget);
+    expect(find.byTooltip('Miembros · estado no disponible'), findsOneWidget);
+    expect(find.byKey(const ValueKey('workspace-members-online-indicator')),
+        findsNothing);
   });
 
   testWidgets('shows the connected member count', (tester) async {
@@ -63,8 +66,9 @@ void main() {
 
     await _pumpIndicator(tester, presence: presence);
 
-    expect(find.text('1'), findsOneWidget);
-    expect(find.text('—'), findsNothing);
+    expect(find.byTooltip('Miembros · 1 conectados'), findsOneWidget);
+    expect(find.byKey(const ValueKey('workspace-members-online-indicator')),
+        findsOneWidget);
   });
 
   testWidgets('only counts users belonging to the selected group',
@@ -78,7 +82,21 @@ void main() {
 
     await _pumpIndicator(tester, presence: presence);
 
-    expect(find.text('1'), findsOneWidget);
-    expect(find.text('2'), findsNothing);
+    expect(find.byTooltip('Miembros · 1 conectados'), findsOneWidget);
+  });
+
+  testWidgets('opens the members workspace when pressed', (tester) async {
+    final presence = PresenceDomain();
+    addTearDown(presence.dispose);
+    var pressed = false;
+
+    await _pumpIndicator(
+      tester,
+      presence: presence,
+      onPressed: () => pressed = true,
+    );
+    await tester.tap(find.byKey(const ValueKey('workspace-members-button')));
+
+    expect(pressed, isTrue);
   });
 }

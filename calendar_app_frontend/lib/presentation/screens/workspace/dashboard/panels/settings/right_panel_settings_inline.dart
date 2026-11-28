@@ -31,7 +31,12 @@ import 'package:provider/provider.dart';
 
 class SettingsInlinePanel extends StatefulWidget {
   final Group group;
-  const SettingsInlinePanel({super.key, required this.group});
+  final String initialSection;
+  const SettingsInlinePanel({
+    super.key,
+    required this.group,
+    this.initialSection = 'sysconfig',
+  });
 
   @override
   State<SettingsInlinePanel> createState() => _SettingsInlinePanelState();
@@ -45,7 +50,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
   /// The personal settings dashboard uses two columns, so it gets more room.
   static const double _personalSettingsMaxWidth = 1240;
 
-  String _selectedSection = 'sysconfig';
+  late String _selectedSection;
   bool _menuCollapsed = false;
   late NotificationViewModel _notificationViewModel;
   late MembersVM _membersVM;
@@ -62,6 +67,12 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
   bool _notificationsRequested = false;
   bool _membersRequested = false;
   bool _billingRequested = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedSection = widget.initialSection;
+  }
 
   @override
   void didChangeDependencies() {

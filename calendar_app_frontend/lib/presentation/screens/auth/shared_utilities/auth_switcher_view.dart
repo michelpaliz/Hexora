@@ -7,6 +7,7 @@ import 'package:hexora/presentation/screens/auth/register/ui/form/register_form.
 import 'package:hexora/presentation/utils/logo/hexora_brand.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'auth_shared_widgets.dart';
+import 'auth_web_presentation.dart';
 import 'package:hexora/presentation/shared/widgets/announcements/announcement_panel.dart';
 
 enum AuthMode { register, login, forgot }
@@ -37,15 +38,31 @@ class _AuthSwitcherViewState extends State<AuthSwitcherView> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: DecoratedBox(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/home_page/dark_bg_color.png'),
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-          ),
-        ),
+        decoration: kIsWeb
+            ? BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: dark
+                      ? const [Color(0xFF151C2B), Color(0xFF101521)]
+                      : const [
+                          Color(0xFFEAF2FF),
+                          Color(0xFFF7F9FE),
+                          Color(0xFFDCEAFF)
+                        ],
+                ),
+              )
+            : const BoxDecoration(
+                image: DecorationImage(
+                  image:
+                      AssetImage('assets/images/home_page/dark_bg_color.png'),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                ),
+              ),
         child: SafeArea(
           child: LayoutBuilder(builder: (context, constraints) {
             final compact = constraints.maxWidth < 600;
@@ -56,9 +73,26 @@ class _AuthSwitcherViewState extends State<AuthSwitcherView> {
                   key: ValueKey(
                       desktop ? 'auth-news-desktop' : 'auth-news-inline'),
                   padding: desktop
-                      ? const EdgeInsets.only(top: 80)
+                      ? const EdgeInsets.only(top: kIsWeb ? 0 : 80)
                       : const EdgeInsets.all(4),
-                  child: const AnnouncementPanel(
+                  child: AnnouncementPanel(
+                    onViewAll: kIsWeb
+                        ? () => showModalBottomSheet<void>(
+                              context: context,
+                              isScrollControlled: true,
+                              showDragHandle: true,
+                              builder: (context) => const SafeArea(
+                                  child: SingleChildScrollView(
+                                padding: EdgeInsets.all(24),
+                                child: AnnouncementPanel(
+                                  placement: 'authentication',
+                                  publicOnly: true,
+                                  limit: 20,
+                                  showEmptyState: true,
+                                ),
+                              )),
+                            )
+                        : null,
                     placement: 'authentication',
                     publicOnly: true,
                     limit: 3,
@@ -69,21 +103,30 @@ class _AuthSwitcherViewState extends State<AuthSwitcherView> {
 
             Widget authContent({required bool showInlineNews}) =>
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
+                  constraints:
+                      const BoxConstraints(maxWidth: kIsWeb ? 520 : 480),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Center(
-                        child: constraints.maxWidth >= 1000
-                            ? const HexoraWordmark(width: 180)
-                            : const HexoraBrandIcon(size: 56),
+                      Visibility(
+                        visible: !(kIsWeb && showDesktopNews),
+                        maintainState: true,
+                        child: Center(
+                          child: kIsWeb
+                              ? const HexoraSurfaceWordmark()
+                              : constraints.maxWidth >= 1000
+                                  ? const HexoraWordmark(width: 180)
+                                  : const HexoraBrandIcon(size: 56),
+                        ),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: kIsWeb && showDesktopNews ? 0 : 24),
                       buildAuthCard(
                         key: const ValueKey('auth-card'),
+                        softShadow: kIsWeb,
                         context: context,
-                        padding: EdgeInsets.all(compact ? 20 : 28),
+                        padding:
+                            EdgeInsets.all(compact ? 20 : (kIsWeb ? 32 : 28)),
                         child: AutofillGroup(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -96,10 +139,17 @@ class _AuthSwitcherViewState extends State<AuthSwitcherView> {
                                   segments: [
                                     ButtonSegment(
                                       value: AuthMode.register,
+                                      icon: kIsWeb
+                                          ? const Icon(
+                                              Icons.person_outline_rounded)
+                                          : null,
                                       label: Text(l10n.register),
                                     ),
                                     ButtonSegment(
                                       value: AuthMode.login,
+                                      icon: kIsWeb
+                                          ? const Icon(Icons.login_rounded)
+                                          : null,
                                       label: Text(l10n.login),
                                     ),
                                   ],
@@ -171,22 +221,33 @@ class _AuthSwitcherViewState extends State<AuthSwitcherView> {
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: EdgeInsets.fromLTRB(
                 compact ? 16 : 32,
-                compact ? 64 : 32,
+                kIsWeb ? 72 : (compact ? 64 : 32),
                 compact ? 16 : 32,
                 compact ? 20 : 32,
               ),
               child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                constraints: BoxConstraints(
+                  minHeight: (constraints.maxHeight -
+                          (kIsWeb ? 72 : (compact ? 64 : 32)) -
+                          (compact ? 20 : 32))
+                      .clamp(0, double.infinity),
+                ),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxWidth: showDesktopNews ? 1040 : 480,
+                      maxWidth: showDesktopNews
+                          ? (kIsWeb ? 1120 : 1040)
+                          : (kIsWeb ? 520 : 480),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (showDesktopNews) ...[
-                          Expanded(child: newsPanel(desktop: true)),
+                          Expanded(
+                              child: kIsWeb
+                                  ? AuthWebIntroduction(
+                                      news: newsPanel(desktop: true))
+                                  : newsPanel(desktop: true)),
                           const SizedBox(width: 48),
                         ],
                         Expanded(
@@ -206,11 +267,16 @@ class _AuthSwitcherViewState extends State<AuthSwitcherView> {
             );
             return Stack(
               children: [
+                if (kIsWeb)
+                  Positioned.fill(
+                      child: IgnorePointer(
+                          child: CustomPaint(
+                              painter: AuthWebBackdrop(dark: dark)))),
                 Positioned.fill(child: content),
                 Positioned(
                   top: compact ? 12 : 16,
                   right: compact ? 16 : 24,
-                  child: const AuthLanguageSelector(),
+                  child: const AuthLanguageSelector(neutralSurface: kIsWeb),
                 ),
               ],
             );

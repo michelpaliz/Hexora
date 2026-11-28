@@ -8,6 +8,7 @@ import 'package:hexora/theme/components/hexora_ai_output_tokens.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 import '../insights_chat_message.dart';
+import '../insights_money_format.dart';
 import '../insights_date_range.dart';
 import '../insights_json_utils.dart';
 import 'insights_chat_sheet_base.dart';
@@ -57,7 +58,9 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
         .length;
     final rawTotal = table?['totalAvailable'] ?? table?['totalRows'];
     final total = rawTotal is num ? rawTotal.toInt() : rows;
-    final amount = summary?['amountFormatted']?.toString().trim() ?? '';
+    final amount = formatInsightsMoney(
+        context, summary?['amount'] ?? summary?['amountFormatted'],
+        currency: summary?['currency']?.toString());
     final label = summary?['label']?.toString().trim();
     final title = label?.isNotEmpty == true
         ? label!
@@ -267,9 +270,7 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
     num total, {
     String fallbackCurrency = 'EUR',
   }) {
-    final formatted = StatementsFormatters.formatAmount(context, total);
-    final currency = fallbackCurrency.trim().isEmpty ? 'EUR' : fallbackCurrency;
-    return '$formatted $currency';
+    return formatInsightsMoney(context, total, currency: fallbackCurrency);
   }
 
   @override
@@ -572,8 +573,9 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
                         true)
                 ? summaryRow![rightAlignedColumnKey].toString().trim()
                 : '');
-    final rawSummaryAmount =
-        rawSummaryAmountValue.replaceFirst(RegExp(r'\s*EUR$'), ' €');
+    final rawSummaryAmount = formatInsightsMoney(
+        context, summary?['amount'] ?? rawSummaryAmountValue,
+        currency: summary?['currency']?.toString());
     final filteredTotal = tableFilterActive && !usesRemoteTable
         ? dataRows
             .map((row) => tableRowAmount(

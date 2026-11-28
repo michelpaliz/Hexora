@@ -1,7 +1,7 @@
 ---
 announcement_key: hexora-news-updates
 status: draft
-verification: not_run
+verification: targeted_ui_checks_passed
 release_status: unreleased
 category: feature
 visibility: public
@@ -25,7 +25,7 @@ Keep up with new features, improvements, and important changes directly in Hexor
 
 ### Content
 
-Hexora now brings product updates into the application. You can see recent public news before signing in, find relevant updates on Home, and open the complete News & Updates history from Settings.
+Hexora now brings product updates into the application. You can see recent public news before signing in and find relevant updates on Home. Opening the complete News & Updates history from Home now uses a responsive dialog, so your current workspace stays in place.
 
 Announcements follow your selected interface language, so the same update is available in English and Spanish.
 
@@ -41,6 +41,6 @@ Consulta nuevas funciones, mejoras y cambios importantes directamente desde Hexo
 
 ### Contenido
 
-Hexora ahora muestra las novedades del producto dentro de la aplicación. Puedes consultar las noticias públicas recientes antes de iniciar sesión, encontrar actualizaciones relevantes en Inicio y abrir el historial completo de Novedades desde Ajustes.
+Hexora ahora muestra las novedades del producto dentro de la aplicación. Puedes consultar las noticias públicas recientes antes de iniciar sesión y encontrar actualizaciones relevantes en Inicio. El historial completo de Novedades se abre desde Inicio en un diálogo adaptable, por lo que tu espacio de trabajo actual permanece en su sitio.
 
 Los anuncios respetan el idioma seleccionado en la interfaz, por lo que cada actualización está disponible en español e inglés.

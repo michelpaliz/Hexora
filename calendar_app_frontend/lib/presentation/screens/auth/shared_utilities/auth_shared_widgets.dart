@@ -9,13 +9,16 @@ import 'package:provider/provider.dart';
 const double kAuthHeaderHeight = 280;
 
 class AuthLanguageSelector extends StatelessWidget {
-  const AuthLanguageSelector({super.key});
+  const AuthLanguageSelector({super.key, this.neutralSurface = false});
+
+  final bool neutralSurface;
 
   @override
   Widget build(BuildContext context) {
     final locale = context.watch<LocaleProvider>();
     final selected = locale.locale.languageCode;
     final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final colors = Theme.of(context).colorScheme;
 
     Widget option(String code) {
       final active = selected == code.toLowerCase();
@@ -34,14 +37,20 @@ class AuthLanguageSelector extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
             decoration: BoxDecoration(
               color: active
-                  ? AppColors.white.withValues(alpha: 0.18)
+                  ? (neutralSurface
+                      ? colors.primaryContainer
+                      : AppColors.white.withValues(alpha: 0.18))
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(7),
             ),
             child: Text(
               code,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppColors.navigationForeground,
+                    color: neutralSurface
+                        ? (active
+                            ? colors.onPrimaryContainer
+                            : colors.onSurfaceVariant)
+                        : AppColors.navigationForeground,
                     fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                   ),
             ),
@@ -54,19 +63,23 @@ class AuthLanguageSelector extends StatelessWidget {
       message: isEs ? 'Cambiar idioma' : 'Change language',
       child: Material(
         key: const ValueKey('auth-language-selector'),
-        color: AppColors.dashboardTopBar.withValues(alpha: 0.88),
+        color: neutralSurface
+            ? colors.surface
+            : AppColors.dashboardTopBar.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(10),
         child: Padding(
           padding: const EdgeInsets.all(3),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
-                padding: EdgeInsets.only(left: 7, right: 3),
+              Padding(
+                padding: const EdgeInsets.only(left: 7, right: 3),
                 child: Icon(
                   Icons.language_rounded,
                   size: 17,
-                  color: AppColors.navigationForeground,
+                  color: neutralSurface
+                      ? colors.onSurfaceVariant
+                      : AppColors.navigationForeground,
                 ),
               ),
               option('ES'),
@@ -82,6 +95,7 @@ class AuthLanguageSelector extends StatelessWidget {
 /// Shared card builder
 Widget buildAuthCard({
   Key? key,
+  bool softShadow = false,
   required BuildContext context,
   required Widget child,
   EdgeInsetsGeometry padding = const EdgeInsets.all(28),
@@ -89,11 +103,12 @@ Widget buildAuthCard({
   return Card(
     key: key,
     margin: EdgeInsets.zero,
-    elevation: 0,
+    elevation: softShadow ? 8 : 0,
+    shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: .12),
     color: Theme.of(context).colorScheme.surface,
     surfaceTintColor: Colors.transparent,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(softShadow ? 24 : 20),
       side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
     ),
     child: Padding(

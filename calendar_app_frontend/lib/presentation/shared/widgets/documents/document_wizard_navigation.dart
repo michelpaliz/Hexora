@@ -352,6 +352,7 @@ class DocumentWizardMobileSelector extends StatelessWidget {
     required this.onSectionSelected,
     this.keyPrefix = 'document-wizard',
     this.useInvoiceLegacyKeys = false,
+    this.canSelectStep,
   });
 
   final List<DocumentWizardStep> steps;
@@ -361,6 +362,7 @@ class DocumentWizardMobileSelector extends StatelessWidget {
   final ValueChanged<String> onSectionSelected;
   final String keyPrefix;
   final bool useInvoiceLegacyKeys;
+  final bool Function(int)? canSelectStep;
 
   @override
   Widget build(BuildContext context) {
@@ -392,10 +394,14 @@ class DocumentWizardMobileSelector extends StatelessWidget {
       },
       itemBuilder: (context) => [
         for (var index = 0; index < steps.length; index++) ...[
-          PopupMenuItem(value: 'step:$index', child: Text(steps[index].label)),
+          PopupMenuItem(
+              value: 'step:$index',
+              enabled: canSelectStep?.call(index) ?? true,
+              child: Text(steps[index].label)),
           for (final section in steps[index].sections)
             PopupMenuItem(
               value: 'section:${section.id}',
+              enabled: canSelectStep?.call(index) ?? true,
               child: Padding(
                 padding: const EdgeInsets.only(left: 20),
                 child: Row(

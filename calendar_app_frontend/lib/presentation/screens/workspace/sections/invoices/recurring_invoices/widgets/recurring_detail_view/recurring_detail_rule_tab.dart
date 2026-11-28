@@ -296,13 +296,31 @@ class RecurringDetailRuleTab extends StatelessWidget {
 
     Widget whiteCard({required Key key, required Widget child}) => Container(
           key: key,
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: cs.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: cs.outlineVariant.withValues(alpha: .5)),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: cs.primary.withValues(alpha: .10)),
+            boxShadow: [
+              BoxShadow(
+                color: cs.primary.withValues(alpha: .035),
+                blurRadius: 14,
+                offset: const Offset(0, 3),
+              )
+            ],
           ),
           child: child,
+        );
+
+    Widget headingIcon(IconData icon) => Container(
+          width: 42,
+          height: 42,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            color: cs.primary.withValues(alpha: .08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: cs.primary, size: 23),
         );
 
     Widget summaryCard() {
@@ -314,12 +332,13 @@ class RecurringDetailRuleTab extends StatelessWidget {
           children: [
             Row(
               children: [
+                headingIcon(Icons.description_outlined),
                 Expanded(
                   child: Text(
                     isEs ? 'Resumen de cambios' : 'Change summary',
                     style: t.bodyMedium.copyWith(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
                       color: cs.onSurface,
                     ),
                   ),
@@ -363,8 +382,7 @@ class RecurringDetailRuleTab extends StatelessWidget {
               Row(
                 key: const ValueKey('rule-no-changes'),
                 children: [
-                  Icon(Icons.check_circle_outline_rounded,
-                      size: 16, color: cs.onSurfaceVariant),
+                  Icon(Icons.check_circle_rounded, size: 20, color: cs.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -423,24 +441,33 @@ class RecurringDetailRuleTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              isEs ? 'Programación de la regla' : 'Rule schedule',
-              style: t.bodyMedium.copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: cs.onSurface,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              isEs
-                  ? 'Define cuándo se generan las facturas.'
-                  : 'Control when invoices are generated.',
-              style: t.bodySmall.copyWith(
-                fontSize: 12,
-                color: cs.onSurfaceVariant,
-              ),
-            ),
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              headingIcon(Icons.event_note_rounded),
+              Expanded(
+                  child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isEs ? 'Programación de la regla' : 'Rule schedule',
+                    style: t.bodyMedium.copyWith(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isEs
+                        ? 'Define cuándo se generan las facturas.'
+                        : 'Control when invoices are generated.',
+                    style: t.bodySmall.copyWith(
+                      fontSize: 12,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              )),
+            ]),
             const SizedBox(height: 12),
             form,
           ],
@@ -453,12 +480,12 @@ class RecurringDetailRuleTab extends StatelessWidget {
         ? null
         : Container(
             key: const ValueKey('rule-action-bar'),
-            padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
             decoration: BoxDecoration(
               color: cs.surface,
-              border: Border(
-                top: BorderSide(color: cs.outlineVariant.withValues(alpha: .5)),
-              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: cs.primary.withValues(alpha: .10)),
             ),
             child: Row(
               children: [

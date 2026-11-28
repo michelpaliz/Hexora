@@ -5,6 +5,7 @@ import '../insights_action_tokens.dart';
 import '../insights_chat_enums.dart';
 import '../insights_chat_menu.dart';
 import '../insights_chat_message.dart';
+import '../insights_question_suggestions.dart';
 import 'insights_chat_sheet_base.dart';
 
 mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
@@ -88,6 +89,18 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
                   height: 1.35,
                 ),
               ),
+              if (openQuestions) ...[
+                const SizedBox(height: 14),
+                InsightsQuestionSuggestions(
+                  enabled: !runtime.sending,
+                  onSelected: (question) {
+                    inputCtrl.text = question;
+                    inputCtrl.selection =
+                        TextSelection.collapsed(offset: question.length);
+                    chatComposerFocusNode.requestFocus();
+                  },
+                ),
+              ],
               if (!openQuestions) ...[
                 const SizedBox(height: 9),
                 Wrap(

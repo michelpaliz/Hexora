@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/downloads/download_job.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
@@ -195,7 +196,8 @@ class _DownloadJobsTopMenuState extends State<DownloadJobsTopMenu> {
                 width: 20,
                 height: 20,
                 child: Stack(alignment: Alignment.center, children: [
-                  const Icon(Icons.download_rounded, size: 19),
+                  const Icon(LucideIcons.download,
+                      size: NavigationTokens.iconSize),
                   if (hasActiveJobs && nextRefreshAt != null)
                     TweenAnimationBuilder<double>(
                       key: ValueKey(nextRefreshAt.millisecondsSinceEpoch),

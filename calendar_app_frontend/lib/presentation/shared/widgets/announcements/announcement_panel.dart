@@ -13,6 +13,7 @@ class AnnouncementPanel extends StatefulWidget {
     this.publicOnly = false,
     this.limit = 3,
     this.compact = false,
+    this.tiles = false,
     this.showHeader = true,
     this.showEmptyState = false,
     this.onViewAll,
@@ -22,6 +23,7 @@ class AnnouncementPanel extends StatefulWidget {
   final bool publicOnly;
   final int limit;
   final bool compact;
+  final bool tiles;
   final bool showHeader;
   final bool showEmptyState;
   final VoidCallback? onViewAll;
@@ -90,7 +92,34 @@ class _AnnouncementPanelState extends State<AnnouncementPanel> {
               _AnnouncementEmptyState(
                 isSpanish: isEs,
                 isLoading: isLoading,
+                hasError: snapshot.hasError,
+                onRetry: () => setState(() {
+                  _request = _api.list(
+                      language: _language!,
+                      placement: widget.placement,
+                      limit: widget.limit,
+                      publicOnly: widget.publicOnly);
+                }),
               )
+            else if (widget.tiles)
+              LayoutBuilder(builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 720
+                    ? 3
+                    : constraints.maxWidth >= 480
+                        ? 2
+                        : 1;
+                final width =
+                    (constraints.maxWidth - (columns - 1) * 12) / columns;
+                return Wrap(spacing: 12, runSpacing: 12, children: [
+                  for (final item in items)
+                    SizedBox(
+                        width: width,
+                        child: _AnnouncementTile(
+                            announcement: item,
+                            isSpanish: isEs,
+                            onOpen: () => _open(item))),
+                ]);
+              })
             else
               for (var index = 0; index < items.length; index++) ...[
                 _AnnouncementCard(
@@ -134,10 +163,14 @@ class _AnnouncementEmptyState extends StatelessWidget {
   const _AnnouncementEmptyState({
     required this.isSpanish,
     required this.isLoading,
+    required this.hasError,
+    required this.onRetry,
   });
 
   final bool isSpanish;
   final bool isLoading;
+  final bool hasError;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -171,14 +204,23 @@ class _AnnouncementEmptyState extends StatelessWidget {
           Text(
             isLoading
                 ? (isSpanish ? 'Cargando novedades…' : 'Loading updates…')
-                : (isSpanish
-                    ? 'Las próximas novedades aparecerán aquí.'
-                    : 'New updates will appear here.'),
+                : hasError
+                    ? (isSpanish
+                        ? 'No se pudieron cargar las novedades.'
+                        : 'Updates could not be loaded.')
+                    : (isSpanish
+                        ? 'Las próximas novedades aparecerán aquí.'
+                        : 'New updates will appear here.'),
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colors.onSurfaceVariant,
             ),
           ),
+          if (hasError)
+            TextButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(isSpanish ? 'Reintentar' : 'Retry')),
         ],
       ),
     );
@@ -259,6 +301,91 @@ class _AnnouncementCard extends StatelessWidget {
           ]),
         ),
       ),
+    );
+  }
+}
+
+class _AnnouncementTile extends StatelessWidget {
+  const _AnnouncementTile(
+      {required this.announcement,
+      required this.isSpanish,
+      required this.onOpen});
+  final Announcement announcement;
+  final bool isSpanish;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final category = switch (announcement.category) {
+      'feature' => isSpanish ? 'Novedad' : 'New',
+      'improvement' => isSpanish ? 'Mejora' : 'Improvement',
+      'bug_fix' => isSpanish ? 'Corrección' : 'Fix',
+      'maintenance' => isSpanish ? 'Mantenimiento' : 'Maintenance',
+      _ => isSpanish ? 'Actualización' : 'Update',
+    };
+    return Material(
+      color: cs.primary.withValues(alpha: .035),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: cs.primary.withValues(alpha: .12))),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+          onTap: onOpen,
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(_categoryIcon(announcement.category),
+                    color: cs.primary, size: 26),
+                const SizedBox(width: 10),
+                Flexible(
+                    child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                            color: cs.primary.withValues(alpha: .10),
+                            borderRadius: BorderRadius.circular(20)),
+                        child: Text(category,
+                            style: TextStyle(
+                                color: cs.primary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600)))),
+              ]),
+              const SizedBox(height: 14),
+              Text(announcement.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text(announcement.description,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: cs.onSurfaceVariant, height: 1.4)),
+              const SizedBox(height: 16),
+              if (announcement.publishedAt != null)
+                Row(children: [
+                  Icon(Icons.calendar_today_outlined,
+                      size: 14, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Flexible(
+                      child: Text(
+                          DateFormat.yMMMd(isSpanish ? 'es' : 'en')
+                              .format(announcement.publishedAt!),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant))),
+                ]),
+            ]),
+          )),
     );
   }
 }

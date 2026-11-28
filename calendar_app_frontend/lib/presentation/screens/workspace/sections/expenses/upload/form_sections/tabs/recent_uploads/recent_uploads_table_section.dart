@@ -110,12 +110,193 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
                     ),
                   ),
                 ),
+                _buildExpenseTableTotalsFooter(t, cs, isSpanish),
               ],
             ),
           ),
         ),
       );
     });
+  }
+
+  /// Stays visible beneath the supplier-invoice rows and uses the exact same
+  /// column geometry as the header. This keeps financial totals readable while
+  /// scrolling without turning the summary into a disconnected toolbar.
+  Widget _buildExpenseTableTotalsFooter(
+    AppTypography t,
+    ColorScheme cs,
+    bool isSpanish,
+  ) {
+    final summary = _summaryForCurrentFilter();
+    final summaryCount = summary?['count'];
+    final count =
+        summaryCount is num ? summaryCount.toInt() : _visibleUploads.length;
+    final subtotal = _summaryNum(summary, 'subtotal');
+    final taxSum = _summaryNum(summary, 'taxTotal');
+    final total = _summaryNum(summary, 'total');
+    final currency = _summaryCurrency(summary);
+    final adjustments = _summaryAdjustments(summary, isSpanish);
+    final residual = adjustments.isEmpty ? _summaryResidual(summary) : 0.0;
+    final loading = _summaryLoading[_selectedQuarterFilter ?? 0] == true;
+    final error = _summaryErrors[_selectedQuarterFilter ?? 0];
+
+    Widget financialCell({
+      required double width,
+      required String label,
+      required String value,
+      bool emphasized = false,
+    }) =>
+        SizedBox(
+          width: width,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: RichText(
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '$label ',
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    TextSpan(
+                      text: value,
+                      style: t.bodySmall.copyWith(
+                        color: emphasized ? cs.primary : cs.onSurface,
+                        fontSize: emphasized ? 12.5 : 11.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+    final statusText = adjustments.isNotEmpty
+        ? adjustments
+            .map((adjustment) =>
+                '${adjustment.label} ${_formatMoney(adjustment.value)}')
+            .join(' · ')
+        : residual.abs() >= .01
+            ? '${isSpanish ? 'Diferencia' : 'Difference'} ${_formatMoney(residual)}'
+            : '';
+
+    return Container(
+      key: const ValueKey('expense-table-totals-footer'),
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(
+          top: BorderSide(color: cs.outlineVariant.withValues(alpha: .7)),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: _supplierWidth,
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: loading
+                  ? Row(mainAxisSize: MainAxisSize.min, children: [
+                      SizedBox.square(
+                        dimension: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.8,
+                          color: cs.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isSpanish ? 'Calculando totales' : 'Calculating totals',
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ])
+                  : Text(
+                      (error ?? '').trim().isNotEmpty
+                          ? (isSpanish
+                              ? 'Totales no disponibles'
+                              : 'Totals unavailable')
+                          : '${isSpanish ? 'Total' : 'Total'} · $count ${isSpanish ? (count == 1 ? 'gasto' : 'gastos') : (count == 1 ? 'expense' : 'expenses')}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall.copyWith(
+                        color: (error ?? '').trim().isNotEmpty
+                            ? cs.error
+                            : cs.onSurface,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: _invoiceWidth),
+          if (_visibleFinancialColumns.contains(HexoraFinancialColumn.date))
+            const SizedBox(width: _dateWidth),
+          if (_visibleFinancialColumns
+              .contains(HexoraFinancialColumn.taxableBase))
+            financialCell(
+              width: _baseWidth,
+              label: isSpanish ? 'Base' : 'Base',
+              value: loading || (error ?? '').trim().isNotEmpty
+                  ? '—'
+                  : _formatMoney(subtotal),
+            ),
+          if (_visibleFinancialColumns.contains(HexoraFinancialColumn.vat))
+            financialCell(
+              width: _vatWidth,
+              label: 'IVA',
+              value: loading || (error ?? '').trim().isNotEmpty
+                  ? '—'
+                  : _formatMoney(taxSum),
+            ),
+          if (_visibleFinancialColumns
+              .contains(HexoraFinancialColumn.total)) ...[
+            financialCell(
+              width: _totalWidth,
+              label: isSpanish ? 'Total' : 'Total',
+              value: loading || (error ?? '').trim().isNotEmpty
+                  ? '—'
+                  : '${_formatMoney(total)} $currency',
+              emphasized: true,
+            ),
+            const SizedBox(width: _totalStatusGap),
+          ],
+          SizedBox(
+            width: _vatStateWidth,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: statusText.isEmpty
+                    ? const SizedBox.shrink()
+                    : Text(
+                        statusText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodySmall.copyWith(
+                          color: cs.error,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(width: _actionsWidth),
+        ],
+      ),
+    );
   }
 
   Widget _buildExpenseTableHeader(ColorScheme cs, bool isSpanish) {

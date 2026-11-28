@@ -305,6 +305,45 @@ void main() {
     expect(manager.activeIdentity, const WorkspaceTabIdentity('bank'));
   });
 
+  testWidgets('hot reload refreshes cached chrome placement', (tester) async {
+    final manager = WorkspaceTabManager(businessId: 'business-1');
+    manager.openOrActivateTab(_tab('businessChat'));
+    var legacyWrapper = true;
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: WorkspaceContent(
+          manager: manager,
+          builder: (_, tab) {
+            const layout = Row(children: [
+              SizedBox(
+                  width: 220,
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: Text('Menu', key: ValueKey('chat-menu')),
+                  )),
+              Expanded(
+                  child: WorkspaceMainContent(child: Text('Conversation'))),
+            ]);
+            return legacyWrapper
+                ? const WorkspaceMainContent(child: layout)
+                : layout;
+          },
+        ),
+      ),
+    ));
+    expect(find.byType(WorkspaceTabBar), findsNWidgets(2));
+    legacyWrapper = false;
+    tester.element(find.byType(WorkspaceContent)).reassemble();
+    await tester.pumpAndSettle();
+    expect(find.byType(WorkspaceTabBar), findsOneWidget);
+    final menu = tester.getTopLeft(find.byKey(const ValueKey('chat-menu')));
+    final tabs = tester.getTopLeft(find.byType(WorkspaceTabBar));
+    expect(tabs.dy, menu.dy);
+    expect(tabs.dx, greaterThan(menu.dx));
+  });
+
   testWidgets('inactive tab widgets keep their form state', (tester) async {
     final manager = WorkspaceTabManager(businessId: 'business-1');
     manager.openOrActivateTab(_tab('invoice:new'));

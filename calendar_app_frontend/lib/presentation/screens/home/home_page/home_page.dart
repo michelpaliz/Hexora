@@ -122,21 +122,34 @@ class _HomePageState extends State<HomePage> {
             ],
       showAppBar: !isWide,
       showBottomNavAndFab: !isWide,
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1100),
-          child: HomeSliverContent(
-            user: user,
-            isWide: isWide,
-            bottomSafePadding: bottomSafePadding,
-            summaryKey: _summaryKey,
-            phraseKey: _phraseKey,
-            groupsKey: _groupsKey,
-            controller: _scrollController,
-            showSectionNavBar: false,
-            sectionItems: sectionItems,
-            activeSection: _activeSection,
-            onSectionSelected: handleSectionTap,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: Theme.of(context).brightness == Brightness.dark
+                  ? [
+                      Theme.of(context).colorScheme.surface,
+                      Theme.of(context).colorScheme.surfaceContainerLow
+                    ]
+                  : const [Color(0xFFF3F7FF), Color(0xFFE5EFFF)]),
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1440),
+            child: HomeSliverContent(
+              user: user,
+              isWide: isWide,
+              bottomSafePadding: bottomSafePadding,
+              summaryKey: _summaryKey,
+              phraseKey: _phraseKey,
+              groupsKey: _groupsKey,
+              controller: _scrollController,
+              showSectionNavBar: false,
+              sectionItems: sectionItems,
+              activeSection: _activeSection,
+              onSectionSelected: handleSectionTap,
+            ),
           ),
         ),
       ),

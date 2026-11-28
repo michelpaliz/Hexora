@@ -5,7 +5,6 @@ import 'package:hexora/presentation/screens/workspace/dashboard/panels/calendar/
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/edit_group/right_panel_edit_group_inline.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/invoices/right_panel_invoices_inline.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/widgets/right_panel_cta_card.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard/panels/members/right_panel_members_inline.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/notifications/right_panel_notifications_inline.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/profile/right_panel_profile_inline.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/insights/right_panel_insights_inline.dart';
@@ -62,9 +61,10 @@ class GroupDashboardRightPanel extends StatelessWidget {
     Widget content;
     switch (activeAnchor) {
       case 'members':
-        content = MembersInlinePanel(
+        content = SettingsInlinePanel(
+          key: ValueKey('workspace-members-${group.id}'),
           group: group,
-          onSurface: onSurface,
+          initialSection: 'members',
         );
         break;
       case 'services':
@@ -183,7 +183,8 @@ class GroupDashboardRightPanel extends StatelessWidget {
         );
     }
 
-    if (activeAnchor == 'workers' ||
+    if (activeAnchor == 'members' ||
+        activeAnchor == 'workers' ||
         activeAnchor == 'services' ||
         activeAnchor == 'settings' ||
         activeAnchor == 'notifications' ||

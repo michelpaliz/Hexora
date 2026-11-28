@@ -190,6 +190,27 @@ class HexoraGlobalNavBar extends StatelessWidget {
         final navBackground = HexoraGlobalNavColors.backgroundFor(context);
         final navForeground = HexoraGlobalNavColors.foregroundFor(context);
         final headerAtBottom = headerPosition == GlobalHeaderPosition.bottom;
+        final utilityActions = <Widget>[
+          if (downloads != null) downloads!,
+          if (onlineMembers != null) onlineMembers!,
+          if (quickSettings != null) quickSettings!,
+          if (notificationControl != null)
+            notificationControl!
+          else if (onOpenNotifications != null)
+            HexoraNavIconButton(
+              icon: notificationCount > 0
+                  ? LucideIcons.bellRing
+                  : LucideIcons.bell,
+              tooltip: notificationCount > 0
+                  ? (es
+                      ? 'Notificaciones ($notificationCount sin leer)'
+                      : 'Notifications ($notificationCount unread)')
+                  : (es ? 'Notificaciones' : 'Notifications'),
+              selected: notificationsSelected,
+              badgeCount: notificationCount,
+              onPressed: onOpenNotifications,
+            ),
+        ];
         return Container(
           key: const ValueKey('global-nav-surface'),
           height: headerAtBottom
@@ -203,13 +224,6 @@ class HexoraGlobalNavBar extends StatelessWidget {
             color: navBackground,
             image: Theme.of(context).brightness == Brightness.dark
                 ? _brandedBackground
-                : null,
-            border: headerAtBottom
-                ? Border(
-                    top: BorderSide(
-                      color: navForeground.withValues(alpha: 0.14),
-                    ),
-                  )
                 : null,
           ),
           child: Row(
@@ -229,12 +243,13 @@ class HexoraGlobalNavBar extends StatelessWidget {
                 const SizedBox(width: 8),
                 workspaceStatus!,
               ],
-              Container(
-                width: 1,
-                height: 20,
-                margin: const EdgeInsets.symmetric(horizontal: 8),
-                color: navForeground.withValues(alpha: 0.10),
-              ),
+              if (primary.isNotEmpty || grouped.isNotEmpty)
+                Container(
+                  width: 1,
+                  height: 20,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  color: navForeground.withValues(alpha: 0.10),
+                ),
               Expanded(
                 child: _ScrollableNavStrip(
                   isSpanish: es,
@@ -259,37 +274,22 @@ class HexoraGlobalNavBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              if (downloads != null) ...[
-                downloads!,
-                const SizedBox(width: 4),
-              ],
-              if (onlineMembers != null) ...[
-                const SizedBox(width: 4),
-                onlineMembers!,
-              ],
-              if (quickSettings != null) ...[
-                const SizedBox(width: 4),
-                quickSettings!,
-              ],
-              if (notificationControl != null) ...[
-                const SizedBox(width: 4),
-                notificationControl!,
-              ] else if (onOpenNotifications != null) ...[
-                const SizedBox(width: 4),
-                HexoraNavIconButton(
-                  icon: notificationCount > 0
-                      ? LucideIcons.bellRing
-                      : LucideIcons.bell,
-                  tooltip: notificationCount > 0
-                      ? (es
-                          ? 'Notificaciones ($notificationCount sin leer)'
-                          : 'Notifications ($notificationCount unread)')
-                      : (es ? 'Notificaciones' : 'Notifications'),
-                  selected: notificationsSelected,
-                  badgeCount: notificationCount,
-                  onPressed: onOpenNotifications,
+              if (utilityActions.isNotEmpty)
+                SizedBox(
+                  key: const ValueKey('global-nav-utility-actions'),
+                  height: NavigationTokens.globalItemHeight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var index = 0;
+                          index < utilityActions.length;
+                          index++) ...[
+                        if (index > 0) const SizedBox(width: 6),
+                        utilityActions[index],
+                      ],
+                    ],
+                  ),
                 ),
-              ],
               if (profile != null) ...[
                 const SizedBox(width: 10),
                 profile!,

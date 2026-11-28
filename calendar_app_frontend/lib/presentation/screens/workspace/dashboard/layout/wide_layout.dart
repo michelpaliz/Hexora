@@ -171,6 +171,7 @@ class WideLayout extends StatelessWidget {
       return false;
     }
     return const {
+      Sections.home,
       Sections.invoices,
       Sections.invoiceClients,
       Sections.chat,
@@ -181,6 +182,7 @@ class WideLayout extends StatelessWidget {
       Sections.businessChat,
       Sections.workers,
       Sections.settings,
+      Sections.members,
       Sections.notifications,
       Sections.telegram,
       Sections.emails,
@@ -339,9 +341,10 @@ class WideLayout extends StatelessWidget {
           int.tryParse(tab.arguments['navigationRevision'] ?? '') ?? 0,
     );
     if (section == Sections.businessChat) {
-      return WorkspaceMainContent(child: panel);
+      return panel;
     }
     if (section == Sections.settings ||
+        section == Sections.members ||
         section == Sections.workers ||
         section == Sections.notifications ||
         section == Sections.chat) {
@@ -368,6 +371,7 @@ class _UnifiedModuleSwitcher extends StatelessWidget {
   Widget build(BuildContext context) {
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     final active = activeDestination;
+    final menuLabel = isEs ? 'Menú' : 'Menu';
 
     return _GroupedModuleMenu(
       destinations: destinations,
@@ -412,6 +416,15 @@ class _UnifiedModuleSwitcher extends StatelessWidget {
                   ),
                   if (!collapsed) ...[
                     const SizedBox(width: 8),
+                    Text(
+                      menuLabel,
+                      key: const ValueKey('unified-module-menu-label'),
+                      style: NavigationTokens.label(context).copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
                     AnimatedRotation(
                       turns: isOpen ? .5 : 0,
                       duration:
@@ -1268,6 +1281,8 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
               ? WorkerStatusIndicator(
                   memberIds: memberIds.toList(),
                   groupRoles: state.group.userRoles,
+                  selected: activeSection == Sections.members,
+                  onPressed: () => state.openSection(Sections.members),
                 )
               : null,
           profile: UserProfilePopup(

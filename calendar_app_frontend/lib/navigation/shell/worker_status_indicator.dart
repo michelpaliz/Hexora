@@ -13,10 +13,14 @@ class WorkerStatusIndicator extends StatefulWidget {
     super.key,
     required this.memberIds,
     required this.groupRoles,
+    required this.onPressed,
+    this.selected = false,
   });
 
   final List<String> memberIds;
   final Map<String, String> groupRoles;
+  final VoidCallback onPressed;
+  final bool selected;
 
   @override
   State<WorkerStatusIndicator> createState() => _WorkerStatusIndicatorState();
@@ -37,27 +41,42 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
     final int? onlineCount =
         presence.hasReceivedPresence ? onlineMembers.length : null;
 
+    final tooltip = onlineCount == null
+        ? (_isSpanish
+            ? 'Miembros · estado no disponible'
+            : 'Members · status unavailable')
+        : (_isSpanish
+            ? 'Miembros · $onlineCount conectados'
+            : 'Members · $onlineCount online');
     return HexoraNavTile(
-      tooltip: _isSpanish ? 'Usuarios conectados' : 'Connected users',
-      semanticLabel: onlineCount == null
-          ? (_isSpanish ? 'Usuarios conectados' : 'Connected users')
-          : (_isSpanish
-              ? '$onlineCount usuarios conectados'
-              : '$onlineCount connected users'),
-      padding: const EdgeInsets.symmetric(
-        horizontal: NavigationTokens.globalItemPadding,
-      ),
-      onTap: null,
-      builder: (context, fg) => Row(
-        mainAxisSize: MainAxisSize.min,
+      key: const ValueKey('workspace-members-button'),
+      tooltip: tooltip,
+      semanticLabel: tooltip,
+      selected: widget.selected,
+      padding: EdgeInsets.zero,
+      onTap: widget.onPressed,
+      builder: (context, fg) => Stack(
+        clipBehavior: Clip.none,
         children: [
           Icon(LucideIcons.users, size: NavigationTokens.iconSize, color: fg),
-          const SizedBox(width: 6),
-          Text(
-            onlineCount?.toString() ?? '—',
-            style: NavigationTokens.label(context)
-                .copyWith(color: fg, fontWeight: FontWeight.w600),
-          ),
+          if (onlineCount != null && onlineCount > 0)
+            Positioned(
+              right: -4,
+              top: -4,
+              child: Container(
+                key: const ValueKey('workspace-members-online-indicator'),
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF22C55E),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: HexoraGlobalNavColors.backgroundFor(context),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

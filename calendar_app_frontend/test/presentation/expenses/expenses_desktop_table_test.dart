@@ -100,15 +100,21 @@ void main() {
       44,
     );
     expect(
-      tester
-          .getSize(find.byKey(const ValueKey('expense-summary-strip')))
-          .height,
-      40,
+      find.byKey(const ValueKey('expense-summary-strip')),
+      findsNothing,
+      reason: 'Table totals are presented in the sticky, aligned table footer.',
     );
     expect(
       tester.getSize(find.byKey(const ValueKey('expense-table-header'))).height,
       36,
     );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('expense-table-totals-footer')))
+          .height,
+      42,
+    );
+    expect(find.textContaining('Total · 2 gastos'), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const ValueKey('expense-row-one'))).height,
       inInclusiveRange(44, 48),

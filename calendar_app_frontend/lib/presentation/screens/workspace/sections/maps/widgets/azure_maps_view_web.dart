@@ -247,5 +247,12 @@ class _AzureMapsViewState extends State<AzureMapsView> {
   }
 
   @override
-  Widget build(BuildContext context) => HtmlElementView(viewType: _viewType);
+  Widget build(BuildContext context) {
+    // A Flutter modal barrier cannot intercept events inside an iframe.
+    // Observe the containing route so dialogs and popup menus suspend native
+    // pointer handling, including areas outside their visible surfaces.
+    final routeIsCurrent = ModalRoute.isCurrentOf(context) ?? true;
+    _frame.style.pointerEvents = routeIsCurrent ? 'auto' : 'none';
+    return HtmlElementView(viewType: _viewType);
+  }
 }

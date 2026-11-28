@@ -1240,7 +1240,12 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                               ),
                             ],
                           ),
-                          child: panel(),
+                          child: PointerInterceptor(
+                            // The map is an iframe on web; Flutter hit testing
+                            // alone cannot protect this floating client panel.
+                            intercepting: !_clientPanelCollapsed,
+                            child: panel(),
+                          ),
                         ),
                       ),
                     ),

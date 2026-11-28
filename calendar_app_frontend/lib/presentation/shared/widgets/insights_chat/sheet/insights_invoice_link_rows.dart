@@ -7,6 +7,7 @@ import 'package:hexora/presentation/shared/widgets/buttons/hexora_link_button.da
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 import '../insights_chat_message.dart';
+import '../insights_money_format.dart';
 import '../insights_pending_invoice_link_edit.dart';
 import 'insights_chat_sheet_base.dart';
 
@@ -18,12 +19,19 @@ mixin InsightsInvoiceLinkRows on InsightsChatSheetStateBase {
   ) {
     final key = column['key']?.toString() ?? '';
     String formatted(dynamic raw) {
-      final value = raw?.toString() ?? '';
-      return value.replaceFirst(RegExp(r'\s*EUR$'), ' €');
+      if (!insightsMoneyColumn(column)) return raw?.toString() ?? '';
+      return formatInsightsMoney(context, raw,
+          currency:
+              (column['currency'] ?? row['currency'] ?? row['currencyCode'])
+                  ?.toString());
     }
 
     if (!rowHasExistingInvoiceLink(row)) {
-      return formatted(row[key]);
+      final numericKey = key.replaceFirst(RegExp(r'Formatted$'), '');
+      final numericValue = row[numericKey];
+      return formatted(insightsMoneyColumn(column) && numericValue is num
+          ? numericValue
+          : row[key]);
     }
 
     final label = (column['label']?.toString() ?? '').trim().toLowerCase();
@@ -48,7 +56,9 @@ mixin InsightsInvoiceLinkRows on InsightsChatSheetStateBase {
         key == 'invoiceAmountFormatted' ||
         key == 'invoiceAmount' ||
         normalizedLabel == 'importe factura') {
-      return formatted(row['matchedInvoiceAmountFormatted']);
+      return formatted(row['matchedInvoiceAmount'] is num
+          ? row['matchedInvoiceAmount']
+          : row['matchedInvoiceAmountFormatted']);
     }
 
     if (key == 'linkStatusLabel') {

@@ -1119,6 +1119,9 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
           onBack: widget.onBack,
           showTab: true,
           contentTopPadding: 0,
+          backgroundColor: cs.surfaceContainerLow,
+          showBorder: false,
+          showToolbarDivider: false,
           tabContent: tabs(context),
           actions: [
             _RecurringDetailActionBar(
@@ -1140,7 +1143,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
             ),
           ],
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+            padding: EdgeInsets.zero,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

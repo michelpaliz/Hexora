@@ -30,6 +30,15 @@ class _CachedWorkspaceTab {
 
 class _WorkspaceContentState extends State<WorkspaceContent> {
   final Map<WorkspaceTabIdentity, _CachedWorkspaceTab> _cache = {};
+  final Set<WorkspaceTabIdentity> _layoutsToRefresh = {};
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    // Re-run layout builders after hot reload. Keep visited tabs mounted so
+    // Flutter can reconcile their existing state with the updated widgets.
+    _layoutsToRefresh.addAll(_cache.keys);
+  }
 
   bool _tabConfigurationChanged(WorkspaceTab previous, WorkspaceTab next) {
     if (previous.section != next.section ||
@@ -44,7 +53,10 @@ class _WorkspaceContentState extends State<WorkspaceContent> {
 
   Widget _cachedTab(BuildContext context, WorkspaceTab tab) {
     final cached = _cache[tab.identity];
-    if (cached != null && !_tabConfigurationChanged(cached.tab, tab)) {
+    final refreshLayout = _layoutsToRefresh.remove(tab.identity);
+    if (cached != null &&
+        !refreshLayout &&
+        !_tabConfigurationChanged(cached.tab, tab)) {
       // A user-facing title is presentation metadata, not page identity.
       // Updating it after document hydration must not recreate forms or lose
       // scroll/controller state.
@@ -190,8 +202,7 @@ class WorkspaceTabChromeScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(WorkspaceTabChromeScope oldWidget) =>
-      oldWidget.active != active ||
-      oldWidget.tabBarBuilder != tabBarBuilder;
+      oldWidget.active != active || oldWidget.tabBarBuilder != tabBarBuilder;
 }
 
 /// Wraps only a module's right-hand content column. It is a no-op for mobile

@@ -25,6 +25,7 @@ import 'package:hexora/presentation/shared/jobs/ocr_import_job_mapping_store.dar
 import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_wizard_navigation.dart';
+import 'form_sections/expense_creation_stepper.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -470,10 +471,59 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   late TabController _tabs;
   late TabController _importTabs;
   int _manualWizardStep = 0;
+  bool _manualDetailsVisited = false;
   String _manualDataSection = 'general';
-  bool _manualDataExpanded = false;
   bool _manualWizardCollapsed = false;
-  bool _manualExpenseSaved = false;
+  String? _manualSavedSignature;
+
+  List<TextEditingController> get _manualInputControllers => [
+        _vendorController,
+        _vendorTaxIdController,
+        _invoiceNumberController,
+        _issueDateController,
+        _dueDateController,
+        _currencyController,
+        _notesController,
+        _clientIdController,
+        _baseTotalController,
+        _taxTotalController,
+        _totalController,
+        _manualSettlement.advancePercentController,
+        _manualSettlement.projectBaseAmountController,
+        _manualSettlement.advanceTaxRateController,
+        _manualDocumentDiscount.discountAmountController,
+        _manualDocumentDiscount.discountPercentController,
+        _manualWithholding.amountController,
+        _manualWithholding.percentController,
+        for (final line in _lines) ...[
+          line.descriptionController,
+          line.quantityController,
+          line.baseUnitPriceController,
+          line.taxRateController,
+          line.discountPercentController,
+          line.discountAmountController,
+        ],
+      ];
+
+  // Comparing the saved draft lets users revisit completed steps without
+  // falsely labelling later edits as saved. This does not alter the payload.
+  String get _manualDraftSignature => jsonEncode([
+        resolveGroupId(),
+        _selectedProviderId,
+        _fileName,
+        _fileBytes.hashCode,
+        _manualUseSummaryTotals,
+        _manualSettlement.expenseType.name,
+        _manualSettlement.selectedAdvanceExpenseId,
+        _manualWithholding.type.name,
+        for (final controller in _manualInputControllers) controller.text,
+      ]);
+
+  bool get _manualExpenseSaved =>
+      _manualSavedSignature != null &&
+      _manualSavedSignature == _manualDraftSignature;
+  set _manualExpenseSaved(bool value) =>
+      _manualSavedSignature = value ? _manualDraftSignature : null;
 
   // Provider state
   List<Map<String, dynamic>> _providers = [];
@@ -1428,7 +1478,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       _fileBytes = fileBytes;
       _error = null;
       _manualWizardStep = 1;
-      _manualDataExpanded = true;
+      _manualDetailsVisited = true;
       _manualExpenseSaved = false;
     });
   }
@@ -1557,10 +1607,65 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       _vatBreakdown = null;
       _error = null;
       _manualWizardStep = 0;
+      _manualDetailsVisited = false;
       _manualDataSection = 'general';
-      _manualDataExpanded = false;
       _manualExpenseSaved = false;
     });
+  }
+
+  String? _manualValidationError() {
+    if (resolveGroupId().isEmpty) return _requiredGroupMessage();
+    if (_fileBytes == null || _fileName == null) {
+      return AppLocalizations.of(context)!.expenseUploadSelectFileError;
+    }
+    if (_vendorController.text.trim().isEmpty ||
+        _issueDateController.text.trim().isEmpty) {
+      return AppLocalizations.of(context)!.expenseUploadRequiredFieldsError;
+    }
+    if (_lines.isEmpty) {
+      return AppLocalizations.of(context)!.expenseUploadLinesRequiredError;
+    }
+    if (_manualUseSummaryTotals) {
+      final summaryValidation = ExpenseFormHelpers.validateSummaryTotals(
+        base: _parseControllerAmount(_baseTotalController),
+        tax: _parseControllerAmount(_taxTotalController),
+        total: _parseControllerAmount(_totalController),
+      );
+      if (summaryValidation != null) {
+        return summaryValidation;
+      }
+    }
+    final settlementError = _manualSettlement.validate();
+    if (settlementError != null) {
+      return settlementError;
+    }
+    final discountPreview = _manualDiscountPreview();
+    final discountValidationBase = discountPreview?.subtotalBeforeDiscount ??
+        (() {
+          final total = ExpenseFormHelpers.parseAmount(_totalController.text);
+          final tax =
+              ExpenseFormHelpers.parseAmount(_taxTotalController.text) ?? 0;
+          if (total == null) return 0.0;
+          return (total - tax).clamp(0, double.infinity).toDouble();
+        })();
+    final discountError =
+        _manualDocumentDiscount.validate(discountValidationBase);
+    if (discountError != null) {
+      return discountError;
+    }
+    for (final line in _lines) {
+      if (line.descriptionController.text.trim().isEmpty ||
+          line.quantity <= 0 ||
+          line.baseUnitPrice <= 0 ||
+          line.taxRate < 0 ||
+          line.discountPercent < 0 ||
+          line.discountPercent > 100 ||
+          line.discountAmount < 0 ||
+          line.discountAmount > line.grossSubtotal + 0.0001) {
+        return AppLocalizations.of(context)!.expenseUploadLinesInvalidError;
+      }
+    }
+    return null;
   }
 
   Future<void> _submit() async {
@@ -1579,74 +1684,11 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       setState(() => _error = _requiredGroupMessage());
       return;
     }
-    if (_fileBytes == null || _fileName == null) {
-      setState(
-        () =>
-            _error = AppLocalizations.of(context)!.expenseUploadSelectFileError,
-      );
-      return;
-    }
-    if (_vendorController.text.trim().isEmpty ||
-        _issueDateController.text.trim().isEmpty) {
-      setState(
-        () => _error =
-            AppLocalizations.of(context)!.expenseUploadRequiredFieldsError,
-      );
-      return;
-    }
-    if (_lines.isEmpty) {
-      setState(
-        () => _error =
-            AppLocalizations.of(context)!.expenseUploadLinesRequiredError,
-      );
-      return;
-    }
-    if (_manualUseSummaryTotals) {
-      final summaryValidation = ExpenseFormHelpers.validateSummaryTotals(
-        base: _parseControllerAmount(_baseTotalController),
-        tax: _parseControllerAmount(_taxTotalController),
-        total: _parseControllerAmount(_totalController),
-      );
-      if (summaryValidation != null) {
-        setState(() => _error = summaryValidation);
-        return;
-      }
-    }
-    final settlementError = _manualSettlement.validate();
-    if (settlementError != null) {
-      setState(() => _error = settlementError);
-      return;
-    }
     final discountPreview = _manualDiscountPreview();
-    final discountValidationBase = discountPreview?.subtotalBeforeDiscount ??
-        (() {
-          final total = ExpenseFormHelpers.parseAmount(_totalController.text);
-          final tax =
-              ExpenseFormHelpers.parseAmount(_taxTotalController.text) ?? 0;
-          if (total == null) return 0.0;
-          return (total - tax).clamp(0, double.infinity).toDouble();
-        })();
-    final discountError =
-        _manualDocumentDiscount.validate(discountValidationBase);
-    if (discountError != null) {
-      setState(() => _error = discountError);
+    final validationError = _manualValidationError();
+    if (validationError != null) {
+      setState(() => _error = validationError);
       return;
-    }
-    for (final line in _lines) {
-      if (line.descriptionController.text.trim().isEmpty ||
-          line.quantity <= 0 ||
-          line.baseUnitPrice <= 0 ||
-          line.taxRate < 0 ||
-          line.discountPercent < 0 ||
-          line.discountPercent > 100 ||
-          line.discountAmount < 0 ||
-          line.discountAmount > line.grossSubtotal + 0.0001) {
-        setState(
-          () => _error =
-              AppLocalizations.of(context)!.expenseUploadLinesInvalidError,
-        );
-        return;
-      }
     }
     setState(() {
       _submitting = true;
@@ -1908,7 +1950,6 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
         });
         _selectedRecentExpense = _recentUploads.first;
         _manualWizardStep = 3;
-        _manualDataExpanded = false;
         _manualExpenseSaved = true;
       });
       widget.onUploaded?.call();
@@ -2470,19 +2511,32 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       ),
     ];
 
+    bool canOpenManualStep(int step) {
+      if (_submitting) return false;
+      if (step == 0) return true;
+      if (_fileBytes == null || _fileName == null) return false;
+      if (step == 1) return true;
+      if (!_manualDetailsVisited || _manualValidationError() != null) {
+        return false;
+      }
+      return step == 2 || (step == 3 && _manualExpenseSaved);
+    }
+
     void selectManualStep(int step) {
+      if (!canOpenManualStep(step)) return;
       setState(() {
         _manualWizardStep = step.clamp(0, 3);
-        _manualDataExpanded = _manualWizardStep == 1;
+        if (step == 1) _manualDetailsVisited = true;
       });
     }
 
     void selectManualSection(String section) {
+      if (!canOpenManualStep(1)) return;
       if (!const {'general', 'amounts', 'lines'}.contains(section)) return;
       setState(() {
         _manualWizardStep = 1;
+        _manualDetailsVisited = true;
         _manualDataSection = section;
-        _manualDataExpanded = true;
       });
     }
 
@@ -2624,6 +2678,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
               children: [
                 DocumentWizardMobileSelector(
                   keyPrefix: 'expense-wizard',
+                  canSelectStep: canOpenManualStep,
                   steps: manualWizardSteps,
                   currentStep: _manualWizardStep,
                   selectedSectionId: _manualDataSection,
@@ -2636,23 +2691,23 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
           : Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DocumentWizardRail(
-                  keyPrefix: 'expense-wizard',
+                ExpenseCreationStepper(
                   steps: manualWizardSteps,
                   currentStep: _manualWizardStep,
-                  selectedSectionId: _manualDataSection,
-                  groupExpanded: _manualDataExpanded,
-                  collapsed: collapseRail || _manualWizardCollapsed,
-                  title: l.localeName.startsWith('es')
-                      ? 'Registro manual'
-                      : 'Manual entry',
-                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                  onStepSelected: selectManualStep,
+                  selectedSection: _manualDataSection,
+                  collapsed: _manualWizardCollapsed,
+                  forcedCollapsed: collapseRail,
+                  canSelect: canOpenManualStep,
+                  isComplete: (step) => switch (step) {
+                    0 => _fileBytes != null && _fileName != null,
+                    1 =>
+                      _manualDetailsVisited && _manualValidationError() == null,
+                    2 || 3 => _manualExpenseSaved,
+                    _ => false,
+                  },
+                  onSelected: selectManualStep,
                   onSectionSelected: selectManualSection,
-                  onToggleGroup: () => setState(
-                    () => _manualDataExpanded = !_manualDataExpanded,
-                  ),
-                  onToggleCollapsed: () => setState(
+                  onToggle: () => setState(
                     () => _manualWizardCollapsed = !_manualWizardCollapsed,
                   ),
                 ),
@@ -2668,6 +2723,38 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(child: content),
+          if (_manualWizardStep < 2)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton.icon(
+                  onPressed: _submitting
+                      ? null
+                      : () {
+                          if (_manualWizardStep == 0) {
+                            if (!canOpenManualStep(1)) {
+                              setState(() =>
+                                  _error = l.expenseUploadSelectFileError);
+                              return;
+                            }
+                            selectManualStep(1);
+                          } else {
+                            final error = _manualValidationError();
+                            if (error != null) {
+                              setState(() => _error = error);
+                              return;
+                            }
+                            setState(() => _error = null);
+                            selectManualStep(2);
+                          }
+                        },
+                  icon: const Icon(Icons.arrow_forward, size: 18),
+                  label: Text(
+                      l.localeName.startsWith('es') ? 'Continuar' : 'Continue'),
+                ),
+              ),
+            ),
           errorsAndSubmit,
         ],
       );
@@ -2876,11 +2963,18 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
           final importTabsHeader = widget.hideImportTabs
               ? const SizedBox.shrink()
               : buildImportTabsHeader();
-          final manualWideTab = manualWorkspace(
-            compact: false,
-            collapseRail: constraints.maxWidth < 1120,
+          final manualInputs = Listenable.merge(_manualInputControllers);
+          final manualWideTab = ListenableBuilder(
+            listenable: manualInputs,
+            builder: (_, __) => manualWorkspace(
+              compact: false,
+              collapseRail: constraints.maxWidth < 1200,
+            ),
           );
-          final manualCompactTab = manualWorkspace(compact: true);
+          final manualCompactTab = ListenableBuilder(
+            listenable: manualInputs,
+            builder: (_, __) => manualWorkspace(compact: true),
+          );
           final currentTab = _importTabs.index;
           if (!isWide) {
             if (currentTab == 1) {

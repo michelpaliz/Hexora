@@ -13,9 +13,13 @@ import 'package:hexora/services/weather/weather_service.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/overview/widgets/home_banking_charts.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/screens/announcements/announcements_screen.dart';
 import 'package:hexora/presentation/screens/home/dashboard_preview/business_profile_card.dart';
+import 'package:hexora/presentation/screens/home/home_page/widgets/home_quick_guide.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/pulsing_ring_avatar.dart';
+import 'package:hexora/presentation/shared/widgets/announcements/announcement_panel.dart';
+import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
 import 'package:provider/provider.dart';
 
 /// A standalone, pixel-faithful preview of a proposed "home dashboard" design
@@ -169,10 +173,31 @@ class _DocItem {
 
 class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
   final _weatherService = WeatherService();
+  final _dashboardScrollController = ScrollController();
+  final _summaryKey = GlobalKey();
+  final _businessKey = GlobalKey();
+  final _assistantKey = GlobalKey();
+  final _financialKey = GlobalKey();
+  final _activityKey = GlobalKey();
+  final _tasksKey = GlobalKey();
+  final _documentsKey = GlobalKey();
+  final _newsKey = GlobalKey();
   late Future<_DashData> _future;
   Future<WeatherBundle>? _weather;
   final Map<String, Map<String, dynamic>> _selectedCharts = {};
   String? _selectedChartGroupId;
+  String _activeDashboardSection = 'summary';
+
+  Map<String, GlobalKey> get _dashboardSections => {
+        'summary': _summaryKey,
+        'business': _businessKey,
+        'assistant': _assistantKey,
+        'financial': _financialKey,
+        'activity': _activityKey,
+        'tasks': _tasksKey,
+        'documents': _documentsKey,
+        'news': _newsKey,
+      };
 
   void _updateChartSelection(String id, Map<String, dynamic>? chart) {
     setState(() {
@@ -186,6 +211,39 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
 
   void _askHexora(String text) {
     widget.onAskHexora?.call(text, _selectedCharts.values.toList());
+  }
+
+  void _selectDashboardSection(String id) {
+    if (id == 'help') {
+      showHomeQuickGuide(context);
+      return;
+    }
+    final sectionContext = _dashboardSections[id]?.currentContext;
+    if (sectionContext == null) return;
+    setState(() => _activeDashboardSection = id);
+    Scrollable.ensureVisible(
+      sectionContext,
+      duration: const Duration(milliseconds: 360),
+      curve: Curves.easeOutCubic,
+      alignment: .04,
+    );
+  }
+
+  void _syncDashboardSection() {
+    if (!mounted || !_dashboardScrollController.hasClients) return;
+    const activationLine = 148.0;
+    var selected = _activeDashboardSection;
+    for (final entry in _dashboardSections.entries) {
+      final renderObject = entry.value.currentContext?.findRenderObject();
+      if (renderObject is RenderBox && renderObject.attached) {
+        if (renderObject.localToGlobal(Offset.zero).dy <= activationLine) {
+          selected = entry.key;
+        }
+      }
+    }
+    if (selected != _activeDashboardSection) {
+      setState(() => _activeDashboardSection = selected);
+    }
   }
 
   bool get _isEs => Localizations.localeOf(context).languageCode == 'es';
@@ -216,10 +274,14 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
   void initState() {
     super.initState();
     _future = _load();
+    _dashboardScrollController.addListener(_syncDashboardSection);
   }
 
   @override
   void dispose() {
+    _dashboardScrollController
+      ..removeListener(_syncDashboardSection)
+      ..dispose();
     _weatherService.dispose();
     super.dispose();
   }
@@ -423,17 +485,42 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
           builder: (context, snap) {
             final data = snap.data;
             final loading = snap.connectionState != ConnectionState.done;
-            return _Content(
-              isEs: es,
-              data: data,
-              loading: loading,
-              onOpenSection: _openSection,
-              onAskHexora: widget.onAskHexora == null ? null : _askHexora,
-              onOpenAssistant: widget.onOpenAssistant,
-              onOpenBillingProfile: widget.onOpenBillingProfile,
-              selectedCharts: _selectedCharts,
-              onChartSelectionChanged: _updateChartSelection,
-            );
+            return LayoutBuilder(builder: (context, constraints) {
+              final showSidebar = constraints.maxWidth >= 980;
+              final dashboard = _Content(
+                isEs: es,
+                data: data,
+                loading: loading,
+                onOpenSection: _openSection,
+                onAskHexora: widget.onAskHexora == null ? null : _askHexora,
+                onOpenAssistant: widget.onOpenAssistant,
+                onOpenBillingProfile: widget.onOpenBillingProfile,
+                selectedCharts: _selectedCharts,
+                onChartSelectionChanged: _updateChartSelection,
+                scrollController: _dashboardScrollController,
+                summaryKey: _summaryKey,
+                businessKey: _businessKey,
+                assistantKey: _assistantKey,
+                financialKey: _financialKey,
+                activityKey: _activityKey,
+                tasksKey: _tasksKey,
+                documentsKey: _documentsKey,
+                newsKey: _newsKey,
+              );
+              if (!showSidebar) return dashboard;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _HomeDashboardSidebar(
+                    isSpanish: es,
+                    activeId: _activeDashboardSection,
+                    showAssistant: widget.onAskHexora != null,
+                    onSelected: _selectDashboardSection,
+                  ),
+                  Expanded(child: dashboard),
+                ],
+              );
+            });
           },
         ),
       );
@@ -646,6 +733,94 @@ class _Sidebar extends StatelessWidget {
           const SizedBox(height: 12),
         ],
       ),
+    );
+  }
+}
+
+/// Contextual, in-page navigation for the embedded Home workspace. It uses the
+/// same collapsible sidebar primitive as the rest of Hexora while the content
+/// stays in a single scrollable dashboard rather than opening workspace tabs.
+class _HomeDashboardSidebar extends StatefulWidget {
+  const _HomeDashboardSidebar({
+    required this.isSpanish,
+    required this.activeId,
+    required this.showAssistant,
+    required this.onSelected,
+  });
+
+  final bool isSpanish;
+  final String activeId;
+  final bool showAssistant;
+  final ValueChanged<String> onSelected;
+
+  @override
+  State<_HomeDashboardSidebar> createState() => _HomeDashboardSidebarState();
+}
+
+class _HomeDashboardSidebarState extends State<_HomeDashboardSidebar> {
+  bool _collapsed = false;
+
+  CollapsibleSidebarItem _item(String id, IconData icon, String label) =>
+      CollapsibleSidebarItem(
+        key: ValueKey('home-dashboard-nav-$id'),
+        icon: icon,
+        label: label,
+        selected: widget.activeId == id,
+        onTap: () => widget.onSelected(id),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final es = widget.isSpanish;
+    return CollapsibleSidebar(
+      title: es ? 'Inicio' : 'Home',
+      headerIcon: LucideIcons.house,
+      collapsed: _collapsed,
+      onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
+      expandTooltip: es ? 'Expandir menú de Inicio' : 'Expand Home menu',
+      collapseTooltip: es ? 'Contraer menú de Inicio' : 'Collapse Home menu',
+      items: const [],
+      groups: [
+        CollapsibleSidebarGroup(
+          label: es ? 'INICIO' : 'HOME',
+          items: [
+            _item('summary', LucideIcons.layoutDashboard,
+                es ? 'Resumen' : 'Overview'),
+            _item('business', LucideIcons.building2,
+                es ? 'Mi negocio' : 'My business'),
+            if (widget.showAssistant)
+              _item('assistant', LucideIcons.sparkles,
+                  es ? 'Pregunta a Hexora' : 'Ask Hexora'),
+          ],
+        ),
+        CollapsibleSidebarGroup(
+          label: es ? 'ACTIVIDAD' : 'ACTIVITY',
+          items: [
+            if (widget.showAssistant)
+              _item('financial', LucideIcons.chartNoAxesCombined,
+                  es ? 'Resumen financiero' : 'Financial summary'),
+            _item('activity', LucideIcons.activity,
+                es ? 'Actividad reciente' : 'Recent activity'),
+            _item('tasks', LucideIcons.calendarClock,
+                es ? 'Próximas tareas' : 'Upcoming tasks'),
+            _item('documents', LucideIcons.folderClock,
+                es ? 'Documentos recientes' : 'Recent documents'),
+          ],
+        ),
+        CollapsibleSidebarGroup(
+          label: 'HEXORA',
+          items: [
+            _item(
+                'news', LucideIcons.megaphone, es ? 'Novedades' : 'What’s new'),
+            CollapsibleSidebarItem(
+              key: const ValueKey('home-dashboard-nav-help'),
+              icon: LucideIcons.circleHelp,
+              label: es ? 'Ayuda y soporte' : 'Help & support',
+              onTap: () => widget.onSelected('help'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -895,7 +1070,16 @@ class _Content extends StatelessWidget {
       this.onOpenSection,
       this.onAskHexora,
       this.onOpenAssistant,
-      this.onOpenBillingProfile});
+      this.onOpenBillingProfile,
+      this.scrollController,
+      this.summaryKey,
+      this.businessKey,
+      this.assistantKey,
+      this.financialKey,
+      this.activityKey,
+      this.tasksKey,
+      this.documentsKey,
+      this.newsKey});
   final bool isEs;
   final _DashData? data;
   final bool loading;
@@ -906,6 +1090,15 @@ class _Content extends StatelessWidget {
   final Map<String, Map<String, dynamic>> selectedCharts;
   final void Function(String id, Map<String, dynamic>? chart)
       onChartSelectionChanged;
+  final ScrollController? scrollController;
+  final Key? summaryKey;
+  final Key? businessKey;
+  final Key? assistantKey;
+  final Key? financialKey;
+  final Key? activityKey;
+  final Key? tasksKey;
+  final Key? documentsKey;
+  final Key? newsKey;
 
   @override
   Widget build(BuildContext context) {
@@ -930,55 +1123,74 @@ class _Content extends StatelessWidget {
       // Major section gap (spec: 12–16 px).
       const gap = 14.0;
       return ListView(
+        controller: scrollController,
         padding: EdgeInsets.all(twoCol ? 16 : 12),
         children: [
-          _GreetingHero(isEs: isEs, name: name),
+          KeyedSubtree(
+            key: summaryKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _GreetingHero(isEs: isEs, name: name),
+                const SizedBox(height: gap),
+                _StatRow(
+                    isEs: isEs,
+                    data: data,
+                    loading: loading,
+                    onOpenSection: onOpenSection),
+                const SizedBox(height: gap),
+                _QuickActions(isEs: isEs, onOpenSection: onOpenSection),
+              ],
+            ),
+          ),
           if (group != null) ...[
             const SizedBox(height: 12),
             // Watches the selected business so saves and business switches
             // are reflected immediately; keyed by id so no stale state from
             // another business is kept.
-            Consumer<GroupDomain>(
-              builder: (context, groups, _) {
-                final current = groups.currentGroup ?? group;
-                return BusinessProfileCard(
-                  key: ValueKey('business-profile-${current.id}'),
-                  group: current,
-                  currentUserId: user?.id,
-                  isEs: isEs,
-                  onOpenSettings: onOpenSection == null
-                      ? null
-                      : () => onOpenSection!(Sections.settings),
-                  onOpenBillingProfile: onOpenBillingProfile,
-                );
-              },
+            KeyedSubtree(
+              key: businessKey,
+              child: Consumer<GroupDomain>(
+                builder: (context, groups, _) {
+                  final current = groups.currentGroup ?? group;
+                  return BusinessProfileCard(
+                    key: ValueKey('business-profile-${current.id}'),
+                    group: current,
+                    currentUserId: user?.id,
+                    isEs: isEs,
+                    onOpenSettings: onOpenSection == null
+                        ? null
+                        : () => onOpenSection!(Sections.settings),
+                    onOpenBillingProfile: onOpenBillingProfile,
+                  );
+                },
+              ),
             ),
           ],
           if (onAskHexora != null) ...[
             const SizedBox(height: 12),
-            _AskHexoraBar(
-              isEs: isEs,
-              onSubmit: onAskHexora!,
-              onOpenAssistant: onOpenAssistant,
-              selectedChartCount: selectedCharts.length,
+            KeyedSubtree(
+              key: assistantKey,
+              child: _AskHexoraBar(
+                isEs: isEs,
+                onSubmit: onAskHexora!,
+                onOpenAssistant: onOpenAssistant,
+                selectedChartCount: selectedCharts.length,
+              ),
             ),
           ],
-          const SizedBox(height: gap),
-          _StatRow(
-              isEs: isEs,
-              data: data,
-              loading: loading,
-              onOpenSection: onOpenSection),
-          const SizedBox(height: gap),
-          _QuickActions(isEs: isEs, onOpenSection: onOpenSection),
           const SizedBox(height: gap),
           if (showBankingCharts && group != null) ...[
-            HomeBankingCharts(
-              key: ValueKey('home-banking-charts-${group.id}'),
-              groupId: group.id,
-              onOpenBanking: () => onOpenSection?.call(Sections.enableBanking),
-              selectedChartIds: selectedCharts.keys.toSet(),
-              onSelectionChanged: onChartSelectionChanged,
+            KeyedSubtree(
+              key: financialKey,
+              child: HomeBankingCharts(
+                key: ValueKey('home-banking-charts-${group.id}'),
+                groupId: group.id,
+                onOpenBanking: () =>
+                    onOpenSection?.call(Sections.enableBanking),
+                selectedChartIds: selectedCharts.keys.toSet(),
+                onSelectionChanged: onChartSelectionChanged,
+              ),
             ),
             const SizedBox(height: gap),
           ],
@@ -988,43 +1200,64 @@ class _Content extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
+                    child: KeyedSubtree(
+                      key: activityKey,
                       child: _RecentActivity(
-                          isEs: isEs,
-                          data: data,
-                          onOpenSection: onOpenSection)),
+                        isEs: isEs,
+                        data: data,
+                        onOpenSection: onOpenSection,
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: gap),
                   Expanded(
+                    child: KeyedSubtree(
+                      key: tasksKey,
                       child: _UpcomingTasks(
-                          isEs: isEs,
-                          data: data,
-                          onOpenSection: onOpenSection)),
+                        isEs: isEs,
+                        data: data,
+                        onOpenSection: onOpenSection,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             )
           else ...[
-            _RecentActivity(
-                isEs: isEs, data: data, onOpenSection: onOpenSection),
+            KeyedSubtree(
+              key: activityKey,
+              child: _RecentActivity(
+                  isEs: isEs, data: data, onOpenSection: onOpenSection),
+            ),
             const SizedBox(height: gap),
-            _UpcomingTasks(
-                isEs: isEs, data: data, onOpenSection: onOpenSection),
+            KeyedSubtree(
+              key: tasksKey,
+              child: _UpcomingTasks(
+                  isEs: isEs, data: data, onOpenSection: onOpenSection),
+            ),
           ],
           const SizedBox(height: gap),
-          if (twoCol)
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _RecentDocs(isEs: isEs, data: data)),
-                  const SizedBox(width: gap),
-                  Expanded(child: _ThisWeek(isEs: isEs, data: data)),
-                ],
+          KeyedSubtree(
+            key: documentsKey,
+            child: _RecentDocs(isEs: isEs, data: data),
+          ),
+          const SizedBox(height: gap),
+          KeyedSubtree(
+            key: newsKey,
+            child: _Panel(
+              title: isEs ? 'Novedades' : 'What’s new',
+              action: isEs ? 'Ver todo' : 'View all',
+              onAction: () => showAnnouncementsDialog(context),
+              child: AnnouncementPanel(
+                placement: 'home',
+                limit: 3,
+                compact: true,
+                showHeader: false,
+                showEmptyState: true,
+                onViewAll: () => showAnnouncementsDialog(context),
               ),
-            )
-          else ...[
-            _RecentDocs(isEs: isEs, data: data),
-            const SizedBox(height: gap),
-            _ThisWeek(isEs: isEs, data: data),
-          ],
+            ),
+          ),
           const SizedBox(height: 16),
         ],
       );
@@ -2177,56 +2410,6 @@ class _RecentDocs extends StatelessWidget {
   }
 }
 
-class _ThisWeek extends StatelessWidget {
-  const _ThisWeek({required this.isEs, required this.data});
-  final bool isEs;
-  final _DashData? data;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = data?.tasks ?? const <_TaskItem>[];
-    return _Panel(
-      title: isEs ? 'Esta semana' : 'This week',
-      action: _monthLabel(DateTime.now(), isEs),
-      child: Column(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            Row(
-              children: [
-                SizedBox(
-                  width: 54,
-                  child: Text(_weekdayDay(items[i].date, isEs),
-                      style: TextStyle(
-                          color: _Tone.of(context).navy,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12.5)),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                    width: 9,
-                    height: 9,
-                    decoration: BoxDecoration(
-                        color: items[i].color, shape: BoxShape.circle)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(items[i].title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          color: _Tone.of(context).ink,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13)),
-                ),
-              ],
-            ),
-            if (i != items.length - 1) const SizedBox(height: 10),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.text);
   final String text;
@@ -2301,17 +2484,6 @@ String _shortDate(DateTime d, bool isEs) {
   final wd = (isEs ? _esWeekdaysShort : _enWeekdaysShort)[d.weekday - 1];
   final m = (isEs ? _esMonths : _enMonths)[d.month - 1].substring(0, 3);
   return '$wd, ${d.day} $m';
-}
-
-String _weekdayDay(DateTime d, bool isEs) {
-  final wd = (isEs ? _esWeekdaysShort : _enWeekdaysShort)[d.weekday - 1];
-  return '$wd ${d.day}';
-}
-
-String _monthLabel(DateTime d, bool isEs) {
-  final m = (isEs ? _esMonths : _enMonths)[d.month - 1];
-  final cap = m[0].toUpperCase() + m.substring(1);
-  return '$cap ${d.year}';
 }
 
 String _relTime(DateTime? d, bool isEs) {

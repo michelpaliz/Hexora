@@ -1993,8 +1993,10 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       return Column(children: [
         _buildCompactListToolbar(l, t, cs, isSpanish),
         const SizedBox(height: 8),
-        _buildExpenseResultsAmountStrip(t, cs, isSpanish),
-        const SizedBox(height: 8),
+        if (!useFullTable) ...[
+          _buildExpenseResultsAmountStrip(t, cs, isSpanish),
+          const SizedBox(height: 8),
+        ],
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) => _buildExpenseResultsWorkspace(

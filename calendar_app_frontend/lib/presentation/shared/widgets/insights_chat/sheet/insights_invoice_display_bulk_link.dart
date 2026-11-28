@@ -4,23 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:hexora/services/statements/statements_api.dart';
 
 import '../insights_chat_message.dart';
+import '../insights_money_format.dart';
 import '../insights_json_utils.dart';
 import 'insights_chat_sheet_base.dart';
 
 mixin InsightsInvoiceDisplayBulkLink on InsightsChatSheetStateBase {
   @override
   String formatEuroAmount(num? amount, String? currency) {
-    if (amount == null) return '';
-    final parts = amount.toStringAsFixed(2).split('.');
-    final whole = parts.first;
-    final buffer = StringBuffer();
-    for (var i = 0; i < whole.length; i++) {
-      final left = whole.length - i;
-      buffer.write(whole[i]);
-      if (left > 1 && left % 3 == 1) buffer.write('.');
-    }
-    final code = (currency ?? 'EUR').trim().isEmpty ? 'EUR' : currency!.trim();
-    return '${buffer.toString()},${parts.last} $code';
+    return formatInsightsMoney(context, amount, currency: currency);
   }
 
   @override
